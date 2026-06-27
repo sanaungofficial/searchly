@@ -39,7 +39,6 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS } from "./workspace-data";
 import {
   KimchiAssistantChipRow,
-  KimchiStarterSection,
   KimchiTypingIndicator,
   KimchiCopyButton,
   KimchiEmailInsightDrawer,
@@ -48,6 +47,7 @@ import {
   KimchiTranscriptModal,
 } from "@/components/scout/kimchi-chat-extras";
 import { VoiceOrb } from "@/components/voice/voice-orb";
+import { useVoiceTranscribe } from "@/hooks/use-voice-transcribe";
 
 const KIMCHI_NAV_MARKER = /<!--kimchi-nav:([^>]+)-->/;
 
@@ -129,6 +129,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [forYouChips, setForYouChips] = useState<AssistantChip[]>([]);
   const [forYouLoading, setForYouLoading] = useState(false);
   const [showWelcomeRecommendations, setShowWelcomeRecommendations] = useState(false);
+
+  const onTranscript = useCallback(
+    (text: string) => setInput((prev) => (prev ? `${prev} ${text}` : text)),
+    [],
+  );
+  const voiceTranscribe = useVoiceTranscribe(onTranscript);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -932,6 +938,17 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   return (
     <div className="kimchi-chat-panel">
       <div className="kimchi-chat-panel__thread">
+        {showWelcomeStarters && !hasUserMessages && (
+          <div className="kimchi-empty-state">
+            <VoiceOrb variant="composer" state="idle" />
+            <h2 className="kimchi-empty-state__heading">What should we work on?</h2>
+            <p className="kimchi-empty-state__sub">
+              {isCoachPrep && coachPrepCoach
+                ? `Prep for your session with ${coachPrepCoach.displayName}`
+                : "Ask anything about your job search, prep for interviews, or get strategy advice."}
+            </p>
+          </div>
+        )}
         {messages.map((msg, i) => {
           if (msg.kind === "voice") {
             const vm = msg as VoiceMessage;
@@ -1034,178 +1051,70 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           );
         })}
 
-        {showWelcomeStarters && (welcomeChips.length > 0 || welcomeChipsLoading) && (
-          <KimchiStarterSection
-            actions={welcomeChips}
-            chatChips={[]}
-            loading={welcomeChipsLoading}
-            onActivate={handleChipActivate}
-          />
-        )}
-
         <div ref={messagesEndRef} />
       </div>
 
-      {!welcomeOnly &&
-        (contextSuggestionChips.length > 0 ||
-          canGenerateNextSteps ||
-          assistantCtx?.inbox?.emailConnected) && (
-        <div className="kimchi-suggestions-bar">
-          {!suggestionsVisible && contextSuggestionChips.length > 0 && (
-            <button
-              type="button"
-              className="kimchi-suggest-trigger"
-              disabled={forYouLoading}
-              onClick={() => {
-                if (forYouChips.length === 0) void loadForYou();
-                setSuggestionsVisible(true);
-              }}
-            >
-              {forYouLoading
-                ? "Personalizing for you…"
-                : hasUserMessages
-                  ? "✦ What to focus on"
-                  : "✦ What to focus on"}
-            </button>
-          )}
-          {suggestionsVisible && contextSuggestionChips.length > 0 && (
-            <KimchiAssistantChipRow
-              chips={contextSuggestionChips}
-              onActivate={handleChipActivate}
-              layout="inline"
-              emphasis="cta"
-            />
-          )}
-          {assistantCtx?.inbox?.emailConnected && (
-            <button
-              type="button"
-              className="kimchi-suggest-trigger"
-              disabled={inboxScanning}
-              onClick={() => void scanInboxWithAi()}
-            >
-              {inboxScanning ? "Checking email…" : "✦ Check email for job updates"}
-            </button>
-          )}
-          {canGenerateNextSteps && !nextStepsVisible && (
-            <button
-              type="button"
-              className="kimchi-suggest-trigger"
-              onClick={() => generateNextSteps()}
-            >
-              ✦ Next from this chat
-            </button>
-          )}
-          {nextStepsVisible && followUpChips.length > 0 && (
-            <>
-              <KimchiAssistantChipRow
-                chips={followUpChips.slice(0, 5)}
-                onActivate={handleChipActivate}
-                layout="inline"
-                emphasis="cta"
-              />
-              {canAskAiSuggestions && (
-                <button
-                  type="button"
-                  className="kimchi-ai-suggest-btn"
-                  disabled={followUpAiLoading}
-                  onClick={() => void loadAiFollowUpChips()}
-                >
-                  {followUpAiLoading ? "Personalizing…" : "✦ Personalized follow-ups"}
-                </button>
+      {!voiceUnavailable && voiceAvailable !== false && sessionActive && (
+        <div className="kimchi-chat-panel__voice-bar">
+          <VoiceOrb
+            variant="composer"
+            state={orbState}
+            audioLevel={audioLevel}
+            onClick={toggleSession}
+            disabled={!agentSettings}
+          />
+          <div className="kimchi-chat-panel__voice-status">
+            <span className="kimchi-chat-panel__voice-label">
+              {getVoicePreset(selectedPreset).emoji}{" "}
+              {orbState === "listening" || orbState === "live"
+                ? "Listening…"
+                : orbState === "speaking"
+                  ? "Kimchi is speaking"
+                  : orbState === "connecting"
+                    ? "Connecting…"
+                    : orbState === "thinking"
+                      ? "Thinking…"
+                      : "Talking"}
+            </span>
+            {transcriptLines.length === 0 &&
+              (orbState === "live" || orbState === "listening" || orbState === "connecting") && (
+                <span className="kimchi-chat-panel__voice-hint">Just start speaking — Kimchi is listening.</span>
               )}
-            </>
-          )}
+          </div>
+          <button type="button" className="kimchi-voice-done-btn" onClick={endSession}>
+            Done talking
+          </button>
+          {voiceError && <span className="kimchi-chat-panel__voice-error">{voiceError}</span>}
         </div>
       )}
 
-      {!voiceUnavailable && voiceAvailable !== false && (
+      {!voiceUnavailable && voiceAvailable !== false && !sessionActive && presetMenuOpen && (
         <div className="kimchi-chat-panel__voice-bar">
-          {sessionActive ? (
-            <>
-              <VoiceOrb
-                variant="composer"
-                state={orbState}
-                audioLevel={audioLevel}
-                onClick={toggleSession}
-                disabled={!agentSettings}
-              />
-              <div className="kimchi-chat-panel__voice-status">
-                <span className="kimchi-chat-panel__voice-label">
-                  {getVoicePreset(selectedPreset).emoji}{" "}
-                  {orbState === "listening" || orbState === "live"
-                    ? "Listening…"
-                    : orbState === "speaking"
-                      ? "Kimchi is speaking"
-                      : orbState === "connecting"
-                        ? "Connecting…"
-                        : orbState === "thinking"
-                          ? "Thinking…"
-                          : "Talking"}
+          <div className="kimchi-preset-menu">
+            {VOICE_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="kimchi-preset-menu__item"
+                style={{ borderLeftColor: p.accent, borderLeftWidth: 3, borderLeftStyle: "solid" }}
+                onClick={() => startPresetVoice(p.id)}
+              >
+                <span className="kimchi-preset-menu__emoji" aria-hidden="true">{p.emoji}</span>
+                <span className="kimchi-preset-menu__copy">
+                  <span className="kimchi-preset-menu__title">{p.title}</span>
+                  <span className="kimchi-preset-menu__desc">{p.description}</span>
                 </span>
-                {transcriptLines.length === 0 &&
-                  (orbState === "live" || orbState === "listening" || orbState === "connecting") && (
-                    <span className="kimchi-chat-panel__voice-hint">Just start speaking — Kimchi is listening.</span>
-                  )}
-              </div>
-              <button type="button" className="kimchi-voice-done-btn" onClick={endSession}>
-                Done talking
               </button>
-              {voiceError && <span className="kimchi-chat-panel__voice-error">{voiceError}</span>}
-            </>
-          ) : presetMenuOpen ? (
-            <div className="kimchi-preset-menu">
-              {VOICE_PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="kimchi-preset-menu__item"
-                  style={{ borderLeftColor: p.accent, borderLeftWidth: 3, borderLeftStyle: "solid" }}
-                  onClick={() => startPresetVoice(p.id)}
-                >
-                  <span className="kimchi-preset-menu__emoji" aria-hidden="true">{p.emoji}</span>
-                  <span className="kimchi-preset-menu__copy">
-                    <span className="kimchi-preset-menu__title">{p.title}</span>
-                    <span className="kimchi-preset-menu__desc">{p.description}</span>
-                  </span>
-                </button>
-              ))}
-              <button type="button" className="kimchi-preset-menu__cancel" onClick={() => setPresetMenuOpen(false)}>
-                Cancel
-              </button>
-            </div>
-          ) : null}
+            ))}
+            <button type="button" className="kimchi-preset-menu__cancel" onClick={() => setPresetMenuOpen(false)}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
       <div className="kimchi-chat-panel__composer">
-        {messages.some((m) => m.kind === "text" || !m.kind) && (
-          <div className="kimchi-composer-toolbar">
-            <KimchiCopyButton
-              text={formatThreadForCopy(messages)}
-              label="Copy chat"
-              className="kimchi-copy-btn--thread"
-            />
-            <span className="kimchi-composer-toolbar__hint">Copy chat</span>
-          </div>
-        )}
         <div className="kimchi-composer-box">
-          {!voiceUnavailable && voiceAvailable !== false && !sessionActive && (
-            <div className="kimchi-composer-box__toolbar">
-              <button type="button" className="kimchi-composer-box__talk" onClick={() => setPresetMenuOpen((v) => !v)}>
-                <span className="kimchi-composer-box__talk-icon" aria-hidden="true">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z" fill="currentColor" />
-                    <path
-                      d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-1.08A7 7 0 0 0 19 11Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </span>
-                Talk it out
-                <span className="kimchi-composer-box__talk-chev" aria-hidden="true">▾</span>
-              </button>
-            </div>
-          )}
           <div className="kimchi-composer-box__input-wrap">
             <textarea
               ref={inputRef}
@@ -1218,21 +1127,136 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                 }
               }}
               placeholder="Message Kimchi…"
-              rows={2}
+              rows={1}
               disabled={streaming}
               className="kimchi-composer-box__input"
             />
-            <button
-              type="button"
-              className="kimchi-composer-box__send"
-              disabled={!input.trim() || streaming}
-              onClick={() => void sendMessage(input)}
-              aria-label="Send"
-            >
-              ↑
-            </button>
+            <div className="kimchi-composer-box__actions">
+              <button
+                type="button"
+                className={`kimchi-composer-box__mic ${voiceTranscribe.state === "recording" ? "kimchi-composer-box__mic--recording" : ""}`}
+                onClick={() => void voiceTranscribe.toggle()}
+                disabled={voiceTranscribe.state === "transcribing"}
+                aria-label={voiceTranscribe.state === "recording" ? "Stop recording" : "Voice to text"}
+                title={voiceTranscribe.state === "recording" ? "Stop recording" : "Voice to text"}
+              >
+                {voiceTranscribe.state === "transcribing" ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="31.4" strokeDashoffset="10"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" /></circle></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z" fill="currentColor" />
+                    <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-1.08A7 7 0 0 0 19 11Z" fill="currentColor" />
+                  </svg>
+                )}
+              </button>
+              {!voiceUnavailable && voiceAvailable !== false && !sessionActive && (
+                <button
+                  type="button"
+                  className="kimchi-composer-box__talk-btn"
+                  onClick={() => setPresetMenuOpen((v) => !v)}
+                  aria-label="Talk it out"
+                  title="Talk it out — voice agent"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+              <button
+                type="button"
+                className="kimchi-composer-box__send"
+                disabled={!input.trim() || streaming}
+                onClick={() => void sendMessage(input)}
+                aria-label="Send"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M7 11L12 6L17 11M12 6V18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+        {hasUserMessages && (
+          <div className="kimchi-composer-toolbar">
+            <KimchiCopyButton
+              text={formatThreadForCopy(messages)}
+              label="Copy chat"
+              className="kimchi-copy-btn--thread"
+            />
+            <span className="kimchi-composer-toolbar__hint">Copy chat</span>
+          </div>
+        )}
+      </div>
+
+      <div className="kimchi-chips-below">
+        {showWelcomeStarters && (welcomeChips.length > 0 || welcomeChipsLoading) && (
+          <KimchiAssistantChipRow
+            chips={welcomeChips.slice(0, 6)}
+            onActivate={handleChipActivate}
+            layout="inline"
+            emphasis="cta"
+          />
+        )}
+        {!welcomeOnly && !suggestionsVisible && contextSuggestionChips.length > 0 && (
+          <button
+            type="button"
+            className="kimchi-suggest-trigger"
+            disabled={forYouLoading}
+            onClick={() => {
+              if (forYouChips.length === 0) void loadForYou();
+              setSuggestionsVisible(true);
+            }}
+          >
+            {forYouLoading ? "Personalizing for you…" : "✦ What to focus on"}
+          </button>
+        )}
+        {!welcomeOnly && suggestionsVisible && contextSuggestionChips.length > 0 && (
+          <KimchiAssistantChipRow
+            chips={contextSuggestionChips}
+            onActivate={handleChipActivate}
+            layout="inline"
+            emphasis="cta"
+          />
+        )}
+        {!welcomeOnly && assistantCtx?.inbox?.emailConnected && (
+          <button
+            type="button"
+            className="kimchi-suggest-trigger"
+            disabled={inboxScanning}
+            onClick={() => void scanInboxWithAi()}
+          >
+            {inboxScanning ? "Checking email…" : "✦ Check email for job updates"}
+          </button>
+        )}
+        {!welcomeOnly && canGenerateNextSteps && !nextStepsVisible && (
+          <button
+            type="button"
+            className="kimchi-suggest-trigger"
+            onClick={() => generateNextSteps()}
+          >
+            ✦ Next from this chat
+          </button>
+        )}
+        {!welcomeOnly && nextStepsVisible && followUpChips.length > 0 && (
+          <>
+            <KimchiAssistantChipRow
+              chips={followUpChips.slice(0, 5)}
+              onActivate={handleChipActivate}
+              layout="inline"
+              emphasis="cta"
+            />
+            {canAskAiSuggestions && (
+              <button
+                type="button"
+                className="kimchi-ai-suggest-btn"
+                disabled={followUpAiLoading}
+                onClick={() => void loadAiFollowUpChips()}
+              >
+                {followUpAiLoading ? "Personalizing…" : "✦ Personalized follow-ups"}
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       <CreditsInlineHint />
@@ -1391,29 +1415,57 @@ function KimchiChatPanelStyles() {
         max-width: 100%;
         margin: -6px 0 16px 44px;
       }
-      .kimchi-suggestions-bar {
-        flex-shrink: 0;
+      .kimchi-empty-state {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 8px 16px 6px;
-        border-top: 1px solid rgba(26, 58, 47, 0.06);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 248, 235, 0.45) 100%);
+        align-items: center;
+        justify-content: center;
+        padding: 60px 24px 40px;
+        text-align: center;
+        gap: 12px;
       }
+      .kimchi-empty-state__heading {
+        margin: 8px 0 0;
+        font-family: ${sans};
+        font-size: 22px;
+        font-weight: 700;
+        color: #1A3A2F;
+        letter-spacing: -0.01em;
+      }
+      .kimchi-empty-state__sub {
+        margin: 0;
+        font-family: ${sans};
+        font-size: 14px;
+        color: rgba(26, 58, 47, 0.55);
+        line-height: 1.5;
+        max-width: 340px;
+      }
+      .kimchi-chips-below {
+        flex-shrink: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 4px 20px 14px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .kimchi-chips-below::-webkit-scrollbar { display: none; }
+      .kimchi-chips-below:empty { display: none; }
       .kimchi-suggest-trigger {
-        align-self: flex-start;
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 6px 12px;
-        border: 1px solid rgba(26, 58, 47, 0.14);
-        border-radius: 10px;
+        padding: 6px 14px;
+        border: 1px solid rgba(26, 58, 47, 0.12);
+        border-radius: 999px;
         background: #fff;
         font-family: ${sans};
         font-size: 12px;
         font-weight: 600;
         color: rgba(26, 58, 47, 0.72);
         cursor: pointer;
+        white-space: nowrap;
         transition: background 0.12s ease, border-color 0.12s ease;
       }
       .kimchi-suggest-trigger:hover:not(:disabled) {
@@ -1423,7 +1475,6 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-ai-suggest-btn {
         display: inline-flex;
-        margin-top: 8px;
         padding: 0;
         border: none;
         background: none;
@@ -1446,7 +1497,7 @@ function KimchiChatPanelStyles() {
         display: flex;
         align-items: center;
         gap: 6px;
-        margin-bottom: 8px;
+        margin-top: 6px;
       }
       .kimchi-composer-toolbar__hint {
         font-family: ${sans};
@@ -1646,81 +1697,120 @@ function KimchiChatPanelStyles() {
         cursor: pointer;
       }
       .kimchi-chat-panel__composer {
-        padding: 14px 20px 18px;
-        border-top: 1px solid rgba(0,0,0,0.06);
-        background: #FFFFFF;
+        padding: 12px 20px 4px;
+        background: #FAFAF8;
         flex-shrink: 0;
       }
       .kimchi-composer-box {
-        border: 1.5px solid rgba(26, 58, 47, 0.1);
-        border-radius: 16px;
-        background: #FAFAF8;
+        border: 1.5px solid rgba(26, 58, 47, 0.12);
+        border-radius: 20px;
+        background: #FFFFFF;
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(17, 17, 17, 0.04);
+        box-shadow: 0 2px 12px rgba(17, 17, 17, 0.05);
+        transition: border-color 0.15s ease;
       }
-      .kimchi-composer-box__toolbar {
-        padding: 8px 10px 0;
-        border-bottom: 1px solid rgba(26, 58, 47, 0.06);
-      }
-      .kimchi-composer-box__talk {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        margin-bottom: 8px;
-        padding: 7px 12px;
-        background: rgba(26, 58, 47, 0.06);
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: 999px;
-        font-family: ${sans};
-        font-size: 13px;
-        font-weight: 600;
-        color: #1A3A2F;
-        cursor: pointer;
-      }
-      .kimchi-composer-box__talk-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #1A3A2F;
-      }
-      .kimchi-composer-box__talk-chev {
-        font-size: 9px;
-        color: rgba(26, 58, 47, 0.5);
+      .kimchi-composer-box:focus-within {
+        border-color: rgba(26, 58, 47, 0.28);
       }
       .kimchi-composer-box__input-wrap {
-        position: relative;
         display: flex;
         align-items: flex-end;
+        gap: 0;
       }
       .kimchi-composer-box__input {
         flex: 1;
-        min-height: 72px;
-        max-height: 180px;
+        min-height: 44px;
+        max-height: 140px;
         resize: none;
         border: none;
-        padding: 12px 52px 12px 14px;
+        padding: 12px 8px 12px 16px;
         font-family: ${sans};
         font-size: 15px;
         line-height: 1.45;
         outline: none;
         background: transparent;
+        color: #1A1A1A;
+      }
+      .kimchi-composer-box__input::placeholder {
+        color: rgba(26, 58, 47, 0.4);
+      }
+      .kimchi-composer-box__actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 8px 6px 0;
+        flex-shrink: 0;
+      }
+      .kimchi-composer-box__mic {
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: rgba(26, 58, 47, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s;
+        flex-shrink: 0;
+      }
+      .kimchi-composer-box__mic:hover {
+        background: rgba(26, 58, 47, 0.06);
+        color: #1A3A2F;
+      }
+      .kimchi-composer-box__mic--recording {
+        background: #FEE2E2;
+        color: #DC2626;
+        animation: kimchiMicPulse 1.5s ease-in-out infinite;
+      }
+      .kimchi-composer-box__mic--recording:hover {
+        background: #FECACA;
+        color: #B91C1C;
+      }
+      @keyframes kimchiMicPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.3); }
+        50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      }
+      .kimchi-composer-box__mic:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      .kimchi-composer-box__talk-btn {
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: rgba(26, 58, 47, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s;
+        flex-shrink: 0;
+      }
+      .kimchi-composer-box__talk-btn:hover {
+        background: rgba(26, 58, 47, 0.06);
+        color: #1A3A2F;
       }
       .kimchi-composer-box__send {
-        position: absolute;
-        right: 10px;
-        bottom: 10px;
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
         border: none;
-        border-radius: var(--scout-radius);
+        border-radius: 50%;
         background: #1A3A2F;
         color: #E8D5A3;
-        font-size: 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
+        transition: background 0.12s, opacity 0.12s;
+        flex-shrink: 0;
       }
       .kimchi-composer-box__send:disabled {
         background: rgba(26, 58, 47, 0.08);
-        color: rgba(26, 58, 47, 0.35);
+        color: rgba(26, 58, 47, 0.3);
         cursor: default;
       }
     `}</style>
