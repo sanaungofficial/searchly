@@ -1,5 +1,6 @@
 import type { Profile, User } from "@prisma/client";
 import { hasUnlimitedAiAccess } from "@/lib/ai-guard";
+import { normalizeStrategyDocument } from "@/lib/career-strategy";
 import { buildStrategyPromptContext } from "@/lib/career-strategy-context";
 import { getAssignedCoachesForUser } from "@/lib/coach-client-assignment";
 import { assetTypeLabel } from "@/lib/asset-types";
@@ -45,12 +46,129 @@ function formatPageHint(hint?: AssistantPageHint): string {
 function parseFitScore(fitAnalysis: string | null): number | null {
   if (!fitAnalysis) return null;
   try {
-    const parsed = JSON.parse(fitAnalysis) as { score?: number };
+    const parsed = JSON.parse(fitAnalysis) as { score?: number; matchScore?: number };
+    if (typeof parsed.matchScore === "number") return Math.min(100, Math.round(parsed.matchScore));
     if (typeof parsed.score === "number") return Math.min(100, Math.round(parsed.score * 10));
   } catch {
     /* ignore */
   }
   return null;
+}
+
+function parseFitRationale(fitAnalysis: string | null): string | null {
+  if (!fitAnalysis) return null;
+  try {
+    const parsed = JSON.parse(fitAnalysis) as {
+      summaryNote?: string;
+      matchReasons?: unknown;
+      scoreLabel?: string;
+    };
+    if (typeof parsed.summaryNote === "string" && parsed.summaryNote.trim()) {
+      return parsed.summaryNote.trim().slice(0, 220);
+    }
+    if (Array.isArray(parsed.matchReasons)) {
+      const reasons = parsed.matchReasons
+        .filter((r): r is string => typeof r === "string" && r.trim().length > 0)
+        .slice(0, 2);
+      if (reasons.length) return reasons.join("; ").slice(0, 220);
+    }
+    if (typeof parsed.scoreLabel === "string" && parsed.scoreLabel.trim()) {
+      return parsed.scoreLabel.trim().slice(0, 120);
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+const ACTIVE_APPLICATION_STAGES = new Set([
+  "APPLYING",
+  "APPLIED",
+  "SCREENING",
+  "INTERVIEWING",
+  "OFFER",
+]);
+
+type PipelineJobRow = {
+  id: string;
+  company: string;
+  role: string;
+  stage: string;
+  updatedAt: Date;
+  appliedAt: Date | null;
+  fitAnalysis: string | null;
+  userNotes: string | null;
+};
+
+function formatStrategyDocSummary(profile: Profile | null): string | null {
+  if (!profile?.strategyData) return null;
+  try {
+    const doc = normalizeStrategyDocument(profile.strategyData);
+    if (!doc.executiveSummary?.trim()) return null;
+
+    const parts: string[] = [];
+    parts.push(`Executive summary: ${doc.executiveSummary.trim().slice(0, 480)}`);
+
+    const positioning = doc.positioningStrategy.positioningStatement?.trim();
+    if (positioning) parts.push(`Positioning: ${positioning.slice(0, 240)}`);
+
+    const tierRoles = doc.targetRolesStrategy.tiers
+      .flatMap((tier) =>
+        tier.roles.map((r) =>
+          r.whyItFits?.trim()
+            ? `${r.title} (${r.whyItFits.trim().slice(0, 100)})`
+            : r.title,
+        ),
+      )
+      .slice(0, 4);
+    if (tierRoles.length) parts.push(`Strategy role tiers: ${tierRoles.join("; ")}`);
+
+    const phaseItems = doc.actionPlan.phases[0]?.items?.slice(0, 3);
+    if (phaseItems?.length) parts.push(`Near-term plan: ${phaseItems.join("; ")}`);
+
+    return parts.join("\n");
+  } catch {
+    return null;
+  }
+}
+
+function formatActiveApplicationsSnippet(jobs: PipelineJobRow[]): string {
+  const active = jobs.filter((j) => ACTIVE_APPLICATION_STAGES.has(j.stage));
+  if (active.length === 0) {
+    return "No roles in apply or interview process yet.";
+  }
+
+  const interviewing = active.filter((j) => j.stage === "INTERVIEWING" || j.stage === "OFFER");
+  const applied = active.filter((j) => !interviewing.includes(j));
+
+  const formatJob = (j: PipelineJobRow, label: string) => {
+    const fit = parseFitScore(j.fitAnalysis);
+    const rationale = parseFitRationale(j.fitAnalysis);
+    const note = j.userNotes?.trim();
+    const appliedPart = j.appliedAt
+      ? ` · applied ${Math.max(0, Math.floor((Date.now() - j.appliedAt.getTime()) / 86400000))}d ago`
+      : "";
+    const fitPart = fit ? ` · ${fit}% fit` : "";
+    const lines = [`- [${label}] ${j.role} at ${j.company} (${jobStageLabel(j.stage)}${fitPart}${appliedPart}, id ${j.id})`];
+    if (rationale) lines.push(`  Fit rationale: ${rationale}`);
+    if (note) lines.push(`  Your notes: ${note.slice(0, 180)}`);
+    return lines.join("\n");
+  };
+
+  const blocks: string[] = [];
+  if (interviewing.length) {
+    blocks.push(
+      "Interviewing (prioritize prep here):",
+      interviewing.map((j) => formatJob(j, "interview")).join("\n"),
+    );
+  }
+  if (applied.length) {
+    blocks.push(
+      interviewing.length ? "\nApplied / in process:" : "Applied / in process:",
+      applied.map((j) => formatJob(j, "applied")).join("\n"),
+    );
+  }
+  return blocks.join("\n");
 }
 
 function readbackPicture(profile: Profile | null): string | null {
@@ -82,6 +200,7 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
           updatedAt: true,
           appliedAt: true,
           fitAnalysis: true,
+          userNotes: true,
         },
       }),
       prisma.trackedCompany.findMany({
@@ -157,6 +276,10 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
         .join("\n")
     : "Profile strategy not set up yet.";
 
+  const targetCompaniesSnippet = strategy?.trackedCompaniesSummary ?? "No companies on watchlist yet.";
+  const strategyDocSnippet = formatStrategyDocSummary(profile);
+  const activeApplicationsSnippet = formatActiveApplicationsSnippet(jobs);
+
   const masterResumeLine = primaryResume
     ? `Master resume on file: "${primaryResume.name}" (primary — use this when citing resume experience)`
     : profile?.resumeText?.trim()
@@ -219,6 +342,7 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
   const summaryParts = [
     `${jobs.length} job${jobs.length === 1 ? "" : "s"} in pipeline`,
     profile?.targetRoles?.length ? `targeting ${profile.targetRoles.slice(0, 3).join(", ")}` : null,
+    trackedCompanies.length ? `${trackedCompanies.length} target companies` : null,
     primaryResume ? `master resume: ${primaryResume.name}` : null,
     assignedCoaches[0] ? `coach: ${assignedCoaches[0].displayName}` : null,
     suggestions[0]?.title ? `top suggestion: ${suggestions[0].title}` : null,
@@ -228,6 +352,9 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
     roleMode,
     summary: summaryParts.join("; ") || "Getting started with Kimchi.",
     strategySnippet,
+    targetCompaniesSnippet,
+    strategyDocSnippet,
+    activeApplicationsSnippet,
     pipelineSnippet,
     knowsYouSnippet,
     pageHint: formatPageHint(pageHint),
@@ -276,13 +403,24 @@ export function formatAssistantContextForPrompt(ctx: AssistantContextPayload): s
     ? `\nWhat you know about this user (cite these sources specifically — do not claim knowledge not listed here):\n${ctx.knowsYouSnippet}`
     : "";
 
+  const strategyDocBlock = ctx.strategyDocSnippet?.trim()
+    ? `\nCareer strategy doc:\n${ctx.strategyDocSnippet}`
+    : "";
+
   return `${roleLine}
 
 Search context:
 ${ctx.strategySnippet}
+
+Target companies (watchlist):
+${ctx.targetCompaniesSnippet}
+${strategyDocBlock}
 ${knowsYouBlock}
 
-Applications:
+Active applications (applied & interviewing — use fit rationale when discussing why these roles):
+${ctx.activeApplicationsSnippet}
+
+Full pipeline:
 ${ctx.pipelineSnippet}
 ${inboxBlock}
 
@@ -293,6 +431,8 @@ ${suggestionBlock}
 Citation rules:
 - When referencing their background, say "based on your profile" or cite the master resume by name (e.g. "In your master resume, [filename]…").
 - When referencing pipeline roles, name the company and role (e.g. "your Stripe PM application").
+- When discussing interviews, start from the Active applications section — cite fit rationale or their notes if listed.
+- When referencing target companies, use the watchlist above by name.
 - When referencing fit, cite the percentage if listed above.
 - When referencing coach work, name the coach and the deliverable (e.g. "Coach Jane's career strategy doc").
 - If something isn't in the context above, ask — don't invent employers, coaches, or documents.

@@ -62,6 +62,12 @@ export type AssistantContextPayload = {
   roleMode: AssistantRoleMode;
   summary: string;
   strategySnippet: string;
+  /** Target companies watchlist (TrackedCompany) */
+  targetCompaniesSnippet: string;
+  /** Excerpt from generated career strategy doc when present */
+  strategyDocSnippet: string | null;
+  /** Applied + in-process roles with fit rationale */
+  activeApplicationsSnippet: string;
   pipelineSnippet: string;
   /** Profile, master resume, coaches, fit highlights — for prompt citation */
   knowsYouSnippet: string;
