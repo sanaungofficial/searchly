@@ -46,6 +46,11 @@ export const metadata: Metadata = {
   description: "Kimchi reads your resume, understands your story, and prepares every application. An editorial onboarding experience.",
   keywords: ["Kimchi", "Second Ladder", "job search", "resume", "career", "AI"],
   authors: [{ name: "Second Ladder" }],
+  icons: {
+    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+    shortcut: ["/logo.svg"],
+    apple: [{ url: "/logo.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
