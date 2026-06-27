@@ -7,7 +7,9 @@ import type { InboxUserTag } from "@/lib/email-sender-display";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { InboxLinkOpportunityModal } from "./inbox-link-opportunity-modal";
-import { InboxStatusDropdown, InboxStatusPills } from "./inbox-status-pill";
+import { InboxContactStatusSelect } from "./inbox-contact-status-badge";
+import type { InboxContactStatus } from "@/lib/inbox-crm/contact-status";
+import { InboxStatusPills } from "./inbox-status-pill";
 import { SenderAvatar } from "./sender-avatar";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import type { ContactCardData, ContactTimelineItem } from "./inbox-types";
@@ -202,7 +204,7 @@ export function InboxContactDrawer({
   const [card, setCard] = useState<ContactCardData | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [search, setSearch] = useState("");
-  const [tagSaving, setTagSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [saveSaving, setSaveSaving] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [jobLinkSaving, setJobLinkSaving] = useState(false);
@@ -269,27 +271,20 @@ export function InboxContactDrawer({
 
   const grouped = useMemo(() => groupTimelineByDay(filteredTimeline), [filteredTimeline]);
 
-  async function updateTag(tag: InboxUserTag | null) {
-    if (!latestEmailActivity?.nylasMessageId) {
-      onNotice?.({ type: "error", text: "No email activity to tag yet." });
-      return;
-    }
-    setTagSaving(true);
+  async function updateContactStatus(status: InboxContactStatus) {
+    setStatusSaving(true);
     try {
-      const res = await fetch(
-        scopePath(`/api/user/email/messages/${encodeURIComponent(latestEmailActivity.nylasMessageId)}/tag`),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tag: tag ?? "none" }),
-        },
-      );
+      const res = await fetch(scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
       if (!res.ok) throw new Error("Could not save status");
       await load();
     } catch (e) {
       onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not save status." });
     } finally {
-      setTagSaving(false);
+      setStatusSaving(false);
     }
   }
 
@@ -472,10 +467,10 @@ export function InboxContactDrawer({
               </p>
             </div>
             {!loading && card && (
-              <InboxStatusDropdown
-                value={(latestEmailActivity?.userTag as InboxUserTag | null) ?? null}
-                disabled={tagSaving || !latestEmailActivity}
-                onChange={(tag) => void updateTag(tag)}
+              <InboxContactStatusSelect
+                value={card.contact.status}
+                disabled={statusSaving}
+                onChange={(status) => void updateContactStatus(status)}
               />
             )}
           </div>
@@ -574,9 +569,29 @@ export function InboxContactDrawer({
                       </p>
                     )}
                     {card.contact.title && (
-                      <p style={{ margin: 0 }}>
+                      <p style={{ margin: "0 0 8px" }}>
                         <span style={{ color: color.muted }}>Title · </span>
                         {card.contact.title}
+                      </p>
+                    )}
+                    {card.contact.linkedinUrl && (
+                      <p style={{ margin: "0 0 8px" }}>
+                        <span style={{ color: color.muted }}>LinkedIn · </span>
+                        <a href={card.contact.linkedinUrl} target="_blank" rel="noreferrer" style={{ color: "#2563EB" }}>
+                          Profile
+                        </a>
+                      </p>
+                    )}
+                    {card.contact.contacted != null && (
+                      <p style={{ margin: "0 0 8px" }}>
+                        <span style={{ color: color.muted }}>Contacted · </span>
+                        {card.contact.contacted ? "Yes" : "No"}
+                      </p>
+                    )}
+                    {card.contact.notes && (
+                      <p style={{ margin: 0 }}>
+                        <span style={{ color: color.muted }}>Notes · </span>
+                        {card.contact.notes}
                       </p>
                     )}
                     {card.contact.savedToNylas && (

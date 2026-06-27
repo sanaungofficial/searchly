@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchEvent, type NylasEvent } from "@/lib/nylas-inbox";
 import { categorizeCalendarEvent } from "@/lib/inbox-crm/categorize";
 import { upsertContactFromEvent } from "@/lib/inbox-crm/contacts";
+import { touchContactLastActivity } from "@/lib/inbox-crm/touch-contact-activity";
 
 export async function logInboxEvent(params: {
   userId: string;
@@ -45,7 +46,7 @@ export async function logInboxEvent(params: {
     rawPayload: full as object,
   };
 
-  return prisma.inboxActivity.upsert({
+  const activity = await prisma.inboxActivity.upsert({
     where: { userId_nylasEventId: { userId: params.userId, nylasEventId: eventId } },
     create: data,
     update: {
@@ -57,4 +58,7 @@ export async function logInboxEvent(params: {
       rawPayload: data.rawPayload,
     },
   });
+
+  await touchContactLastActivity(activity.contactId, occurredAt);
+  return activity;
 }

@@ -35,6 +35,12 @@ export type ContactCardData = {
     name: string | null;
     company: string | null;
     title: string | null;
+    linkedinUrl?: string | null;
+    notes?: string | null;
+    contacted?: boolean | null;
+    source?: string;
+    status?: string | null;
+    lastActivityAt?: string | null;
     savedToNylas?: boolean;
   };
   linkedJobs: Array<PipelineJobOption & { contactRole: string | null }>;

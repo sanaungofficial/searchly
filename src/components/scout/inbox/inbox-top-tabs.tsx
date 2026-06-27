@@ -39,7 +39,7 @@ export function InboxTopTabs({ active, primaryCount, onSelect, extraFolders = []
       }}
     >
       <button type="button" style={TAB_STYLE(active === "contacts")} onClick={() => onSelect("contacts")}>
-        Contacts
+        Leads
       </button>
       {mailConnected && (
         <>
