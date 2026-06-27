@@ -68,6 +68,19 @@ const US_STATE_ABBR_BY_NAME: Record<string, string> = Object.fromEntries(
   Object.entries(US_STATE_NAMES).map(([abbr, name]) => [name.toLowerCase(), abbr]),
 );
 
+const US_COUNTRY_ALIASES = new Set([
+  "us",
+  "usa",
+  "u.s.",
+  "u.s.a.",
+  "united states",
+  "united states of america",
+]);
+
+function normalizeToken(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function regionToAbbr(region?: string): string | undefined {
   if (!region?.trim()) return undefined;
   const trimmed = region.trim();
@@ -89,10 +102,6 @@ export function formatCompactProfileLocation(parsed: ParsedProfileLocation | nul
     return `${parsed.region}, ${parsed.country}`;
   }
   return parsed.city ?? parsed.region ?? parsed.country ?? null;
-}
-
-function normalizeToken(value: string): string {
-  return value.trim().toLowerCase();
 }
 
 function expandRegion(token: string): string {
