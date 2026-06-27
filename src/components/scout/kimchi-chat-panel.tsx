@@ -25,7 +25,7 @@ import {
   type AssistantChip,
   legacyToChips,
 } from "@/lib/kimchi-assistant/chat-chips";
-import { profileLearningPathUrl } from "@/lib/workspace-urls";
+import { profileLearningPathUrl, pipelineJobUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
 import { ProfileResumeEditor } from "@/components/scout/profile-resume-editor";
 import { CreditsInlineHint } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
@@ -147,7 +147,19 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         const res = await fetch("/api/assistant/voice-debrief", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ presetId, transcript: result.transcript }),
+          body: JSON.stringify({
+            presetId,
+            transcript: result.transcript,
+            contextHint: {
+              focusedJobId: pageHint?.jobDbId ?? null,
+              pipelineJobs,
+              contextSources: assistantCtx?.contextSources?.map((s) => ({
+                id: s.id,
+                label: s.label,
+                route: s.route,
+              })),
+            },
+          }),
         });
         const data = res.ok ? await res.json() : null;
         const finalVoice: VoiceMessage = {
@@ -188,7 +200,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         );
       }
     },
-    [ensureThread, setMessages, threads],
+    [ensureThread, setMessages, threads, pageHint?.jobDbId, pipelineJobs, assistantCtx?.contextSources],
   );
 
   const onVoiceComplete = useCallback(
@@ -631,6 +643,53 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const handleDebriefAction = async (msg: VoiceMessage, action: DebriefAction) => {
     const legacyType = action.type as string;
 
+    const resolveJobId = (): string | null => {
+      if (action.payload?.jobId) return action.payload.jobId;
+      if (pageHint?.jobDbId) return pageHint.jobDbId;
+      const interviewing = pipelineJobs.filter((j) => /interview/i.test(j.stage));
+      if (interviewing.length === 1) return interviewing[0]!.id;
+      return null;
+    };
+
+    if (action.type === "open_pipeline_job") {
+      const jobId = resolveJobId();
+      if (!jobId) {
+        void sendMessage("Which role should I open — company and title?");
+        return;
+      }
+      goTo(pipelineJobUrl(jobId));
+      return;
+    }
+    if (action.type === "open_target_company") {
+      const companyId = action.payload?.companyId;
+      goTo(companyId ? profileTargetCompaniesUrl(companyId) : "/profile/target-companies");
+      return;
+    }
+    if (action.type === "save_job_notes") {
+      const jobId = resolveJobId();
+      if (!jobId) {
+        void sendMessage("Which pipeline role should I save these prep notes to?");
+        return;
+      }
+      const note = [msg.summary, ...msg.bullets].filter(Boolean).join("\n").slice(0, 4000);
+      const res = await fetch("/api/assistant/voice-tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: "save_job_note", args: { jobId, note } }),
+      });
+      if (res.ok) {
+        const job = pipelineJobs.find((j) => j.id === jobId);
+        void sendMessage(
+          job
+            ? `Saved prep notes to ${job.role} at ${job.company}.`
+            : "Saved prep notes to that role.",
+        );
+        goTo(pipelineJobUrl(jobId));
+      } else {
+        void sendMessage("Couldn't save those notes — try again from the role card.");
+      }
+      return;
+    }
     if (action.type === "generate_career_strategy") {
       await appendStrategyIntake(msg, { silent: true });
       setStrategyModalOpen(true);
