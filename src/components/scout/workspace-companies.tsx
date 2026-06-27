@@ -4,12 +4,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { getHirebaseProfileFromEnrichment } from "@/lib/hirebase-company-sync";
-import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutGoldBtn } from "./scout-box";
 import type { CachedJob } from "@/lib/cached-job";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
+import type { CompanyRecommendation } from "@/lib/company-recommendations";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useCredits } from "@/hooks/useCredits";
+import { notifyCreditsChanged } from "@/lib/credits";
+import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
@@ -1112,6 +1116,102 @@ function CompanyDrawer({
   );
 }
 
+// ── Suggested companies ──────────────────────────────────────────────────────
+
+function SuggestedForYouSection({
+  recommendations,
+  loading,
+  aiEnriched,
+  showCredits,
+  addingSlug,
+  watchlistSlugs,
+  onAdd,
+  onRefresh,
+  onRefreshWithAi,
+}: {
+  recommendations: CompanyRecommendation[];
+  loading: boolean;
+  aiEnriched: boolean;
+  showCredits: boolean;
+  addingSlug: string | null;
+  watchlistSlugs: Set<string>;
+  onAdd: (rec: CompanyRecommendation) => void;
+  onRefresh: () => void;
+  onRefreshWithAi: () => void;
+}) {
+  const visible = recommendations.filter((rec) => !watchlistSlugs.has(rec.catalogSlug));
+  if (!loading && visible.length === 0) return null;
+
+  return (
+    <ScoutBox style={{ marginBottom: 20 }} padding={20}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+        <div>
+          <ScoutLabel>Suggested for you</ScoutLabel>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "6px 0 0", lineHeight: 1.5, maxWidth: 520 }}>
+            Picked from your roles, skills, and background — free to browse. Optional AI adds a one-line fit note (1 credit).
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ScoutSecondaryBtn type="button" onClick={onRefresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </ScoutSecondaryBtn>
+          <ScoutSecondaryBtn type="button" onClick={onRefreshWithAi} disabled={loading}>
+            {loading ? "…" : showCredits ? "AI insights (1 credit)" : "AI insights"}
+          </ScoutSecondaryBtn>
+        </div>
+      </div>
+
+      {loading && visible.length === 0 ? (
+        <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>Loading suggestions…</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {visible.map((rec) => (
+            <div
+              key={rec.catalogSlug}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "12px 14px",
+                border: border.line,
+                background: surface.inset,
+                flexWrap: "wrap",
+              }}
+            >
+              <CompanyLogo name={rec.name} website={rec.website} careersUrl={rec.careersUrl} size={32} borderRadius={0} />
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink }}>{rec.name}</div>
+                {rec.type && (
+                  <div style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 2 }}>{rec.type}</div>
+                )}
+                {(rec.aiBlurb || rec.reasons[0]) && (
+                  <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, marginTop: 6, lineHeight: 1.45 }}>
+                    {rec.aiBlurb ?? rec.reasons.join(" · ")}
+                  </div>
+                )}
+              </div>
+              <ScoutGoldBtn
+                type="button"
+                onClick={() => onAdd(rec)}
+                disabled={addingSlug === rec.catalogSlug}
+                style={{ flexShrink: 0, minHeight: 36 }}
+              >
+                {addingSlug === rec.catalogSlug ? "Adding…" : "Add"}
+              </ScoutGoldBtn>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {aiEnriched && (
+        <div style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12 }}>
+          AI fit notes shown for top picks.
+        </div>
+      )}
+    </ScoutBox>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function WorkspaceCompanies({
@@ -1126,7 +1226,8 @@ export function WorkspaceCompanies({
   embeddedInProfile?: boolean;
 }) {
   const isMobile = useIsMobile();
-  const { withClientScope } = useWorkspace();
+  const { withClientScope, openPricing } = useWorkspace();
+  const { showCredits } = useCredits();
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1148,6 +1249,39 @@ export function WorkspaceCompanies({
   };
   const [userHasResume, setUserHasResume] = useState(false);
   const [pendingScanIds, setPendingScanIds] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<CompanyRecommendation[]>([]);
+  const [recsLoading, setRecsLoading] = useState(true);
+  const [recsAiEnriched, setRecsAiEnriched] = useState(false);
+  const [addingRecSlug, setAddingRecSlug] = useState<string | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  const loadRecommendations = useCallback(async (opts?: { force?: boolean; ai?: boolean }) => {
+    setRecsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (opts?.force) params.set("force", "true");
+      if (opts?.ai) params.set("ai", "true");
+      const qs = params.toString();
+      const res = await fetch(withClientScope(`/api/companies/recommendations${qs ? `?${qs}` : ""}`));
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        setShowUpgrade(true);
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json() as { recommendations?: CompanyRecommendation[]; aiEnriched?: boolean };
+        if (data.recommendations) {
+          setRecommendations(data.recommendations);
+          setRecsAiEnriched(!!data.aiEnriched);
+        }
+        if (opts?.ai) notifyCreditsChanged();
+      }
+    } catch {
+      /* ignore — suggestions are optional */
+    } finally {
+      setRecsLoading(false);
+    }
+  }, [withClientScope]);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -1169,6 +1303,7 @@ export function WorkspaceCompanies({
   }, [withClientScope]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadRecommendations(); }, [loadRecommendations]);
 
   useEffect(() => {
     if (pendingScanIds.length === 0) return;
@@ -1194,19 +1329,65 @@ export function WorkspaceCompanies({
     }).catch(() => {});
   }, [withClientScope]);
 
+  async function addCompanyPayload(payload: {
+    name: string;
+    catalogSlug?: string;
+    website?: string | null;
+    careersUrl?: string | null;
+  }) {
+    const res = await fetch(withClientScope("/api/companies"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: payload.name,
+        catalogSlug: payload.catalogSlug,
+        website: payload.website ?? undefined,
+        careersUrl: payload.careersUrl ?? undefined,
+      }),
+    });
+    return res;
+  }
+
+  async function handleAddFromRecommendation(rec: CompanyRecommendation) {
+    setAddingRecSlug(rec.catalogSlug);
+    setAddError(null);
+    try {
+      const res = await addCompanyPayload({
+        name: rec.name,
+        catalogSlug: rec.catalogSlug,
+        website: rec.website,
+        careersUrl: rec.careersUrl,
+      });
+      if (res.ok) {
+        const created = await res.json() as TrackedCompany & { scanPending?: boolean };
+        const { scanPending, ...companyRow } = created;
+        setCompanies((prev) => [companyRow, ...prev]);
+        if (scanPending) setPendingScanIds((ids) => [...ids, companyRow.id]);
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string; existing?: { id: string; name: string } };
+        if (res.status === 409) {
+          await load();
+          if (data.existing?.id) selectCompany(data.existing.id);
+        } else {
+          setAddError(data.error ?? "Couldn't add company.");
+        }
+      }
+    } catch {
+      setAddError("Network error — company not added.");
+    } finally {
+      setAddingRecSlug(null);
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); if (!newName.trim()) return;
     setSaving(true); setAddError(null);
     try {
-      const res = await fetch(withClientScope("/api/companies"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: selectedSuggestion?.name ?? newName.trim(),
-          catalogSlug: selectedSuggestion?.catalogSlug,
-          website: selectedSuggestion?.website ?? undefined,
-          careersUrl: selectedSuggestion?.careersUrl ?? undefined,
-        }),
+      const res = await addCompanyPayload({
+        name: selectedSuggestion?.name ?? newName.trim(),
+        catalogSlug: selectedSuggestion?.catalogSlug,
+        website: selectedSuggestion?.website,
+        careersUrl: selectedSuggestion?.careersUrl,
       });
       if (res.ok) {
         const created = await res.json() as TrackedCompany & { scanPending?: boolean };
@@ -1289,6 +1470,14 @@ export function WorkspaceCompanies({
     ? "0 0 40px 0"
     : isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sortedCompanies = sortCompanies(companies);
+  const watchlistSlugSet = new Set(
+    companies.flatMap((c) => {
+      const slugs = [normalizeCompanySlug(c.name)];
+      const catalog = getCatalogCompany(normalizeCompanySlug(c.name));
+      if (catalog) slugs.push(catalog.slug);
+      return slugs;
+    }),
+  );
 
   return (
     <div style={{ padding: contentPad, boxSizing: "border-box", width: "100%", overflowX: "hidden" }}>
@@ -1328,6 +1517,18 @@ export function WorkspaceCompanies({
       {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError(null)} />}
       {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
       {removeError && <ErrorBanner message={removeError} onDismiss={() => setRemoveError(null)} />}
+
+      <SuggestedForYouSection
+        recommendations={recommendations}
+        loading={recsLoading}
+        aiEnriched={recsAiEnriched}
+        showCredits={showCredits}
+        addingSlug={addingRecSlug}
+        watchlistSlugs={watchlistSlugSet}
+        onAdd={handleAddFromRecommendation}
+        onRefresh={() => loadRecommendations({ force: true })}
+        onRefreshWithAi={() => loadRecommendations({ force: true, ai: true })}
+      />
 
       {showAdd && (
         <ScoutBox style={{ marginBottom: 20 }} padding={20}>
@@ -1435,6 +1636,10 @@ export function WorkspaceCompanies({
           onRemove={handleRemove}
           onOpenJob={onOpenProspectJob ? (job) => onOpenProspectJob(selectedCompany.name, job) : undefined}
         />
+      )}
+
+      {showUpgrade && (
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
       )}
     </div>
   );

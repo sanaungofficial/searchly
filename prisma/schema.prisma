@@ -159,6 +159,9 @@ model Profile {
   profileSuggestionsData       Json?
   profileSuggestionsUpdatedAt  DateTime?
 
+  companyRecommendationsCache       Json?
+  companyRecommendationsUpdatedAt   DateTime?
+
   dashboardGoals Json?
 
   createdAt   DateTime @default(now())
