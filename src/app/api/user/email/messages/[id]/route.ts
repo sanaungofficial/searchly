@@ -80,7 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const contactCard = activityRow?.contactId
-      ? await loadContactCard(dbUser.id, activityRow.contactId, id)
+      ? await loadContactCard(dbUser.id, activityRow.contactId, { excludeMessageId: id })
       : null;
 
     return NextResponse.json({

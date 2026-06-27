@@ -7,6 +7,7 @@ import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { InboxContactsPanel } from "./inbox-contacts-panel";
+import { InboxContactDrawer } from "./inbox-contact-drawer";
 import { InboxExpandedMessage } from "./inbox-expanded-message";
 import { InboxMeetingsPanel } from "./inbox-meetings-panel";
 import { InboxMessageRow } from "./inbox-message-row";
@@ -91,6 +92,7 @@ export function InboxMailView({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
   const [focusUnreadId, setFocusUnreadId] = useState<string | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const connected = Boolean(status.connected);
 
   const inboxFolder = useMemo(() => pickInboxFolder(folders), [folders]);
@@ -431,7 +433,10 @@ export function InboxMailView({
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {activeTab === "contacts" ? (
-          <InboxContactsPanel scopePath={withClientScope} />
+          <InboxContactsPanel
+            scopePath={withClientScope}
+            onSelectContact={(id) => setSelectedContactId(id)}
+          />
         ) : (
           <section
             style={{
@@ -507,6 +512,30 @@ export function InboxMailView({
           <InboxMeetingsPanel collapsed onToggleCollapse={() => setMeetingsCollapsed(false)} />
         ) : null}
       </div>
+
+      {selectedContactId && (
+        <InboxContactDrawer
+          contactId={selectedContactId}
+          scopePath={withClientScope}
+          onClose={() => setSelectedContactId(null)}
+          onOpenMessage={(messageId) => {
+            setActiveTab("primary");
+            setExpandedId(messageId);
+            setLastOpenedId(messageId);
+            writeLastOpenedMessageId(messageId, status.email);
+          }}
+          onComposeTo={(email) => {
+            setActiveTab("primary");
+            onComposeChange({
+              open: true,
+              to: email,
+              subject: "",
+              body: "",
+            });
+          }}
+          onNotice={onNotice}
+        />
+      )}
 
       {compose.open && (
         <>
