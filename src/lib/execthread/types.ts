@@ -151,6 +151,13 @@ export type ExecThreadSyncSummary = {
   previewHits?: number;
   redeemHits?: number;
   detailSparseSkips?: number;
-  mode?: "import" | "refresh";
+  mode?: "import" | "refresh" | "catalog-import" | "catalog-batch" | "refresh-batch";
   failed?: number;
+  /** Search offset for paginated catalog import. */
+  from?: number;
+  /** Next offset, or null when catalog is complete. */
+  nextFrom?: number | null;
+  listOnly?: boolean;
+  pagesRun?: number;
+  catalogComplete?: boolean;
 };
