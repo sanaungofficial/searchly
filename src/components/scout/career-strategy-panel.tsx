@@ -21,6 +21,7 @@ import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { StrategyFormattedView } from "./strategy-formatted-view";
 import { UserAssetsList, type UserAssetListItem } from "./user-assets-list";
 import { UploadDocumentModal } from "./upload-document-modal";
+import { AdminClientImportPanel } from "@/components/admin/admin-client-import-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -574,6 +575,10 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
             {isGenerating ? "Regenerating…" : "Regenerate strategy"}
           </ScoutSecondaryBtn>
         </ScoutBox>
+      )}
+
+      {isAdmin && clientUserId && (
+        <AdminClientImportPanel clientUserId={clientUserId} />
       )}
 
       {isAdmin && (
