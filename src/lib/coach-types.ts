@@ -20,6 +20,7 @@ export type CoachListItem = {
   featured: boolean;
   isProfessionalCoach: boolean;
   isInternal?: boolean;
+  requiresAssignment?: boolean;
   avgRating: number | null;
   reviewCount: number;
   followerCount: number;

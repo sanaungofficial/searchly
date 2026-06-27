@@ -28,7 +28,7 @@ type AssignedCoach = {
 export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMobile?: boolean; embedded?: boolean }) {
   const router = useRouter();
   const { openPricing, userRole, isImpersonating, withClientScope } = useWorkspace();
-  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating || userRole === "ADMIN";
   const [assigned, setAssigned] = useState<AssignedCoach[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);

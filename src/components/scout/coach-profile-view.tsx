@@ -260,6 +260,7 @@ export type CoachProfileViewProps = {
   nextSlotStart: number | null;
   nextSlotLoading: boolean;
   canSelfAssignCoach: boolean;
+  isAdmin?: boolean;
   onBookIntro: () => void;
   onBookSession: () => void;
   onBuyPackage: (packageId: string) => void;
@@ -282,6 +283,7 @@ export function CoachProfileView({
   nextSlotStart,
   nextSlotLoading,
   canSelfAssignCoach,
+  isAdmin,
   onBookIntro,
   onBookSession,
   onBuyPackage,
@@ -290,6 +292,7 @@ export function CoachProfileView({
   onWriteReview,
   onPrepChat,
 }: CoachProfileViewProps) {
+  const bookingAllowed = canBookInApp && (!coach.requiresAssignment || coach.isMyCoach);
   const [aboutExpanded, setAboutExpanded] = useState(false);
   const aboutText = coach.aboutMe || coach.bio || "";
   const introText = bioSnippet(coach.bio ?? coach.aboutMe ?? "", 280) || aboutText.slice(0, 280);
@@ -310,15 +313,15 @@ export function CoachProfileView({
         title="Free intro call"
         subtitle="30 minutes · Get to know your coach"
         priceLabel="Free"
-        onBook={canBookInApp ? onBookIntro : undefined}
+        onBook={bookingAllowed ? onBookIntro : undefined}
         bookLabel="Book intro"
       />
       <OfferingRow
         title="1:1 coaching session"
         subtitle={`${sessionDurationMinutes} minutes · Tailored to your goals`}
-        priceLabel={coach.isInternal ? "Included" : coach.hourlyRate ? `$${coach.hourlyRate}/hr` : "See rate"}
-        secondaryPrice={!coach.isInternal && coach.hourlyRate ? "after intro" : undefined}
-        onBook={canBookInApp ? onBookSession : undefined}
+        priceLabel={coach.isInternal || coach.requiresAssignment ? "Included" : coach.hourlyRate ? `$${coach.hourlyRate}/hr` : "See rate"}
+        secondaryPrice={!coach.isInternal && !coach.requiresAssignment && coach.hourlyRate ? "after intro" : undefined}
+        onBook={bookingAllowed ? onBookSession : undefined}
         bookLabel="Book session"
         style={{ marginTop: 10 }}
       />
@@ -333,7 +336,7 @@ export function CoachProfileView({
           style={{ marginTop: 10 }}
         />
       ))}
-      {canBookInApp && (
+      {bookingAllowed && (
         <div
           style={{
             marginTop: 14,
@@ -366,7 +369,7 @@ export function CoachProfileView({
           </p>
         </div>
       )}
-      {canBookInApp ? (
+      {bookingAllowed ? (
         <div style={{ marginTop: 14 }}>
           <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 8 }}>Schedule a free intro call</GoldBookBtn>
           <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 44, marginBottom: 8 }}>
@@ -384,7 +387,12 @@ export function CoachProfileView({
       <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
         {coach.isFollowing ? "Following ✓" : "+ Follow"}
       </ScoutSecondaryBtn>
-      {canSelfAssignCoach && (coach.isMyCoach || !coach.isInternal) && (
+      {coach.requiresAssignment && !coach.isMyCoach && (
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: "8px 0", lineHeight: 1.45 }}>
+          This coach is available through Second Ladder. Contact your team to get assigned.
+        </p>
+      )}
+      {canSelfAssignCoach && (coach.isMyCoach || (!coach.isInternal && !coach.requiresAssignment) || isAdmin) && (
         <ScoutSecondaryBtn
           onClick={onToggleMyCoach}
           style={{
