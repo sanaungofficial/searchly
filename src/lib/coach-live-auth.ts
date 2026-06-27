@@ -2,14 +2,26 @@ import { UserRole } from "@prisma/client";
 import { getActingUser } from "@/lib/acting-user";
 import { getCoachProfileForUser } from "@/lib/coach-hub";
 import { findLiveSessionByRouteId, type LiveSessionRecord } from "@/lib/live-session-db";
+import { prisma } from "@/lib/prisma";
 
 export type CoachLiveAuth = {
   userId: string;
   email: string;
+  /** Empty when admin has no linked coach profile (list-only). */
   coachProfileId: string;
   coachDisplayName: string;
   isAdmin: boolean;
 };
+
+async function resolveCoachProfile(userId: string, role: UserRole) {
+  if (role === UserRole.ADMIN) {
+    return prisma.coachProfile.findFirst({
+      where: { userId },
+      select: { id: true, displayName: true },
+    });
+  }
+  return getCoachProfileForUser(userId, role);
+}
 
 export async function requireCoachLiveAuth(request: Request): Promise<CoachLiveAuth | null> {
   const { authUser, dbUser, realDbUser } = await getActingUser(request);
@@ -17,14 +29,14 @@ export async function requireCoachLiveAuth(request: Request): Promise<CoachLiveA
   if (!authUser || !me) return null;
   if (me.role !== UserRole.COACH && me.role !== UserRole.ADMIN) return null;
 
-  const profile = await getCoachProfileForUser(me.id, me.role);
+  const profile = await resolveCoachProfile(me.id, me.role);
   if (!profile && me.role === UserRole.COACH) return null;
 
   return {
     userId: me.id,
     email: authUser.email ?? me.email,
-    coachProfileId: profile!.id,
-    coachDisplayName: profile!.displayName,
+    coachProfileId: profile?.id ?? "",
+    coachDisplayName: profile?.displayName ?? me.name ?? "Host",
     isAdmin: me.role === UserRole.ADMIN,
   };
 }

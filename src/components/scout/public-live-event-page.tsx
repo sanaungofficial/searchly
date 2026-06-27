@@ -38,7 +38,7 @@ export function PublicLiveEventPage({ session, joinAsGuest = false }: Props) {
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/live/public/sessions/${routeId}`);
     if (!res.ok) return;
-    const data = (await res.json()) as {
+    const data = (await res.json().catch(() => ({}))) as {
       registrantCount?: number;
       registrantPreview?: Array<{ name: string }>;
     };
@@ -60,7 +60,7 @@ export function PublicLiveEventPage({ session, joinAsGuest = false }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: routeId, email, name }),
       });
-      const data = (await res.json()) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       if (!res.ok) throw new Error(data.error ?? "Registration failed");
       setRegistered(true);
       setMessage(data.message ?? "You're registered!");
@@ -81,7 +81,7 @@ export function PublicLiveEventPage({ session, joinAsGuest = false }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: routeId }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Registration failed");
       setRegistered(true);
       setMessage("You're registered — we'll email you before it starts.");

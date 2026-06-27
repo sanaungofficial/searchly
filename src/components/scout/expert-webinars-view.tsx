@@ -70,11 +70,14 @@ export function ExpertWebinarsView() {
         fetch("/api/coach/live/coaches"),
       ]);
       if (sessRes.ok) {
-        const data = (await sessRes.json()) as { sessions?: CoachSession[] };
+        const data = (await sessRes.json().catch(() => ({}))) as { sessions?: CoachSession[] };
         setSessions(data.sessions ?? []);
+      } else {
+        const data = (await sessRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Could not load webinars");
       }
       if (coachRes.ok) {
-        const data = (await coachRes.json()) as { coaches?: CoachOption[] };
+        const data = (await coachRes.json().catch(() => ({}))) as { coaches?: CoachOption[] };
         setCoaches(data.coaches ?? []);
       }
     } catch {
@@ -141,7 +144,7 @@ export function ExpertWebinarsView() {
           publish,
         }),
       });
-      const data = (await res.json()) as { error?: string; session?: CoachSession };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; session?: CoachSession };
       if (!res.ok) throw new Error(data.error ?? "Could not create webinar");
       setMessage(
         publish
@@ -164,7 +167,7 @@ export function ExpertWebinarsView() {
     try {
       const id = liveSessionRouteId(session);
       const res = await fetch(`/api/coach/live/sessions/${id}/submit`, { method: "POST" });
-      const data = (await res.json()) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
       setMessage(data.message ?? "Submitted for approval");
       await load();
@@ -201,7 +204,7 @@ export function ExpertWebinarsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: id, action: "go-live" }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Could not start");
       window.location.href = `/live/${id}`;
     } catch (e) {
