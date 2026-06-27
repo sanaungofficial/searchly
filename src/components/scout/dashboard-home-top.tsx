@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { useSubscription } from "@/hooks/useSubscription";
 import {
   DASHBOARD_GOAL_MAX,
   DASHBOARD_GOAL_OPTIONS,
@@ -28,6 +27,8 @@ import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-m
 import { DashboardGoalWizardModal } from "@/components/scout/dashboard-goal-wizard-modal";
 import { MatchingPrefPromptModal, type MatchingPrefProfile } from "@/components/scout/matching-pref-prompt-modal";
 import { RecommendationTuningPanel } from "@/components/scout/recommendation-tuning-panel";
+import { SectionHeadingWithHelp, SectionHelpTip } from "@/components/scout/section-help-tip";
+import { DashboardGetStarted } from "@/components/scout/dashboard-get-started";
 import {
   isGoalsWizardDismissed,
   type MatchingTuningGapId,
@@ -160,11 +161,10 @@ type AssignedCoach = {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { openPricing, userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath } =
+  const { userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath } =
     useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
   const showClientCoachUi = showSeekerDashboard;
-  const { isPro, loading: subLoading } = useSubscription();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -456,7 +456,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   const recommendationLabel =
-    goals.length > 0 ? recommendationLabelForGoals(goals) : "Get recommendations";
+    goals.length > 0 ? recommendationLabelForGoals(goals) : "Show me roles to explore";
 
   const confirmProfileSync = async () => {
     if (!pendingSync) return;
@@ -481,11 +481,207 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   const bio = shortBio(profile);
-  const showProPromo = !subLoading && !isPro;
 
-  const leftColumn = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, height: isMobile ? undefined : "100%" }}>
-      {/* Profile card — mint header band like Profile sidebar */}
+  const coachSection = showClientCoachUi && !bookingLoading && (
+    <>
+      {!bookedCoach && assignedCoaches.length === 0 && (
+        <ScoutBox
+          padding={isMobile ? "16px 18px" : "18px 20px"}
+          style={{
+            borderStyle: "dashed",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
+              My coaches
+            </p>
+            <SectionHelpTip
+              text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here — with a link to book time."
+              label="About My coaches"
+            />
+          </div>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0 }}>
+            No coach assigned yet. When your team adds one, they'll appear here.
+          </p>
+          <ScoutSecondaryBtn onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))} style={{ minHeight: 40, width: "100%" }}>
+            View coaches
+          </ScoutSecondaryBtn>
+        </ScoutBox>
+      )}
+
+      {assignedCoaches.length > 0 && (
+        <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <SectionHeadingWithHelp
+            title="My coaches"
+            help="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here — with a link to book time."
+            trailing={
+              <button
+                type="button"
+                onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  color: color.forest,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                View all →
+              </button>
+            }
+          />
+          {assignedCoaches.map((coach) => (
+            <div
+              key={coach.coachProfileId}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                paddingBottom: assignedCoaches.length > 1 ? 12 : 0,
+                borderBottom: assignedCoaches.length > 1 ? border.line : undefined,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={44} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
+                    {coach.displayName}
+                  </p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>
+                    {coach.headline?.slice(0, 80) ?? "Book your intro call to get started."}
+                  </p>
+                </div>
+              </div>
+              <ScoutPrimaryBtn
+                onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)}
+                style={{ minHeight: 38, width: "100%" }}
+              >
+                {coach.hasNylasBooking ? "Book →" : "View →"}
+              </ScoutPrimaryBtn>
+            </div>
+          ))}
+        </ScoutBox>
+      )}
+
+      {bookedCoach && (
+        <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <SectionHeadingWithHelp
+            title="My coaches"
+            help="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here — with a link to book time."
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={44} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
+                {new Date(bookedCoach.startAt) >= new Date() ? "Upcoming session" : "Recent session"}
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
+                {bookedCoach.coach.displayName}
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+                {new Date(bookedCoach.startAt) >= new Date()
+                  ? formatBookingWhen(bookedCoach.startAt)
+                  : `Last · ${formatBookingWhen(bookedCoach.startAt)}`}
+              </p>
+            </div>
+          </div>
+          <ScoutSecondaryBtn
+            onClick={() => openCoachProfile(bookedCoach.coach.slug, bookedCoach.coach.id)}
+            style={{ minHeight: 38, width: "100%" }}
+          >
+            View coach →
+          </ScoutSecondaryBtn>
+          {bookedCoach.nylasBookingRef && new Date(bookedCoach.startAt) >= new Date() && (
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => router.push(`/coaching/reschedule/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  color: color.forest,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                Reschedule
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/coaching/cancel/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  color: color.muted,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </ScoutBox>
+      )}
+    </>
+  );
+
+  const nudgeSection = showClientCoachUi && (
+    <ScoutBox
+      padding={isMobile ? "16px 18px" : "18px 20px"}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        background: "rgba(74,139,106,0.04)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>
+          ⚡
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <SectionHeadingWithHelp
+            title="Not sure where to start?"
+            help="Totally normal. You can book a quick call with our team, or jump straight to jobs we've picked for you based on your profile."
+          />
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "6px 0 0" }}>
+            No wrong answer — pick whatever feels easier right now.
+          </p>
+        </div>
+      </div>
+      <ScoutSecondaryBtn
+        onClick={handleScheduleCall}
+        data-offer="discovery"
+        data-trigger="dashboard_schedule"
+        style={{ minHeight: 40, width: "100%" }}
+      >
+        Schedule a call
+      </ScoutSecondaryBtn>
+      <ScoutPrimaryBtn onClick={handleRecommendation} style={{ minHeight: 40, width: "100%" }}>
+        {recommendationLabel}
+      </ScoutPrimaryBtn>
+    </ScoutBox>
+  );
+
+  const profileCard = (
       <ScoutBox padding={0} style={{ overflow: "hidden", position: "relative" }}>
         <button
           type="button"
@@ -587,62 +783,40 @@ export function DashboardHomeTop({ isMobile }: Props) {
           )}
         </div>
       </ScoutBox>
+  );
 
-      {showClientCoachUi && tuningInput && (
-        <RecommendationTuningPanel input={tuningInput} isMobile={isMobile} onFixGap={handleFixGap} />
-      )}
-
-      {/* Kimchi Pro promo */}
-      {showProPromo && (
-        <ScoutBox
-          padding="18px 20px"
-          style={{
-            background: "linear-gradient(135deg, rgba(45,31,82,0.06) 0%, rgba(26,58,47,0.08) 100%)",
-            overflow: "hidden",
-          }}
-        >
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.forest, margin: "0 0 6px" }}>
-            🔒 Kimchi Pro
-          </p>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px", maxWidth: 260 }}>
-            Unlimited AI tailoring, coach rates, and priority support.
-          </p>
-          <ScoutSecondaryBtn onClick={openPricing} style={{ minHeight: 38, fontSize: T.caption }}>
-            Check it out
-          </ScoutSecondaryBtn>
-        </ScoutBox>
-      )}
-
-      {/* Goals card — stretches to align with free events on desktop */}
+  const goalsCard = (
       <ScoutBox
         padding={isMobile ? "16px 18px" : "18px 20px"}
-        style={isMobile ? undefined : { flex: 1, display: "flex", flexDirection: "column" }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
-            Your goals
-          </p>
-          {canAdd && (
-            <button
-              type="button"
-              onClick={openGoalModal}
-              aria-label="Add goal"
-              style={{
-                width: 28,
-                height: 28,
-                border: border.line,
-                borderRadius: "var(--scout-radius)",
-                background: surface.inset,
-                cursor: "pointer",
-                fontFamily: fontSans,
-                fontSize: 18,
-                lineHeight: 1,
-                color: color.forest,
-              }}
-            >
-              +
-            </button>
-          )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 }}>
+          <SectionHeadingWithHelp
+            title="Your goals"
+            help="What you're working toward right now — landing a role, prepping for interviews, leveling up, and so on. This helps us point you to the right coaches and next steps."
+            trailing={
+              canAdd ? (
+                <button
+                  type="button"
+                  onClick={openGoalModal}
+                  aria-label="Add goal"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    border: border.line,
+                    borderRadius: "var(--scout-radius)",
+                    background: surface.inset,
+                    cursor: "pointer",
+                    fontFamily: fontSans,
+                    fontSize: 18,
+                    lineHeight: 1,
+                    color: color.forest,
+                  }}
+                >
+                  +
+                </button>
+              ) : undefined
+            }
+          />
         </div>
 
         {loading ? (
@@ -650,11 +824,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
         ) : goals.length === 0 ? (
           <div>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
-              What are you working toward? Add up to {DASHBOARD_GOAL_MAX} outcomes.
+              What are you trying to achieve? You can add up to {DASHBOARD_GOAL_MAX} goals.
             </p>
             {canAdd && (
               <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42 }}>
-                Add your outcome
+                Add a goal
               </ScoutPrimaryBtn>
             )}
           </div>
@@ -778,12 +952,19 @@ export function DashboardHomeTop({ isMobile }: Props) {
         {canAdd && goals.length > 0 && (
           <ScoutPrimaryBtn
             onClick={openGoalModal}
-            style={{ width: "100%", minHeight: 42, marginTop: isMobile ? undefined : "auto" }}
+            style={{ width: "100%", minHeight: 42, marginTop: 14 }}
           >
-            Add your outcome
+            Add another goal
           </ScoutPrimaryBtn>
         )}
       </ScoutBox>
+  );
+
+  const leftColumn = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {profileCard}
+      {coachSection}
+      {nudgeSection}
     </div>
   );
 
@@ -806,214 +987,20 @@ export function DashboardHomeTop({ isMobile }: Props) {
         flexDirection: "column",
         gap: 16,
         minWidth: 0,
-        height: isMobile ? undefined : "100%",
       }}
     >
-      {/* Coach status — seekers only */}
-      {showClientCoachUi && !bookingLoading && !bookedCoach && assignedCoaches.length === 0 && (
-        <ScoutBox
-          padding={isMobile ? "16px 18px" : "18px 22px"}
-          style={{
-            borderStyle: "dashed",
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            alignItems: isMobile ? "stretch" : "center",
-            justifyContent: "space-between",
-            gap: 14,
-          }}
-        >
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0, flex: 1 }}>
-            You don&apos;t have a coach yet. When your team assigns one, they&apos;ll show up here and under Coaching → My coaches.
-          </p>
-          <ScoutSecondaryBtn onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))} style={{ minHeight: 40, flexShrink: 0 }}>
-            My coaches
-          </ScoutSecondaryBtn>
-        </ScoutBox>
+      {showClientCoachUi && tuningInput && (
+        <RecommendationTuningPanel input={tuningInput} isMobile={isMobile} onFixGap={handleFixGap} />
       )}
 
-      {showClientCoachUi && !bookingLoading && assignedCoaches.length > 0 && (
-        <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Your Kimchi {assignedCoaches.length === 1 ? "coach" : "coaches"}
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                fontWeight: 600,
-                color: color.forest,
-                cursor: "pointer",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >
-              View in profile →
-            </button>
-          </div>
-          {assignedCoaches.map((coach) => (
-            <div
-              key={coach.coachProfileId}
-              style={{
-                display: "flex",
-                alignItems: isMobile ? "flex-start" : "center",
-                gap: 14,
-                flexDirection: isMobile ? "column" : "row",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
-                <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={48} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
-                    {coach.displayName}
-                  </p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-                    {coach.headline?.slice(0, 100) ?? "Book your intro call to get started."}
-                  </p>
-                </div>
-              </div>
-              <ScoutPrimaryBtn
-                onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)}
-                style={{ minHeight: 40, flexShrink: 0, width: isMobile ? "100%" : undefined }}
-              >
-                {coach.hasNylasBooking ? "Book →" : "View →"}
-              </ScoutPrimaryBtn>
-            </div>
-          ))}
-        </ScoutBox>
-      )}
-
-      {showClientCoachUi && !bookingLoading && bookedCoach && (
-        <ScoutBox
-          padding={isMobile ? "16px 18px" : "18px 22px"}
-          style={{
-            display: "flex",
-            alignItems: isMobile ? "flex-start" : "center",
-            gap: 14,
-            flexDirection: isMobile ? "column" : "row",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
-            <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={48} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
-                {new Date(bookedCoach.startAt) >= new Date() ? "Upcoming session" : "Recent session"}
-              </p>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
-                {bookedCoach.coach.displayName}
-              </p>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-                {new Date(bookedCoach.startAt) >= new Date()
-                  ? `Next session · ${formatBookingWhen(bookedCoach.startAt)}`
-                  : `Last session · ${formatBookingWhen(bookedCoach.startAt)}`}
-              </p>
-            </div>
-          </div>
-          <ScoutSecondaryBtn
-            onClick={() => openCoachProfile(bookedCoach.coach.slug, bookedCoach.coach.id)}
-            style={{ minHeight: 40, flexShrink: 0, width: isMobile ? "100%" : undefined }}
-          >
-            View coach →
-          </ScoutSecondaryBtn>
-          {bookedCoach.nylasBookingRef && new Date(bookedCoach.startAt) >= new Date() && (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
-              <button
-                type="button"
-                onClick={() => router.push(`/coaching/reschedule/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.forest,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                Reschedule
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/coaching/cancel/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  color: color.muted,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </ScoutBox>
-      )}
+      {showClientCoachUi && goalsCard}
 
       {!showClientCoachUi && showExpertDashboard && (
         <ExpertDashboardOverview isMobile={isMobile} />
       )}
 
-      {/* Recommendation nudge */}
-      <ScoutBox
-        padding={isMobile ? "18px 18px" : "20px 22px"}
-        style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: isMobile ? "stretch" : "center",
-          gap: isMobile ? 16 : 20,
-          background: "rgba(74,139,106,0.04)",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 20, lineHeight: 1 }} aria-hidden>
-              ⚡
-            </span>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0, lineHeight: 1.35 }}>
-              Not sure where to start? Try recommended roles on Opportunities.
-            </p>
-          </div>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: 0, paddingLeft: 30 }}>
-            Finding the right coach or next step can be overwhelming. Talk to our team or jump straight to matches.
-          </p>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            gap: 8,
-            flexShrink: 0,
-          }}
-        >
-          <ScoutSecondaryBtn
-            onClick={handleScheduleCall}
-            data-offer="discovery"
-            data-trigger="dashboard_schedule"
-            style={{ minHeight: 42, whiteSpace: "nowrap" }}
-          >
-            Schedule a call
-          </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={handleRecommendation} style={{ minHeight: 42, whiteSpace: "nowrap" }}>
-            {recommendationLabel}
-          </ScoutPrimaryBtn>
-        </div>
-      </ScoutBox>
-
-      {/* Free events — pinned to bottom on desktop to align with goals card */}
-      <div style={{ minWidth: 0, marginTop: isMobile ? 0 : "auto" }}>
+      {/* Free events carousel */}
+      <div style={{ minWidth: 0 }}>
         <div
           style={{
             display: "flex",
@@ -1024,9 +1011,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
             flexWrap: "wrap",
           }}
         >
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
-            Free events
-          </p>
+          <SectionHeadingWithHelp
+            title="Free live trainings"
+            help="Live group sessions with coaches and industry folks — always free. Good for learning tactics, hearing real stories, and getting unstuck."
+          />
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 14, flexWrap: "wrap" }}>
             <button type="button" onClick={() => router.push("/live")} style={linkBtnStyle}>
               Browse more
@@ -1078,7 +1066,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
         {!sessionsLoaded ? null : eventSessions.length === 0 ? (
           <ScoutBox padding="24px 20px" style={{ textAlign: "center" }}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.6, margin: "0 0 14px" }}>
-              No sessions scheduled yet. Tell us what topics you&apos;d like to see.
+              Nothing scheduled yet — tell us what topics you&apos;d like to see and we&apos;ll plan around it.
             </p>
             <ScoutPrimaryBtn onClick={() => setInterestOpen(true)} style={{ minHeight: 42 }}>
               Register interest
@@ -1235,22 +1223,15 @@ export function DashboardHomeTop({ isMobile }: Props) {
           display: "grid",
           gridTemplateColumns: isMobile ? "1fr" : "minmax(280px, 340px) minmax(0, 1fr)",
           gap: isMobile ? 20 : 28,
-          marginBottom: isMobile ? 32 : 40,
-          alignItems: "stretch",
+          marginBottom: isMobile ? 24 : 28,
+          alignItems: "start",
         }}
       >
-        {isMobile ? (
-          <>
-            {leftColumn}
-            {rightColumn}
-          </>
-        ) : (
-          <>
-            {leftColumn}
-            {rightColumn}
-          </>
-        )}
+        {leftColumn}
+        {rightColumn}
       </div>
+
+      {showClientCoachUi && <DashboardGetStarted isMobile={isMobile} />}
 
       {pendingSync && (
         <ProfileSyncPromptModal

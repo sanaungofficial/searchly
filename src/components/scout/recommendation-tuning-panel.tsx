@@ -6,6 +6,7 @@ import {
   type RecommendationTuningInput,
   type MatchingTuningGapId,
 } from "@/lib/recommendation-tuning";
+import { SectionHeadingWithHelp } from "@/components/scout/section-help-tip";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -26,13 +27,16 @@ export function RecommendationTuningPanel({ input, isMobile, onFixGap }: Props) 
   return (
     <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
-          Recommendation tuning
-        </p>
-        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: barColor }}>{pct}%</span>
+        <SectionHeadingWithHelp
+          title="Help us match you better"
+          help="We use what you tell us — target roles, location, salary, timeline, and goals — to sort jobs and coach suggestions. Fewer blanks means less noise and more stuff that's actually relevant to you."
+        />
+        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: barColor, flexShrink: 0 }}>
+          {pct}% done
+        </span>
       </div>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 12px" }}>
-        Your recommendations are {pct}% tuned. A few quick answers sharpen job and coach matches.
+        A few quick answers go a long way. Tap anything below to fill in a gap.
       </p>
       <div
         style={{

@@ -76,14 +76,14 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "target_roles",
       label: "Target roles",
-      actionLabel: "Add roles you're targeting",
+      actionLabel: "Add the roles you're going for",
       weight: WEIGHTS.target_roles,
     });
   } else if (roles.length >= 2 && !(input.prioritizedRoles ?? []).some((r) => roles.includes(r))) {
     gaps.push({
       id: "priority_role",
       label: "Top priority role",
-      actionLabel: "Pick your #1 target role",
+      actionLabel: "Pick your top-priority role",
       weight: WEIGHTS.priority_role,
     });
   }
@@ -92,7 +92,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "location",
       label: "Location",
-      actionLabel: "Add where you want to work",
+      actionLabel: "Where do you want to work?",
       weight: WEIGHTS.location,
     });
   }
@@ -101,7 +101,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "work_mode",
       label: "Work arrangement",
-      actionLabel: "Remote, hybrid, or on-site",
+      actionLabel: "Remote, hybrid, or in-office?",
       weight: WEIGHTS.work_mode,
     });
   }
@@ -110,7 +110,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "relocation",
       label: "Relocation",
-      actionLabel: "Say if you'd relocate",
+      actionLabel: "Would you move for the right role?",
       weight: WEIGHTS.relocation,
     });
   }
@@ -119,7 +119,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "visa",
       label: "Work authorization",
-      actionLabel: "Visa sponsorship preference",
+      actionLabel: "Do you need visa sponsorship?",
       weight: WEIGHTS.visa,
     });
   }
@@ -128,7 +128,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "salary",
       label: "Target salary",
-      actionLabel: "Set a salary floor",
+      actionLabel: "What's your target pay range?",
       weight: WEIGHTS.salary,
     });
   }
@@ -137,7 +137,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "timeline",
       label: "Search timeline",
-      actionLabel: "When you want to land a role",
+      actionLabel: "When are you hoping to land something?",
       weight: WEIGHTS.timeline,
     });
   }
@@ -146,7 +146,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "primary_goal",
       label: "Primary goal",
-      actionLabel: "Add a goal for coach matching",
+      actionLabel: "Add a goal so we know what you're after",
       weight: WEIGHTS.primary_goal,
     });
   }
@@ -155,7 +155,7 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
     gaps.push({
       id: "resume",
       label: "Resume",
-      actionLabel: "Upload a resume for skill matching",
+      actionLabel: "Upload your resume",
       weight: WEIGHTS.resume,
     });
   }
