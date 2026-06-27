@@ -29,8 +29,9 @@ type PhotonFeature = {
 };
 
 const PHOTON_BASE = "https://photon.komoot.io/api/";
+const PHOTON_REVERSE = "https://photon.komoot.io/reverse";
 const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
-const KIMCHI_USER_AGENT = "Kimchi/1.0 (https://app.kimchi.so)";
+const KIMCHI_USER_AGENT = "Kimchi/1.0 (https://app.kimchi.so; contact@kimchi.so)";
 
 const PLACE_TYPES = new Set(["city", "town", "village", "hamlet", "suburb", "locality", "municipality"]);
 
@@ -99,55 +100,140 @@ export async function searchLocationSuggestions(query: string, limit = 6): Promi
   return out;
 }
 
+type NominatimAddress = {
+  city?: string;
+  town?: string;
+  village?: string;
+  hamlet?: string;
+  suburb?: string;
+  municipality?: string;
+  city_district?: string;
+  county?: string;
+  state?: string;
+  country?: string;
+};
+
+function nominatimAddressToLocation(addr: NominatimAddress): ParsedProfileLocation | null {
+  const city =
+    addr.city?.trim() ||
+    addr.town?.trim() ||
+    addr.village?.trim() ||
+    addr.hamlet?.trim() ||
+    addr.suburb?.trim() ||
+    addr.municipality?.trim() ||
+    addr.city_district?.trim() ||
+    undefined;
+
+  const region = addr.state?.trim() || undefined;
+  const country = addr.country?.trim() || undefined;
+
+  if (city) return { city, region, country };
+
+  if (addr.county?.trim() && region) {
+    const countyLabel = addr.county.trim().replace(/\s+county$/i, "").trim();
+    return parseProfileLocationString(`${countyLabel}, ${region}, ${country ?? "United States"}`);
+  }
+
+  if (region) return { region, country };
+  return null;
+}
+
+function suggestionFromPhotonReverse(data: { features?: PhotonFeature[] }): LocationSuggestion | null {
+  for (const [index, feature] of (data.features ?? []).entries()) {
+    const suggestion = featureToSuggestion(feature, index);
+    if (suggestion) {
+      return { ...suggestion, subtitle: "Current location" };
+    }
+  }
+  return null;
+}
+
+async function reverseGeocodeWithPhoton(lat: number, lon: number): Promise<LocationSuggestion | null> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    lang: "en",
+  });
+
+  const res = await fetch(`${PHOTON_REVERSE}?${params}`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(6000),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as { features?: PhotonFeature[] };
+  return suggestionFromPhotonReverse(data);
+}
+
+async function reverseGeocodeWithNominatim(lat: number, lon: number): Promise<LocationSuggestion | null> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    format: "json",
+    addressdetails: "1",
+    zoom: "10",
+  });
+
+  const res = await fetch(`${NOMINATIM_REVERSE}?${params}`, {
+    headers: { "User-Agent": KIMCHI_USER_AGENT, Accept: "application/json" },
+    signal: AbortSignal.timeout(6000),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as { address?: NominatimAddress };
+  if (!data.address) return null;
+
+  const parsed = nominatimAddressToLocation(data.address);
+  const value = formatCompactProfileLocation(parsed);
+  if (!value) return null;
+
+  return {
+    id: `reverse-nom-${lat.toFixed(4)}-${lon.toFixed(4)}`,
+    label: value,
+    value,
+    subtitle: "Current location",
+  };
+}
+
+/** Reverse geocode coordinates — Photon first, Nominatim fallback. */
 export async function reverseGeocodeCoordinates(
   lat: number,
   lon: number,
 ): Promise<LocationSuggestion | null> {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
-  const params = new URLSearchParams({
-    lat: String(lat),
-    lon: String(lon),
-    format: "json",
-    addressdetails: "1",
-  });
+  try {
+    const photon = await reverseGeocodeWithPhoton(lat, lon);
+    if (photon) return photon;
+  } catch {
+    /* try nominatim */
+  }
 
-  const res = await fetch(`${NOMINATIM_REVERSE}?${params}`, {
-    headers: { "User-Agent": KIMCHI_USER_AGENT, Accept: "application/json" },
-    signal: AbortSignal.timeout(5000),
-    next: { revalidate: 86400 },
-  });
-  if (!res.ok) return null;
+  try {
+    return await reverseGeocodeWithNominatim(lat, lon);
+  } catch {
+    return null;
+  }
+}
 
-  const data = (await res.json()) as {
-    address?: {
-      city?: string;
-      town?: string;
-      village?: string;
-      state?: string;
-      country?: string;
-    };
-  };
-
-  const addr = data.address;
-  if (!addr) return null;
-
-  const parsed = parseProfileLocationString(
-    [
-      addr.city ?? addr.town ?? addr.village,
-      addr.state,
-      addr.country,
-    ]
-      .filter(Boolean)
-      .join(", "),
-  );
-  const value = formatCompactProfileLocation(parsed);
-  if (!value) return null;
-
-  return {
-    id: `reverse-${lat.toFixed(4)}-${lon.toFixed(4)}`,
-    label: value,
-    value,
-    subtitle: "Current location",
-  };
+/** Client-side Photon reverse when the API route is unavailable. */
+export async function reverseGeocodeCoordinatesClient(
+  lat: number,
+  lon: number,
+): Promise<LocationSuggestion | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  try {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lon), lang: "en" });
+    const res = await fetch(`${PHOTON_REVERSE}?${params}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { features?: PhotonFeature[] };
+    return suggestionFromPhotonReverse(data);
+  } catch {
+    return null;
+  }
 }

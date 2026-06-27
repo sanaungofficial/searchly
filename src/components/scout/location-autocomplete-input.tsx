@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { reverseGeocodeCoordinatesClient } from "@/lib/location-autocomplete";
 
 type LocationSuggestion = {
   id: string;
@@ -111,14 +112,25 @@ export function LocationAutocompleteInput({
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        void fetch(
-          `/api/location/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}`,
-        )
-          .then(async (res) => {
-            if (!res.ok) throw new Error("reverse failed");
-            const data = (await res.json()) as { suggestion?: LocationSuggestion };
-            if (data.suggestion?.value) {
-              onChange(data.suggestion.value);
+        const { latitude: lat, longitude: lon } = position.coords;
+
+        async function resolveLocation() {
+          try {
+            const res = await fetch(`/api/location/reverse?lat=${lat}&lon=${lon}`);
+            if (res.ok) {
+              const data = (await res.json()) as { suggestion?: LocationSuggestion };
+              if (data.suggestion?.value) return data.suggestion;
+            }
+          } catch {
+            /* fall through to client-side Photon */
+          }
+          return reverseGeocodeCoordinatesClient(lat, lon);
+        }
+
+        void resolveLocation()
+          .then((suggestion) => {
+            if (suggestion?.value) {
+              onChange(suggestion.value);
               setOpen(false);
             } else {
               setGeoError("Could not resolve your city — try typing it instead.");
@@ -129,11 +141,17 @@ export function LocationAutocompleteInput({
           })
           .finally(() => setGeoLoading(false));
       },
-      () => {
+      (err) => {
         setGeoLoading(false);
-        setGeoError("Location permission denied — type your city instead.");
+        if (err.code === err.PERMISSION_DENIED) {
+          setGeoError("Location permission denied — type your city instead.");
+        } else if (err.code === err.TIMEOUT) {
+          setGeoError("Location timed out — try again or type your city.");
+        } else {
+          setGeoError("Could not read your location — type your city instead.");
+        }
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
     );
   }, [onChange]);
 

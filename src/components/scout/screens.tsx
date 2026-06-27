@@ -2444,7 +2444,7 @@ export function ScreenCareerMotivation({
   return (
     <OnboardingQuestionScreen
       title="What's driving your move?"
-      body="So we surface roles that match why you're looking — not just your title."
+      body="Helps Kimchi tailor career strategy and coaching — and improves how we rank roles for you. Pick what fits best, or skip."
       onContinue={onContinue}
       onSkip={onSkip}
     >
@@ -2466,7 +2466,7 @@ export function ScreenJobTimeline({
   return (
     <OnboardingQuestionScreen
       title="When do you want to make a move?"
-      body="Helps us prioritize roles with real timelines."
+      body="Looking ASAP? We prioritize roles posted in the last 2 weeks. A few months out? We show a wider date range. Optional."
       onContinue={onContinue}
       onSkip={onSkip}
     >

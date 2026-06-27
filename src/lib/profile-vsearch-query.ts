@@ -35,6 +35,8 @@ export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | n
   const targetRoles = input.targetRoles?.map((r) => r.trim()).filter(Boolean).slice(0, 5) ?? [];
   if (targetRoles.length) parts.push(targetRoles.join(", "));
 
+  if (input.careerMotivation?.trim()) parts.push(input.careerMotivation.trim());
+
   if (input.headline?.trim()) parts.push(input.headline.trim());
 
   const recentTitle = parsed?.workExperience?.[0]?.title?.trim();
