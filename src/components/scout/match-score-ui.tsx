@@ -155,8 +155,8 @@ export function CoachFitAssessment({
   return (
     <div
       style={{
-        marginTop: compact ? 10 : 12,
-        padding: compact ? "12px 14px" : "14px 16px",
+        marginTop: compact ? 8 : 12,
+        padding: compact ? "10px 12px" : "14px 16px",
         background: bg,
         border: `1px solid ${borderColor}`,
         borderRadius: 10,
