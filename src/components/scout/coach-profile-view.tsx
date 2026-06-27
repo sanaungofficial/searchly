@@ -1,113 +1,53 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
+import { CoachExperienceCompanies } from "@/components/scout/coach-experience-companies";
+import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
+import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
-import { WorkspacePageShell } from "@/components/scout/workspace-page-shell";
+import { formatCoachNextAvailable } from "@/components/scout/coach-booking-modal";
+import { bioSnippet } from "@/lib/coach-directory";
 import type { CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import type { LiveSessionView } from "@/lib/live-session-types";
+import { liveSessionRouteId } from "@/lib/live-sessions";
+import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
-type Props = {
-  slug: string;
-  isMobile: boolean;
-  isPro: boolean;
-  onSubscribe: () => void;
-};
+const line = border.line;
+const cardBg = surface.card;
+
+function Section({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <ScoutBox padding={20} style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+        <h3 style={{ fontFamily: fontSans, fontSize: 17, fontWeight: 700, margin: 0, color: color.ink }}>{title}</h3>
+        {action}
+      </div>
+      {children}
+    </ScoutBox>
+  );
+}
 
 function DimensionBar({ label, value }: { label: string; value: number }) {
   const pct = (value / 5) * 100;
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: color.stone }}>{label}</span>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: color.ink }}>{value.toFixed(1)}</span>
+        <span style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>{label}</span>
+        <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>{value.toFixed(1)}</span>
       </div>
-      <div style={{ height: 6, background: "rgba(26,58,47,0.08)", borderRadius: 3 }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: color.forest, borderRadius: 3 }} />
-      </div>
-    </div>
-  );
-}
-
-function ReviewFormModal({
-  coach,
-  slug,
-  onClose,
-  onSubmitted,
-}: {
-  coach: CoachProfileDetail;
-  slug: string;
-  onClose: () => void;
-  onSubmitted: () => void;
-}) {
-  const [coachedFor, setCoachedFor] = useState("");
-  const [message, setMessage] = useState("");
-  const [knowledge, setKnowledge] = useState(5);
-  const [value, setValue] = useState(5);
-  const [responsiveness, setResponsiveness] = useState(5);
-  const [supportiveness, setSupportiveness] = useState(5);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const dims = [
-    { label: "Knowledge", val: knowledge, set: setKnowledge },
-    { label: "Value", val: value, set: setValue },
-    { label: "Responsiveness", val: responsiveness, set: setResponsiveness },
-    { label: "Supportiveness", val: supportiveness, set: setSupportiveness },
-  ];
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/coaches/${slug}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coachedFor, message, knowledge, value, responsiveness, supportiveness }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not submit review");
-      onSubmitted();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Submit failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{ position: "fixed", inset: 0, background: "rgba(26,26,26,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 200 }}
-      onClick={onClose}
-    >
-      <div style={{ background: "#fff", maxWidth: 520, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 28, position: "relative" }} onClick={(e) => e.stopPropagation()}>
-        <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 22, cursor: "pointer" }}>×</button>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, margin: "0 0 8px" }}>Review {coach.displayName}</h2>
-        <form onSubmit={submit}>
-          <label style={{ display: "block", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14 }}>
-            What did you get coached on?
-            <input value={coachedFor} onChange={(e) => setCoachedFor(e.target.value)} placeholder="e.g. Case interview prep" style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: border.line, boxSizing: "border-box" }} />
-          </label>
-          {dims.map((d) => (
-            <label key={d.label} style={{ display: "block", marginBottom: 10, fontFamily: "var(--font-ui)", fontSize: 14 }}>
-              {d.label}: {d.val}
-              <input type="range" min={1} max={5} step={1} value={d.val} onChange={(e) => d.set(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
-            </label>
-          ))}
-          <label style={{ display: "block", marginBottom: 16, fontFamily: "var(--font-ui)", fontSize: 14 }}>
-            Your review
-            <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} required minLength={20} style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: border.line, boxSizing: "border-box", resize: "vertical" }} />
-          </label>
-          {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
-          <ScoutPrimaryBtn type="submit" disabled={submitting} style={{ width: "100%" }}>
-            {submitting ? "Submitting…" : "Submit review"}
-          </ScoutPrimaryBtn>
-        </form>
+      <div style={{ height: 6, background: "rgba(26,58,47,0.08)" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: color.forest }} />
       </div>
     </div>
   );
@@ -115,266 +55,617 @@ function ReviewFormModal({
 
 function ReviewCard({ review }: { review: CoachReviewItem }) {
   return (
-    <ScoutBox padding={16} style={{ marginBottom: 12 }}>
+    <div style={{ padding: "14px 0", borderBottom: line }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
         <div>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, margin: 0 }}>{review.authorName}</p>
+          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: 0 }}>{review.authorName}</p>
           {review.coachedFor && (
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)", margin: "2px 0 0" }}>Coached for: {review.coachedFor}</p>
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "2px 0 0" }}>
+              Coached for: {review.coachedFor}
+            </p>
           )}
         </div>
         <CoachStarRating rating={review.rating} />
       </div>
-      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, lineHeight: 1.65, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>{review.message}</p>
-    </ScoutBox>
+      <p style={{ fontFamily: fontSans, fontSize: 14, lineHeight: 1.65, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
+        {review.message}
+      </p>
+    </div>
   );
 }
 
-export function CoachProfileView({ slug, isMobile, isPro, onSubscribe }: Props) {
-  const [coach, setCoach] = useState<CoachProfileDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showReview, setShowReview] = useState(false);
-  const [aboutExpanded, setAboutExpanded] = useState(false);
+function EventCard({ session, variant }: { session: LiveSessionView; variant: "upcoming" | "recording" }) {
+  const routeId = liveSessionRouteId(session);
+  const href =
+    variant === "recording"
+      ? session.recordingUrl ?? `/live/${routeId}/replay`
+      : `/live/${routeId}`;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/coaches/${slug}`);
-      if (res.ok) setCoach(await res.json());
-      else setCoach(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [slug]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const toggleFollow = async () => {
-    if (!coach) return;
-    const res = await fetch(`/api/coaches/${slug}/follow`, { method: coach.isFollowing ? "DELETE" : "POST" });
-    if (res.ok) {
-      const data = await res.json();
-      setCoach((c) => c ? { ...c, isFollowing: data.isFollowing, followerCount: data.followerCount } : c);
-    }
-  };
-
-  const bookUrl = coach?.calLink;
-
-  if (loading) {
-    return (
-      <WorkspacePageShell isMobile={isMobile} label="Coaching" mobileBarTitle="Coach" title="Loading…">
-        <p style={{ color: color.muted, fontFamily: fontSans }}>Loading coach profile…</p>
-      </WorkspacePageShell>
-    );
-  }
-
-  if (!coach) {
-    return (
-      <WorkspacePageShell isMobile={isMobile} label="Coaching" mobileBarTitle="Coach" title="Coach not found">
-        <p style={{ color: color.muted, fontFamily: fontSans }}>
-          This coach profile isn&apos;t available. <Link href="/coaching" style={{ color: color.forest }}>Browse coaches</Link>
-        </p>
-      </WorkspacePageShell>
-    );
-  }
-
-  const aboutText = coach.aboutMe || coach.bio || "";
-  const sidebar = (
-    <ScoutBox padding={20} style={{ position: isMobile ? "static" : "sticky", top: 20 }}>
-      <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={88} />
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "12px 0 4px" }}>{coach.displayName}</p>
-        <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
-        {coach.hourlyRate && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, color: color.forest, margin: "12px 0 0" }}>
-            {isPro ? `$${coach.hourlyRate}/hr` : (
-              <span onClick={onSubscribe} style={{ cursor: "pointer", filter: "blur(6px)" }}>${coach.hourlyRate}/hr</span>
-            )}
-          </p>
-        )}
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)", marginTop: 8 }}>
-          {coach.followerCount} follower{coach.followerCount !== 1 ? "s" : ""}
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        display: "flex",
+        gap: 14,
+        padding: 14,
+        border: line,
+        background: surface.inset,
+        textDecoration: "none",
+        color: color.ink,
+        marginBottom: 10,
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 8,
+          background: session.bgColor || "rgba(26,58,47,0.12)",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: fontMono,
+          fontSize: 11,
+          fontWeight: 700,
+          color: color.forest,
+        }}
+      >
+        {variant === "recording" ? "▶" : "📅"}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{session.title}</p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>
+          {variant === "recording" ? "Free recording" : `${session.date} · ${session.time}`}
+          {variant === "upcoming" && session.registered > 0 ? ` · ${session.registered} registered` : ""}
         </p>
       </div>
+      <span style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest, flexShrink: 0 }}>
+        {variant === "recording" ? "Watch" : "View →"}
+      </span>
+    </a>
+  );
+}
 
-      {bookUrl && isPro ? (
-        <>
-          <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
-            <ScoutPrimaryBtn style={{ width: "100%", minHeight: 44 }}>Schedule free intro call</ScoutPrimaryBtn>
-          </a>
-          <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
-            <ScoutSecondaryBtn style={{ width: "100%", minHeight: 44 }}>Book a session</ScoutSecondaryBtn>
-          </a>
-        </>
-      ) : (
-        <ScoutSecondaryBtn onClick={onSubscribe} style={{ width: "100%", minHeight: 44, marginBottom: 8 }}>
-          Subscribe to book
-        </ScoutSecondaryBtn>
+function OfferingRow({
+  title,
+  subtitle,
+  priceLabel,
+  secondaryPrice,
+  onBook,
+  bookLabel,
+  style,
+}: {
+  title: string;
+  subtitle: string;
+  priceLabel: string;
+  secondaryPrice?: string;
+  onBook?: () => void;
+  bookLabel?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: 14,
+        border: line,
+        background: surface.inset,
+        ...style,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{title}</p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>{subtitle}</p>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.forest, margin: 0 }}>{priceLabel}</p>
+        {secondaryPrice && (
+          <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, margin: "4px 0 0" }}>{secondaryPrice}</p>
+        )}
+        {onBook && bookLabel && (
+          <button
+            type="button"
+            onClick={onBook}
+            style={{
+              marginTop: 8,
+              background: "none",
+              border: "none",
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 600,
+              color: color.forest,
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            {bookLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GoldBookBtn({ children, onClick, style }: { children: ReactNode; onClick?: () => void; style?: CSSProperties }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: "100%",
+        minHeight: 44,
+        padding: "12px 16px",
+        background: "#E8D5A3",
+        color: "#1A1A1A",
+        border: "2px solid #1A1A1A",
+        fontFamily: fontSans,
+        fontSize: 14,
+        fontWeight: 700,
+        cursor: "pointer",
+        boxSizing: "border-box",
+        textAlign: "center",
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function AiToolCard({
+  title,
+  subtitle,
+  buttonLabel,
+  creditCost,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+  creditCost?: number;
+  onClick: () => void;
+}) {
+  return (
+    <div style={{ background: cardBg, border: line, borderRadius: "var(--scout-radius)", padding: "18px 20px", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+        <p style={displayTitleStyle(16)}>{title}</p>
+        {creditCost ? (
+          <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: color.muted }}>
+            {creditCost} credit{creditCost !== 1 ? "s" : ""}
+          </span>
+        ) : null}
+      </div>
+      <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
+      <ScoutPrimaryBtn onClick={onClick} style={{ width: "100%", minHeight: 40 }}>{buttonLabel}</ScoutPrimaryBtn>
+    </div>
+  );
+}
+
+export type CoachProfileViewProps = {
+  coach: CoachProfileDetail;
+  isMobile: boolean;
+  matchScore?: number;
+  matchLabel?: string;
+  matchReasons?: string[];
+  matchedSkills?: string[];
+  sessionDurationMinutes: number;
+  canBookInApp: boolean;
+  bookUrl?: string | null;
+  nextSlotStart: number | null;
+  nextSlotLoading: boolean;
+  canSelfAssignCoach: boolean;
+  onBookIntro: () => void;
+  onBookSession: () => void;
+  onBuyPackage: (packageId: string) => void;
+  onToggleFollow: () => void;
+  onToggleMyCoach: () => void;
+  onWriteReview: () => void;
+  onPrepChat: () => void;
+};
+
+export function CoachProfileView({
+  coach,
+  isMobile,
+  matchScore = 0,
+  matchLabel = "",
+  matchReasons = [],
+  matchedSkills = [],
+  sessionDurationMinutes,
+  canBookInApp,
+  bookUrl,
+  nextSlotStart,
+  nextSlotLoading,
+  canSelfAssignCoach,
+  onBookIntro,
+  onBookSession,
+  onBuyPackage,
+  onToggleFollow,
+  onToggleMyCoach,
+  onWriteReview,
+  onPrepChat,
+}: CoachProfileViewProps) {
+  const [aboutExpanded, setAboutExpanded] = useState(false);
+  const aboutText = coach.aboutMe || coach.bio || "";
+  const introText = bioSnippet(coach.bio ?? coach.aboutMe ?? "", 280) || aboutText.slice(0, 280);
+  const upcoming = coach.upcomingLiveSessions ?? [];
+  const recordings = coach.pastRecordings ?? [];
+  const categoryPills = [
+    coach.category,
+    ...coach.specialties.slice(0, 4),
+    ...coach.clientSpecializations.slice(0, 2),
+  ].filter(Boolean);
+
+  const bookingSidebar = (
+    <ScoutBox padding={20}>
+      <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, margin: "0 0 14px", textAlign: "center" }}>
+        Book a session
+      </p>
+      <OfferingRow
+        title="Free intro call"
+        subtitle="30 minutes · Get to know your coach"
+        priceLabel="Free"
+        onBook={canBookInApp ? onBookIntro : undefined}
+        bookLabel="Book intro"
+      />
+      <OfferingRow
+        title="1:1 coaching session"
+        subtitle={`${sessionDurationMinutes} minutes · Tailored to your goals`}
+        priceLabel={coach.isInternal ? "Included" : coach.hourlyRate ? `$${coach.hourlyRate}/hr` : "See rate"}
+        secondaryPrice={!coach.isInternal && coach.hourlyRate ? "after intro" : undefined}
+        onBook={canBookInApp ? onBookSession : undefined}
+        bookLabel="Book session"
+        style={{ marginTop: 10 }}
+      />
+      {coach.purchasablePackages?.map((pkg) => (
+        <OfferingRow
+          key={pkg.id}
+          title={pkg.displayTitle}
+          subtitle={`${pkg.displayHoursLabel} · Coaching package`}
+          priceLabel={pkg.displayPriceLabel ?? "—"}
+          onBook={() => onBuyPackage(pkg.id)}
+          bookLabel="Buy package"
+          style={{ marginTop: 10 }}
+        />
+      ))}
+      {canBookInApp && (
+        <div
+          style={{
+            marginTop: 14,
+            padding: "12px 14px",
+            border: line,
+            background: "rgba(26,58,47,0.04)",
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start",
+          }}
+        >
+          <span
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: "50%",
+              border: "2px solid #1A3A2F",
+              flexShrink: 0,
+              marginTop: 2,
+              background: "#1A3A2F",
+              boxShadow: "inset 0 0 0 3px #fff",
+            }}
+          />
+          <p style={{ fontFamily: fontSans, fontSize: 13, margin: 0, lineHeight: 1.45, color: color.stone }}>
+            {nextSlotLoading
+              ? "Checking availability…"
+              : nextSlotStart
+                ? formatCoachNextAvailable(nextSlotStart)
+                : "No upcoming slots in the next two weeks"}
+          </p>
+        </div>
       )}
-
-      <ScoutSecondaryBtn onClick={toggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
+      {canBookInApp ? (
+        <div style={{ marginTop: 14 }}>
+          <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 8 }}>Schedule a free intro call</GoldBookBtn>
+          <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 44, marginBottom: 8 }}>
+            Book a session
+          </ScoutSecondaryBtn>
+        </div>
+      ) : bookUrl ? (
+        <a href={bookUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 14, textDecoration: "none" }}>
+          <GoldBookBtn>Schedule via calendar</GoldBookBtn>
+        </a>
+      ) : null}
+      <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "12px 0 8px" }}>
+        {coach.followerCount} follower{coach.followerCount !== 1 ? "s" : ""}
+      </p>
+      <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
         {coach.isFollowing ? "Following ✓" : "+ Follow"}
       </ScoutSecondaryBtn>
-
-      <button type="button" onClick={() => setShowReview(true)} style={{ width: "100%", background: "none", border: "none", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, cursor: "pointer", textDecoration: "underline", padding: 8 }}>
+      {canSelfAssignCoach && (coach.isMyCoach || !coach.isInternal) && (
+        <ScoutSecondaryBtn
+          onClick={onToggleMyCoach}
+          style={{
+            width: "100%",
+            minHeight: 40,
+            marginBottom: 8,
+            ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest, fontWeight: 600 } : {}),
+          }}
+        >
+          {coach.isMyCoach ? "Remove from my coaches" : "Add as my coach"}
+        </ScoutSecondaryBtn>
+      )}
+      <button
+        type="button"
+        onClick={onWriteReview}
+        style={{
+          width: "100%",
+          background: "none",
+          border: "none",
+          fontFamily: fontSans,
+          fontSize: T.bodySm,
+          color: color.forest,
+          cursor: "pointer",
+          textDecoration: "underline",
+          padding: 8,
+        }}
+      >
         Write a review
       </button>
     </ScoutBox>
   );
 
   return (
-    <WorkspacePageShell
-      isMobile={isMobile}
-      label="Coaching"
-      mobileBarTitle={coach.displayName}
-      title={coach.displayName}
-      subtitle={
-        <Link href="/coaching" style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, textDecoration: "none" }}>
-          ← Back to directory
-        </Link>
-      }
-    >
-      <div style={{ display: "flex", gap: 24, flexDirection: isMobile ? "column-reverse" : "row", alignItems: "flex-start", paddingBottom: 48 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Hero */}
-          <ScoutBox padding={isMobile ? 20 : 24} style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
-              {isMobile && <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={72} />}
-              <div style={{ flex: 1 }}>
-                {coach.headline && (
-                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, color: color.ink, lineHeight: 1.35, margin: "0 0 10px" }}>
-                    {coach.headline}
-                  </p>
-                )}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                  {coach.isProfessionalCoach && (
-                    <span style={{ padding: "4px 10px", background: "rgba(26,58,47,0.08)", fontSize: 12, fontWeight: 600, color: color.forest }}>Professional coach</span>
-                  )}
-                  {coach.featured && (
-                    <span style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontSize: 12, fontWeight: 600, color: "#7A6020" }}>Featured</span>
-                  )}
-                  {coach.experienceLevel && (
-                    <span style={{ padding: "4px 10px", background: "rgba(26,58,47,0.04)", fontSize: 12, color: color.stone }}>{coach.experienceLevel}</span>
-                  )}
-                </div>
-                {coach.firms.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--scout-muted)", margin: "0 0 8px" }}>
-                      Experience at
-                    </p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {coach.firms.map((f) => (
-                        <span key={f} style={{ padding: "5px 12px", border: border.line, fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: color.forest }}>{f}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </ScoutBox>
-
-          {/* Hourly offering */}
-          <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-            <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>{coach.displayName}&apos;s offering</h3>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 16, border: border.line, background: surface.inset }}>
-              <div>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>1:1 Coaching — Hourly</p>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: color.muted, margin: 0 }}>Flexible sessions tailored to your goals</p>
-              </div>
-              {coach.hourlyRate && (
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, color: color.forest, margin: 0 }}>
-                  {isPro ? `$${coach.hourlyRate}/hr` : "—"}
-                </p>
+    <div>
+      {/* Hero */}
+      <div
+        style={{
+          padding: isMobile ? "20px 16px" : "28px 32px",
+          background: cardBg,
+          borderBottom: line,
+        }}
+      >
+        <div style={{ display: "flex", gap: isMobile ? 16 : 24, alignItems: "flex-start" }}>
+          <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 88 : 120} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+              <h1 style={displayTitleStyle(isMobile ? 24 : 32, { margin: 0, lineHeight: 1.15 })}>{coach.displayName}</h1>
+              {coach.isProfessionalCoach && (
+                <span style={{ fontFamily: fontSans, fontSize: 12, color: color.forest, fontWeight: 600 }}>✓ Verified</span>
               )}
+              {coach.isInternal && <InternalCoachBadge />}
             </div>
-          </ScoutBox>
-
-          {/* Expertise */}
-          {coach.specialties.length > 0 && (
-            <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>{coach.displayName.split(" ")[0]} can help with</h3>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {coach.specialties.map((s) => (
-                  <span key={s} style={{ padding: "6px 12px", background: "rgba(26,58,47,0.06)", fontFamily: "var(--font-ui)", fontSize: 13, color: color.forest }}>{s}</span>
+            <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
+            {coach.headline && (
+              <p style={{ fontFamily: fontSans, fontSize: 15, color: color.stone, lineHeight: 1.5, margin: "10px 0 0" }}>
+                {coach.headline}
+              </p>
+            )}
+            {categoryPills.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                {categoryPills.map((pill) => (
+                  <span
+                    key={pill}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 999,
+                      background: "rgba(26,58,47,0.06)",
+                      fontFamily: fontSans,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: color.forest,
+                    }}
+                  >
+                    {pill}
+                  </span>
                 ))}
               </div>
-            </ScoutBox>
+            )}
+            {coach.location && (
+              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "10px 0 0" }}>{coach.location}</p>
+            )}
+          </div>
+          {!isMobile && matchScore > 0 && (
+            <CoachMatchScoreCluster score={matchScore} label={matchLabel} align="right" />
+          )}
+        </div>
+      </div>
+
+      {/* Body */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: "flex-start",
+          gap: 0,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
+          {matchScore > 0 && (
+            <CoachMatchSection job={{ matchScore, matchLabel, matchReasons, matchedSkills }} />
           )}
 
-          {/* About */}
-          {aboutText && (
-            <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>About {coach.displayName.split(" ")[0]}</h3>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, lineHeight: 1.7, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
-                {aboutExpanded ? aboutText : `${aboutText.slice(0, 500)}${aboutText.length > 500 ? "…" : ""}`}
+          {introText && (
+            <Section title={`Message from ${coach.displayName.split(" ")[0]}`}>
+              <p style={{ fontFamily: fontSans, fontSize: 15, lineHeight: 1.7, color: color.stone, margin: 0 }}>
+                {introText}{introText.length < (coach.bio?.length ?? 0) ? "…" : ""}
               </p>
-              {aboutText.length > 500 && (
-                <button type="button" onClick={() => setAboutExpanded((v) => !v)} style={{ marginTop: 10, background: "none", border: "none", color: color.forest, fontFamily: fontSans, fontSize: T.bodySm, cursor: "pointer", fontWeight: 600 }}>
+            </Section>
+          )}
+
+          {isMobile && bookingSidebar}
+
+          {aboutText && (
+            <Section title="About">
+              <p style={{ fontFamily: fontSans, fontSize: 14, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
+                {aboutExpanded ? aboutText : `${aboutText.slice(0, 600)}${aboutText.length > 600 ? "…" : ""}`}
+              </p>
+              {aboutText.length > 600 && (
+                <button
+                  type="button"
+                  onClick={() => setAboutExpanded((v) => !v)}
+                  style={{
+                    marginTop: 10,
+                    background: "none",
+                    border: "none",
+                    color: color.forest,
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
                   {aboutExpanded ? "Show less" : "View more"}
                 </button>
               )}
-            </ScoutBox>
+            </Section>
           )}
 
-          {coach.whyCoach && (
-            <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>Why do I coach?</h3>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, lineHeight: 1.7, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>{coach.whyCoach}</p>
-            </ScoutBox>
+          {matchReasons.length > 0 && (
+            <Section title="Why clients work with them">
+              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.65 }}>
+                {matchReasons.slice(0, 5).map((r) => (
+                  <li key={r} style={{ marginBottom: 6 }}>{r}</li>
+                ))}
+              </ul>
+            </Section>
           )}
 
-          {/* Work & education */}
-          {(coach.currentRole || coach.currentCompany) && (
-            <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>Work experience</h3>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>{coach.currentRole}</p>
-              {coach.currentCompany && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: color.muted, margin: 0 }}>{coach.currentCompany}</p>}
-            </ScoutBox>
-          )}
-
-          {coach.schools.length > 0 && (
-            <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>Education</h3>
-              {coach.schools.map((s) => (
-                <p key={s} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: color.stone, margin: "0 0 6px" }}>{s}</p>
-              ))}
-            </ScoutBox>
-          )}
-
-          {/* Reviews */}
-          <ScoutBox padding={20}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: 0 }}>Reviews</h3>
-              <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
-            </div>
-
+          <Section
+            title="Reviews"
+            action={<CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />}
+          >
             {coach.aggregates && (
-              <div style={{ marginBottom: 20, maxWidth: 360 }}>
+              <div style={{ marginBottom: 16, maxWidth: 360 }}>
                 <DimensionBar label="Knowledge" value={coach.aggregates.knowledge} />
                 <DimensionBar label="Value" value={coach.aggregates.value} />
                 <DimensionBar label="Responsiveness" value={coach.aggregates.responsiveness} />
                 <DimensionBar label="Supportiveness" value={coach.aggregates.supportiveness} />
               </div>
             )}
-
             {coach.reviews.length === 0 ? (
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No reviews yet. Be the first to share your experience.</p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No reviews yet.</p>
             ) : (
               coach.reviews.map((r) => <ReviewCard key={r.id} review={r} />)
             )}
-          </ScoutBox>
+          </Section>
+
+          {coach.whyCoach && (
+            <Section title="Coaching philosophy">
+              <p style={{ fontFamily: fontSans, fontSize: 14, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
+                {coach.whyCoach}
+              </p>
+            </Section>
+          )}
+
+          <CoachExperienceCompanies coach={coach} isMobile={isMobile} embedded />
+
+          {coach.schools.length > 0 && (
+            <Section title="Education">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {coach.schools.map((s) => (
+                  <span
+                    key={s}
+                    style={{
+                      padding: "8px 14px",
+                      border: line,
+                      fontFamily: fontSans,
+                      fontSize: 13,
+                      color: color.stone,
+                      background: surface.inset,
+                    }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {upcoming.length > 0 && (
+            <Section title="Upcoming events">
+              {upcoming.map((s) => <EventCard key={s.id} session={s} variant="upcoming" />)}
+            </Section>
+          )}
+
+          {(recordings.length > 0 || coach.isMyCoach) && (
+            <Section title="Resources & recordings">
+              {recordings.map((s) => <EventCard key={s.id} session={s} variant="recording" />)}
+              {coach.isMyCoach && (
+                <div style={{ marginTop: recordings.length ? 16 : 0 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.ink, margin: "0 0 10px" }}>
+                    Shared with you
+                  </p>
+                  <ClientCoachSharedDocuments
+                    coachProfileId={coach.id}
+                    coachName={coach.displayName}
+                    compact
+                  />
+                </div>
+              )}
+              {recordings.length === 0 && !coach.isMyCoach && (
+                <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0, lineHeight: 1.55 }}>
+                  No public recordings yet. When this coach hosts Live sessions, replays will appear here.
+                </p>
+              )}
+            </Section>
+          )}
+
+          {coach.specialties.length > 0 && (
+            <Section title="Can help with">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {coach.specialties.map((s) => (
+                  <span
+                    key={s}
+                    style={{ padding: "6px 12px", background: "rgba(26,58,47,0.06)", fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </Section>
+          )}
         </div>
 
-        {!isMobile && <div style={{ width: 280, flexShrink: 0 }}>{sidebar}</div>}
+        {!isMobile && (
+          <aside
+            style={{
+              width: 340,
+              flexShrink: 0,
+              borderLeft: line,
+              background: surface.inset,
+              padding: "24px 20px 32px",
+              position: "sticky",
+              top: 0,
+              alignSelf: "flex-start",
+              maxHeight: "100%",
+              overflowY: "auto",
+            }}
+          >
+            {bookingSidebar}
+            <div style={{ marginTop: 20 }}>
+              <p style={displayTitleStyle(15, { margin: "0 0 14px" })}>Before your session</p>
+              <CreditsStatusBar />
+              <AiToolCard
+                creditCost={1}
+                title="Prepare for your session"
+                subtitle="Questions to ask, what to share about your goals, and how this coach's background fits you."
+                buttonLabel="Prep with Scout"
+                onClick={onPrepChat}
+              />
+              <AiToolCard
+                creditCost={1}
+                title="Interview prep"
+                subtitle="Practice questions and talking points tailored to your target roles."
+                buttonLabel="Start interview prep"
+                onClick={onPrepChat}
+              />
+            </div>
+          </aside>
+        )}
       </div>
-
-      {isMobile && <div style={{ marginTop: 16 }}>{sidebar}</div>}
-
-      {showReview && (
-        <ReviewFormModal coach={coach} slug={slug} onClose={() => setShowReview(false)} onSubmitted={load} />
-      )}
-    </WorkspacePageShell>
+    </div>
   );
 }

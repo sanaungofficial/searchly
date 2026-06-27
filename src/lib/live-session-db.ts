@@ -246,6 +246,19 @@ export async function listCoachLiveSessions(coachProfileId: string) {
   });
 }
 
+export async function listCoachPastRecordings(coachProfileId: string) {
+  return prisma.liveSession.findMany({
+    where: {
+      coachProfileId,
+      status: "ENDED",
+      OR: [{ recordingUrl: { not: null } }, { hlsPlaybackUrl: { not: null } }],
+    },
+    include: sessionInclude,
+    orderBy: { scheduledEnd: "desc" },
+    take: 8,
+  });
+}
+
 export async function listSessionRegistrations(liveSessionId: string) {
   return prisma.liveSessionRegistration.findMany({
     where: { liveSessionId },

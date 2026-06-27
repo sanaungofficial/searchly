@@ -6,7 +6,7 @@ import { canUserAccessCoach, isCoachAssignedToUser } from "@/lib/coach-client-as
 import { requireAdmin } from "@/lib/auth";
 import { computeReviewAggregates } from "@/lib/coach-directory";
 import { isNylasConfigured } from "@/lib/nylas";
-import { listCoachLiveSessions, toLiveSessionView } from "@/lib/live-session-db";
+import { listCoachLiveSessions, listCoachPastRecordings, toLiveSessionView } from "@/lib/live-session-db";
 import { enrichPackages } from "@/lib/coach-pricing";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -107,6 +107,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const upcomingLiveSessions = upcomingLiveRows.map((row) =>
     toLiveSessionView(row, { registrationCount: row._count.registrations }),
   );
+  const pastRecordingRows = await listCoachPastRecordings(coach.id);
+  const pastRecordings = pastRecordingRows.map((row) =>
+    toLiveSessionView(row, { registrationCount: row._count.registrations }),
+  );
 
   return NextResponse.json({
     id: coach.id,
@@ -149,6 +153,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       createdAt: r.createdAt.toISOString(),
     })),
     upcomingLiveSessions,
+    pastRecordings,
     purchasablePackages: enrichPackages(
       coach.pricingPackages,
       coach.hourlyRate,
