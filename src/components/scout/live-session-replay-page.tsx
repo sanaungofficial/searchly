@@ -12,7 +12,7 @@ export function LiveSessionReplayPage({
 }) {
   const routeId = liveSessionRouteId(session);
   const bookHref = session.coachSlug
-    ? `/coaching?coach=${session.coachSlug}`
+    ? `/coach/${session.coachSlug}`
     : "/coaching";
 
   return (

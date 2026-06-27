@@ -129,7 +129,7 @@ function AdminCoachesInner() {
               </div>
               {coach.slug && (
                 <Link
-                  href={`/coaching/coach/${coach.slug}`}
+                  href={`/coach/${coach.slug}`}
                   onClick={(e) => e.stopPropagation()}
                   style={{ display: "inline-block", marginTop: 12, fontFamily: fontSans, fontSize: 12, color: color.forest }}
                 >

@@ -76,7 +76,7 @@ export function BookingsList({ bookings, emptyMessage, showCoach = false, showGu
               {showCoach && b.coachSlug && (
                 <button
                   type="button"
-                  onClick={() => router.push(`/coaching/coach/${b.coachSlug}`)}
+                  onClick={() => router.push(`/coach/${b.coachSlug}`)}
                   style={{
                     background: "none",
                     border: "none",

@@ -214,7 +214,7 @@ export async function notifyCoachFollowersPostSession(sessionId: string): Promis
   const routeId = session.legacyNumericId != null ? String(session.legacyNumericId) : session.id;
   const replayUrl = session.recordingUrl ?? session.hlsPlaybackUrl ?? `${appBaseUrl()}/live/${routeId}/replay`;
   const bookHref = session.coachProfile.slug
-    ? `${appBaseUrl()}/coaching?coach=${session.coachProfile.slug}`
+    ? `${appBaseUrl()}/coach/${session.coachProfile.slug}`
     : `${appBaseUrl()}/coaching`;
 
   let sent = 0;

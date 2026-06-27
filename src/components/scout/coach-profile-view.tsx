@@ -533,6 +533,16 @@ export function CoachProfileView({
             </Section>
           )}
 
+          {(coach.clientWins?.length ?? 0) > 0 && (
+            <Section title="Client results">
+              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.65 }}>
+                {coach.clientWins!.map((win) => (
+                  <li key={win} style={{ marginBottom: 8 }}>{win}</li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
           <Section
             title="Reviews"
             action={<CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />}
@@ -590,9 +600,51 @@ export function CoachProfileView({
             </Section>
           )}
 
-          {(recordings.length > 0 || coach.isMyCoach) && (
+          {(recordings.length > 0 || (coach.publicResources?.length ?? 0) > 0 || coach.isMyCoach) && (
             <Section title="Resources & recordings">
               {recordings.map((s) => <EventCard key={s.id} session={s} variant="recording" />)}
+              {(coach.publicResources?.length ?? 0) > 0 && (
+                <div style={{ marginTop: recordings.length ? 16 : 0 }}>
+                  {recordings.length === 0 && (
+                    <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.ink, margin: "0 0 10px" }}>
+                      Resources
+                    </p>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {coach.publicResources!.map((doc) => (
+                      <a
+                        key={doc.id}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "12px 14px",
+                          border: line,
+                          background: surface.inset,
+                          textDecoration: "none",
+                          color: "inherit",
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px", color: color.ink }}>
+                            {doc.name}
+                          </p>
+                          <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: 0 }}>
+                            {doc.typeLabel}
+                          </p>
+                        </div>
+                        <span style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest, flexShrink: 0 }}>
+                          Download →
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
               {coach.isMyCoach && (
                 <div style={{ marginTop: recordings.length ? 16 : 0 }}>
                   <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.ink, margin: "0 0 10px" }}>

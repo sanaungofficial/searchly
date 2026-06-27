@@ -79,8 +79,8 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
   }, []);
 
   const goToCoachPage = (slug: string | null, id: string) => {
-    if (slug) router.push(`/coaching/coach/${slug}`);
-    else router.push(`/coaching?coach=${encodeURIComponent(id)}`);
+    if (slug) router.push(`/coach/${slug}`);
+    else router.push(`/coach/${encodeURIComponent(id)}`);
   };
 
   const removeCoach = async (coachProfileId: string) => {

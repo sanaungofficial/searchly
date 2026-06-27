@@ -838,7 +838,7 @@ function PackagesSection({
 
       {profileSlug && (
         <Link
-          href={`/coaching/coach/${profileSlug}`}
+          href={`/coach/${profileSlug}`}
           style={{
             display: "flex",
             alignItems: "center",
@@ -930,7 +930,7 @@ function PackageRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const packageUrl =
     profileSlug && typeof window !== "undefined"
-      ? `${window.location.origin}/coaching/coach/${profileSlug}?package=${pkg.id}`
+      ? `${window.location.origin}/coach/${profileSlug}?package=${pkg.id}`
       : null;
 
   return (

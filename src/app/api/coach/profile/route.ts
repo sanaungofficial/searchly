@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus, UserRole } from "@prisma/client";
-import { coachProfileSlug } from "@/lib/coach-slug";
+import { ensureUniqueCoachSlug } from "@/lib/coach-slug";
 import {
   parseSchedulerAvailabilityPatch,
   schedulerAvailabilityChanged,
@@ -45,9 +45,10 @@ async function ensureCoachProfile(dbUser: { id: string; email: string; name: str
       status: CoachStatus.PENDING,
     },
   });
+  const slug = await ensureUniqueCoachSlug(created.displayName, created.id);
   return prisma.coachProfile.update({
     where: { id: created.id },
-    data: { slug: coachProfileSlug(created.displayName, created.id) },
+    data: { slug },
   });
 }
 
@@ -83,13 +84,16 @@ function profilePatchData(body: Record<string, unknown>) {
   if (body.isProfessionalCoach !== undefined) d.isProfessionalCoach = Boolean(body.isProfessionalCoach);
   if (body.whyCoach !== undefined) d.whyCoach = (body.whyCoach as string) || null;
   if (body.aboutMe !== undefined) d.aboutMe = (body.aboutMe as string) || null;
+  if (body.clientWins !== undefined && Array.isArray(body.clientWins)) {
+    d.clientWins = (body.clientWins as string[]).map((w) => String(w).trim()).filter(Boolean);
+  }
   return d;
 }
 
-function ensureSlug(profile: { id: string; displayName: string; slug: string | null }, patch: Record<string, unknown>) {
+async function ensureSlug(profile: { id: string; displayName: string; slug: string | null }, patch: Record<string, unknown>) {
   const name = (patch.displayName as string) ?? profile.displayName;
   if (!profile.slug || patch.displayName !== undefined) {
-    patch.slug = coachProfileSlug(name, profile.id);
+    patch.slug = await ensureUniqueCoachSlug(name, profile.id);
   }
 }
 
@@ -108,7 +112,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const profile = await ensureCoachProfile(me);
   const d = profilePatchData(body);
-  ensureSlug(profile, d);
+  await ensureSlug(profile, d);
 
   if (body.submitForReview) {
     d.status = CoachStatus.PENDING;
