@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
+  formatCompactProfileLocation,
+  parseProfileLocationString,
+} from "@/lib/profile-location";
+import {
   ScoutHeader,
   ScreenWelcome,
   ScreenReadBack,
@@ -120,17 +124,34 @@ export default function OnboardingPage() {
   const [readbackData, setReadbackData] = useState<ReadBackData | null>(null);
   const [readbackStatus, setReadbackStatus] = useState<ReadBackStatus>("idle");
   const readbackStartedRef = useRef(false);
+  const locationHintFetchedRef = useRef(false);
   const [careerMotivation, setCareerMotivation] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
   const [currentSalary, setCurrentSalary] = useState("");
   const [targetSalary, setTargetSalary] = useState("");
   const [targetMarket, setTargetMarket] = useState("");
+  const [locationHint, setLocationHint] = useState<string | null>(null);
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
   const [resumeError, setResumeError] = useState(false);
   const [setupSteps, setSetupSteps] = useState<SetupStep[]>(INITIAL_SETUP_STEPS);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
+
+  useEffect(() => {
+    if (screen !== 2 || locationHintFetchedRef.current) return;
+    locationHintFetchedRef.current = true;
+    void fetch("/api/profile")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { parsedData?: { location?: string | null } } | null) => {
+        const raw = data?.parsedData?.location?.trim();
+        if (!raw) return;
+        const compact =
+          formatCompactProfileLocation(parseProfileLocationString(raw)) ?? raw;
+        setLocationHint(compact);
+      })
+      .catch(() => {});
+  }, [screen]);
 
   const setStepStatus = useCallback((id: string, status: SetupStepStatus) => {
     setSetupSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
@@ -568,6 +589,7 @@ export default function OnboardingPage() {
               currentSalary={currentSalary}
               targetSalary={targetSalary}
               targetMarket={targetMarket}
+              locationHint={locationHint}
               priorities={priorities}
               attribution={attribution}
               onCurrentSalaryChange={setCurrentSalary}

@@ -64,7 +64,32 @@ const US_STATE_NAMES: Record<string, string> = {
   DC: "District of Columbia",
 };
 
-const US_COUNTRY_ALIASES = new Set(["us", "usa", "u.s.", "u.s.a.", "united states", "united states of america"]);
+const US_STATE_ABBR_BY_NAME: Record<string, string> = Object.fromEntries(
+  Object.entries(US_STATE_NAMES).map(([abbr, name]) => [name.toLowerCase(), abbr]),
+);
+
+function regionToAbbr(region?: string): string | undefined {
+  if (!region?.trim()) return undefined;
+  const trimmed = region.trim();
+  if (trimmed.length === 2 && US_STATE_NAMES[trimmed.toUpperCase()]) return trimmed.toUpperCase();
+  return US_STATE_ABBR_BY_NAME[trimmed.toLowerCase()];
+}
+
+/** Compact label for UI + targetMarket, e.g. "Richmond, VA". */
+export function formatCompactProfileLocation(parsed: ParsedProfileLocation | null | undefined): string | null {
+  if (!parsed) return null;
+  const regionAbbr = regionToAbbr(parsed.region);
+  if (parsed.city && regionAbbr) return `${parsed.city}, ${regionAbbr}`;
+  if (parsed.city && parsed.region) return `${parsed.city}, ${parsed.region}`;
+  if (parsed.region && parsed.country) {
+    const countryNorm = normalizeToken(parsed.country);
+    if (US_COUNTRY_ALIASES.has(countryNorm)) {
+      return regionAbbr ? `${parsed.region}, ${regionAbbr}` : parsed.region;
+    }
+    return `${parsed.region}, ${parsed.country}`;
+  }
+  return parsed.city ?? parsed.region ?? parsed.country ?? null;
+}
 
 function normalizeToken(value: string): string {
   return value.trim().toLowerCase();

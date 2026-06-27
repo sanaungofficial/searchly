@@ -25,6 +25,7 @@ import {
 import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { LocationAutocompleteInput } from "./location-autocomplete-input";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -2450,6 +2451,7 @@ interface AboutYouPreferencesProps {
   currentSalary: string;
   targetSalary: string;
   targetMarket: string;
+  locationHint?: string | null;
   priorities: string[];
   attribution: string;
   onCurrentSalaryChange: (v: string) => void;
@@ -2466,6 +2468,7 @@ export function ScreenAboutYouPreferences({
   currentSalary,
   targetSalary,
   targetMarket,
+  locationHint,
   priorities,
   attribution,
   onCurrentSalaryChange,
@@ -2511,25 +2514,16 @@ export function ScreenAboutYouPreferences({
           "We use this to prioritize roles in your area — not overseas listings unless you opt into relocation.",
           true,
         )}
-        <input
-          type="text"
+        <LocationAutocompleteInput
           value={targetMarket}
-          onChange={(e) => onTargetMarketChange(e.target.value)}
-          placeholder="e.g. Richmond, VA"
-          style={{
-            width: "100%",
-            minHeight: 48,
-            padding: "11px 14px",
-            border: ONBOARDING_FIELD_BORDER,
-            borderRadius: "var(--scout-radius)",
-            background: ONBOARDING_FIELD_BG,
-            fontFamily: "var(--font-ui)",
-            fontSize: 16,
-            fontWeight: 500,
-            color: targetMarket ? ONBOARDING_TEXT : ONBOARDING_TEXT_SECONDARY,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
+          onChange={onTargetMarketChange}
+          locationHint={locationHint}
+          placeholder="Start typing a city…"
+          fieldBorder={ONBOARDING_FIELD_BORDER}
+          fieldBg={ONBOARDING_FIELD_BG}
+          textColor={ONBOARDING_TEXT}
+          textSecondary={ONBOARDING_TEXT_SECONDARY}
+          labelColor={ONBOARDING_LABEL_COLOR}
         />
       </div>
 

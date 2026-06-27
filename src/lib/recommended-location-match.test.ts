@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { selectDisplayJobs } from "@/lib/job-fit-ranking";
 import {
+  formatCompactProfileLocation,
   parseProfileLocationString,
   profileLocationToHirebaseFilters,
   resolveProfileLocation,
@@ -97,5 +98,13 @@ describe("parseProfileLocationString", () => {
       region: "Virginia",
       country: "United States",
     });
+  });
+});
+
+describe("formatCompactProfileLocation", () => {
+  it("formats US city and state as City, ST", () => {
+    expect(
+      formatCompactProfileLocation(parseProfileLocationString("Richmond, VA")),
+    ).toBe("Richmond, VA");
   });
 });
