@@ -25,7 +25,10 @@ import {
 import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
-import { VoiceIntakeRecorder, type VoiceAgentFieldPatch, type VoiceAgentSessionResult } from "@/components/voice/voice-intake-recorder";
+import { OnboardingCoachPanel } from "@/components/onboarding/onboarding-coach-panel";
+import { ONBOARDING_COACH_PREFS_STEPS, ONBOARDING_COACH_SEARCH_STEPS } from "@/lib/onboarding-coach/steps";
+import type { VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
+import type { VoiceAgentFieldPatch } from "@/lib/voice-intake";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -2397,16 +2400,17 @@ export function ScreenAboutYouSearch({
 }: AboutYouSearchProps) {
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && (
-        <VoiceIntakeRecorder
-          onFieldUpdate={onVoiceFieldUpdate}
-          onComplete={onVoiceIntakeComplete}
+      {onVoiceIntakeComplete && onVoiceFieldUpdate && (
+        <OnboardingCoachPanel
+          steps={ONBOARDING_COACH_SEARCH_STEPS}
+          onApplyPatch={onVoiceFieldUpdate}
+          onVoiceComplete={onVoiceIntakeComplete}
         />
       )}
 
       <AboutYouIntro
         title="A few questions about your search."
-        body="Pick below — or talk to Kimchi above and we'll fill these in as you go."
+        body="Use the talk panel above, pick below, or mix both — whatever's easier."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
@@ -2467,6 +2471,8 @@ interface AboutYouPreferencesProps {
   onTargetSalaryChange: (v: string) => void;
   onTogglePriority: (p: string) => void;
   onAttributionChange: (v: string) => void;
+  onVoiceFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
+  onVoiceIntakeComplete?: (result: VoiceAgentSessionResult) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -2481,6 +2487,8 @@ export function ScreenAboutYouPreferences({
   onTargetSalaryChange,
   onTogglePriority,
   onAttributionChange,
+  onVoiceFieldUpdate,
+  onVoiceIntakeComplete,
   onContinue,
   onSkip,
 }: AboutYouPreferencesProps) {
@@ -2508,9 +2516,17 @@ export function ScreenAboutYouPreferences({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
+      {onVoiceIntakeComplete && onVoiceFieldUpdate && (
+        <OnboardingCoachPanel
+          steps={ONBOARDING_COACH_PREFS_STEPS}
+          onApplyPatch={onVoiceFieldUpdate}
+          onVoiceComplete={onVoiceIntakeComplete}
+        />
+      )}
+
       <AboutYouIntro
         title="Preferences (all optional)"
-        body="Salary, priorities, timeline — helps us filter roles that won't work for you."
+        body="Salary, priorities, timeline — talk it out above or use the picks below."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>

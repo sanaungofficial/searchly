@@ -606,6 +606,8 @@ export default function OnboardingPage() {
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
+              onVoiceFieldUpdate={applyVoiceFieldPatch}
+              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onAboutPrefsContinue}
               onSkip={onAboutPrefsSkip}
             />

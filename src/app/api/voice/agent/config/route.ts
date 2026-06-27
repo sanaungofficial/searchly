@@ -8,6 +8,7 @@ import {
   buildOnboardingVoiceAgentSettings,
   buildWorkspaceVoiceAgentSettings,
   resolveVoicePresetId,
+  type OnboardingCoachContext,
 } from "@/lib/voice-agent-config";
 import { NextResponse } from "next/server";
 
@@ -30,6 +31,23 @@ export async function GET(request: Request) {
   const pageHint = parsePageHint(searchParams);
   const voicePreset = resolveVoicePresetId(searchParams.get("preset"));
 
+  let onboardingCoach: OnboardingCoachContext | null = null;
+  if (context === "onboarding") {
+    const coachField = searchParams.get("coachField");
+    const coachQuestion = searchParams.get("coachQuestion");
+    const coachStep = searchParams.get("coachStep");
+    if (coachField && coachQuestion && coachStep) {
+      onboardingCoach = {
+        stepId: coachStep,
+        field: coachField,
+        question: coachQuestion,
+        hint: searchParams.get("coachHint") ?? undefined,
+        stepIndex: Math.max(0, Number(searchParams.get("coachIndex") ?? 0)),
+        stepTotal: Math.max(1, Number(searchParams.get("coachTotal") ?? 1)),
+      };
+    }
+  }
+
   let assistantContext = null;
   if (context === "workspace" && deepgramConfigured()) {
     const user = await prisma.user.findUnique({
@@ -50,7 +68,7 @@ export async function GET(request: Request) {
       thinkModel: "gpt-4o-mini",
       agent: deepgramConfigured()
         ? context === "onboarding"
-          ? buildOnboardingVoiceAgentSettings()
+          ? buildOnboardingVoiceAgentSettings(onboardingCoach)
           : await buildWorkspaceVoiceAgentSettings(assistantContext, voicePreset)
         : null,
       assistantSummary: assistantContext?.summary ?? null,
