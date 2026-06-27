@@ -227,6 +227,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Profile",
     variables: ["resumeSlice", "linkedinUrl", "headline", "skills", "tools", "targetRoles"],
   },
+  COMPANY_RECOMMENDATIONS: {
+    label: "Target Company AI Blurbs",
+    description: "One-sentence fit explanations for heuristic company picks (user-initiated refresh only).",
+    category: "Profile",
+    variables: ["targetRoles", "prioritizedRoles", "skills", "tools", "companiesJson", "profileSummary"],
+  },
   LINKEDIN_DRAFT: {
     label: "LinkedIn Profile Draft",
     description: "Transforms resume data into a LinkedIn-shaped profile with headline, About, and paragraph experience.",
@@ -1016,6 +1022,29 @@ Help them prepare effectively:
 - Whether an intro call makes sense if the match score is low (honest, not salesy)
 
 Be specific to this coach and candidate. Use bullet points when listing questions. Keep responses concise (2-4 short paragraphs unless they ask for more). No fluff.`,
+
+  COMPANY_RECOMMENDATIONS: `You explain why specific employers could be good target companies for a job seeker.
+
+PROFILE SUMMARY:
+{{profileSummary}}
+
+Target roles: {{targetRoles}}
+Top priority roles: {{prioritizedRoles}}
+Skills: {{skills}}
+Tools: {{tools}}
+
+COMPANIES (JSON array — write one blurb per slug):
+{{companiesJson}}
+
+For each company, write ONE concise sentence (max 22 words) explaining why it fits THIS candidate's background and goals. Reference concrete signals from their profile — not generic praise.
+
+Return ONLY a JSON object keyed by catalogSlug:
+{
+  "stripe": "Your payments/fintech background maps well to Stripe's product-engineering culture.",
+  "google": "..."
+}
+
+Include every slug from the input. No markdown.`,
 
   PROFILE_SUGGESTIONS: `You are analyzing a professional profile to generate specific, actionable improvement suggestions.
 
