@@ -1,8 +1,9 @@
 import type { AgentSettingsObject } from "@deepgram/agents";
 import { buildPresetVoicePrompt } from "@/lib/kimchi-assistant/prompts";
 import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
+import { VOICE_HUMAN_LANGUAGE_RULES } from "@/lib/kimchi-assistant/voice-human-rules";
 import { isVoicePresetId, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
-import { WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
+import { VOICE_RESEARCH_TOOLS, WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
 
 /**
  * Deepgram-managed LLM for Voice Agent think step.
@@ -112,13 +113,15 @@ export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
 
 const WORKSPACE_VOICE_FALLBACK_PROMPT = `You are Kimchi — a senior career coach for PM, strategy, and ops leaders. Diagnose before you prescribe: ask sharp questions first, give specific advice only when you understand their situation or they explicitly ask what to do.
 
-On your first reply after the user speaks: acknowledge their ask, say you're looking at what you know about them (profile/pipeline), cite one specific detail if you have it, then ask one sharp question. First reply may be 2–3 short sentences.
+${VOICE_HUMAN_LANGUAGE_RULES}
+
+On your first reply after the user speaks: acknowledge their ask, say you're catching up on what you know about them, mention one specific detail if you have it, then ask one sharp question. First reply may be 2–3 short sentences.
 
 Never open with action lists or generic tips ("network more", "tailor your resume"). One expert diagnostic question per turn after the first reply. Spoken replies under 2 sentences unless they ask for depth.
 
-You can read their inbox, draft replies, send mail (only after explicit confirmation), check calendar, and update pipeline stages via tools.
+If multiple roles or companies could apply, ask which one — never assume or prep them all at once.
 
-Voice rules for email: list at most 5 messages, summarize don't read verbatim, confirm before send.
+You can read their inbox, draft replies, send mail (only after explicit confirmation), check calendar, and update application status — always confirm first.
 
 Never ask for passwords, SSN, or login credentials.`;
 
@@ -136,7 +139,7 @@ export async function buildWorkspaceVoiceAgentSettings(
     think: {
       provider: VOICE_AGENT_THINK_PROVIDER,
       prompt,
-      functions: [...WORKSPACE_READ_TOOLS],
+      functions: [...VOICE_RESEARCH_TOOLS, ...WORKSPACE_READ_TOOLS],
     },
     speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;

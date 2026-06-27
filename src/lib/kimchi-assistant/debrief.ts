@@ -8,6 +8,9 @@ export type DebriefActionType =
   | "generate_career_strategy"
   | "open_inbox_activity"
   | "open_resume_editor"
+  | "open_pipeline_job"
+  | "open_target_company"
+  | "save_job_notes"
   | "ask_in_chat";
 
 /** @deprecated legacy stored actions */
@@ -27,6 +30,12 @@ export type VoiceDebriefResult = {
   actions: DebriefAction[];
 };
 
+export type DebriefContextHint = {
+  focusedJobId?: string | null;
+  pipelineJobs?: Array<{ id: string; company: string; role: string; stage?: string }>;
+  contextSources?: Array<{ id: string; label: string; route: string }>;
+};
+
 function presetActions(presetId: VoicePresetId): DebriefAction[] {
   switch (presetId) {
     case "search_plan":
@@ -36,6 +45,12 @@ function presetActions(presetId: VoicePresetId): DebriefAction[] {
           label: "Build my strategy doc",
           hint: "Turn this into a career strategy on Profile",
           type: "generate_career_strategy",
+        },
+        {
+          id: "open-company",
+          label: "Open target company",
+          hint: "Watchlist intel and open roles",
+          type: "open_target_company",
         },
         {
           id: "continue-search",
@@ -53,6 +68,18 @@ function presetActions(presetId: VoicePresetId): DebriefAction[] {
       ];
     case "interview_prep":
       return [
+        {
+          id: "open-job",
+          label: "Open role in pipeline",
+          hint: "Posting, fit score, and your notes",
+          type: "open_pipeline_job",
+        },
+        {
+          id: "save-job-notes",
+          label: "Save prep notes to job",
+          hint: "Appends session notes to the pipeline role",
+          type: "save_job_notes",
+        },
         {
           id: "prep-checklist",
           label: "Make a prep checklist",
@@ -91,6 +118,12 @@ function presetActions(presetId: VoicePresetId): DebriefAction[] {
       ];
     case "what_to_focus":
       return [
+        {
+          id: "open-job",
+          label: "Open priority role",
+          hint: "Pipeline job we discussed",
+          type: "open_pipeline_job",
+        },
         {
           id: "focus-chat",
           label: "What's my #1 priority?",
@@ -167,8 +200,9 @@ export async function runVoiceDebrief(params: {
   userId: string;
   presetId: VoicePresetId;
   transcript: string;
+  contextHint?: DebriefContextHint;
 }): Promise<VoiceDebriefResult> {
-  const { presetId, transcript } = params;
+  const { presetId, transcript, contextHint } = params;
   const preset = getVoicePreset(presetId);
   const allowed = presetActions(presetId);
 
@@ -183,12 +217,34 @@ export async function runVoiceDebrief(params: {
     2,
   );
 
+  const contextBlock = contextHint
+    ? `\nContext for action payloads (use exact ids when a specific job/company was discussed):
+${contextHint.focusedJobId ? `- Focused job id: ${contextHint.focusedJobId}` : ""}
+${
+  contextHint.pipelineJobs?.length
+    ? `- Pipeline jobs:\n${contextHint.pipelineJobs
+        .slice(0, 12)
+        .map((j) => `  · ${j.role} at ${j.company}${j.stage ? ` (${j.stage})` : ""} — id ${j.id}`)
+        .join("\n")}`
+    : ""
+}
+${
+  contextHint.contextSources?.length
+    ? `- Editable sources:\n${contextHint.contextSources
+        .slice(0, 8)
+        .map((s) => `  · ${s.label} → ${s.route}`)
+        .join("\n")}`
+    : ""
+}`
+    : "";
+
   const template = await getPrompt("KIMCHI_VOICE_DEBRIEF");
   const prompt = interpolate(template, {
     presetTitle: preset.title,
     allowedActionTypes: allowedTypes,
     allowedActionsJson,
     transcript: transcript.slice(0, 12000),
+    contextBlock,
   });
 
   try {

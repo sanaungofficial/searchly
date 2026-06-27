@@ -44,7 +44,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "🎯",
     accent: "#BC6C25",
     promptKey: VOICE_PRESET_PROMPT_KEYS.interview_prep,
-    promptFocus: `Expert interview prep: find out which interview, format, and worries first — then probe stories and gaps. Ask diagnostic questions, don't lecture with generic prep tips. One question at a time. Under 2 sentences per reply.`,
+    promptFocus: `Expert interview prep: nail down ONE interview first — ask which role if unclear or if there are several. Confirm format before drilling. Never prep multiple roles at once. One question at a time. Under 2 sentences per reply.`,
   },
   {
     id: "my_story",
@@ -62,7 +62,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "⚡",
     accent: "#E09F3E",
     promptKey: VOICE_PRESET_PROMPT_KEYS.what_to_focus,
-    promptFocus: `Expert prioritization: find what's stuck or creating drag before recommending one priority. Use pipeline and inbox data in your questions. No laundry lists — diagnose first. One question at a time. Under 2 sentences.`,
+    promptFocus: `Expert prioritization: find what's stuck or creating drag before recommending one priority. If multiple roles are in play, ask which one — never assume. No laundry lists. One question at a time. Under 2 sentences.`,
   },
   {
     id: "general",
