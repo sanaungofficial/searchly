@@ -23,8 +23,6 @@ export function networkFormFromProfileDefaults(
   const remoteType = defaults.locationTypes?.find((t) => /remote|hybrid|on-?site/i.test(t));
   if (remoteType) form.remoteOption = remoteType;
 
-  if (defaults.salaryFrom != null) form.salaryFrom = String(defaults.salaryFrom);
-
   return form;
 }
 
