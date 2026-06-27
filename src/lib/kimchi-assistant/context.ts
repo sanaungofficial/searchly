@@ -429,6 +429,7 @@ ${ctx.creditsHint}
 ${suggestionBlock}
 
 Citation rules:
+- On your FIRST reply, always signal you're reviewing their file ("let me look at what I know about you") and cite at least one concrete detail from the sections below.
 - When referencing their background, say "based on your profile" or cite the master resume by name (e.g. "In your master resume, [filename]…").
 - When referencing pipeline roles, name the company and role (e.g. "your Stripe PM application").
 - When discussing interviews, start from the Active applications section — cite fit rationale or their notes if listed.
