@@ -184,6 +184,7 @@ type Props = {
   onOpenMessage?: (messageId: string) => void;
   onComposeTo?: (email: string, name: string | null) => void;
   onNotice?: (n: { type: "success" | "error"; text: string }) => void;
+  mailConnected?: boolean;
 };
 
 export function InboxContactDrawer({
@@ -193,6 +194,7 @@ export function InboxContactDrawer({
   onOpenMessage,
   onComposeTo,
   onNotice,
+  mailConnected = true,
 }: Props) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
@@ -311,9 +313,57 @@ export function InboxContactDrawer({
     }
   }
 
+  async function linkJobViaContact(jobId: string | null) {
+    setJobLinkSaving(true);
+    try {
+      const res = await fetch(
+        scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}/job`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            jobId
+              ? { jobId }
+              : { jobId: null, unlinkJobId: card?.linkedJobs[0]?.id ?? null },
+          ),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not link opportunity");
+      onNotice?.({ type: "success", text: jobId ? "Linked to opportunity." : "Link removed." });
+      await load();
+    } catch (e) {
+      onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not link opportunity." });
+    } finally {
+      setJobLinkSaving(false);
+    }
+  }
+
+  async function createAndLinkJobViaContact(company: string, role: string) {
+    setJobLinkSaving(true);
+    try {
+      const res = await fetch(
+        scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}/job`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ create: { company, role } }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not create opportunity");
+      onNotice?.({ type: "success", text: "Opportunity created and linked." });
+      await load();
+    } catch (e) {
+      onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not create opportunity." });
+    } finally {
+      setJobLinkSaving(false);
+    }
+  }
+
   async function linkJob(jobId: string | null) {
     if (!latestEmailActivity?.nylasMessageId) {
-      onNotice?.({ type: "error", text: "Open an email thread first to link an opportunity." });
+      await linkJobViaContact(jobId);
       return;
     }
     setJobLinkSaving(true);
@@ -339,7 +389,7 @@ export function InboxContactDrawer({
 
   async function createAndLinkJob(company: string, role: string) {
     if (!latestEmailActivity?.nylasMessageId) {
-      onNotice?.({ type: "error", text: "No email activity to link yet." });
+      await createAndLinkJobViaContact(company, role);
       return;
     }
     setJobLinkSaving(true);
@@ -433,8 +483,10 @@ export function InboxContactDrawer({
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingLeft: 32 }}>
               <button
                 type="button"
-                style={headerBtn}
-                onClick={() => onComposeTo?.(card.contact.email, card.contact.name)}
+                style={{ ...headerBtn, opacity: mailConnected ? 1 : 0.5 }}
+                disabled={!mailConnected}
+                title={mailConnected ? undefined : "Connect inbox to send email"}
+                onClick={() => mailConnected && onComposeTo?.(card.contact.email, card.contact.name)}
               >
                 Email
               </button>
