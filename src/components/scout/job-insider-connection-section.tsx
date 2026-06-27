@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   InsiderConnectionBucket,
   InsiderConnectionsResult,
@@ -8,36 +8,40 @@ import type {
 } from "@/lib/sumble/types";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { fontSans, color, border, surface, type as T } from "@/lib/typography";
-import { ScoutBox, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox } from "./scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const THEME: Record<
   InsiderConnectionBucket["theme"],
-  { border: string; bg: string; avatar: string; accent: string }
+  { border: string; bg: string; avatar: string; accent: string; topBar: string }
 > = {
   green: {
-    border: "rgba(74,139,106,0.35)",
-    bg: "rgba(74,139,106,0.08)",
+    border: "rgba(74,139,106,0.25)",
+    bg: "#fff",
     avatar: "#4A8B6A",
     accent: color.forest,
+    topBar: "#4A8B6A",
   },
   teal: {
-    border: "rgba(45,125,118,0.35)",
-    bg: "rgba(45,125,118,0.08)",
+    border: "rgba(45,125,118,0.25)",
+    bg: "#fff",
     avatar: "#2D7D76",
     accent: "#2D7D76",
+    topBar: "#2D7D76",
   },
   blue: {
-    border: "rgba(59,130,246,0.35)",
-    bg: "rgba(59,130,246,0.08)",
+    border: "rgba(59,130,246,0.25)",
+    bg: "#fff",
     avatar: "#3B82F6",
     accent: "#2563EB",
+    topBar: "#3B82F6",
   },
   purple: {
-    border: "rgba(139,92,246,0.35)",
-    bg: "rgba(139,92,246,0.08)",
+    border: "rgba(139,92,246,0.25)",
+    bg: "#fff",
     avatar: "#8B5CF6",
     accent: "#7C3AED",
+    topBar: "#8B5CF6",
   },
 };
 
@@ -48,7 +52,13 @@ function initials(name: string): string {
   return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
 }
 
-function AvatarStack({ people, theme }: { people: SumblePersonPreview[]; theme: InsiderConnectionBucket["theme"] }) {
+function AvatarStack({
+  people,
+  theme,
+}: {
+  people: SumblePersonPreview[];
+  theme: InsiderConnectionBucket["theme"];
+}) {
   const colors = THEME[theme];
   const shown = people.slice(0, 5);
   return (
@@ -64,7 +74,7 @@ function AvatarStack({ people, theme }: { people: SumblePersonPreview[]; theme: 
             background: colors.avatar,
             color: "#fff",
             fontFamily: fontSans,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 700,
             display: "inline-flex",
             alignItems: "center",
@@ -78,6 +88,55 @@ function AvatarStack({ people, theme }: { people: SumblePersonPreview[]; theme: 
           {initials(person.name)}
         </span>
       ))}
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div
+      style={{
+        flex: "1 1 0",
+        minWidth: 180,
+        border: border.line,
+        borderRadius: "var(--scout-radius)",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ height: 4, background: "#e5e5e5" }} />
+      <div style={{ padding: "16px 16px 14px" }}>
+        <div
+          style={{
+            width: "60%",
+            height: 12,
+            background: "#f0f0f0",
+            borderRadius: 4,
+            marginBottom: 12,
+          }}
+        />
+        <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                background: "#f0f0f0",
+                marginLeft: i === 0 ? 0 : -10,
+              }}
+            />
+          ))}
+        </div>
+        <div
+          style={{
+            width: "80%",
+            height: 10,
+            background: "#f0f0f0",
+            borderRadius: 4,
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -96,65 +155,111 @@ function ConnectionCard({
   return (
     <div
       style={{
-        flex: "1 1 220px",
-        minWidth: 200,
+        flex: "1 1 0",
+        minWidth: 180,
         border: `1px solid ${colors.border}`,
-        background: colors.bg,
         borderRadius: "var(--scout-radius)",
-        padding: "16px 16px 14px",
+        overflow: "hidden",
+        background: colors.bg,
         display: "flex",
         flexDirection: "column",
-        gap: 12,
       }}
     >
-      <div>
-        <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: colors.accent, margin: "0 0 4px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          {bucket.title}
-        </p>
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>
-          {bucket.subtitle}
-        </p>
-      </div>
-
-      {lead ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <AvatarStack people={bucket.people} theme={bucket.theme} />
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.stone, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {lead.name}
-              {others > 0 ? ` & ${others} connection${others === 1 ? "" : "s"}` : ""}
-            </p>
-            {lead.contextLabel && (
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: colors.accent, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {lead.contextLabel}
-              </p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-          No matches yet — try Find more on LinkedIn.
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={onView}
+      <div style={{ height: 4, background: colors.topBar }} />
+      <div
         style={{
-          alignSelf: "flex-start",
-          padding: "8px 14px",
-          background: "#fff",
-          border: border.line,
-          borderRadius: "var(--scout-radius)",
-          fontFamily: fontSans,
-          fontSize: T.caption,
-          fontWeight: 600,
-          color: color.stone,
-          cursor: "pointer",
+          padding: "14px 16px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          flex: 1,
         }}
       >
-        View
-      </button>
+        <p
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 700,
+            color: colors.accent,
+            margin: 0,
+            letterSpacing: "0.02em",
+          }}
+        >
+          {bucket.title}
+        </p>
+
+        {lead ? (
+          <>
+            <AvatarStack people={bucket.people} theme={bucket.theme} />
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  fontWeight: 600,
+                  color: color.stone,
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {lead.name}
+                {others > 0
+                  ? ` & ${others} connection${others === 1 ? "" : "s"}`
+                  : ""}
+              </p>
+              {lead.contextLabel && (
+                <p
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: T.caption,
+                    color: colors.accent,
+                    margin: "2px 0 0",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {lead.contextLabel}
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.muted,
+              margin: 0,
+              lineHeight: 1.45,
+            }}
+          >
+            No matches yet
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={onView}
+          style={{
+            alignSelf: "flex-start",
+            marginTop: "auto",
+            padding: "7px 14px",
+            background: "#fff",
+            border: border.line,
+            borderRadius: "var(--scout-radius)",
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 600,
+            color: color.stone,
+            cursor: "pointer",
+          }}
+        >
+          View
+        </button>
+      </div>
     </div>
   );
 }
@@ -178,19 +283,22 @@ function PersonRow({
   const save = async () => {
     setSaving(true);
     try {
-      const res = await fetch(withClientScope("/api/jobs/insider-connections/save-contact"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: person.name,
-          title: person.title,
-          company: companyName,
-          linkedinUrl: person.linkedinUrl,
-          email: person.email,
-          jobId,
-          role: "insider_connection",
-        }),
-      });
+      const res = await fetch(
+        withClientScope("/api/jobs/insider-connections/save-contact"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: person.name,
+            title: person.title,
+            company: companyName,
+            linkedinUrl: person.linkedinUrl,
+            email: person.email,
+            jobId,
+            role: "insider_connection",
+          }),
+        },
+      );
       if (res.ok) {
         setSaved(true);
         onSaved();
@@ -229,16 +337,41 @@ function PersonRow({
         {initials(person.name)}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.stone, margin: 0 }}>
+        <p
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.bodySm,
+            fontWeight: 600,
+            color: color.stone,
+            margin: 0,
+          }}
+        >
           {person.name}
         </p>
         {person.title && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.muted,
+              margin: "2px 0 0",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {person.title}
           </p>
         )}
         {person.contextLabel && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, margin: "2px 0 0" }}>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.forest,
+              margin: "2px 0 0",
+            }}
+          >
             {person.contextLabel}
           </p>
         )}
@@ -333,16 +466,50 @@ function BucketModal({
           padding: "22px 22px 18px",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 8,
+          }}
+        >
           <div>
-            <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 700, color: color.stone, margin: 0 }}>
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.body,
+                fontWeight: 700,
+                color: color.stone,
+                margin: 0,
+              }}
+            >
               {bucket.title}
             </p>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0" }}>
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                color: color.muted,
+                margin: "4px 0 0",
+              }}
+            >
               {bucket.subtitle}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: color.muted, lineHeight: 1 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 22,
+              cursor: "pointer",
+              color: color.muted,
+              lineHeight: 1,
+            }}
+          >
             ×
           </button>
         </div>
@@ -370,8 +537,16 @@ function BucketModal({
         </a>
 
         {bucket.people.length === 0 ? (
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-            No preview contacts returned — use LinkedIn search for the full list.
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              color: color.muted,
+              margin: 0,
+            }}
+          >
+            No preview contacts returned — use LinkedIn search for the full
+            list.
           </p>
         ) : (
           bucket.people.map((person) => (
@@ -410,31 +585,38 @@ export function JobInsiderConnectionSection({
   withClientScope,
 }: JobInsiderConnectionSectionProps) {
   const isMobile = useIsMobile();
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState<InsiderConnectionsResult | null>(null);
-  const [activeBucket, setActiveBucket] = useState<InsiderConnectionBucket | null>(null);
+  const [activeBucket, setActiveBucket] =
+    useState<InsiderConnectionBucket | null>(null);
   const [linkedinInput, setLinkedinInput] = useState("");
-  const [emailLookup, setEmailLookup] = useState<{ email: string | null; name: string | null; error?: string } | null>(null);
+  const [emailLookup, setEmailLookup] = useState<{
+    email: string | null;
+    name: string | null;
+    error?: string;
+  } | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
+  const fetchedRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(withClientScope("/api/jobs/insider-connections"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName,
-          jobTitle,
-          companyWebsite,
-          linkedinUrl,
-          jobTeam,
-        }),
-      });
+      const res = await fetch(
+        withClientScope("/api/jobs/insider-connections"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            companyName,
+            jobTitle,
+            companyWebsite,
+            linkedinUrl,
+            jobTeam,
+          }),
+        },
+      );
       const json = (await res.json()) as InsiderConnectionsResult;
       setData(json);
-      setLoaded(true);
     } catch {
       setData({
         configured: false,
@@ -443,34 +625,115 @@ export function JobInsiderConnectionSection({
         buckets: [],
         error: "Could not load connections.",
       });
-      setLoaded(true);
     } finally {
       setLoading(false);
     }
-  }, [companyName, jobTitle, companyWebsite, linkedinUrl, jobTeam, withClientScope]);
+  }, [
+    companyName,
+    jobTitle,
+    companyWebsite,
+    linkedinUrl,
+    jobTeam,
+    withClientScope,
+  ]);
 
-  const buckets = useMemo(() => data?.buckets ?? [], [data?.buckets]);
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    void load();
+  }, [load]);
+
+  const displayBuckets = useMemo(() => {
+    const buckets = data?.buckets ?? [];
+    if (!buckets.length) return [];
+
+    const beyond = buckets.find((b) => b.id === "decision_makers");
+    const past = buckets.find((b) => b.id === "past_companies");
+    const school = buckets.find((b) => b.id === "school");
+    const team = buckets.find((b) => b.id === "team");
+
+    const result: InsiderConnectionBucket[] = [];
+
+    if (beyond) {
+      const merged: InsiderConnectionBucket = {
+        ...beyond,
+        title: "Beyond Your Network",
+        theme: "green",
+      };
+      if (team && team.people.length > 0) {
+        const seenIds = new Set(
+          merged.people.map((p) => p.personId ?? p.name),
+        );
+        const extra = team.people.filter(
+          (p) => !seenIds.has(p.personId ?? p.name),
+        );
+        merged.people = [...merged.people, ...extra].slice(0, 5);
+        merged.totalCount = Math.max(
+          merged.totalCount + extra.length,
+          merged.people.length,
+        );
+      }
+      result.push(merged);
+    } else if (team) {
+      result.push({ ...team, title: "Beyond Your Network", theme: "green" });
+    }
+
+    if (past) {
+      result.push({
+        ...past,
+        title: "From Your Previous Company",
+        theme: "blue",
+      });
+    }
+
+    if (school) {
+      result.push({ ...school, title: "From Your School", theme: "purple" });
+    }
+
+    return result;
+  }, [data?.buckets]);
 
   const findEmail = async () => {
     const url = normalizeLinkedInUrl(linkedinInput);
     if (!url) {
-      setEmailLookup({ email: null, name: null, error: "Paste a valid LinkedIn profile URL." });
+      setEmailLookup({
+        email: null,
+        name: null,
+        error: "Paste a valid LinkedIn profile URL.",
+      });
       return;
     }
     setEmailLoading(true);
     setEmailLookup(null);
     try {
-      const res = await fetch(withClientScope("/api/jobs/insider-connections/reveal-email"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkedinUrl: url }),
-      });
-      const json = (await res.json()) as { email?: string | null; name?: string | null; error?: string };
+      const res = await fetch(
+        withClientScope("/api/jobs/insider-connections/reveal-email"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ linkedinUrl: url }),
+        },
+      );
+      const json = (await res.json()) as {
+        email?: string | null;
+        name?: string | null;
+        error?: string;
+      };
       if (!res.ok) {
-        setEmailLookup({ email: null, name: null, error: json.error ?? "No email found." });
+        setEmailLookup({
+          email: null,
+          name: null,
+          error: json.error ?? "No email found.",
+        });
         return;
       }
-      setEmailLookup({ email: json.email ?? null, name: json.name ?? null, error: json.email ? undefined : "No work email on file for this profile." });
+      setEmailLookup({
+        email: json.email ?? null,
+        name: json.name ?? null,
+        error: json.email
+          ? undefined
+          : "No work email on file for this profile.",
+      });
     } catch {
       setEmailLookup({ email: null, name: null, error: "Lookup failed." });
     } finally {
@@ -478,18 +741,71 @@ export function JobInsiderConnectionSection({
     }
   };
 
+  const hasError = !loading && data?.error && displayBuckets.length === 0;
+  const hasData = !loading && displayBuckets.length > 0;
+
   return (
-    <ScoutBox padding={isMobile ? 16 : 20} style={{ marginBottom: 22, background: "linear-gradient(180deg, rgba(74,139,106,0.06) 0%, #fff 100%)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+    <ScoutBox
+      padding={isMobile ? 16 : 20}
+      style={{
+        marginBottom: 22,
+        background:
+          "linear-gradient(180deg, rgba(74,139,106,0.06) 0%, #fff 100%)",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          marginBottom: 6,
+          flexWrap: "wrap",
+        }}
+      >
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: color.forest, display: "inline-block" }} />
-            <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 700, color: color.stone, margin: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: color.forest,
+                display: "inline-block",
+              }}
+            />
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.body,
+                fontWeight: 700,
+                color: color.stone,
+                margin: 0,
+              }}
+            >
               Insider Connection @{companyName}
             </p>
           </div>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55, maxWidth: 640 }}>
-            Discover people at this company who might share your background — decision makers, teammates, ex-colleagues, and alumni paths.
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              color: color.muted,
+              margin: 0,
+              lineHeight: 1.55,
+              maxWidth: 640,
+            }}
+          >
+            Discover valuable connections within the company who might provide
+            insights and potential referrals.
           </p>
         </div>
         <span
@@ -509,32 +825,77 @@ export function JobInsiderConnectionSection({
         </span>
       </div>
 
-      {!loaded ? (
-        <div style={{ marginTop: 14 }}>
-          <ScoutSecondaryBtn onClick={() => void load()} disabled={loading}>
-            {loading ? "Finding connections…" : "Find insider connections"}
-          </ScoutSecondaryBtn>
+      {/* Connection cards — loading skeleton, error, or data */}
+      {loading ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            marginTop: 14,
+            flexDirection: isMobile ? "column" : "row",
+          }}
+        >
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
-      ) : data?.error && buckets.length === 0 ? (
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "14px 0 0" }}>{data.error}</p>
-      ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
-          {buckets.map((bucket) => (
-            <ConnectionCard key={bucket.id} bucket={bucket} onView={() => setActiveBucket(bucket)} />
+      ) : hasError ? (
+        <p
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.bodySm,
+            color: color.muted,
+            margin: "14px 0 0",
+          }}
+        >
+          {data?.error}
+        </p>
+      ) : hasData ? (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            marginTop: 14,
+            flexDirection: isMobile ? "column" : "row",
+          }}
+        >
+          {displayBuckets.map((bucket) => (
+            <ConnectionCard
+              key={bucket.id}
+              bucket={bucket}
+              onView={() => setActiveBucket(bucket)}
+            />
           ))}
         </div>
-      )}
+      ) : null}
 
-      {loaded && (
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: border.line }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.stone, margin: "0 0 8px" }}>
+      {/* Find any email — always visible after loading */}
+      {!loading && (
+        <div
+          style={{ marginTop: 18, paddingTop: 16, borderTop: border.line }}
+        >
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              fontWeight: 600,
+              color: color.stone,
+              margin: "0 0 8px",
+            }}
+          >
             Find any email
           </p>
-          <div style={{ display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexDirection: isMobile ? "column" : "row",
+            }}
+          >
             <input
               value={linkedinInput}
               onChange={(e) => setLinkedinInput(e.target.value)}
-              placeholder="Paste any LinkedIn profile URL to find work emails"
+              placeholder="Paste any LinkedIn profile URL (e.g., https://www.linkedin.com/in/xxxxx/) to find work emails instantly."
               style={{
                 flex: 1,
                 padding: "11px 12px",
@@ -565,7 +926,14 @@ export function JobInsiderConnectionSection({
             </button>
           </div>
           {emailLookup && (
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: emailLookup.error ? "#9A4A4A" : color.forest, margin: "8px 0 0" }}>
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                color: emailLookup.error ? "#9A4A4A" : color.forest,
+                margin: "8px 0 0",
+              }}
+            >
               {emailLookup.error ??
                 (emailLookup.email
                   ? `${emailLookup.name ? `${emailLookup.name}: ` : ""}${emailLookup.email}`
