@@ -16,7 +16,8 @@ export type ChipAction =
   | { type: "open_strategy" }
   | { type: "generate_strategy" }
   | { type: "inbox_insight"; activityId?: string }
-  | { type: "add_skill"; skill: string };
+  | { type: "add_skill"; skill: string }
+  | { type: "show_recommendations" };
 
 /** @deprecated use AssistantChip */
 export type ChatChip = {
@@ -274,6 +275,117 @@ export function buildKnowsYouPreview(ctx: AssistantContextPayload | null): Knows
   return { headline, details: details.slice(0, 2) };
 }
 
+const MAX_CHIP_LABEL = 42;
+
+/** Short, verb-first labels for chips shown in the UI. */
+export function compactChipLabel(label: string, max = MAX_CHIP_LABEL): string {
+  const t = label.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  if (lastSpace > max * 0.55) return `${cut.slice(0, lastSpace).trim()}…`;
+  return `${cut.trim()}…`;
+}
+
+function compactChip(chip: AssistantChip): AssistantChip {
+  return { ...chip, label: compactChipLabel(chip.label) };
+}
+
+/** Big-bucket starters for new threads — stable, not personalized. */
+export const BUCKET_WELCOME_CHIPS: AssistantChip[] = [
+  {
+    id: "bucket-interview",
+    label: "Prep for an interview",
+    variant: "action",
+    tone: "violet",
+    action: { type: "chat", prompt: "Help me prep for an upcoming interview." },
+  },
+  {
+    id: "bucket-search",
+    label: "Start my job search",
+    variant: "action",
+    tone: "mint",
+    action: { type: "chat", prompt: "Help me get my job search started — what should I focus on first?" },
+  },
+  {
+    id: "bucket-strategy",
+    label: "Work on my strategy",
+    variant: "action",
+    tone: "violet",
+    action: { type: "chat", prompt: "Help me figure out my job search strategy and what to prioritize." },
+  },
+  {
+    id: "bucket-strengths",
+    label: "Know what I'm good at",
+    variant: "action",
+    tone: "sky",
+    action: { type: "chat", prompt: "Help me understand what I'm good at and how to talk about it." },
+  },
+  {
+    id: "bucket-priority",
+    label: "Know what to do next",
+    variant: "action",
+    tone: "rose",
+    action: { type: "chat", prompt: "What should I focus on next in my job search?" },
+  },
+  {
+    id: "bucket-learn",
+    label: "Know what to learn",
+    variant: "action",
+    tone: "amber",
+    action: { type: "chat", prompt: "What skills or gaps should I work on for the roles I'm targeting?" },
+  },
+  {
+    id: "what-recommend",
+    label: "What do you recommend?",
+    variant: "action",
+    tone: "neutral",
+    action: { type: "show_recommendations" },
+  },
+];
+
+/** Short starters when prepping for a coach session. */
+export const COACH_PREP_STARTER_CHIPS: AssistantChip[] = [
+  {
+    id: "coach-ask-track",
+    label: "Ask about their track record",
+    variant: "chat",
+    tone: "mint",
+    action: { type: "chat", prompt: "What should I ask about their track record and results?" },
+  },
+  {
+    id: "coach-open",
+    label: "Open without wasting time",
+    variant: "chat",
+    tone: "sky",
+    action: { type: "chat", prompt: "How should I open the call without wasting time?" },
+  },
+  {
+    id: "coach-walkaway",
+    label: "Know what to walk away with",
+    variant: "chat",
+    tone: "violet",
+    action: { type: "chat", prompt: "What should I walk away with from this session?" },
+  },
+  {
+    id: "coach-worth",
+    label: "Decide if they're worth it",
+    variant: "chat",
+    tone: "rose",
+    action: { type: "chat", prompt: "Is this coach worth my time given my goals?" },
+  },
+];
+
+export function buildCoachPrepWelcomeMessage(
+  coachName: string,
+  matchScore?: number,
+  matchLabel?: string,
+): string {
+  const matchNote =
+    matchScore && matchScore > 0 ? ` You're a ${matchLabel ?? "match"} (${matchScore}/100) on paper.` : "";
+  return `Let's prep for your session with ${coachName}.${matchNote} Pick a starter below or ask anything.`;
+}
+
 const GENERIC_CHAT_STARTERS: AssistantChip[] = [
   {
     id: "plan-search",
@@ -468,36 +580,8 @@ function suggestionToWelcomeChip(
   return suggestionToActionChip(s);
 }
 
-export function buildWelcomeChips(ctx: AssistantContextPayload | null): AssistantChip[] {
-  if (!ctx?.suggestions?.length) {
-    return GENERIC_CHAT_STARTERS.map((chip) => ({
-      ...chip,
-      variant: "action" as const,
-    })).slice(0, 4);
-  }
-
-  const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
-  const chips: AssistantChip[] = [];
-  const seen = new Set<string>();
-
-  for (const s of filtered) {
-    const chip = suggestionToWelcomeChip(s, ctx);
-    if (!chip || seen.has(chip.label)) continue;
-    if (shouldSkipChipForContext(chip, ctx)) continue;
-    seen.add(chip.label);
-    chips.push(chip);
-  }
-
-  if (chips.length < 3) {
-    for (const chip of GENERIC_CHAT_STARTERS) {
-      const welcomeChip: AssistantChip = { ...chip, variant: "action", id: `welcome-${chip.id}` };
-      if (seen.has(welcomeChip.label)) continue;
-      seen.add(welcomeChip.label);
-      chips.push(welcomeChip);
-    }
-  }
-
-  return chips.slice(0, 5);
+export function buildWelcomeChips(_ctx: AssistantContextPayload | null): AssistantChip[] {
+  return BUCKET_WELCOME_CHIPS.map(compactChip);
 }
 
 /** Profile-aware suggestion chips (same source as the old "Suggested" strip). */
@@ -817,10 +901,11 @@ export function buildFollowUpChips(params: {
   const usedLabels = new Set<string>();
 
   const pushChip = (chip: AssistantChip) => {
-    if (usedLabels.has(chip.label)) return;
-    if (shouldSkipChipForContext(chip, ctx)) return;
-    usedLabels.add(chip.label);
-    out.push(chip);
+    const compact = compactChip(chip);
+    if (usedLabels.has(compact.label)) return;
+    if (shouldSkipChipForContext(compact, ctx)) return;
+    usedLabels.add(compact.label);
+    out.push(compact);
   };
 
   if (ctx?.suggestions?.length) {
@@ -865,23 +950,23 @@ export function buildFollowUpChips(params: {
       }
       if (shouldSkipChipForContext(chip, ctx)) continue;
       pushChip(chip);
-      if (out.length >= 5) return out;
+      if (out.length >= 4) return out.slice(0, 4);
     }
   }
 
   if (ctx) {
     for (const chip of buildPersonalizedFollowUpExtras(ctx, combined)) {
       pushChip(chip);
-      if (out.length >= 5) return out;
+      if (out.length >= 4) return out.slice(0, 4);
     }
   }
 
   for (const chip of FALLBACK_DRILLDOWNS) {
     pushChip(chip);
-    if (out.length >= 5) break;
+    if (out.length >= 4) break;
   }
 
-  return out;
+  return out.slice(0, 4);
 }
 
 /** Back-compat for follow-ups API */
@@ -905,7 +990,7 @@ export function legacyToChips(chips: ChatChip[]): AssistantChip[] {
 }
 
 export const WELCOME_MESSAGE =
-  "Hey — what's on your mind today? I've got your search in the background, so feel free to ask anything.";
+  "Hey — what do you want to work on? Pick a topic below or ask anything.";
 
 export function isFailedAssistantReply(text: string): boolean {
   return /couldn't generate|didn't get a reply|Something went wrong|hit a snag|isn't available in this environment|That didn't work|Couldn't reach Kimchi/i.test(
@@ -932,7 +1017,9 @@ export function isWelcomeOnlyThread(
       c.includes("pick something below") ||
       c.includes("what's on your mind") ||
       c.includes("Ask anything about your search") ||
-      c.includes("Hey —")
+      c.includes("Hey —") ||
+      c.includes("Pick a starter below") ||
+      c.includes("Let's prep for your session")
     );
   }
   return false;
