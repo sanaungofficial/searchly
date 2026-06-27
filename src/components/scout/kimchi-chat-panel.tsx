@@ -1152,14 +1152,19 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               {!voiceUnavailable && voiceAvailable !== false && !sessionActive && (
                 <button
                   type="button"
-                  className="kimchi-composer-box__talk-btn"
+                  className="kimchi-composer-box__voice-pill"
                   onClick={() => setPresetMenuOpen((v) => !v)}
                   aria-label="Talk it out"
                   title="Talk it out — voice agent"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="3" y="10" width="2.5" height="4" rx="1.25" fill="currentColor" />
+                    <rect x="7.5" y="7" width="2.5" height="10" rx="1.25" fill="currentColor" />
+                    <rect x="12" y="4" width="2.5" height="16" rx="1.25" fill="currentColor" />
+                    <rect x="16.5" y="7" width="2.5" height="10" rx="1.25" fill="currentColor" />
+                    <rect x="21" y="10" width="2.5" height="4" rx="1.25" fill="currentColor" />
                   </svg>
+                  <span>Voice</span>
                 </button>
               )}
               <button
@@ -1443,7 +1448,7 @@ function KimchiChatPanelStyles() {
       .kimchi-chips-below {
         flex-shrink: 0;
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: 6px;
         padding: 4px 20px 14px;
         overflow-x: auto;
@@ -1776,22 +1781,27 @@ function KimchiChatPanelStyles() {
         opacity: 0.5;
         cursor: wait;
       }
-      .kimchi-composer-box__talk-btn {
-        width: 34px;
-        height: 34px;
-        border: none;
-        border-radius: 50%;
-        background: transparent;
-        color: rgba(26, 58, 47, 0.45);
-        display: flex;
+      .kimchi-composer-box__voice-pill {
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
+        gap: 5px;
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid rgba(26, 58, 47, 0.15);
+        border-radius: 999px;
+        background: rgba(26, 58, 47, 0.04);
+        color: rgba(26, 58, 47, 0.6);
+        font-family: ${sans};
+        font-size: 13px;
+        font-weight: 500;
         cursor: pointer;
-        transition: background 0.12s, color 0.12s;
+        transition: background 0.12s, border-color 0.12s, color 0.12s;
         flex-shrink: 0;
+        white-space: nowrap;
       }
-      .kimchi-composer-box__talk-btn:hover {
-        background: rgba(26, 58, 47, 0.06);
+      .kimchi-composer-box__voice-pill:hover {
+        background: rgba(26, 58, 47, 0.08);
+        border-color: rgba(26, 58, 47, 0.25);
         color: #1A3A2F;
       }
       .kimchi-composer-box__send {
