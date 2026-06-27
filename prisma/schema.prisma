@@ -324,6 +324,7 @@ model CoachProfile {
   bookings       CoachBooking[]
   communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
+  liveSessionCoHosts LiveSessionCoHost[]
   pricingPackages CoachPricingPackage[]
   bulkDiscounts   CoachBulkDiscount[]
   purchases       CoachPurchase[]
@@ -511,8 +512,14 @@ model CoachBookingCommunication {
   @@index([bookingId])
 }
 
+enum LiveSessionFormat {
+  INTERACTIVE
+  BROADCAST
+}
+
 enum LiveSessionStatus {
   DRAFT
+  PENDING_APPROVAL
   SCHEDULED
   LIVE
   ENDED
@@ -538,7 +545,15 @@ model LiveSession {
 
   scheduledStart   DateTime
   scheduledEnd     DateTime
-  status           LiveSessionStatus @default(SCHEDULED)
+  timezone         String            @default("America/New_York")
+  status           LiveSessionStatus @default(DRAFT)
+  format           LiveSessionFormat @default(INTERACTIVE)
+
+  coverImageUrl    String?
+  replayEnabled    Boolean           @default(false)
+  rejectionReason  String?
+  submittedForApprovalAt DateTime?
+  approvedAt       DateTime?
 
   isFeaturedWeekly Boolean           @default(false)
   bgColor          String            @default("#1A3A2F")
@@ -563,12 +578,28 @@ model LiveSession {
 
   registrations    LiveSessionRegistration[]
   events           LiveSessionEvent[]
+  coHosts          LiveSessionCoHost[]
 
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   @@index([status])
   @@index([scheduledStart])
+  @@index([coachProfileId])
+}
+
+model LiveSessionCoHost {
+  id             String        @id @default(cuid())
+  liveSessionId  String
+  liveSession    LiveSession   @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  coachProfileId String?
+  coachProfile   CoachProfile? @relation(fields: [coachProfileId], references: [id], onDelete: SetNull)
+  displayName    String
+  email          String?
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+
+  @@index([liveSessionId])
   @@index([coachProfileId])
 }
 

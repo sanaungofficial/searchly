@@ -65,7 +65,12 @@ export async function POST(request: Request) {
     ({ role, isHost } = await resolveLiveJoinRole({
       operator,
       authEmail: authUser.email,
-      session,
+      session: {
+        id: session.id,
+        coachProfileId: session.coachProfileId,
+        host: session.host,
+        format: session.format,
+      },
       isImpersonating,
       requestedIntent: intent,
     }));
@@ -89,7 +94,11 @@ export async function POST(request: Request) {
   const canHost = await canHostLiveSession({
     operator,
     authEmail: authUser.email,
-    session,
+    session: {
+      id: session.id,
+      coachProfileId: session.coachProfileId,
+      host: session.host,
+    },
     isImpersonating,
   });
 

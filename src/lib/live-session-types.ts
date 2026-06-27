@@ -1,4 +1,4 @@
-import type { LiveSessionStatus } from "@prisma/client";
+import type { LiveSessionFormat, LiveSessionStatus } from "@prisma/client";
 
 /** Client-safe view of a live session (API + UI). */
 export type LiveSessionView = {
@@ -8,6 +8,11 @@ export type LiveSessionView = {
   description: string;
   category: string;
   status: LiveSessionStatus;
+  format: LiveSessionFormat;
+  timezone: string;
+  coverImageUrl: string | null;
+  replayEnabled: boolean;
+  rejectionReason: string | null;
   isLive: boolean;
   isFeaturedWeekly: boolean;
   startsIn: string;
@@ -35,6 +40,13 @@ export type LiveSessionView = {
   recordingUrl?: string | null;
   hlsPlaybackUrl?: string | null;
   coachSlug?: string | null;
+  coHosts?: Array<{
+    id: string;
+    displayName: string;
+    email: string | null;
+    coachProfileId: string | null;
+    coachSlug: string | null;
+  }>;
 };
 
 export type LiveSessionRoomKey = {
