@@ -1,17 +1,12 @@
-import type { VoiceAgentFieldName } from "@/lib/voice-intake";
+import type { OnboardingCoachStep } from "@/lib/onboarding-coach/types";
 
-export type OnboardingCoachField = VoiceAgentFieldName;
-
-export type OnboardingCoachStep = {
-  id: string;
-  field: OnboardingCoachField;
-  question: string;
-  hint?: string;
-  /** Shown on confirm card */
-  confirmPrompt?: string;
-  options?: Array<{ value: string; label: string }>;
-  optional?: boolean;
-};
+export type {
+  OnboardingCoachStep,
+  OnboardingCoachStepKind,
+  OnboardingCoachField,
+  OnboardingCompanyPick,
+  OnboardingJobSample,
+} from "@/lib/onboarding-coach/types";
 
 export const ONBOARDING_COACH_SEARCH_STEPS: OnboardingCoachStep[] = [
   {
@@ -85,11 +80,14 @@ export const ONBOARDING_COACH_PREFS_STEPS: OnboardingCoachStep[] = [
   },
   {
     id: "priorities",
+    kind: "multi_add",
     field: "priorities",
     question: "What matters most in your next role?",
-    hint: "Pick one at a time — remote, hybrid, comp, growth, culture, or location.",
+    followUpQuestion: "Anything else that matters in your next role?",
+    hint: "One at a time — remote, hybrid, comp, growth, culture, or location.",
     confirmPrompt: "Should I add this as a priority?",
     optional: true,
+    multiMax: 6,
     options: [
       { value: "Remote-first", label: "Remote-first" },
       { value: "Hybrid-friendly", label: "Hybrid-friendly" },
@@ -98,6 +96,34 @@ export const ONBOARDING_COACH_PREFS_STEPS: OnboardingCoachStep[] = [
       { value: "Strong team culture", label: "Strong team culture" },
       { value: "Specific location", label: "Specific location" },
     ],
+  },
+];
+
+export const ONBOARDING_COACH_ROLE_STEPS: OnboardingCoachStep[] = [
+  {
+    id: "target-roles",
+    kind: "multi_add",
+    field: "targetRoles",
+    question: "What's a role you're targeting?",
+    followUpQuestion: "Any other target roles?",
+    hint: "Up to 3 titles — e.g. Product Manager, Director of Strategy.",
+    confirmPrompt: "Add this target role?",
+    optional: true,
+    multiMax: 3,
+  },
+];
+
+export const ONBOARDING_COACH_COMPANY_STEPS: OnboardingCoachStep[] = [
+  {
+    id: "target-companies",
+    kind: "company",
+    field: "company",
+    question: "Name a company you want to watch.",
+    followUpQuestion: "Any other companies to add?",
+    hint: "Up to 5 — we'll scan their boards for roles that match your titles.",
+    confirmPrompt: "Add this company to your watchlist?",
+    optional: true,
+    multiMax: 5,
   },
 ];
 
@@ -111,4 +137,9 @@ export function coachStepByField(
   field: string,
 ): OnboardingCoachStep | undefined {
   return steps.find((s) => s.field === field);
+}
+
+export function activeCoachQuestion(step: OnboardingCoachStep, multiCount: number): string {
+  if (multiCount > 0 && step.followUpQuestion) return step.followUpQuestion;
+  return step.question;
 }

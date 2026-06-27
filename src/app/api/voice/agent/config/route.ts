@@ -42,8 +42,11 @@ export async function GET(request: Request) {
         field: coachField,
         question: coachQuestion,
         hint: searchParams.get("coachHint") ?? undefined,
+        kind: searchParams.get("coachKind") ?? undefined,
         stepIndex: Math.max(0, Number(searchParams.get("coachIndex") ?? 0)),
         stepTotal: Math.max(1, Number(searchParams.get("coachTotal") ?? 1)),
+        multiCount: Number(searchParams.get("coachMultiCount") ?? 0),
+        multiMax: Number(searchParams.get("coachMultiMax") ?? 0) || undefined,
       };
     }
   }

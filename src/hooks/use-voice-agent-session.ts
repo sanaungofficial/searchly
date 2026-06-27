@@ -288,8 +288,17 @@ export function useVoiceAgentSession({
                 handleFieldSave(args.field, args.value);
               }
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (
+              fn.name === "propose_onboarding_company" &&
+              args.companyName
+            ) {
+              onOnboardingPropose?.("company", args.companyName);
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "confirm_onboarding_answer") {
               onOnboardingConfirm?.(args.field);
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (fn.name === "confirm_onboarding_company") {
+              onOnboardingConfirm?.("company");
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "finish_onboarding_chat") {
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));

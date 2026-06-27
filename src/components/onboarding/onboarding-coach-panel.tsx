@@ -5,17 +5,27 @@ import { VoiceOrb } from "@/components/voice/voice-orb";
 import { useOnboardingCoach } from "@/hooks/use-onboarding-coach";
 import { useVoiceAgentSession, type VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
 import type { OnboardingCoachStep } from "@/lib/onboarding-coach/steps";
+import type { OnboardingCompanyPick } from "@/lib/onboarding-coach/types";
 import type { VoiceAgentFieldPatch } from "@/lib/voice-intake";
 
 type Props = {
   steps: OnboardingCoachStep[];
   onApplyPatch: (patch: VoiceAgentFieldPatch) => void;
+  onApplyCompany?: (company: OnboardingCompanyPick) => void;
+  getMultiCount?: (field: string) => number;
   onVoiceComplete?: (result: VoiceAgentSessionResult) => void;
   disabled?: boolean;
 };
 
-export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, disabled }: Props) {
-  const coach = useOnboardingCoach({ steps, onApplyPatch });
+export function OnboardingCoachPanel({
+  steps,
+  onApplyPatch,
+  onApplyCompany,
+  getMultiCount,
+  onVoiceComplete,
+  disabled,
+}: Props) {
+  const coach = useOnboardingCoach({ steps, onApplyPatch, onApplyCompany, getMultiCount });
   const prevStepIdRef = useRef<string | null>(null);
 
   const {
@@ -67,6 +77,13 @@ export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, dis
             ? "Just start speaking — Kimchi is listening."
             : undefined;
 
+  const multiMax = coach.currentStep?.multiMax ?? 0;
+  const showMultiDone =
+    coach.phase !== "confirming" &&
+    (coach.currentStep?.kind === "multi_add" || coach.currentStep?.kind === "company") &&
+    coach.multiCount > 0 &&
+    coach.multiCount < multiMax;
+
   return (
     <div className="onboarding-coach anim-fade-up">
       <OnboardingCoachStyles />
@@ -79,7 +96,7 @@ export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, dis
           state={coach.isComplete ? "done" : orbState}
           audioLevel={audioLevel}
           onClick={coach.isComplete ? undefined : toggleSession}
-          disabled={disabled || available !== true || !agentSettings || coach.phase === "confirming"}
+          disabled={disabled || available !== true || !agentSettings || coach.phase === "confirming" || coach.resolving}
           label={
             coach.isComplete
               ? "All set"
@@ -102,8 +119,9 @@ export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, dis
           <p className="onboarding-coach__progress">
             Question {coach.stepIndex + 1} of {coach.stepTotal}
             {coach.currentStep.optional ? " · optional" : ""}
+            {multiMax > 1 && coach.multiCount > 0 ? ` · ${coach.multiCount}/${multiMax} added` : ""}
           </p>
-          <h3 className="onboarding-coach__question">{coach.currentStep.question}</h3>
+          <h3 className="onboarding-coach__question">{coach.displayQuestion}</h3>
           {coach.currentStep.hint && coach.phase !== "confirming" && (
             <p className="onboarding-coach__hint">{coach.currentStep.hint}</p>
           )}
@@ -117,19 +135,30 @@ export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, dis
                 type="text"
                 className="onboarding-coach__confirm-input"
                 value={coach.draftText}
+                disabled={coach.resolving}
                 onChange={(e) => coach.setDraftText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    coach.proposeFromText();
+                    void coach.proposeFromText();
                   }
                 }}
               />
               <div className="onboarding-coach__confirm-actions">
-                <button type="button" className="onboarding-coach__btn onboarding-coach__btn--primary" onClick={coach.confirmProposed}>
-                  Yes, that&apos;s right
+                <button
+                  type="button"
+                  className="onboarding-coach__btn onboarding-coach__btn--primary"
+                  disabled={coach.resolving}
+                  onClick={() => void coach.confirmProposed()}
+                >
+                  {coach.resolving ? "Adding…" : "Yes, that's right"}
                 </button>
-                <button type="button" className="onboarding-coach__btn onboarding-coach__btn--ghost" onClick={coach.reviseProposed}>
+                <button
+                  type="button"
+                  className="onboarding-coach__btn onboarding-coach__btn--ghost"
+                  disabled={coach.resolving}
+                  onClick={coach.reviseProposed}
+                >
                   Change it
                 </button>
               </div>
@@ -139,23 +168,24 @@ export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, dis
               <input
                 type="text"
                 className="onboarding-coach__type-input"
-                placeholder="Or type your answer…"
+                placeholder={coach.currentStep.kind === "company" ? "Or type a company name…" : "Or type your answer…"}
                 value={coach.draftText}
+                disabled={coach.resolving}
                 onChange={(e) => coach.setDraftText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    coach.proposeFromText();
+                    void coach.proposeFromText();
                   }
                 }}
               />
               <button
                 type="button"
                 className="onboarding-coach__btn onboarding-coach__btn--secondary"
-                disabled={!coach.draftText.trim()}
-                onClick={coach.proposeFromText}
+                disabled={!coach.draftText.trim() || coach.resolving}
+                onClick={() => void coach.proposeFromText()}
               >
-                Use this
+                {coach.resolving ? "…" : "Use this"}
               </button>
             </div>
           )}
@@ -175,7 +205,13 @@ export function OnboardingCoachPanel({ steps, onApplyPatch, onVoiceComplete, dis
             </div>
           )}
 
-          {coach.currentStep.optional && coach.phase !== "confirming" && (
+          {showMultiDone && (
+            <button type="button" className="onboarding-coach__skip" onClick={coach.finishMultiStep}>
+              Done adding — continue below
+            </button>
+          )}
+
+          {coach.currentStep.optional && coach.phase !== "confirming" && !showMultiDone && (
             <button type="button" className="onboarding-coach__skip" onClick={coach.skipCurrentStep}>
               Skip this question
             </button>

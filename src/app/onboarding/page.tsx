@@ -10,6 +10,7 @@ import {
   ScreenReadBack,
   ScreenTargetRoles,
   ScreenTargetCompanies,
+  ScreenOnboardingJobSamples,
   ScreenAboutYouSearch,
   ScreenAboutYouPreferences,
   ScreenSetup,
@@ -386,7 +387,7 @@ export default function OnboardingPage() {
     }
     if (patch.targetRoles?.length) {
       setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
-      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
+      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])].slice(0, 3));
     }
   }, []);
 
@@ -402,7 +403,7 @@ export default function OnboardingPage() {
 
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(6);
+    goTo(7);
 
     let primaryAssetId: string | undefined;
     const companiesSnapshot = selectedCompanies;
@@ -503,13 +504,21 @@ export default function OnboardingPage() {
 
   const onCompaniesContinue = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
-    void runFinishSetup();
-  }, [aboutYouFields, runFinishSetup]);
+    goTo(6);
+  }, [aboutYouFields, goTo]);
 
   const onCompaniesSkip = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
+    goTo(6);
+  }, [aboutYouFields, goTo]);
+
+  const onJobSamplesContinue = useCallback(() => {
     void runFinishSetup();
-  }, [aboutYouFields, runFinishSetup]);
+  }, [runFinishSetup]);
+
+  const onJobSamplesSkip = useCallback(() => {
+    void runFinishSetup();
+  }, [runFinishSetup]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -527,6 +536,8 @@ export default function OnboardingPage() {
     } else if (screen === 4) {
       goTo(5);
     } else if (screen === 5) {
+      goTo(6);
+    } else if (screen === 6) {
       void runFinishSetup();
     }
   };
@@ -541,7 +552,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = screen === 6 ? 5 : screen;
+  const headerScreen = screen === 7 ? 6 : screen;
   const showProcessingBanner =
     screen >= 1 && screen <= 2 && (resumeUploading || readbackStatus === "loading");
 
@@ -627,6 +638,8 @@ export default function OnboardingPage() {
               suggestedTitles={readbackRoleSuggestions}
               onAddTitle={onAddTargetRole}
               onRemoveTitle={onRemoveTargetRole}
+              onVoiceFieldUpdate={applyVoiceFieldPatch}
+              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onRolesContinue}
               onSkip={onRolesSkip}
             />
@@ -637,14 +650,22 @@ export default function OnboardingPage() {
               targetRoles={selectedTitles}
               onAddCompany={onAddTargetCompany}
               onRemoveCompany={onRemoveTargetCompany}
+              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onCompaniesContinue}
               onSkip={onCompaniesSkip}
             />
           )}
-          {screen === 6 && <ScreenSetup steps={setupSteps} />}
+          {screen === 6 && (
+            <ScreenOnboardingJobSamples
+              targetRoles={selectedTitles}
+              onContinue={onJobSamplesContinue}
+              onSkip={onJobSamplesSkip}
+            />
+          )}
+          {screen === 7 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== 6 && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== 7 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }
