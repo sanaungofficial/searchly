@@ -38,7 +38,8 @@ export async function canUserAccessCoach(params: {
   if (!params.isInternal) return true;
   if (params.isAdmin) return true;
   if (!params.userId) return false;
-  return isCoachAssignedToUser(params.coachProfileId, params.userId);
+  // Kimchi coaches are browsable in the directory for signed-in clients; assignment is separate.
+  return true;
 }
 
 export async function getAssignedCoachesForUser(userId: string): Promise<AssignedCoachSummary[]> {

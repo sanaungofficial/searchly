@@ -571,6 +571,9 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
               <select value={form.status ?? "ACTIVE"} onChange={field("status")} style={{ ...coachInputStyle, cursor: "pointer" }}>
                 {(["ACTIVE", "PENDING", "INACTIVE"] as CoachStatus[]).map((s) => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>)}
               </select>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--scout-muted)", margin: "6px 0 0", lineHeight: 1.4 }}>
+                Inactive delists the coach from the public directory.
+              </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
               <input type="checkbox" id="featured-chk" checked={form.featured ?? false} onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))} style={{ width: 14, height: 14, cursor: "pointer" }} />

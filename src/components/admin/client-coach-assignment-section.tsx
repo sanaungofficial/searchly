@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox } from "@/components/scout/scout-box";
@@ -12,6 +12,7 @@ type CoachOption = {
   displayName: string;
   isInternal: boolean;
   slug: string | null;
+  status?: string;
 };
 
 export function ClientCoachAssignmentSection({
@@ -24,6 +25,7 @@ export function ClientCoachAssignmentSection({
   const assignments = client.coachAssignments ?? [];
   const [coaches, setCoaches] = useState<CoachOption[]>([]);
   const [coachId, setCoachId] = useState("");
+  const [coachSearch, setCoachSearch] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +37,18 @@ export function ClientCoachAssignmentSection({
         const list = Array.isArray(rows) ? rows : [];
         setCoaches(
           list
-            .filter((c: CoachOption & { status?: string }) => c.status === "ACTIVE" || !c.status)
+            .filter((c: CoachOption) => c.status === "ACTIVE")
             .map((c: CoachOption) => ({
               id: c.id,
               displayName: c.displayName,
               isInternal: c.isInternal ?? false,
               slug: c.slug,
-            })),
+              status: c.status,
+            }))
+            .sort((a, b) => {
+              if (a.isInternal !== b.isInternal) return a.isInternal ? -1 : 1;
+              return a.displayName.localeCompare(b.displayName);
+            }),
         );
       })
       .catch(() => setCoaches([]));
@@ -50,20 +57,34 @@ export function ClientCoachAssignmentSection({
   const assignedIds = new Set(assignments.map((a) => a.coachProfile.id));
   const available = coaches.filter((c) => !assignedIds.has(c.id));
 
-  async function assign() {
-    if (!coachId) return;
+  const filteredAvailable = useMemo(() => {
+    const q = coachSearch.trim().toLowerCase();
+    if (!q) return available.slice(0, 12);
+    return available
+      .filter(
+        (c) =>
+          c.displayName.toLowerCase().includes(q) ||
+          (c.isInternal && (q.includes("kimchi") || q.includes("second") || q.includes("internal"))),
+      )
+      .slice(0, 12);
+  }, [available, coachSearch]);
+
+  async function assign(id?: string) {
+    const targetId = id ?? coachId;
+    if (!targetId) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/clients/${client.id}/coach-assignment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coachProfileId: coachId, notes: notes.trim() || undefined }),
+        body: JSON.stringify({ coachProfileId: targetId, notes: notes.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not assign coach");
       onUpdated(data.client as AdminClient);
       setCoachId("");
+      setCoachSearch("");
       setNotes("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -94,13 +115,16 @@ export function ClientCoachAssignmentSection({
     <ScoutBox padding={0} style={{ marginBottom: 20, overflow: "hidden" }}>
       <div style={{ padding: "14px 20px", borderBottom: border.line }}>
         <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, margin: 0 }}>
-          Assigned coach
+          Assigned coaches
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, margin: "6px 0 0", lineHeight: 1.45 }}>
+          Coaches working with this client. Remove only unassigns — use Admin → Coaches → Inactive to delist from the site.
         </p>
       </div>
       <div style={{ padding: "16px 20px" }}>
         {assignments.length === 0 ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 16px" }}>
-            No coach assigned yet. Assign an internal Kimchi coach so they appear in this client&apos;s coaching directory.
+            No coaches assigned yet. Search below to assign Kimchi or marketplace coaches.
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
@@ -121,6 +145,9 @@ export function ClientCoachAssignmentSection({
                   <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px", display: "flex", alignItems: "center", gap: 8 }}>
                     {a.coachProfile.displayName}
                     {a.coachProfile.isInternal && <InternalCoachBadge compact />}
+                    <span style={{ fontFamily: fontMono, fontSize: 10, color: color.forest, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Working together
+                    </span>
                   </p>
                   {a.coachProfile.headline && (
                     <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0, lineHeight: 1.4 }}>
@@ -133,61 +160,100 @@ export function ClientCoachAssignmentSection({
                   )}
                 </div>
                 <ScoutSecondaryBtn onClick={() => remove(a.coachProfile.id)} disabled={loading} style={{ minHeight: 36, fontSize: 13 }}>
-                  Remove
+                  Remove from list
                 </ScoutSecondaryBtn>
               </div>
             ))}
           </div>
         )}
 
-        {available.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <label style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>
-              Assign coach
-              <select
-                value={coachId}
-                onChange={(e) => setCoachId(e.target.value)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  marginTop: 6,
-                  padding: "10px 12px",
-                  border: border.line,
-                  fontFamily: fontSans,
-                  fontSize: 14,
-                  background: surface.card,
-                }}
-              >
-                <option value="">Select coach…</option>
-                {available.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.displayName}{c.isInternal ? " (Kimchi coach)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>
-              Notes (optional)
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Primary career coach"
-                style={{
-                  display: "block",
-                  width: "100%",
-                  marginTop: 6,
-                  padding: "10px 12px",
-                  border: border.line,
-                  fontFamily: fontSans,
-                  fontSize: 14,
-                }}
-              />
-            </label>
-            <ScoutPrimaryBtn onClick={assign} disabled={!coachId || loading} style={{ minHeight: 40, alignSelf: "flex-start" }}>
-              {loading ? "Saving…" : "Assign coach"}
-            </ScoutPrimaryBtn>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>
+            Search coaches to assign
+            <input
+              type="search"
+              value={coachSearch}
+              onChange={(e) => {
+                setCoachSearch(e.target.value);
+                setCoachId("");
+              }}
+              placeholder="Name or Kimchi coach…"
+              style={{
+                display: "block",
+                width: "100%",
+                marginTop: 6,
+                padding: "10px 12px",
+                border: border.line,
+                fontFamily: fontSans,
+                fontSize: 14,
+                background: surface.card,
+                boxSizing: "border-box",
+              }}
+            />
+          </label>
+          {coachSearch.trim() && filteredAvailable.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 4 }}>
+              {filteredAvailable.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setCoachId(c.id);
+                    setCoachSearch(c.displayName);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 10px",
+                    border: coachId === c.id ? `2px solid ${color.forest}` : border.line,
+                    background: coachId === c.id ? "rgba(26,58,47,0.06)" : surface.card,
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink }}>
+                    {c.displayName}
+                  </span>
+                  {c.isInternal && <InternalCoachBadge compact />}
+                </button>
+              ))}
+            </div>
+          )}
+          {coachSearch.trim() && filteredAvailable.length === 0 && (
+            <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>No matching active coaches.</p>
+          )}
+          <label style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>
+            Notes (optional)
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Primary career coach"
+              style={{
+                display: "block",
+                width: "100%",
+                marginTop: 6,
+                padding: "10px 12px",
+                border: border.line,
+                fontFamily: fontSans,
+                fontSize: 14,
+              }}
+            />
+          </label>
+          <ScoutPrimaryBtn
+            onClick={() => assign()}
+            disabled={!coachId || loading}
+            style={{ minHeight: 40, alignSelf: "flex-start" }}
+          >
+            {loading ? "Saving…" : "Assign coach"}
+          </ScoutPrimaryBtn>
+        </div>
+
+        {coaches.length === 0 && (
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "12px 0 0" }}>
+            Could not load coach list. Refresh or check Admin → Coaches.
+          </p>
         )}
 
         {error && <p style={{ fontFamily: fontSans, fontSize: 13, color: "#dc2626", margin: "12px 0 0" }}>{error}</p>}

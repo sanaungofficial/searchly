@@ -136,6 +136,7 @@ function countActiveFilters(params: URLSearchParams): number {
   if (params.get("rateMin")) n++;
   if (params.get("rateMax")) n++;
   if (params.get("professional") === "1") n++;
+  if (params.get("internal") === "1") n++;
   return n;
 }
 
@@ -160,6 +161,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const urlFilters = useMemo(() => parseCoachDirectoryFilters(searchParams), [searchParams]);
   const activeFilterCount = countActiveFilters(searchParams);
   const professionalFilter = searchParams.get("professional") === "1";
+  const internalFilter = searchParams.get("internal") === "1";
 
   const sidebarFilters = useMemo(
     () => ({
@@ -169,8 +171,9 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
       specialty: searchParams.get("specialty") ?? "",
       specialization: searchParams.get("specialization") ?? "",
       professional: professionalFilter,
+      internal: internalFilter,
     }),
-    [searchParams, professionalFilter],
+    [searchParams, professionalFilter, internalFilter],
   );
 
   useEffect(() => {
@@ -297,12 +300,17 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
     params.delete("rateMin");
     params.delete("rateMax");
     params.delete("professional");
+    params.delete("internal");
     const base = category ? `/coaching/c/${categoryToSlug(category)}` : "/coaching";
     router.replace(base, { scroll: false });
   };
 
   const toggleProfessionalFilter = (checked: boolean) => {
     setFilters({ professional: checked ? "1" : "" });
+  };
+
+  const toggleInternalFilter = (checked: boolean) => {
+    setFilters({ internal: checked ? "1" : "" });
   };
 
   const toggleFollow = async (coach: CoachListItem) => {
@@ -321,7 +329,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
   const toggleMyCoach = async (coach: CoachListItem) => {
     const isAssigned = myCoachIds.has(coach.id);
-    if (coach.isInternal) return;
+    if (!isAssigned && coach.isInternal) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -381,7 +389,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
         <input
           type="search"
-          placeholder="Search by name, firm, specialty, or location…"
+          placeholder="Search by name, specialty, or Kimchi coach…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           style={inputStyle}
@@ -409,6 +417,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
               onChange={setFilter}
               onBatchChange={setFilters}
               onProfessionalChange={toggleProfessionalFilter}
+              onInternalChange={toggleInternalFilter}
               onClear={clearFilters}
               activeCount={activeFilterCount}
             />

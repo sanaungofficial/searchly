@@ -22,6 +22,7 @@ type CoachRow = {
   category: string | null;
   featured: boolean;
   isProfessionalCoach: boolean;
+  isInternal?: boolean;
   createdAt?: Date | string;
   avgRating?: number | null;
   reviewCount?: number;
@@ -46,6 +47,7 @@ export function parseCoachDirectoryFilters(searchParams: URLSearchParams): Coach
     rateMax: rateMaxNum != null && Number.isFinite(rateMaxNum) ? rateMaxNum : undefined,
     featuredOnly: searchParams.get("featured") === "1",
     professionalOnly: searchParams.get("professional") === "1",
+    internalOnly: searchParams.get("internal") === "1",
     sort:
       sort === "price-low" || sort === "price-high" || sort === "rating" || sort === "newest" || sort === "match"
         ? sort
@@ -96,17 +98,20 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
   if (filters.rateMax != null) {
     list = list.filter((c) => c.hourlyRate == null || c.hourlyRate <= filters.rateMax!);
   }
-  if (filters.q) {
-    const q = filters.q.toLowerCase();
-    list = list.filter(
-      (c) =>
-        c.displayName.toLowerCase().includes(q) ||
-        (c.headline ?? "").toLowerCase().includes(q) ||
-        (c.bio ?? "").toLowerCase().includes(q) ||
-        c.firms.some((f) => f.toLowerCase().includes(q)) ||
-        c.specialties.some((s) => s.toLowerCase().includes(q)) ||
-        (c.location ?? "").toLowerCase().includes(q),
-    );
+  const q = filters.q?.trim().toLowerCase();
+
+  if (filters.internalOnly) {
+    list = list.filter((c) => c.isInternal);
+  } else {
+    list = list.filter((c) => {
+      if (!c.isInternal) return true;
+      if (!q) return false;
+      return coachMatchesQuery(c, q);
+    });
+  }
+
+  if (q) {
+    list = list.filter((c) => coachMatchesQuery(c, q));
   }
 
   if (filters.professionalOnly) {
@@ -114,6 +119,17 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
   }
 
   return list;
+}
+
+function coachMatchesQuery(c: CoachRow, q: string): boolean {
+  return (
+    c.displayName.toLowerCase().includes(q) ||
+    (c.headline ?? "").toLowerCase().includes(q) ||
+    (c.bio ?? "").toLowerCase().includes(q) ||
+    c.firms.some((f) => f.toLowerCase().includes(q)) ||
+    c.specialties.some((s) => s.toLowerCase().includes(q)) ||
+    (c.location ?? "").toLowerCase().includes(q)
+  );
 }
 
 export function filterProfessionalCoaches<T extends CoachRow>(coaches: T[]): T[] {
