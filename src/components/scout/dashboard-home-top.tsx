@@ -34,7 +34,7 @@ import {
   type RecommendationTuningInput,
 } from "@/lib/recommendation-tuning";
 import type { RelocationId, VisaNeedId, WorkArrangementId } from "@/lib/onboarding-preferences";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutFieldStyle, scoutInsetChipStyle } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
@@ -680,11 +680,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
                       value={editTargetMonth}
                       onChange={(e) => setEditTargetMonth(e.target.value)}
                       style={{
+                        ...scoutFieldStyle,
                         flex: 1,
                         minWidth: 140,
                         padding: "8px 10px",
-                        border: border.line,
-                        fontFamily: fontSans,
                         fontSize: isMobile ? 16 : T.bodySm,
                       }}
                     />
@@ -715,16 +714,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                   </div>
                 ) : null}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: T.label,
-                      color: color.muted,
-                      background: surface.inset,
-                      padding: "4px 8px",
-                      border: border.line,
-                    }}
-                  >
+                  <span style={scoutInsetChipStyle}>
                     {dashboardGoalCategoryLabel(goal.category)}
                   </span>
                   <div style={{ display: "flex", gap: 12 }}>

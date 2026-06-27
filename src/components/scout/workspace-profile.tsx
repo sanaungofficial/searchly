@@ -2835,7 +2835,7 @@ function ReadbackCard({
         </div>
       </div>
       {resumeNewerThanReadback && !loading && (
-        <div style={{ fontFamily: fontSans, fontSize: 13, color: color.ink, background: "#FFF8E8", border: "1px solid #E8D5A3", padding: "10px 12px", marginBottom: 12, lineHeight: 1.5 }}>
+        <div style={{ fontFamily: fontSans, fontSize: 13, color: color.ink, background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: "var(--scout-radius)", padding: "10px 12px", marginBottom: 12, lineHeight: 1.5 }}>
           Your resume changed since this snapshot was generated.{" "}
           <button type="button" onClick={onRefresh} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
             Refresh snapshot

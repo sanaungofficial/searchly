@@ -1,6 +1,7 @@
 "use client";
 
 import { useSubscription } from "@/hooks/useSubscription";
+import { ScoutModal } from "@/components/scout/scout-modal";
 
 export type GrowthUpgradeTrigger = "limit_hit" | "low_match" | "usage_warning" | "coaching";
 
@@ -54,34 +55,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 70,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <div
-        onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }}
-      />
-      <div
-        role="dialog"
-        aria-labelledby="growth-upgrade-title"
-        style={{
-          position: "relative",
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          padding: "36px 32px",
-          maxWidth: 420,
-          width: "100%",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-        }}
-      >
+    <ScoutModal open onClose={onClose} ariaLabelledBy="growth-upgrade-title" maxWidth={420} padding="36px 32px" zIndex={70}>
         <p
           id="growth-upgrade-title"
           style={{
@@ -170,8 +144,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
         >
           Maybe later
         </button>
-      </div>
-    </div>
+    </ScoutModal>
   );
 }
 

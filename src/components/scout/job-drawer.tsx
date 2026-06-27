@@ -462,7 +462,7 @@ function JobDrawerMatchSection({
     !analyzeControls.loading;
 
   return (
-    <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>
+    <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)", borderRadius: "var(--scout-radius)" }}>
       <SectionTitle icon={<IconTarget />}>
         <ScoreExplainerLabel variant={fromResume ? "job-match" : "vector-match"}>Alignment check</ScoreExplainerLabel>
       </SectionTitle>
