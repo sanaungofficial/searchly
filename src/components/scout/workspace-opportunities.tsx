@@ -468,8 +468,7 @@ export function WorkspaceOpportunities() {
     : null;
 
   const oppTabs: [OppTab, string][] = [
-    ["pipeline", "Open Roles"],
-    ["network", "In-Network Roles"],
+    ["pipeline", "Roles"],
   ];
 
   const oppActionBtn: React.CSSProperties = {
@@ -589,14 +588,6 @@ export function WorkspaceOpportunities() {
             />
           )}
 
-          {tab === "network" && (
-            <PipelineNetworkSection
-              embedded
-              onOpenJob={openNetworkJob}
-              onSaveJob={addNetworkJobToPipeline}
-              actingUserId={actingUserId}
-            />
-          )}
           {tab === "pipeline" && (
             <PipelineTab
               embedded
@@ -605,6 +596,8 @@ export function WorkspaceOpportunities() {
               onChangeStage={changeStage}
               onOpenRecommended={openRecommendedJob}
               onSaveRecommended={saveRecommendedJob}
+              onOpenNetworkJob={openNetworkJob}
+              onSaveNetworkJob={addNetworkJobToPipeline}
               actingUserId={actingUserId}
             />
           )}
@@ -935,6 +928,8 @@ interface PipelineTabProps {
   onChangeStage: (id: number, stage: KanbanStage) => void;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
+  onOpenNetworkJob?: (job: NetworkJobListing) => void;
+  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
   actingUserId?: string | null;
   embedded?: boolean;
 }
@@ -945,6 +940,8 @@ function PipelineTab({
   onChangeStage,
   onOpenRecommended,
   onSaveRecommended,
+  onOpenNetworkJob,
+  onSaveNetworkJob,
   actingUserId,
   embedded,
 }: PipelineTabProps) {
@@ -973,7 +970,7 @@ function PipelineTab({
         {!embedded && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-          <ScoutLabel>Open roles</ScoutLabel>
+          <ScoutLabel>Roles</ScoutLabel>
         </div>
         )}
         <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
@@ -993,6 +990,8 @@ function PipelineTab({
           pipelineCards={cards}
           onOpenJob={onOpenRecommended}
           onSaveJob={onSaveRecommended}
+          onOpenNetworkJob={onOpenNetworkJob}
+          onSaveNetworkJob={onSaveNetworkJob}
           actingUserId={actingUserId}
         />
       ) : (
