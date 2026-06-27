@@ -188,6 +188,10 @@ export function useOnboardingCoach({
     advanceStep();
   }, [advanceStep, currentStep]);
 
+  const syncToScreenAnchor = useCallback((anchor: number) => {
+    setStepIndex((i) => (i < anchor ? anchor : i));
+  }, []);
+
   const finishMultiStep = useCallback(() => {
     if (!currentStep) return;
     advanceStep();
@@ -254,6 +258,7 @@ export function useOnboardingCoach({
     confirmProposed,
     reviseProposed,
     skipCurrentStep,
+    syncToScreenAnchor,
     finishMultiStep,
     handleVoicePropose,
     handleVoiceConfirm,

@@ -127,6 +127,29 @@ export const ONBOARDING_COACH_COMPANY_STEPS: OnboardingCoachStep[] = [
   },
 ];
 
+/** Full coach flow — one continuous voice conversation across onboarding screens. */
+export const ONBOARDING_COACH_ALL_STEPS: OnboardingCoachStep[] = [
+  ...ONBOARDING_COACH_SEARCH_STEPS,
+  ...ONBOARDING_COACH_PREFS_STEPS,
+  ...ONBOARDING_COACH_ROLE_STEPS,
+  ...ONBOARDING_COACH_COMPANY_STEPS,
+];
+
+/** First global step index when the user lands on each coach-enabled onboarding screen. */
+export const ONBOARDING_COACH_SCREEN_ANCHORS: Partial<Record<number, number>> = {
+  1: 0,
+  2: ONBOARDING_COACH_SEARCH_STEPS.length,
+  4: ONBOARDING_COACH_SEARCH_STEPS.length + ONBOARDING_COACH_PREFS_STEPS.length,
+  5:
+    ONBOARDING_COACH_SEARCH_STEPS.length +
+    ONBOARDING_COACH_PREFS_STEPS.length +
+    ONBOARDING_COACH_ROLE_STEPS.length,
+};
+
+export const ONBOARDING_COACH_SCREENS = new Set(
+  Object.keys(ONBOARDING_COACH_SCREEN_ANCHORS).map(Number),
+);
+
 export function labelForCoachValue(step: OnboardingCoachStep, raw: string): string {
   const match = step.options?.find((o) => o.value === raw || o.label === raw);
   return match?.label ?? raw;

@@ -26,6 +26,7 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
+import { OnboardingCoachProvider } from "@/contexts/onboarding-coach-context";
 import type { VoiceAgentFieldPatch, VoiceAgentSessionResult } from "@/components/voice/voice-intake-recorder";
 
 function saveLinkedIn(handle: string): Promise<void> {
@@ -391,6 +392,16 @@ export default function OnboardingPage() {
     }
   }, []);
 
+  const coachGetMultiCount = useCallback(
+    (field: string) => {
+      if (field === "targetRoles") return selectedTitles.length;
+      if (field === "company") return selectedCompanies.length;
+      if (field === "priorities") return priorities.length;
+      return 0;
+    },
+    [selectedTitles, selectedCompanies, priorities],
+  );
+
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
     goTo(7);
@@ -557,6 +568,13 @@ export default function OnboardingPage() {
       />
       <div className="onboarding-shell">
         <ScoutHeader screen={headerScreen} />
+        <OnboardingCoachProvider
+          screen={screen}
+          onApplyPatch={applyVoiceFieldPatch}
+          onApplyCompany={onAddTargetCompany}
+          getMultiCount={coachGetMultiCount}
+          onVoiceComplete={onVoiceIntakeComplete}
+        >
         <div className="onboarding-content">
           {showProcessingBanner && (
             <OnboardingProcessingBanner
@@ -654,6 +672,7 @@ export default function OnboardingPage() {
           )}
           {screen === 7 && <ScreenSetup steps={setupSteps} />}
         </div>
+        </OnboardingCoachProvider>
       </div>
       {process.env.NODE_ENV === "development" && screen !== 7 && <DemoNextButton onClick={demoAdvance} />}
     </div>
