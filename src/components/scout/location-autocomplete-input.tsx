@@ -196,7 +196,7 @@ export function LocationAutocompleteInput({
               role="listbox"
               style={{
                 position: "absolute",
-                zIndex: 20,
+                zIndex: 100,
                 top: "calc(100% + 6px)",
                 left: 0,
                 right: 0,

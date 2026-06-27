@@ -13,8 +13,13 @@ import {
   ScreenReadBack,
   ScreenTargetRoles,
   ScreenTargetCompanies,
-  ScreenAboutYouSearch,
-  ScreenAboutYouPreferences,
+  ScreenCareerMotivation,
+  ScreenJobTimeline,
+  ScreenTargetLocation,
+  ScreenCurrentSalary,
+  ScreenTargetSalary,
+  ScreenPriorities,
+  ScreenAttribution,
   ScreenSetup,
   DemoNextButton,
   OnboardingProcessingBanner,
@@ -89,6 +94,21 @@ function saveTargetRoles(roles: string[]): Promise<void> {
   }).then(() => {});
 }
 
+const ONBOARDING = {
+  WELCOME: 0,
+  MOTIVATION: 1,
+  TIMELINE: 2,
+  LOCATION: 3,
+  CURRENT_SALARY: 4,
+  TARGET_SALARY: 5,
+  PRIORITIES: 6,
+  ATTRIBUTION: 7,
+  READBACK: 8,
+  ROLES: 9,
+  COMPANIES: 10,
+  SETUP: 11,
+} as const satisfies Record<string, Screen>;
+
 const INITIAL_SETUP_STEPS: SetupStep[] = [
   { id: "profile", label: "Saving your answers", status: "pending" },
   { id: "linkedin", label: "Importing your LinkedIn", status: "pending" },
@@ -139,7 +159,7 @@ export default function OnboardingPage() {
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
   useEffect(() => {
-    if (screen !== 2 || locationHintFetchedRef.current) return;
+    if (screen !== ONBOARDING.LOCATION || locationHintFetchedRef.current) return;
     locationHintFetchedRef.current = true;
     void fetch("/api/profile")
       .then((res) => (res.ok ? res.json() : null))
@@ -253,7 +273,7 @@ export default function OnboardingPage() {
 
   const goToAboutYou = useCallback(() => {
     if (liInput.trim()) void saveLinkedIn(liInput);
-    goTo(1);
+    goTo(ONBOARDING.MOTIVATION);
   }, [liInput, goTo]);
 
   const onWelcomeContinue = useCallback(() => {
@@ -277,13 +297,13 @@ export default function OnboardingPage() {
 
   const onSkipProfile = useCallback(() => {
     setReadbackStatus("skipped");
-    goTo(1);
+    goTo(ONBOARDING.MOTIVATION);
   }, [goTo]);
 
   const hasResumeTrack = !!(resumeFilename || resumeUploaded || resumeUploading);
 
   useEffect(() => {
-    if (screen !== 3) return;
+    if (screen !== ONBOARDING.READBACK) return;
     if (!hasResumeTrack) {
       setReadbackStatus((s) => (s === "idle" ? "skipped" : s));
       return;
@@ -294,7 +314,7 @@ export default function OnboardingPage() {
   }, [screen, hasResumeTrack, readbackStatus, startBackgroundReadback]);
 
   useEffect(() => {
-    if (screen !== 3 || readbackStatus !== "pending" || readbackData) return;
+    if (screen !== ONBOARDING.READBACK || readbackStatus !== "pending" || readbackData) return;
 
     const poll = () => {
       void fetch("/api/ai/readback", { cache: "no-store" })
@@ -328,49 +348,50 @@ export default function OnboardingPage() {
   const onReadBackConfirm = useCallback(
     (data: ReadBackData | null) => {
       applyReadbackRoles(data);
-      goTo(4);
+      goTo(ONBOARDING.ROLES);
     },
     [applyReadbackRoles, goTo],
   );
 
-  const onReadBackSkip = useCallback(() => goTo(4), [goTo]);
+  const onReadBackSkip = useCallback(() => goTo(ONBOARDING.ROLES), [goTo]);
 
   const onReadBackRefine = useCallback(() => {
     readbackStartedRef.current = false;
     setReadbackData(null);
     setReadbackStatus("idle");
-    goTo(0);
+    goTo(ONBOARDING.WELCOME);
   }, [goTo]);
 
   const goToReadbackOrRoles = useCallback(() => {
-    if (hasResumeTrack && readbackStatus !== "skipped") goTo(3);
-    else goTo(4);
+    if (hasResumeTrack && readbackStatus !== "skipped") goTo(ONBOARDING.READBACK);
+    else goTo(ONBOARDING.ROLES);
   }, [hasResumeTrack, readbackStatus, goTo]);
 
-  const onAboutSearchContinue = useCallback(() => goTo(2), [goTo]);
-
-  const onAboutSearchSkip = useCallback(() => {
-    goToReadbackOrRoles();
-  }, [goToReadbackOrRoles]);
-
-  const onAboutPrefsContinue = useCallback(async () => {
+  const finishAboutYou = useCallback(async () => {
     await saveAboutYou(aboutYouFields);
     goToReadbackOrRoles();
   }, [aboutYouFields, goToReadbackOrRoles]);
 
-  const onAboutPrefsSkip = useCallback(async () => {
-    await saveAboutYou(aboutYouFields);
-    goToReadbackOrRoles();
-  }, [aboutYouFields, goToReadbackOrRoles]);
+  const onAboutQuestionContinue = useCallback(
+    (from: Screen) => {
+      if (from < ONBOARDING.ATTRIBUTION) goTo((from + 1) as Screen);
+      else void finishAboutYou();
+    },
+    [goTo, finishAboutYou],
+  );
+
+  const onAboutQuestionSkip = useCallback(() => {
+    void finishAboutYou();
+  }, [finishAboutYou]);
 
   const onRolesContinue = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(5);
+    goTo(ONBOARDING.COMPANIES);
   }, [selectedTitles, goTo]);
 
   const onRolesSkip = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(5);
+    goTo(ONBOARDING.COMPANIES);
   }, [selectedTitles, goTo]);
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
@@ -392,7 +413,7 @@ export default function OnboardingPage() {
 
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(6);
+    goTo(ONBOARDING.SETUP);
 
     let primaryAssetId: string | undefined;
     const companiesSnapshot = selectedCompanies;
@@ -502,21 +523,15 @@ export default function OnboardingPage() {
   }, [aboutYouFields, runFinishSetup]);
 
   const demoAdvance = () => {
-    if (screen === 0) {
+    if (screen === ONBOARDING.WELCOME) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
       window.setTimeout(() => {
         setResumeUploaded(true);
         startBackgroundReadback();
       }, 1300);
-    } else if (screen === 1) {
-      goTo(2);
-    } else if (screen === 2) {
-      goTo(3);
-    } else if (screen === 3) {
-      goTo(4);
-    } else if (screen === 4) {
-      goTo(5);
-    } else if (screen === 5) {
+    } else if (screen < ONBOARDING.COMPANIES) {
+      goTo((screen + 1) as Screen);
+    } else if (screen === ONBOARDING.COMPANIES) {
       void runFinishSetup();
     }
   };
@@ -531,9 +546,11 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = screen === 6 ? 5 : screen;
+  const headerScreen = screen >= ONBOARDING.COMPANIES ? ONBOARDING.COMPANIES : screen;
   const showProcessingBanner =
-    screen >= 1 && screen <= 2 && (resumeUploading || readbackStatus === "loading");
+    screen >= ONBOARDING.MOTIVATION &&
+    screen <= ONBOARDING.ATTRIBUTION &&
+    (resumeUploading || readbackStatus === "loading");
 
   return (
     <div style={{ background: "var(--scout-page)" }}>
@@ -553,7 +570,7 @@ export default function OnboardingPage() {
               readbackLoading={readbackStatus === "loading"}
             />
           )}
-          {screen === 0 && (
+          {screen === ONBOARDING.WELCOME && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
@@ -573,35 +590,64 @@ export default function OnboardingPage() {
               onFileChange={onFileChange}
             />
           )}
-          {screen === 1 && (
-            <ScreenAboutYouSearch
+          {screen === ONBOARDING.MOTIVATION && (
+            <ScreenCareerMotivation
               careerMotivation={careerMotivation}
-              jobTimeline={jobTimeline}
               onCareerMotivationChange={setCareerMotivation}
-              onJobTimelineChange={setJobTimeline}
-              onContinue={onAboutSearchContinue}
-              onSkip={onAboutSearchSkip}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.MOTIVATION)}
+              onSkip={onAboutQuestionSkip}
             />
           )}
-          {screen === 2 && (
-            <ScreenAboutYouPreferences
+          {screen === ONBOARDING.TIMELINE && (
+            <ScreenJobTimeline
               jobTimeline={jobTimeline}
-              currentSalary={currentSalary}
-              targetSalary={targetSalary}
+              onJobTimelineChange={setJobTimeline}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.TIMELINE)}
+              onSkip={onAboutQuestionSkip}
+            />
+          )}
+          {screen === ONBOARDING.LOCATION && (
+            <ScreenTargetLocation
               targetMarket={targetMarket}
               locationHint={locationHint}
-              priorities={priorities}
-              attribution={attribution}
-              onCurrentSalaryChange={setCurrentSalary}
-              onTargetSalaryChange={setTargetSalary}
               onTargetMarketChange={setTargetMarket}
-              onTogglePriority={onTogglePriority}
-              onAttributionChange={setAttribution}
-              onContinue={onAboutPrefsContinue}
-              onSkip={onAboutPrefsSkip}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.LOCATION)}
+              onSkip={onAboutQuestionSkip}
             />
           )}
-          {screen === 3 && (
+          {screen === ONBOARDING.CURRENT_SALARY && (
+            <ScreenCurrentSalary
+              currentSalary={currentSalary}
+              onCurrentSalaryChange={setCurrentSalary}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.CURRENT_SALARY)}
+              onSkip={onAboutQuestionSkip}
+            />
+          )}
+          {screen === ONBOARDING.TARGET_SALARY && (
+            <ScreenTargetSalary
+              targetSalary={targetSalary}
+              onTargetSalaryChange={setTargetSalary}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.TARGET_SALARY)}
+              onSkip={onAboutQuestionSkip}
+            />
+          )}
+          {screen === ONBOARDING.PRIORITIES && (
+            <ScreenPriorities
+              priorities={priorities}
+              onTogglePriority={onTogglePriority}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.PRIORITIES)}
+              onSkip={onAboutQuestionSkip}
+            />
+          )}
+          {screen === ONBOARDING.ATTRIBUTION && (
+            <ScreenAttribution
+              attribution={attribution}
+              onAttributionChange={setAttribution}
+              onContinue={() => onAboutQuestionContinue(ONBOARDING.ATTRIBUTION)}
+              onSkip={onAboutQuestionSkip}
+            />
+          )}
+          {screen === ONBOARDING.READBACK && (
             <ScreenReadBack
               data={readbackData}
               status={readbackStatus}
@@ -610,7 +656,7 @@ export default function OnboardingPage() {
               onSkip={onReadBackSkip}
             />
           )}
-          {screen === 4 && (
+          {screen === ONBOARDING.ROLES && (
             <ScreenTargetRoles
               selectedTitles={selectedTitles}
               suggestedTitles={readbackRoleSuggestions}
@@ -620,7 +666,7 @@ export default function OnboardingPage() {
               onSkip={onRolesSkip}
             />
           )}
-          {screen === 5 && (
+          {screen === ONBOARDING.COMPANIES && (
             <ScreenTargetCompanies
               selectedCompanies={selectedCompanies}
               targetRoles={selectedTitles}
@@ -630,10 +676,12 @@ export default function OnboardingPage() {
               onSkip={onCompaniesSkip}
             />
           )}
-          {screen === 6 && <ScreenSetup steps={setupSteps} />}
+          {screen === ONBOARDING.SETUP && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== 6 && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== ONBOARDING.SETUP && (
+        <DemoNextButton onClick={demoAdvance} />
+      )}
     </div>
   );
 }
