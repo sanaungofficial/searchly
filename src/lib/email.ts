@@ -169,6 +169,52 @@ export async function sendEventInterestEmail(
   });
 }
 
+export async function sendNetworkIntroRequestEmail(
+  context: import("@/lib/network-intro-request").NetworkIntroRequestContext,
+  payload: import("@/lib/network-intro-request").NetworkIntroRequestPayload,
+) {
+  const to = process.env.NETWORK_INTRO_EMAIL ?? process.env.DISCOVERY_LEAD_EMAIL ?? "sanhaung1@gmail.com";
+  const rows = [
+    ["Name", context.name ?? "—"],
+    ["Email", context.email],
+    ["Target roles", context.targetRoles.join(", ") || "—"],
+    ["Job title", payload.jobTitle],
+    ["Company", payload.company],
+    ["Channel", payload.channel],
+    ["Recruiter", payload.recruiterName ?? "—"],
+    ["Network job ID", payload.jobId],
+    ["Notes", payload.notes?.trim() || "—"],
+    ["User ID", context.userId],
+  ];
+
+  const tableRows = rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #E5DDD0;font-size:13px;color:#6B6258;width:140px;vertical-align:top;">${label}</td><td style="padding:8px 12px;border-bottom:1px solid #E5DDD0;font-size:14px;color:#1C3A2F;">${escapeHtml(String(value))}</td></tr>`,
+    )
+    .join("");
+
+  await resend.emails.send({
+    from: "Kimchi <hello@kimchi.so>",
+    to,
+    replyTo: context.email,
+    subject: `[Kimchi intro] ${context.name ?? context.email} — ${payload.jobTitle.slice(0, 50)}`,
+    html: `
+      <!DOCTYPE html>
+      <html><body style="margin:0;padding:24px;background:#F2EDE3;font-family:system-ui,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFDF9;border:1px solid #E5DDD0;border-radius:12px;overflow:hidden;">
+          <tr><td style="background:#1C3A2F;padding:20px 24px;">
+            <p style="margin:0;font-size:18px;font-weight:600;color:#E8D5A3;">In-network intro request</p>
+          </td></tr>
+          <tr><td style="padding:8px 0 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">${tableRows}</table>
+          </td></tr>
+        </table>
+      </body></html>
+    `,
+  });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

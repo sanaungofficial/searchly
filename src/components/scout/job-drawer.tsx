@@ -35,6 +35,12 @@ import {
   networkSourceChannelCode,
   networkSourceListingLinkLabel,
 } from "@/lib/network-source-labels";
+import {
+  networkJobClientApplyUrl,
+  networkJobHasRecruiter,
+  networkJobPartnerListingUrl,
+} from "@/lib/network-job-client-actions";
+import { NetworkIntroRequestModal } from "./network-intro-request-modal";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -769,6 +775,7 @@ export function JobDrawer({
   const { openFitChat, withClientScope } = useWorkspace();
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [introModalOpen, setIntroModalOpen] = useState(false);
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const cardExt = card as KanbanCard & { _meta?: JobMeta; _coverLetter?: string; _fitAnalysis?: string };
@@ -940,6 +947,10 @@ export function JobDrawer({
   const companyWebsite = meta?.companyWebsite?.trim() || guessCompanyWebsite(jobWebsite);
   const hasStoredCompanyIntel = Boolean(meta?.companySummary?.trim() || meta?.companyWebsite?.trim());
   const networkJob = meta?.networkJob ?? null;
+  const clientApplyUrl = networkJob ? networkJobClientApplyUrl(networkJob, networkJob.internalView === true) : null;
+  const partnerListingUrl = networkJob ? networkJobPartnerListingUrl(networkJob, networkJob.internalView === true) : null;
+  const showClientIntro = Boolean(networkJob && !networkJob.internalView && networkJobHasRecruiter(networkJob));
+  const networkJobId = (card as KanbanCard & { _networkJobId?: string })._networkJobId ?? networkJob?.externalId ?? null;
   const { data: hirebaseCompany, loading: hirebaseLoading } = useHirebaseCompanyProfile({
     companyName: card.company,
     website: companyWebsite,
@@ -959,21 +970,27 @@ export function JobDrawer({
   const scrollSections: ScrollSection[] = networkJob
     ? ["overview", "recruiter", "company"]
     : ["overview", "company"];
-  const externalPostUrl = networkJob?.internalView === false
-    ? null
-    : (networkJob?.applyUrl ?? networkJob?.topEchelonUrl ?? networkJob?.sourceUrl ?? applicationUrl);
+  const externalPostUrl = networkJob
+    ? networkJob.internalView
+      ? (networkJob.applyUrl ?? partnerListingUrl ?? applicationUrl)
+      : clientApplyUrl
+    : applicationUrl;
   const networkSourceLabel =
     networkJob?.source && networkJob.internalView
       ? networkJob.applyUrl
         ? "Apply on partner site ↗"
         : networkSourceListingLinkLabel(networkJob.source)
-      : "Original job post ↗";
+      : clientApplyUrl
+        ? "Apply ↗"
+        : "Original job post ↗";
   const networkOpenLabel =
     networkJob?.source && networkJob.internalView
       ? networkJob.applyUrl
         ? "APPLY NOW"
         : `OPEN ${networkSourceChannelCode(networkJob.source)}`
-      : "APPLY NOW";
+      : clientApplyUrl
+        ? "APPLY NOW"
+        : "APPLY NOW";
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showParsedSections = hasStructuredSections;
   const showStructuredJobSections =
@@ -1327,7 +1344,7 @@ export function JobDrawer({
                 />
               </div>
 
-              {prospectMode && applicationUrl ? (
+              {prospectMode && !networkJob && applicationUrl ? (
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
                   <a
                     href={applicationUrl}
@@ -1408,6 +1425,16 @@ export function JobDrawer({
                       {onAddToPipeline && (
                         <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
                           {addingToPipeline ? "Saving…" : "Save this job"}
+                        </button>
+                      )}
+                      {networkJob && clientApplyUrl && (
+                        <a href={clientApplyUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "11px 16px", marginBottom: 10, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
+                          Apply now ↗
+                        </a>
+                      )}
+                      {showClientIntro && networkJobId && (
+                        <button type="button" onClick={() => setIntroModalOpen(true)} style={{ width: "100%", padding: "11px 16px", background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, cursor: "pointer" }}>
+                          Request introduction
                         </button>
                       )}
                     </>
@@ -1672,6 +1699,17 @@ export function JobDrawer({
           initialLetter={cardExt._coverLetter ?? null}
           onClose={() => setCoverDrawerOpen(false)}
           onLetterSaved={(letter) => onCardUpdate({ coverLetter: letter })}
+        />
+      )}
+
+      {networkJob && networkJobId && (
+        <NetworkIntroRequestModal
+          jobId={networkJobId}
+          jobTitle={card.role}
+          companyLabel={card.company}
+          recruiterName={networkJob.recruiter?.name ?? networkJob.recruiters?.[0]?.name}
+          open={introModalOpen}
+          onClose={() => setIntroModalOpen(false)}
         />
       )}
     </>

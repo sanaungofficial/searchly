@@ -15,42 +15,33 @@ import {
   networkSourceListingLinkLabel,
 } from "@/lib/network-source-labels";
 import {
+  networkJobClientApplyUrl,
+  networkJobHasRecruiter,
+  networkJobPartnerListingUrl,
+} from "@/lib/network-job-client-actions";
+import {
   createEmptyNetworkJobFilterForm,
   buildNetworkJobFilterSuggestions,
   countActiveNetworkFilterFields,
   networkJobFilterSearchParams,
   type NetworkJobFilterForm,
-  type NetworkJobFilterSuggestions,
 } from "@/lib/network-job-filters";
 import { NETWORK_JOBS_PAGE_SIZE } from "@/lib/network-jobs-load";
 import { describeNetworkActiveFilters, networkFormFromProfileDefaults } from "@/lib/network-profile-defaults";
-import { HIREBASE_LOCATION_TYPES, HIREBASE_JOB_TYPES } from "@/lib/vector-matched-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { locationFieldsFromProfileString } from "@/lib/recommended-filter-utils";
-import {
-  loadScopedNetworkSearch,
-  saveScopedNetworkSearch,
-} from "@/lib/client-session";
-import {
-  writeNetworkJobsCache,
-} from "@/lib/network-jobs-cache";
+import { loadScopedNetworkSearch, saveScopedNetworkSearch } from "@/lib/client-session";
+import { writeNetworkJobsCache } from "@/lib/network-jobs-cache";
 import { CompanyLogo } from "./company-logo";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { NetworkIntroRequestModal } from "./network-intro-request-modal";
+import { NetworkFiltersDrawer, NetworkQuickFiltersBar } from "./pipeline-network-filters";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
-import { matchScoreStyle } from "@/lib/match-score";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  ActiveFiltersBar,
-  ChipToggle,
-  DatalistInput,
-  FilterField,
-  FilterPanelShell,
-  FilterSectionHeader,
-  pipelineInputStyle,
-  ProfileSuggestionsBanner,
-} from "./pipeline-filters-ui";
+import { ActiveFiltersBar, FilterField, pipelineInputStyle, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
 
 const EMPTY_MATCH = {
   matchScore: 0,
@@ -71,200 +62,19 @@ interface PipelineNetworkSectionProps {
   embedded?: boolean;
 }
 
-function NetworkJobFiltersGrid({
-  form,
-  setForm,
-  suggestions,
-  internalView,
-}: {
-  form: NetworkJobFilterForm;
-  setForm: React.Dispatch<React.SetStateAction<NetworkJobFilterForm>>;
-  suggestions: NetworkJobFilterSuggestions;
-  internalView: boolean;
-}) {
-  const isMobile = useIsMobile();
-  return (
-    <FilterPanelShell>
-      <FilterSectionHeader
-        title="Where you want to work"
-        hint="Optional — leave blank to see roles everywhere."
-      />
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.2fr 1fr", gap: 12, marginBottom: 14 }}>
-        <FilterField label="City">
-          <DatalistInput
-            value={form.locationCity}
-            onChange={(locationCity) => setForm((f) => ({ ...f, locationCity }))}
-            listId="network-city-suggestions"
-            options={suggestions.cities}
-            placeholder="Sacramento"
-          />
-        </FilterField>
-        <FilterField label="State / region">
-          <DatalistInput
-            value={form.locationState}
-            onChange={(locationState) => setForm((f) => ({ ...f, locationState }))}
-            listId="network-state-suggestions"
-            options={suggestions.states}
-            placeholder="California"
-          />
-        </FilterField>
-      </div>
-
-      <FilterField label="Work arrangement">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {HIREBASE_LOCATION_TYPES.map((t) => (
-            <ChipToggle
-              key={t}
-              label={t}
-              active={form.remoteOption.toLowerCase() === t.toLowerCase()}
-              onClick={() =>
-                setForm((f) => ({
-                  ...f,
-                  remoteOption: f.remoteOption.toLowerCase() === t.toLowerCase() ? "" : t,
-                }))
-              }
-            />
-          ))}
-        </div>
-      </FilterField>
-
-      <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
-        <FilterSectionHeader
-          title="Role focus"
-          hint="Optional titles or keywords — comma-separate multiples."
-        />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-        <FilterField label="Job titles">
-          <input style={pipelineInputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Product Manager, Attorney" />
-        </FilterField>
-        <FilterField label="Keywords">
-          <input style={pipelineInputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="healthcare, SaaS, litigation" />
-        </FilterField>
-      </div>
-
-      {internalView && (
-        <>
-          <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
-            <FilterSectionHeader title="Staff filters" hint="Internal-only — fees, channel, and agency fields." />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
-            <FilterField label="Company">
-              <DatalistInput
-                value={form.companyName}
-                onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
-                listId="network-company-suggestions"
-                options={suggestions.companies}
-                placeholder="Employer name"
-              />
-            </FilterField>
-            <FilterField label="Industries">
-              <DatalistInput
-                value={form.industries}
-                onChange={(industries) => setForm((f) => ({ ...f, industries }))}
-                listId="network-industry-suggestions"
-                options={suggestions.industries}
-                placeholder="Healthcare, Software"
-              />
-            </FilterField>
-            <FilterField label="Channel">
-              <select
-                style={pipelineInputStyle}
-                value={form.channel}
-                onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
-              >
-                <option value="">All channels</option>
-                <option value="TE">TE</option>
-                <option value="ET">ET</option>
-              </select>
-            </FilterField>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginTop: 12 }}>
-            <FilterField label="Compensation from ($)">
-              <input type="number" style={pipelineInputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="100000" />
-            </FilterField>
-            <FilterField label="Compensation to ($)">
-              <input type="number" style={pipelineInputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000" />
-            </FilterField>
-            <FilterField label="Employment type">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {HIREBASE_JOB_TYPES.slice(0, 4).map((t) => (
-                  <ChipToggle
-                    key={t}
-                    label={t}
-                    active={form.jobType.toLowerCase() === t.toLowerCase()}
-                    onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        jobType: f.jobType.toLowerCase() === t.toLowerCase() ? "" : t,
-                      }))
-                    }
-                  />
-                ))}
-              </div>
-            </FilterField>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12, marginTop: 12 }}>
-            <FilterField label="Shared after">
-              <input type="date" style={pipelineInputStyle} value={form.sharedAfter} onChange={(e) => setForm((f) => ({ ...f, sharedAfter: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Recruiting agency">
-              <DatalistInput
-                value={form.agencyName}
-                onChange={(agencyName) => setForm((f) => ({ ...f, agencyName }))}
-                listId="network-agency-suggestions"
-                options={suggestions.agencies}
-                placeholder="Agency name"
-              />
-            </FilterField>
-            <FilterField label="Network status">
-              <DatalistInput
-                value={form.networkStatus}
-                onChange={(networkStatus) => setForm((f) => ({ ...f, networkStatus }))}
-                listId="network-status-suggestions"
-                options={suggestions.statuses}
-                placeholder="Active, On hold"
-              />
-            </FilterField>
-            <FilterField label="Placement fee">
-              <input style={pipelineInputStyle} value={form.feeQuery} onChange={(e) => setForm((f) => ({ ...f, feeQuery: e.target.value }))} placeholder="20%, flat fee" />
-            </FilterField>
-            <FilterField label="Fee type">
-              <DatalistInput
-                value={form.feeType}
-                onChange={(feeType) => setForm((f) => ({ ...f, feeType }))}
-                listId="network-fee-type-suggestions"
-                options={suggestions.feeTypes}
-                placeholder="percentage, flat"
-              />
-            </FilterField>
-            <FilterField label="Guarantee">
-              <DatalistInput
-                value={form.guaranteeQuery}
-                onChange={(guaranteeQuery) => setForm((f) => ({ ...f, guaranteeQuery }))}
-                listId="network-guarantee-suggestions"
-                options={suggestions.guarantees}
-                placeholder="90 days"
-              />
-            </FilterField>
-          </div>
-        </>
-      )}
-    </FilterPanelShell>
-  );
-}
-
 function NetworkJobCard({
   job,
   internalView,
   onOpen,
   onSave,
+  onRequestIntro,
   saving,
 }: {
   job: NetworkMatchedJob;
   internalView: boolean;
   onOpen: () => void;
   onSave?: () => void;
+  onRequestIntro?: () => void;
   saving?: boolean;
 }) {
   const company = networkAgencyDisplayName(job);
@@ -276,7 +86,9 @@ function NetworkJobCard({
       ? `Shared ${job.sharedAtLabel} · ${job.sharedAtRelative}`
       : `Shared ${job.sharedAtLabel}`
     : null;
-  const scoreStyle = job.matchScore && job.matchScore > 0 ? matchScoreStyle(job.matchScore) : null;
+  const clientApplyUrl = networkJobClientApplyUrl(job, internalView);
+  const partnerListingUrl = networkJobPartnerListingUrl(job, internalView);
+  const showIntro = !internalView && networkJobHasRecruiter(job);
 
   return (
     <ScoutBox padding={18}>
@@ -292,106 +104,42 @@ function NetworkJobCard({
         }}
         style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
       >
-        <CompanyLogo
-          name={company}
-          logoUrl={hasAgencyLogo ? job.agencyLogoUrl : null}
-          website={hasAgencyLogo ? job.agencyWebsite : null}
-          skipDomainLookup
-          size={44}
-        />
+        <CompanyLogo name={company} logoUrl={hasAgencyLogo ? job.agencyLogoUrl : null} website={hasAgencyLogo ? job.agencyWebsite : null} skipDomainLookup size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-            <span
-              style={{
-                padding: "2px 8px",
-                background: "rgba(196,168,106,0.15)",
-                border: "1px solid rgba(196,168,106,0.35)",
-                fontFamily: fontSans,
-                fontSize: T.label,
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#6B5A2A",
-              }}
-            >
-              {NETWORK_JOB_CLIENT_BADGE}
-            </span>
-            <span
-              style={{
-                padding: "2px 8px",
-                border: border.line,
-                fontFamily: fontMono,
-                fontSize: T.label,
-                fontWeight: 700,
-                color: color.forest,
-              }}
-            >
-              {networkSourceChannelCode(job.source)}
-            </span>
-            {internalView && job.networkStatusLabel && (
-              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>
-                {job.networkStatusLabel}
-              </span>
-            )}
-            {internalView && job.networkId && (
-              <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{job.networkId}</span>
-            )}
+                <span style={{ padding: "2px 8px", background: "rgba(196,168,106,0.15)", border: "1px solid rgba(196,168,106,0.35)", fontFamily: fontSans, fontSize: T.label, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#6B5A2A" }}>
+                  {NETWORK_JOB_CLIENT_BADGE}
+                </span>
+                <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontMono, fontSize: T.label, fontWeight: 700, color: color.forest }}>
+                  {networkSourceChannelCode(job.source)}
+                </span>
+                {internalView && job.networkStatusLabel && (
+                  <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>{job.networkStatusLabel}</span>
+                )}
+                {internalView && job.networkId && (
+                  <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{job.networkId}</span>
+                )}
               </div>
-
               <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
                 {company}
                 {job.location ? ` · ${job.location}` : ""}
               </p>
-              {shareLabel && (
-                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 8px" }}>{shareLabel}</p>
-              )}
-
+              {shareLabel && <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 8px" }}>{shareLabel}</p>}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: summary ? 10 : 0 }}>
-            {job.industries.map((industry) => (
-              <span key={industry} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                {industry}
-              </span>
-            ))}
-            {recruitingFirm && (
-              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                {recruitingFirm}
-              </span>
-            )}
-            {job.jobType && (
-              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                {job.jobType}
-              </span>
-            )}
-            {job.remoteOption && (
-              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                {job.remoteOption}
-              </span>
-            )}
-            {job.salary && (
-              <span style={{ padding: "2px 8px", border: "1px solid rgba(26,58,47,0.22)", background: "rgba(26,58,47,0.05)", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
-                {job.salary}
-              </span>
-            )}
-            {internalView && job.fee && (
-              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                Fee: {job.fee}
-              </span>
-            )}
-            {internalView && job.guaranteeLabel && (
-              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                Guarantee: {job.guaranteeLabel}
-              </span>
-            )}
+                {job.industries.map((industry) => (
+                  <span key={industry} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{industry}</span>
+                ))}
+                {recruitingFirm && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{recruitingFirm}</span>}
+                {job.jobType && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{job.jobType}</span>}
+                {job.remoteOption && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{job.remoteOption}</span>}
+                {job.salary && <span style={{ padding: "2px 8px", border: "1px solid rgba(26,58,47,0.22)", background: "rgba(26,58,47,0.05)", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>{job.salary}</span>}
+                {internalView && job.fee && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>Fee: {job.fee}</span>}
+                {internalView && job.guaranteeLabel && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>Guarantee: {job.guaranteeLabel}</span>}
               </div>
-
-              {summary && (
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.55, margin: 0 }}>
-                  {summary}
-                </p>
-              )}
+              {summary && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.55, margin: 0 }}>{summary}</p>}
             </div>
             {job.matchScore != null && job.matchScore > 0 && job.matchLabel && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
@@ -405,20 +153,22 @@ function NetworkJobCard({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         {onSave && (
           <ScoutPrimaryBtn onClick={() => onSave()} disabled={saving}>
             {saving ? "Saving…" : "Save job"}
           </ScoutPrimaryBtn>
         )}
-        {internalView && (job.topEchelonUrl || job.sourceUrl) && (
-          <a
-            href={job.topEchelonUrl ?? job.sourceUrl ?? "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
-          >
+        {showIntro && onRequestIntro && (
+          <ScoutSecondaryBtn onClick={() => onRequestIntro()}>Request introduction</ScoutSecondaryBtn>
+        )}
+        {clientApplyUrl && (
+          <a href={clientApplyUrl} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
+            Apply ↗
+          </a>
+        )}
+        {partnerListingUrl && (
+          <a href={partnerListingUrl} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
             {networkSourceListingLinkLabel(job.source)}
           </a>
         )}
@@ -438,15 +188,17 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [needsProfile, setNeedsProfile] = useState(false);
   const [profileHint, setProfileHint] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [introJob, setIntroJob] = useState<NetworkMatchedJob | null>(null);
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [form, setForm] = useState<NetworkJobFilterForm>(() => ({
     ...createEmptyNetworkJobFilterForm(),
     search: loadScopedNetworkSearch(),
   }));
   const [appliedForm, setAppliedForm] = useState<NetworkJobFilterForm>(() => createEmptyNetworkJobFilterForm());
-  const [showFilters, setShowFilters] = useState(false);
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const profileFormRef = useRef<NetworkJobFilterForm | null>(null);
 
@@ -470,20 +222,14 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         hasMore?: boolean;
       };
       if (res.ok && Array.isArray(data.jobs)) {
-        setJobs((prev) =>
-          append ? sortNetworkMatchedJobs([...prev, ...data.jobs!]) : data.jobs!,
-        );
+        setJobs((prev) => (append ? sortNetworkMatchedJobs([...prev, ...data.jobs!]) : data.jobs!));
         setTotal(data.total ?? data.jobs.length);
         setHasMore(Boolean(data.hasMore));
         setPage(pageNum);
         setNeedsProfile(Boolean(data.needsProfile));
         setProfileHint(data.hint ?? null);
         if (pageNum === 1) {
-          writeNetworkJobsCache({
-            fetchedAt: Date.now(),
-            needsProfile: data.needsProfile,
-            hint: data.hint ?? null,
-          });
+          writeNetworkJobsCache({ fetchedAt: Date.now(), needsProfile: data.needsProfile, hint: data.hint ?? null });
         }
       } else if (!append) {
         setJobs([]);
@@ -507,6 +253,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         setProfileHint(null);
       } finally {
         setLoading(false);
+        setHasLoadedOnce(true);
       }
     },
     [fetchPage],
@@ -531,6 +278,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     setTotal(0);
     setPage(1);
     setHasMore(false);
+    setHasLoadedOnce(false);
     void loadJobs(createEmptyNetworkJobFilterForm());
 
     void Promise.all([
@@ -539,7 +287,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     ])
       .then(([defaultsData, profileData]: [
         { filters?: VectorSearchFilters; labels?: string[] } | null,
-        { targetRoles?: string[]; prioritizedRoles?: string[] } | null,
+        { targetRoles?: string[]; prioritizedRoles?: string[]; parsedData?: { location?: string | null } } | null,
       ]) => {
         const targetRoles = [
           ...(Array.isArray(profileData?.prioritizedRoles) ? profileData.prioritizedRoles : []),
@@ -553,9 +301,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         if (defaultsData?.filters) {
           profileForm = networkFormFromProfileDefaults(defaultsData.filters, targetRoles);
         } else {
-          const fields = locationFieldsFromProfileString(
-            (profileData as { parsedData?: { location?: string | null } } | null)?.parsedData?.location,
-          );
+          const fields = locationFieldsFromProfileString(profileData?.parsedData?.location);
           profileForm = {
             ...createEmptyNetworkJobFilterForm(),
             jobTitles: targetRoles.join(", "),
@@ -565,9 +311,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         }
         profileForm.search = loadScopedNetworkSearch();
         profileFormRef.current = profileForm;
-        setProfileSuggestedLabels(
-          defaultsData?.labels?.length ? defaultsData.labels : describeNetworkActiveFilters(profileForm),
-        );
+        setProfileSuggestedLabels(defaultsData?.labels?.length ? defaultsData.labels : describeNetworkActiveFilters(profileForm));
       })
       .catch(() => {
         profileFormRef.current = null;
@@ -579,17 +323,19 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);
   const hasActiveFilters = activeFilterCount > 0;
   const displayJobs = useMemo(() => sortNetworkMatchedJobs(jobs), [jobs]);
-  const activeFilterLabels = useMemo(
-    () => (hasActiveFilters ? describeNetworkActiveFilters(appliedForm) : []),
-    [appliedForm, hasActiveFilters],
-  );
+  const activeFilterLabels = useMemo(() => (hasActiveFilters ? describeNetworkActiveFilters(appliedForm) : []), [appliedForm, hasActiveFilters]);
   const hasActiveSearch = Boolean(appliedForm.search.trim());
+  const showInitialLoader = loading && !hasLoadedOnce;
+  const showRefreshLoader = loading && hasLoadedOnce && jobs.length > 0;
 
   const applyFilters = (nextForm = form) => {
     saveScopedNetworkSearch(nextForm.search);
     setAppliedForm({ ...nextForm });
     setLoading(true);
-    void fetchPage(1, nextForm, false).finally(() => setLoading(false));
+    void fetchPage(1, nextForm, false).finally(() => {
+      setLoading(false);
+      setHasLoadedOnce(true);
+    });
   };
 
   const applyProfileSuggestions = () => {
@@ -606,57 +352,52 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     setForm(reset);
     setAppliedForm(createEmptyNetworkJobFilterForm());
     setLoading(true);
-    void fetchPage(1, createEmptyNetworkJobFilterForm(), false).finally(() => setLoading(false));
+    void fetchPage(1, createEmptyNetworkJobFilterForm(), false).finally(() => {
+      setLoading(false);
+      setHasLoadedOnce(true);
+    });
   };
+
+  const inputStyle = { ...pipelineInputStyle, margin: 0 };
 
   return (
     <div style={{ padding: embedded ? 0 : isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
       {!embedded && (
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <span style={{ width: 8, height: 8, background: "#C4A86A", display: "inline-block", flexShrink: 0 }} />
-          <ScoutLabel>Premium recruiter network{internalView ? " · internal" : ""}</ScoutLabel>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, background: "#C4A86A", display: "inline-block", flexShrink: 0 }} />
+            <ScoutLabel>Premium recruiter network{internalView ? " · internal" : ""}</ScoutLabel>
+          </div>
+          <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>In-Network Roles</ScoutDisplayTitle>
+          <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
+            {internalView ? "Staff view — internal fee and channel details stay in the drawer. Clients see recruiter-network roles ranked by profile fit." : NETWORK_JOB_CLIENT_INTRO}
+          </p>
         </div>
-        <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>
-          In-Network Roles
-        </ScoutDisplayTitle>
-        <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          {internalView
-            ? "Staff view — internal fee and channel details stay in the drawer. Clients see recruiter-network roles ranked by profile fit."
-            : NETWORK_JOB_CLIENT_INTRO}
-        </p>
-      </div>
       )}
 
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 12 }}>
-          <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 14 }}>
+          <div style={{ minWidth: 0 }}>
             <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              {internalView
-                ? "Staff view — partner fees and channel tags live in the drawer. Clients see recruiter-network roles only."
-                : "Search and filter roles recruiters are actively filling — ranked by fit with your profile."}
+              {internalView ? "Staff view — partner fees and channel tags live in the drawer." : "Search and filter roles recruiters are actively filling — ranked by fit with your profile."}
             </p>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <ScoutSecondaryBtn onClick={() => void loadJobs(appliedForm)} disabled={loading || loadingMore}>
-              {loading ? "Loading…" : "Refresh"}
-            </ScoutSecondaryBtn>
-            <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
-              {showFilters ? "Hide filters" : activeFilterCount > 0 ? `Filters (${activeFilterCount})` : "Filters"}
-            </ScoutSecondaryBtn>
-            {hasActiveFilters && (
-              <ScoutSecondaryBtn onClick={resetFilters}>Reset</ScoutSecondaryBtn>
+            {hasLoadedOnce && !showInitialLoader && total > 0 && (
+              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
+                {hasActiveFilters
+                  ? `${displayJobs.length.toLocaleString()} of ${total.toLocaleString()} matching role${total === 1 ? "" : "s"}`
+                  : `${displayJobs.length.toLocaleString()} of ${total.toLocaleString()} recruiter-network role${total === 1 ? "" : "s"}`}
+              </p>
             )}
-            <ScoutPrimaryBtn onClick={() => applyFilters()}>
-              {hasActiveSearch ? "Search" : "Apply filters"}
-            </ScoutPrimaryBtn>
           </div>
+          <ScoutSecondaryBtn onClick={() => void loadJobs(appliedForm)} disabled={loading || loadingMore} style={{ alignSelf: isMobile ? "flex-start" : "flex-end" }}>
+            {loading || loadingMore ? "Loading…" : "Refresh"}
+          </ScoutSecondaryBtn>
         </div>
 
-        <FilterField label="Search">
+        <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexDirection: isMobile ? "column" : "row" }}>
           <input
-            style={pipelineInputStyle}
+            style={{ ...inputStyle, flex: 1 }}
             value={form.search}
             onChange={(e) => setForm((f) => ({ ...f, search: e.target.value }))}
             onKeyDown={(e) => {
@@ -665,80 +406,118 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
                 applyFilters();
               }
             }}
-            placeholder="e.g. remote attorney, healthcare contract, Sacramento"
+            placeholder="Title, keyword, location, or industry"
+            aria-label="Search in-network roles"
             maxLength={400}
           />
-        </FilterField>
+          <ScoutPrimaryBtn onClick={() => applyFilters()} disabled={loading || loadingMore} style={{ flexShrink: 0, minWidth: isMobile ? undefined : 96 }}>
+            {loading && !hasLoadedOnce ? "Loading…" : "Search"}
+          </ScoutPrimaryBtn>
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: border.line }}>
+          <NetworkQuickFiltersBar
+            form={form}
+            setForm={setForm}
+            suggestions={suggestions}
+            internalView={internalView}
+            onQuickApply={(nextForm) => applyFilters(nextForm)}
+            onOpenAllFilters={() => setFiltersDrawerOpen(true)}
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
 
         {profileSuggestedLabels.length > 0 && !hasActiveFilters && (
-          <ProfileSuggestionsBanner
-            labels={profileSuggestedLabels}
-            onApply={applyProfileSuggestions}
-            hint="Not applied automatically — click Apply & search to filter using your profile preferences, then adjust as needed."
-          />
+          <ProfileSuggestionsBanner labels={profileSuggestedLabels} onApply={applyProfileSuggestions} hint="Not applied automatically — click Apply & search to filter using your profile preferences, then adjust as needed." />
         )}
 
-        {showFilters && (
-          <NetworkJobFiltersGrid form={form} setForm={setForm} suggestions={suggestions} internalView={internalView} />
-        )}
+        <NetworkFiltersDrawer
+          open={filtersDrawerOpen}
+          onClose={() => setFiltersDrawerOpen(false)}
+          form={form}
+          setForm={setForm}
+          suggestions={suggestions}
+          internalView={internalView}
+          applying={loading || loadingMore}
+          onApply={() => {
+            applyFilters();
+            setFiltersDrawerOpen(false);
+          }}
+          onReset={() => setForm({ ...createEmptyNetworkJobFilterForm(), search: form.search })}
+        />
 
         <ActiveFiltersBar labels={activeFilterLabels} onClear={hasActiveFilters ? resetFilters : undefined} />
 
         {needsProfile && profileHint && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
-            {profileHint}
-          </p>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>{profileHint}</p>
         )}
 
         {hasActiveFilters && !loading && displayJobs.length === 0 && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
-            Nothing matched your filters. Hit Reset to clear filters, or broaden your search.
+            Nothing matched your filters. Clear filters or broaden your search.
           </p>
         )}
 
-        {!loading && total > 0 && (
+        {hasActiveSearch && hasLoadedOnce && !showInitialLoader && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            {hasActiveFilters
-              ? `Showing ${displayJobs.length.toLocaleString()} of ${total.toLocaleString()} matching role${total === 1 ? "" : "s"}`
-              : `Showing ${displayJobs.length.toLocaleString()} of ${total.toLocaleString()} recruiter-network role${total === 1 ? "" : "s"}`}
+            Search runs across title, company, location, and description.
           </p>
         )}
       </ScoutBox>
 
-      {loading ? (
-        <ScoutBox style={{ padding: 48, textAlign: "center" }}>
-          <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>Loading network roles…</p>
-        </ScoutBox>
+      {showInitialLoader ? (
+        <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth title="Loading in-network roles…" />
       ) : jobs.length === 0 ? (
         <ScoutBox style={{ padding: 48, textAlign: "center" }}>
           <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-            No network roles are available right now — check back soon or refresh.
+            No network roles matched — try clearing filters or check back soon.
           </p>
         </ScoutBox>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {displayJobs.map((job) => (
-            <NetworkJobCard
-              key={`${job.source}-${job.id}`}
-              job={job}
-              internalView={internalView}
-              onOpen={() => onOpenJob(job)}
-              onSave={onSaveJob ? () => {
-                setSavingId(job.id);
-                onSaveJob(job).finally(() => setSavingId(null));
-              } : undefined}
-              saving={savingId === job.id}
-            />
-          ))}
-          {hasMore && (
-            <ScoutBox style={{ padding: "20px 24px", textAlign: "center" }}>
-              <ScoutSecondaryBtn onClick={() => void loadMore()} disabled={loadingMore}>
-                {loadingMore ? "Loading more…" : `Load more (${(total - displayJobs.length).toLocaleString()} remaining)`}
-              </ScoutSecondaryBtn>
-            </ScoutBox>
+        <>
+          {showRefreshLoader && (
+            <div style={{ marginBottom: 12 }}>
+              <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth title="Updating results…" />
+            </div>
           )}
-        </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {displayJobs.map((job) => (
+              <NetworkJobCard
+                key={`${job.source}-${job.id}`}
+                job={job}
+                internalView={internalView}
+                onOpen={() => onOpenJob(job)}
+                onSave={
+                  onSaveJob
+                    ? () => {
+                        setSavingId(job.id);
+                        onSaveJob(job).finally(() => setSavingId(null));
+                      }
+                    : undefined
+                }
+                onRequestIntro={!internalView && networkJobHasRecruiter(job) ? () => setIntroJob(job) : undefined}
+                saving={savingId === job.id}
+              />
+            ))}
+            {hasMore && (
+              <ScoutBox style={{ padding: "20px 24px", textAlign: "center" }}>
+                <ScoutSecondaryBtn onClick={() => void loadMore()} disabled={loadingMore}>
+                  {loadingMore ? "Loading more…" : `Load more (${(total - displayJobs.length).toLocaleString()} remaining)`}
+                </ScoutSecondaryBtn>
+              </ScoutBox>
+            )}
+          </div>
+        </>
       )}
+
+      <NetworkIntroRequestModal
+        jobId={introJob.id}
+        jobTitle={introJob.positionTitle}
+        companyLabel={networkAgencyDisplayName(introJob)}
+        recruiterName={introJob.recruiter?.name ?? introJob.recruiters?.[0]?.name}
+        open={Boolean(introJob)}
+        onClose={() => setIntroJob(null)}
+      />
     </div>
   );
 }
