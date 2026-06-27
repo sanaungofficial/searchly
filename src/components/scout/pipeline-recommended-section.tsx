@@ -4,10 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobMeta } from "@/lib/job-meta";
 import {
   DEFAULT_VECTOR_SEARCH_FILTERS,
-  HIREBASE_COMPANY_SIZE_BUCKETS,
-  HIREBASE_EXPERIENCE_LEVELS,
-  HIREBASE_JOB_TYPES,
-  HIREBASE_LOCATION_TYPES,
   VECTOR_SEARCH_RESULTS_MAX,
   type VectorMatchedJob,
   type VectorSearchFilters,
@@ -28,12 +24,9 @@ import { parseProfileLocationString } from "@/lib/profile-location";
 import {
   describeActiveFilters,
   formatProfileLocation,
-  HIREBASE_FILTER_COUNTRIES,
-  HIREBASE_FILTER_US_STATES,
   locationFieldsFromProfileString,
 } from "@/lib/recommended-filter-utils";
-import { POSTED_WITHIN_OPTIONS, postedWithinDaysFormValue } from "@/lib/job-posted-filter";
-import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
+import { postedWithinDaysFormValue } from "@/lib/job-posted-filter";
 import type { KanbanCard } from "./workspace-data";
 import { useWorkspace } from "@/contexts/workspace-context";
 import {
@@ -60,6 +53,12 @@ import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score
 import { matchScoreStyle } from "@/lib/match-score";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
+import {
+  RecommendedFiltersDrawer,
+  RecommendedQuickFiltersBar,
+  type RecommendedFilterForm,
+} from "./pipeline-recommended-filters";
+import { FilterField, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -169,7 +168,7 @@ function filtersToForm(f: VectorSearchFilters) {
   };
 }
 
-type FilterForm = ReturnType<typeof filtersToForm>;
+type FilterForm = RecommendedFilterForm;
 
 function relocationOnly(priorities: string[]): string[] {
   return priorities.filter((p) =>
@@ -257,17 +256,6 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   };
 }
 
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
@@ -278,266 +266,6 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
   background: surface.card,
 };
-
-function FilterSectionHeader({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div style={{ gridColumn: "1 / -1", marginBottom: 4 }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.forest, margin: "0 0 4px" }}>{title}</p>
-      <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: 0, lineHeight: 1.45 }}>{hint}</p>
-    </div>
-  );
-}
-
-function DatalistInput({
-  value,
-  onChange,
-  listId,
-  options,
-  placeholder,
-  type = "text",
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  listId: string;
-  options: string[];
-  placeholder?: string;
-  type?: React.HTMLInputTypeAttribute;
-}) {
-  return (
-    <>
-      <input
-        type={type}
-        style={inputStyle}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        list={options.length ? listId : undefined}
-      />
-      {options.length > 0 && (
-        <datalist id={listId}>
-          {options.map((opt) => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
-      )}
-    </>
-  );
-}
-
-function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: "5px 10px",
-        border: active ? border.lineStrong : border.line,
-        background: active ? surface.inset : surface.card,
-        color: active ? color.forest : color.muted,
-        fontFamily: fontSans,
-        fontSize: T.label,
-        fontWeight: active ? 600 : 500,
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function JobFiltersGrid({
-  form,
-  setForm,
-  toggleSet,
-  trackedCompanyNames,
-  showAdvanced,
-  onToggleAdvanced,
-}: {
-  form: FilterForm;
-  setForm: React.Dispatch<React.SetStateAction<FilterForm>>;
-  toggleSet: (set: Set<string>, value: string) => Set<string>;
-  trackedCompanyNames: string[];
-  showAdvanced: boolean;
-  onToggleAdvanced: () => void;
-}) {
-  const isMobile = useIsMobile();
-  const locationGrid = isMobile ? "1fr" : "1.2fr 1fr 1fr";
-
-  return (
-    <div style={{ marginTop: 16, padding: 16, background: surface.inset, border: border.line }}>
-      <FilterSectionHeader
-        title="Where & how you want to work"
-        hint="Set your anchor city, then choose a mile radius. Remote roles always show. Saved to your profile when you search."
-      />
-      <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
-        <FilterField label="City">
-          <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="Baltimore" />
-        </FilterField>
-        <FilterField label="State / region">
-          <DatalistInput
-            value={form.locationRegion}
-            onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
-            listId="recommended-region-suggestions"
-            options={[...HIREBASE_FILTER_US_STATES]}
-            placeholder="Maryland"
-          />
-        </FilterField>
-        <FilterField label="Country">
-          <DatalistInput
-            value={form.locationCountry}
-            onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
-            listId="recommended-country-suggestions"
-            options={[...HIREBASE_FILTER_COUNTRIES]}
-            placeholder="United States"
-          />
-        </FilterField>
-      </div>
-
-      <FilterField label="Within radius">
-        <select
-          style={inputStyle}
-          value={form.locationRadiusMiles}
-          onChange={(e) => setForm((f) => ({ ...f, locationRadiusMiles: e.target.value }))}
-        >
-          {LOCATION_RADIUS_OPTIONS.map((opt) => (
-            <option key={opt.miles} value={opt.miles > 0 ? String(opt.miles) : ""}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </FilterField>
-
-      <FilterField label="Work arrangement">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {HIREBASE_LOCATION_TYPES.map((t) => (
-            <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
-          ))}
-        </div>
-      </FilterField>
-
-      <FilterField label="Open to relocating">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {RECOMMENDATION_RELOCATION_PRIORITIES.map((pref) => (
-            <ChipToggle
-              key={pref}
-              label={pref.replace("Open to relocating ", "").replace(/^./, (c) => c.toUpperCase())}
-              active={form.relocationPriorities.includes(pref)}
-              onClick={() =>
-                setForm((f) => ({
-                  ...f,
-                  relocationPriorities: mergeRecommendationPriorities(
-                    f.relocationPriorities,
-                    pref,
-                    !f.relocationPriorities.includes(pref),
-                  ),
-                }))
-              }
-            />
-          ))}
-        </div>
-      </FilterField>
-
-      <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
-        <FilterSectionHeader
-          title="Role criteria"
-          hint="Titles and keywords for a live Hirebase search — comma-separate multiples."
-        />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
-        <FilterField label="Job titles">
-          <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Ops" />
-        </FilterField>
-        <FilterField label="Keywords">
-          <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
-        </FilterField>
-        <FilterField label="Company">
-          <DatalistInput
-            value={form.companyName}
-            onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
-            listId="recommended-company-suggestions"
-            options={trackedCompanyNames}
-            placeholder={trackedCompanyNames.length ? "Tracked or any company" : "Stripe"}
-          />
-        </FilterField>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <button
-          type="button"
-          onClick={onToggleAdvanced}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            fontFamily: fontSans,
-            fontSize: T.caption,
-            fontWeight: 600,
-            color: color.forest,
-            cursor: "pointer",
-            textDecoration: "underline",
-          }}
-        >
-          {showAdvanced ? "Hide advanced filters" : "More filters (salary, date posted, level…)"}
-        </button>
-      </div>
-
-      {showAdvanced && (
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginTop: 14, paddingTop: 14, borderTop: border.line }}>
-          <FilterField label="Posted within">
-            <select
-              style={inputStyle}
-              value={form.datePostedWithinDays}
-              onChange={(e) => setForm((f) => ({ ...f, datePostedWithinDays: e.target.value }))}
-            >
-              <option value="">Any time</option>
-              {POSTED_WITHIN_OPTIONS.map((opt) => (
-                <option key={opt.days} value={String(opt.days)}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0", lineHeight: 1.4 }}>
-              Leave as “Any time” to include older indexed posts.
-            </p>
-          </FilterField>
-          <FilterField label="Salary from ($)">
-            <input type="number" style={inputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="150000" min={0} />
-          </FilterField>
-          <FilterField label="Salary to ($)">
-            <input type="number" style={inputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000" min={0} />
-          </FilterField>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <FilterField label="Employment type">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {HIREBASE_JOB_TYPES.map((t) => (
-                  <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-            <FilterField label="Experience level">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
-                  <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-            <FilterField label="Company size">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
-                  <ChipToggle key={t} label={t} active={form.companySizeBuckets.has(t)} onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
-              <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
-              Visa sponsorship only
-            </label>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function RecommendedLoadingSkeleton() {
   const barWidths = ["72%", "58%", "84%", "64%"];
@@ -777,8 +505,7 @@ export function PipelineRecommendedSection({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: "",
   }));
-  const [showFilters, setShowFilters] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [profileBaseline, setProfileBaseline] = useState<RecommendationPreferencesState | null>(null);
 
@@ -851,7 +578,7 @@ export function PipelineRecommendedSection({
           if (applied) {
             setActiveFilterLabels(describeActiveFilters(applied));
           }
-          if (msg) setShowFilters(true);
+          if (msg) setFiltersDrawerOpen(true);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -1031,8 +758,7 @@ export function PipelineRecommendedSection({
       ...suggested,
       semanticQuery: form.semanticQuery,
     });
-    setShowFilters(true);
-    setShowAdvanced(true);
+    setFiltersDrawerOpen(true);
   };
 
   const applyFilters = async (filtersForm = form) => {
@@ -1080,7 +806,7 @@ export function PipelineRecommendedSection({
     setForm({ ...reset, semanticQuery: "" });
     setAppliedForm(reset);
     saveScopedSemanticQuery("");
-    setShowFilters(true);
+    setFiltersDrawerOpen(false);
     setActiveFilterLabels([]);
     const cached = readRecommendedCache(defaultFeedCacheKey());
     if (cached) {
@@ -1157,14 +883,11 @@ export function PipelineRecommendedSection({
             )}
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
-              {showFilters ? "Hide filters" : activeFilterLabels.length > 0 && !showFilters ? `Filters (${activeFilterLabels.length})` : "Filters"}
-            </ScoutSecondaryBtn>
             <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating}>
               {loading || revalidating ? "Loading…" : "Refresh"}
             </ScoutSecondaryBtn>
             <ScoutPrimaryBtn onClick={() => applyFilters()} disabled={loading || revalidating}>
-              {loading || revalidating ? "Loading…" : hasActiveSearch ? "Search" : "Apply filters"}
+              {loading || revalidating ? "Loading…" : hasActiveSearch ? "Search" : "Search"}
             </ScoutPrimaryBtn>
           </div>
         </div>
@@ -1185,49 +908,40 @@ export function PipelineRecommendedSection({
           />
         </FilterField>
 
-        {showFilters && profileSuggestedLabels.length > 0 && isDefaultAppliedFeed && (
-          <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: 0 }}>
-                Suggested from your profile
-              </p>
-              <ScoutSecondaryBtn onClick={applyProfileSuggestions} style={{ padding: "4px 10px", fontSize: T.label }}>
-                Apply suggestions
-              </ScoutSecondaryBtn>
-            </div>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.45 }}>
-              Not applied automatically — click Apply suggestions to copy these into the editable filters below, then adjust salary, posted date, radius, or work arrangement before you search.
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {profileSuggestedLabels.map((label) => (
-                <span
-                  key={label}
-                  style={{
-                    padding: "3px 8px",
-                    border: border.line,
-                    fontFamily: fontSans,
-                    fontSize: T.label,
-                    color: color.muted,
-                    background: surface.card,
-                  }}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <RecommendedQuickFiltersBar
+          form={form}
+          setForm={setForm}
+          toggleSet={toggleSet}
+          trackedCompanyNames={trackedCompanyNames}
+          onQuickApply={(nextForm) => void applyFilters(nextForm)}
+          onOpenAllFilters={() => setFiltersDrawerOpen(true)}
+          activeFilterCount={activeFilterLabels.length}
+        />
 
-        {showFilters && (
-          <JobFiltersGrid
-            form={form}
-            setForm={setForm}
-            toggleSet={toggleSet}
-            trackedCompanyNames={trackedCompanyNames}
-            showAdvanced={showAdvanced}
-            onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+        {profileSuggestedLabels.length > 0 && isDefaultAppliedFeed && (
+          <ProfileSuggestionsBanner
+            labels={profileSuggestedLabels}
+            onApply={applyProfileSuggestions}
+            hint="Not applied automatically — click Apply & search to copy these into your filters, then adjust before searching."
           />
         )}
+
+        <RecommendedFiltersDrawer
+          open={filtersDrawerOpen}
+          onClose={() => setFiltersDrawerOpen(false)}
+          form={form}
+          setForm={setForm}
+          toggleSet={toggleSet}
+          trackedCompanyNames={trackedCompanyNames}
+          applying={loading || revalidating}
+          onApply={() => {
+            void applyFilters().then(() => setFiltersDrawerOpen(false));
+          }}
+          onReset={() => {
+            const reset = defaultFeedForm();
+            setForm({ ...reset, semanticQuery: form.semanticQuery });
+          }}
+        />
 
         <ActiveFiltersBar labels={activeFilterLabels} onClear={hasSearchFilters ? clearSearchFilters : undefined} />
 
