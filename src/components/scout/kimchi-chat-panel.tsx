@@ -16,6 +16,9 @@ import {
   buildFollowUpChips,
   buildContextSuggestionChips,
   buildWelcomeChips,
+  buildCoachPrepWelcomeMessage,
+  COACH_PREP_STARTER_CHIPS,
+  compactChipLabel,
   formatThreadForFollowUps,
   formatThreadForCopy,
   isFailedAssistantReply,
@@ -81,9 +84,27 @@ function contextQuery(pageHint?: AssistantPageHint): string {
 
 export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigate }: Props) {
   const router = useRouter();
-  const { openPricing, kanbanCards, user, withClientScope, withClientReviewPath } = useWorkspace();
-  const { messages, setMessages, ensureThread, updateLastAssistant, persistMessages, activeThreadId, activeThreadTitle } =
-    threads;
+  const {
+    openPricing,
+    kanbanCards,
+    user,
+    withClientScope,
+    withClientReviewPath,
+    chatOpen,
+    chatView,
+    coachPrepCoach,
+    coachPrepNonce,
+  } = useWorkspace();
+  const {
+    messages,
+    setMessages,
+    createThread,
+    ensureThread,
+    updateLastAssistant,
+    persistMessages,
+    activeThreadId,
+    activeThreadTitle,
+  } = threads;
 
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -106,6 +127,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [inboxScanning, setInboxScanning] = useState(false);
   const [forYouChips, setForYouChips] = useState<AssistantChip[]>([]);
   const [forYouLoading, setForYouLoading] = useState(false);
+  const [showWelcomeRecommendations, setShowWelcomeRecommendations] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -297,7 +319,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       }
       const data = res.ok ? await res.json() : null;
       if (Array.isArray(data?.chips) && data.chips.length > 0) {
-        setForYouChips(data.chips as AssistantChip[]);
+        setForYouChips(
+          (data.chips as AssistantChip[]).map((chip) => ({
+            ...chip,
+            label: compactChipLabel(chip.label),
+          })),
+        );
         setSuggestionsVisible(true);
       }
       if (data?.source === "ai") notifyCreditsChanged();
@@ -318,18 +345,55 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setNextStepsVisible(false);
     setSuggestionsVisible(false);
     setForYouChips([]);
+    setShowWelcomeRecommendations(false);
   }, [activeThreadId]);
+
+  useEffect(() => {
+    if (!chatOpen || chatView !== "coach-prep" || !coachPrepCoach || coachPrepNonce === 0) return;
+
+    void (async () => {
+      setShowWelcomeRecommendations(false);
+      setFollowUpChips([]);
+      setNextStepsVisible(false);
+      setSuggestionsVisible(false);
+      setForYouChips([]);
+
+      await createThread();
+      const welcome = buildCoachPrepWelcomeMessage(
+        coachPrepCoach.displayName,
+        coachPrepCoach.matchScore,
+        coachPrepCoach.matchLabel,
+      );
+      setMessages([{ kind: "text", role: "assistant", content: welcome }]);
+    })();
+  }, [chatOpen, chatView, coachPrepCoach, coachPrepNonce, createThread, setMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, followUpChips]);
 
+  const isCoachPrep = chatView === "coach-prep" && !!coachPrepCoach;
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
-  const welcomeChips = buildWelcomeChips(assistantCtx);
+  const hasUserMessages = messages.some((m) => (m.kind === "text" || !m.kind) && m.role === "user");
+  const welcomeMessageText =
+    isCoachPrep && coachPrepCoach
+      ? buildCoachPrepWelcomeMessage(
+          coachPrepCoach.displayName,
+          coachPrepCoach.matchScore,
+          coachPrepCoach.matchLabel,
+        )
+      : WELCOME_MESSAGE;
+  const showWelcomeStarters =
+    (welcomeOnly || (isCoachPrep && !hasUserMessages)) && !streaming;
+  const welcomeChips = isCoachPrep
+    ? COACH_PREP_STARTER_CHIPS
+    : showWelcomeRecommendations && (forYouLoading || forYouChips.length > 0)
+      ? forYouChips
+      : buildWelcomeChips(assistantCtx);
+  const welcomeChipsLoading = showWelcomeRecommendations && forYouLoading && forYouChips.length === 0;
 
   const contextSuggestionChips =
     forYouChips.length > 0 ? forYouChips : buildContextSuggestionChips(assistantCtx);
-  const hasUserMessages = messages.some((m) => (m.kind === "text" || !m.kind) && m.role === "user");
   const lastTextMessages = messages.filter(
     (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
   );
@@ -434,9 +498,13 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
             if (guidance) await appendGuidanceMessage(guidance);
           })();
           break;
+        case "show_recommendations":
+          setShowWelcomeRecommendations(true);
+          if (forYouChips.length === 0) void loadForYou();
+          break;
       }
     },
-    [addSkillAndNavigate, appendGuidanceMessage, navigateWithGuidance],
+    [addSkillAndNavigate, appendGuidanceMessage, forYouChips.length, loadForYou, navigateWithGuidance],
   );
 
   const loadAiFollowUpChips = useCallback(async () => {
@@ -513,10 +581,121 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     messages,
   ]);
 
+  const applyFollowUpChips = useCallback(
+    (userMessage: string, assistantMessage: string, fullThread: Array<{ role: string; content: string }>) => {
+      const threadContext = formatThreadForFollowUps(fullThread.slice(0, -1));
+      lastFollowUpContextRef.current = {
+        userMessage,
+        assistantMessage,
+        thread: fullThread,
+        threadContext,
+      };
+      setCanAskAiSuggestions(!isFailedAssistantReply(assistantMessage));
+      setNextStepsVisible(true);
+      setFollowUpChips(
+        buildFollowUpChips({
+          userMessage,
+          assistantMessage,
+          threadContext,
+          profileGaps: assistantCtx?.profileGaps,
+          ctx: assistantCtx,
+        }),
+      );
+    },
+    [assistantCtx],
+  );
+
+  const sendCoachPrepMessage = async (text: string) => {
+    if (!coachPrepCoach) return;
+
+    const trimmed = text.trim();
+    if (!trimmed || streaming) return;
+
+    setShowWelcomeRecommendations(false);
+    setFollowUpChips([]);
+    setCanAskAiSuggestions(false);
+    setNextStepsVisible(false);
+
+    const textThread = messages.filter(
+      (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
+    );
+    const nextMessages = [...textThread, { role: "user" as const, content: trimmed }];
+
+    const userMsg: StoredThreadMessage = { kind: "text", role: "user", content: trimmed };
+    const assistantPlaceholder: StoredThreadMessage = { kind: "text", role: "assistant", content: "" };
+    setMessages((prev) => [...prev, userMsg, assistantPlaceholder]);
+    const threadId = await ensureThread();
+    if (threadId) void persistMessages(threadId, [userMsg]);
+
+    setInput("");
+    setStreaming(true);
+
+    let accumulated = "";
+    try {
+      const res = await fetch("/api/ai/coach-prep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+          coach: coachPrepCoach,
+        }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+        updateLastAssistant(
+          res.status === 503
+            ? "Kimchi AI isn't available — check that Vercel AI Gateway is configured on this environment."
+            : "That didn't work — try again.",
+        );
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        updateLastAssistant(accumulated);
+      }
+      if (!accumulated.trim()) {
+        accumulated = "I couldn't generate a reply just now. Try sending that again, or use the buttons below.";
+      }
+      updateLastAssistant(accumulated);
+      notifyCreditsChanged();
+      if (threadId && accumulated.trim() && !isFailedAssistantReply(accumulated)) {
+        void persistMessages(threadId, [{ kind: "text", role: "assistant", content: accumulated }]);
+      }
+      const fullThread = [
+        ...textThread.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: trimmed },
+        { role: "assistant", content: accumulated },
+      ];
+      applyFollowUpChips(trimmed, accumulated, fullThread);
+    } catch {
+      updateLastAssistant("Couldn't reach Kimchi — check your connection.");
+    } finally {
+      setStreaming(false);
+    }
+  };
+
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
 
+    if (isCoachPrep && coachPrepCoach) {
+      await sendCoachPrepMessage(trimmed);
+      return;
+    }
+
+    setShowWelcomeRecommendations(false);
     setFollowUpChips([]);
     setCanAskAiSuggestions(false);
     setNextStepsVisible(false);
@@ -601,9 +780,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         thread: fullThread,
         threadContext: formatThreadForFollowUps(fullThread.slice(0, -1)),
       };
-      setCanAskAiSuggestions(!isFailedAssistantReply(accumulated));
-      setNextStepsVisible(false);
-      setFollowUpChips([]);
+      applyFollowUpChips(trimmed, accumulated, fullThread);
     } catch {
       updateLastAssistant("Couldn't reach Kimchi — check your connection.");
     } finally {
@@ -800,16 +977,16 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           const displayContent =
             msg.role === "user"
               ? msg.content
-              : welcomeOnly && i === messages.length - 1
-                ? WELCOME_MESSAGE
+              : showWelcomeStarters && i === messages.length - 1
+                ? welcomeMessageText
                 : isStreamingPlaceholder
                   ? null
                   : msg.content;
           const copyText =
             msg.role === "user"
               ? msg.content
-              : welcomeOnly && i === messages.length - 1
-                ? WELCOME_MESSAGE
+              : showWelcomeStarters && i === messages.length - 1
+                ? welcomeMessageText
                 : msg.content;
           const canCopy = !!copyText?.trim() && !isStreamingPlaceholder;
 
@@ -848,11 +1025,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           );
         })}
 
-        {welcomeOnly && welcomeChips.length > 0 && (
+        {showWelcomeStarters && (welcomeChips.length > 0 || welcomeChipsLoading) && (
           <KimchiStarterSection
             actions={welcomeChips}
             chatChips={[]}
-            loading={false}
+            loading={welcomeChipsLoading}
             onActivate={handleChipActivate}
           />
         )}
