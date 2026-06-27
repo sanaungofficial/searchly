@@ -155,7 +155,7 @@ function cardSecondaryLine(coach: CoachListItem, primary: string | null): string
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
   const p = norm(primary);
   const b = norm(snippet);
-  if (b.startsWith(p) || p.startsWith(b.slice(0, Math.min(b.length, 48))) return null;
+  if (b.startsWith(p) || p.startsWith(b.slice(0, Math.min(b.length, 48)))) return null;
   return snippet;
 }
 
@@ -181,6 +181,8 @@ function FavoriteBadge() {
     </span>
   );
 }
+
+function RateDisplay({ rate, isPro, onSubscribe }: { rate: number; isPro: boolean; onSubscribe: () => void }) {
   if (isPro) {
     return (
       <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: color.ink }}>
