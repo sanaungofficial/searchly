@@ -113,6 +113,28 @@ function cardSecondaryLine(coach: CoachListItem, primary: string | null): string
   return snippet;
 }
 
+function WorkingTogetherBadge() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "3px 8px",
+        borderRadius: 999,
+        background: "rgba(26,58,47,0.1)",
+        border: "1px solid rgba(26,58,47,0.2)",
+        fontFamily: fontSans,
+        fontSize: 11,
+        fontWeight: 700,
+        color: color.forest,
+        lineHeight: 1.3,
+      }}
+    >
+      Working together
+    </span>
+  );
+}
+
 function FavoriteBadge() {
   return (
     <span
@@ -226,6 +248,7 @@ export function CoachingDirectoryCard({
               </span>
               {coach.isInternal && <InternalCoachBadge compact />}
               <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
+              {isMyCoach && <WorkingTogetherBadge />}
               {isFavorite && <FavoriteBadge />}
               {coach.featured && <CoachBadgePill label="Featured" tone="gold" />}
               {coach.isProfessionalCoach && <CoachBadgePill label="Top expert" tone="gold" />}
@@ -315,23 +338,34 @@ export function CoachingDirectoryCard({
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                {canSelfAssignCoach && !coach.isInternal && onToggleMyCoach && (
-                  <ScoutSecondaryBtn
-                    onClick={() => onToggleMyCoach(coach)}
-                    style={{
-                      minHeight: 38,
-                      fontSize: 13,
-                      padding: "8px 14px",
-                      ...(isMyCoach ? { borderColor: color.forest, color: color.forest } : {}),
-                    }}
-                  >
-                    {isMyCoach ? "My coach ✓" : "Add as my coach"}
-                  </ScoutSecondaryBtn>
-                )}
-                {canSelfAssignCoach && coach.isInternal && isMyCoach && (
-                  <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, padding: "8px 4px" }}>
-                    My coach ✓
-                  </span>
+                {canSelfAssignCoach && onToggleMyCoach && (
+                  isMyCoach || !coach.isInternal ? (
+                    <ScoutSecondaryBtn
+                      onClick={() => onToggleMyCoach(coach)}
+                      style={{
+                        minHeight: 38,
+                        fontSize: 13,
+                        padding: "8px 14px",
+                        ...(isMyCoach
+                          ? { borderColor: color.forest, color: color.forest, fontWeight: 600 }
+                          : {}),
+                      }}
+                    >
+                      {isMyCoach ? "Remove from my coaches" : "Add as my coach"}
+                    </ScoutSecondaryBtn>
+                  ) : (
+                    <span
+                      style={{
+                        fontFamily: fontSans,
+                        fontSize: 12,
+                        color: color.muted,
+                        padding: "8px 4px",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Assigned by your team
+                    </span>
+                  )
                 )}
                 <ScoutSecondaryBtn onClick={() => onFollow(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 14px" }}>
                   {following ? "Following" : "+ Follow"}

@@ -311,8 +311,9 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   };
 
   const toggleMyCoach = async () => {
-    if (!coach || coach.isInternal) return;
+    if (!coach) return;
     const isAssigned = coach.isMyCoach ?? false;
+    if (!isAssigned && coach.isInternal) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -656,22 +657,27 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                   <ScoutSecondaryBtn onClick={toggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
                     {coach.isFollowing ? "Following ✓" : "+ Follow"}
                   </ScoutSecondaryBtn>
-                  {canSelfAssignCoach && !coach.isInternal && (
+                  {canSelfAssignCoach && (coach.isMyCoach || !coach.isInternal) && (
                     <ScoutSecondaryBtn
                       onClick={toggleMyCoach}
                       style={{
                         width: "100%",
                         minHeight: 40,
                         marginBottom: 8,
-                        ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest } : {}),
+                        ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest, fontWeight: 600 } : {}),
                       }}
                     >
-                      {coach.isMyCoach ? "My coach ✓ · Remove" : "Add as my coach"}
+                      {coach.isMyCoach ? "Remove from my coaches" : "Add as my coach"}
                     </ScoutSecondaryBtn>
+                  )}
+                  {canSelfAssignCoach && coach.isInternal && !coach.isMyCoach && (
+                    <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: "0 0 8px", lineHeight: 1.45 }}>
+                      Kimchi coaches are assigned by your team. Search or filter &quot;Kimchi coaches&quot; to browse the team.
+                    </p>
                   )}
                   {canSelfAssignCoach && coach.isInternal && coach.isMyCoach && (
                     <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, textAlign: "center", margin: "0 0 8px" }}>
-                      Your Kimchi coach
+                      Working together
                     </p>
                   )}
                   <button type="button" onClick={() => setShowReview(true)} style={{ width: "100%", background: "none", border: "none", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, cursor: "pointer", textDecoration: "underline", padding: 8 }}>

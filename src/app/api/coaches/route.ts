@@ -108,25 +108,19 @@ export async function GET(request: NextRequest) {
       select: coachListSelect,
     });
 
-    let assignedInternal: typeof publicCoaches = [];
     let myCoachIds: string[] = [];
+    let kimchiCoaches: typeof publicCoaches = [];
     if (me) {
       myCoachIds = await getAssignedCoachIds(me.id);
-      if (myCoachIds.length) {
-        assignedInternal = await prisma.coachProfile.findMany({
-          where: {
-            id: { in: myCoachIds },
-            status: "ACTIVE",
-            isInternal: true,
-          },
-          select: coachListSelect,
-        });
-      }
+      kimchiCoaches = await prisma.coachProfile.findMany({
+        where: { status: "ACTIVE", isInternal: true },
+        select: coachListSelect,
+      });
     }
 
     const mergedMap = new Map<string, typeof publicCoaches[number]>();
     for (const c of publicCoaches) mergedMap.set(c.id, c);
-    for (const c of assignedInternal) mergedMap.set(c.id, c);
+    for (const c of kimchiCoaches) mergedMap.set(c.id, c);
     const coaches = Array.from(mergedMap.values());
 
     let matchCtx: Awaited<ReturnType<typeof buildCoachMatchUserContext>> = {

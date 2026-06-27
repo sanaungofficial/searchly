@@ -145,6 +145,20 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
                     >
                       {coach.displayName}
                       {coach.isInternal && <InternalCoachBadge compact />}
+                      <span
+                        style={{
+                          fontFamily: fontMono,
+                          fontSize: 10,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          padding: "3px 8px",
+                          background: "rgba(26,58,47,0.08)",
+                          color: color.forest,
+                          borderRadius: 999,
+                        }}
+                      >
+                        Working together
+                      </span>
                     </p>
                     {coach.headline && (
                       <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, margin: "0 0 8px", lineHeight: 1.5 }}>
@@ -176,12 +190,12 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
                       <ScoutSecondaryBtn onClick={() => goToCoachPage(coach.slug, coach.coachProfileId)} style={{ minHeight: 40, fontSize: 14 }}>
                         Open full page
                       </ScoutSecondaryBtn>
-                      {canSelfAssignCoach && !coach.isInternal && (
+                      {canSelfAssignCoach && (
                         <ScoutSecondaryBtn
                           onClick={() => removeCoach(coach.coachProfileId)}
-                          style={{ minHeight: 40, fontSize: 14, color: color.muted }}
+                          style={{ minHeight: 40, fontSize: 14, color: color.muted, borderColor: border.line }}
                         >
-                          Remove coach
+                          Remove from my coaches
                         </ScoutSecondaryBtn>
                       )}
                     </div>

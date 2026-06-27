@@ -35,6 +35,7 @@ type FilterValues = {
   specialty: string;
   specialization: string;
   professional: boolean;
+  internal: boolean;
 };
 
 type Props = {
@@ -43,6 +44,7 @@ type Props = {
   onChange: (key: string, value: string) => void;
   onBatchChange: (patch: Record<string, string>) => void;
   onProfessionalChange: (checked: boolean) => void;
+  onInternalChange: (checked: boolean) => void;
   onClear: () => void;
   activeCount: number;
 };
@@ -280,10 +282,13 @@ export function CoachingDirectorySidebar({
   onChange,
   onBatchChange,
   onProfessionalChange,
+  onInternalChange,
   onClear,
   activeCount,
 }: Props) {
   const [serviceSearch, setServiceSearch] = useState("");
+
+  const kimchiCoachCount = useMemo(() => allCoaches.filter((c) => c.isInternal).length, [allCoaches]);
 
   const allSpecialties = useMemo(() => Array.from(new Set(allCoaches.flatMap((c) => c.specialties))).sort(), [allCoaches]);
 
@@ -320,6 +325,17 @@ export function CoachingDirectorySidebar({
           </button>
         )}
       </div>
+
+      <FilterSection title="Kimchi team" defaultOpen={kimchiCoachCount > 0}>
+        <CheckRow
+          checked={filters.internal}
+          label={`Kimchi coaches (${kimchiCoachCount})`}
+          onChange={() => onInternalChange(!filters.internal)}
+        />
+        <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>
+          Second Ladder coaches like Mira — search by name or use this filter.
+        </p>
+      </FilterSection>
 
       <FilterSection title="Hourly rate">
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>

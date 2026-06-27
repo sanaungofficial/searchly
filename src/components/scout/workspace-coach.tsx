@@ -7,7 +7,7 @@ import { CoachProfileTab } from "./coach-profile-tab";
 import { CoachBookingsTab } from "./coach-bookings-tab";
 import { CoachSharedDocumentsPanel } from "./coach-shared-documents-panel";
 import { CoachClientSessionNotesPanel } from "./coach-client-session-notes-panel";
-import { ScoutBox } from "./scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -43,6 +43,7 @@ type Client = {
   } | null;
   jobs: ClientJob[];
   _count: { jobs: number; tailoredResumes: number };
+  isAssignedCoach?: boolean;
 };
 
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
@@ -82,6 +83,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [onboardingPhase, setOnboardingPhase] = useState<string | null>(null);
   const [vouchCount, setVouchCount] = useState(0);
 
@@ -110,6 +112,24 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
       .then((data) => { setClients(data); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
   }, []);
+
+  const toggleClientAssignment = async (client: Client) => {
+    setAssignmentLoading(true);
+    try {
+      const isAssigned = client.isAssignedCoach ?? false;
+      const res = await fetch(
+        `/api/coach/clients/${client.id}/assignment`,
+        { method: isAssigned ? "DELETE" : "POST" },
+      );
+      if (!res.ok) return;
+      setClients((prev) =>
+        prev.map((c) => (c.id === client.id ? { ...c, isAssignedCoach: !isAssigned } : c)),
+      );
+      setSelected((prev) => (prev?.id === client.id ? { ...prev, isAssignedCoach: !isAssigned } : prev));
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
 
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
@@ -189,12 +209,27 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
           ← All Clients
         </button>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
           <div>
             <p style={{ fontSize: T.caption, color: color.muted, fontFamily: fontMono, margin: "0 0 6px" }}>{selected.email}</p>
             {selected.profile?.headline && <p style={{ fontSize: T.bodySm, color: color.stone, margin: 0 }}>{selected.profile.headline}</p>}
+            {selected.isAssignedCoach && (
+              <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest, margin: "8px 0 0" }}>
+                Working together
+              </p>
+            )}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <ScoutSecondaryBtn
+              onClick={() => toggleClientAssignment(selected)}
+              disabled={assignmentLoading}
+              style={{
+                minHeight: 40,
+                ...(selected.isAssignedCoach ? { borderColor: color.forest, color: color.forest } : {}),
+              }}
+            >
+              {selected.isAssignedCoach ? "Remove from my clients" : "Mark as working together"}
+            </ScoutSecondaryBtn>
             {selected.profile?.linkedinUrl && (
               <a href={selected.profile.linkedinUrl} target="_blank" rel="noreferrer"
                 style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: "var(--scout-radius)", border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
