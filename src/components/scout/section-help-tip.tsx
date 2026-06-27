@@ -1,7 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useId, useState, type ReactNode } from "react";
 import { border, color, fontSans, type as T } from "@/lib/typography";
 
 type HelpTipProps = {
@@ -10,43 +9,71 @@ type HelpTipProps = {
 };
 
 export function SectionHelpTip({ text, label = "What is this?" }: HelpTipProps) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
+    <span
+      style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        aria-describedby={open ? id : undefined}
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: "50%",
+          border: border.line,
+          background: "rgba(26,58,47,0.06)",
+          color: color.muted,
+          fontFamily: fontSans,
+          fontSize: 11,
+          fontWeight: 700,
+          lineHeight: 1,
+          cursor: "help",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+      >
+        ?
+      </button>
+      {open && (
+        <span
+          id={id}
+          role="tooltip"
           style={{
-            width: 18,
-            height: 18,
-            borderRadius: "50%",
-            border: border.line,
-            background: "rgba(26,58,47,0.06)",
-            color: color.muted,
+            position: "absolute",
+            left: "50%",
+            bottom: "calc(100% + 8px)",
+            transform: "translateX(-50%)",
+            width: "max-content",
+            maxWidth: 280,
+            padding: "10px 12px",
+            borderRadius: "var(--scout-radius)",
+            background: color.forest,
+            color: "#fff",
             fontFamily: fontSans,
-            fontSize: 11,
-            fontWeight: 700,
-            lineHeight: 1,
-            cursor: "help",
-            flexShrink: 0,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
+            fontSize: T.caption,
+            lineHeight: 1.55,
+            fontWeight: 400,
+            textAlign: "left",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            zIndex: 20,
+            pointerEvents: "none",
           }}
         >
-          ?
-        </button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        sideOffset={6}
-        className="max-w-[280px] border-0 bg-[#1A3A2F] px-3 py-2.5 text-left text-white shadow-lg [&>svg]:fill-[#1A3A2F]"
-        style={{ fontFamily: fontSans, fontSize: T.caption, lineHeight: 1.55, fontWeight: 400 }}
-      >
-        {text}
-      </TooltipContent>
-    </Tooltip>
+          {text}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -62,7 +89,7 @@ export function SectionHeadingWithHelp({
   trailing?: ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", width: trailing ? "100%" : undefined }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: trailing ? 1 : undefined, minWidth: 0 }}>
         <p
           style={{
