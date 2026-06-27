@@ -71,7 +71,7 @@ function snapshotResponse(
 
 async function handleRecommended(request: Request) {
   if (!isHirebaseConfigured()) {
-    return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
+    return NextResponse.json({ error: "Job search is not configured on this environment." }, { status: 503 });
   }
 
   const { dbUser, error } = await resolveScopedDbUser(request);
@@ -140,7 +140,7 @@ async function handleRecommended(request: Request) {
     if (!result?.jobs.length) {
       return NextResponse.json(
         {
-          error: "Could not load roles from Hirebase right now — try Refresh in a moment.",
+          error: "Could not load roles right now — try Refresh in a moment.",
           needsProfile: targetRoles.length === 0,
           hint: "If this keeps happening, check target roles under Profile or broaden filters.",
           matchMode: result?.matchMode,

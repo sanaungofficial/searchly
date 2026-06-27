@@ -1060,7 +1060,7 @@ function CompanyDrawer({
                   ? "Add your resume first — then we'll search this company for roles that match your experience."
                   : canScan
                     ? "Click Find matching roles — we use your resume to rank openings at this company."
-                    : "Matching scan runs via Hirebase when configured, or from the careers page on production."}
+                    : "Matching scan runs from our job index when available, or from the careers page on production."}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1092,7 +1092,7 @@ function CompanyDrawer({
             )}
             {jobs.length > 0 && userHasResume && (
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 8, lineHeight: 1.45 }}>
-                Ranked by fit to your resume via Hirebase.
+                Ranked by fit to your resume.
               </div>
             )}
           </DrawerSection>

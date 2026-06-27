@@ -50,7 +50,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     bullets: [
       {
         title: "Where roles come from",
-        body: "Openings at companies on your watchlist — matched to your target titles via Hirebase, same path as Companies → Matching roles.",
+        body: "Openings at companies on your watchlist — matched to your target titles, same path as Companies → Matching roles.",
       },
       {
         title: "How the score is calculated",
@@ -62,7 +62,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Not resume embed",
-        body: "This view does not call Hirebase resume embed. For deep fit analysis on a saved job, use Analyze fit in the job drawer.",
+        body: "This view uses fast profile-based scoring. For deep fit analysis on a saved job, use Analyze fit in the job drawer.",
       },
     ],
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",

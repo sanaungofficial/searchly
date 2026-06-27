@@ -48,8 +48,8 @@ export const KIMCHI_LOADER_PRESETS = {
   recommendations: {
     emoji: "🎯",
     title: "Finding roles that match you…",
-    hint: "This usually takes a few seconds.",
-    durationSec: 8,
+    hint: "It usually takes a few seconds.",
+    durationSec: 12,
   },
   onboardingBackground: {
     emoji: "📄",

@@ -1681,7 +1681,7 @@ function DreamRoleTab({
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Prioritized roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles from Hirebase and add similar titles to cast a wider net.
+          Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles and add similar titles to cast a wider net.
         </p>
         <RoleTitlePicker
           selected={prioritizedList}

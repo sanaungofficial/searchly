@@ -27,7 +27,7 @@ function suggestToOrgRef(item: OrgSuggestItem): LinkedInOrgRef {
 
 function formatMeta(item: OrgSuggestItem): string {
   if (item.type) return item.type;
-  if (item.source === "hirebase") return "Hirebase";
+  if (item.source === "hirebase") return "Job index";
   if (item.website) {
     try {
       return new URL(item.website.startsWith("http") ? item.website : `https://${item.website}`).hostname.replace(/^www\./, "");

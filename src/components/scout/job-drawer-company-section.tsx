@@ -142,7 +142,7 @@ export function JobDrawerCompanySection({
           )}
           {profile?.company_slug && (
             <p style={{ fontFamily: sans, fontSize: 12, color: "#8A8278", margin: "4px 0 0" }}>
-              Verified on Hirebase · {profile.company_slug}
+              Verified employer · {profile.company_slug}
             </p>
           )}
         </div>
@@ -187,7 +187,7 @@ export function JobDrawerCompanySection({
         <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", margin: "0 0 16px" }}>Loading company profile…</p>
       ) : hirebase?.error && hirebase.configured ? (
         <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", margin: "0 0 16px", lineHeight: 1.5 }}>
-          Company summary from Hirebase isn&apos;t available for this employer yet.
+          Company summary isn&apos;t available for this employer yet.
         </p>
       ) : null}
 
@@ -281,7 +281,7 @@ export function JobDrawerCompanySection({
 
       {showLimitedNote && (
         <p style={{ fontFamily: sans, fontSize: 13, color: color.mutedLight, margin: "0 0 16px", lineHeight: 1.5 }}>
-          Hirebase has limited company data for this employer — what you see above is what we received from the job posting and company index.
+          We have limited company data for this employer — what you see above is from the job posting and our company index.
         </p>
       )}
 

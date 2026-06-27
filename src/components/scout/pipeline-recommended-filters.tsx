@@ -325,7 +325,7 @@ function AllFiltersDrawerContent({
       <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
         <FilterSectionHeader
           title="Role criteria"
-          hint="Titles and keywords for a live Hirebase search — comma-separate multiples."
+          hint="Titles and keywords for a live job search — comma-separate multiples."
         />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>

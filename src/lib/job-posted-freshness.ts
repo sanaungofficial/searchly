@@ -80,7 +80,7 @@ export function getJobFreshness(datePosted: string | null | undefined): JobFresh
       hoursSince: null,
       daysSince: null,
       cardLabel: "Posted date unknown",
-      detailLabel: "Posting date not available from Hirebase",
+      detailLabel: "Posting date not available",
       sortRank: sortRankForLevel("unknown"),
       isStale: false,
     };

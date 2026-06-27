@@ -597,7 +597,7 @@ function JobDescriptionPanel({
         <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
         <div style={{ padding: "18px 20px", background: surface.inset, border: line }}>
           <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "0 0 14px" }}>
-            Loading full posting from Hirebase…
+            Loading full posting…
           </p>
           {[88, 72, 94, 60].map((w, i) => (
             <div

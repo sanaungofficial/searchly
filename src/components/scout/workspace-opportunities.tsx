@@ -981,7 +981,7 @@ function PipelineTab({
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           {pipelineView === "recommended"
-            ? "Hirebase roles scored against your profile — save any you want to track."
+            ? "Open roles scored against your profile — save any you want to track."
             : `${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline.`}
         </p>
       </div>

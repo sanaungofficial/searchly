@@ -268,44 +268,10 @@ const inputStyle: React.CSSProperties = {
 };
 
 function RecommendedLoadingSkeleton() {
-  const barWidths = ["72%", "58%", "84%", "64%"];
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <ScoutBox padding={24} style={{ textAlign: "center" }}>
-        <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
-      </ScoutBox>
-      {[0, 1, 2].map((card) => (
-        <ScoutBox key={card} padding={18}>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                background: "#F0EDE8",
-                animation: "pulse 1.5s ease-in-out infinite",
-                animationDelay: `${card * 0.15}s`,
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              {barWidths.map((w, i) => (
-                <div
-                  key={i}
-                  style={{
-                    height: i === 0 ? 18 : 12,
-                    width: w,
-                    marginBottom: i === 0 ? 10 : 8,
-                    background: "#F0EDE8",
-                    animation: "pulse 1.5s ease-in-out infinite",
-                    animationDelay: `${card * 0.15 + i * 0.1}s`,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </ScoutBox>
-      ))}
-    </div>
+    <ScoutBox padding={24} style={{ marginBottom: 12 }}>
+      <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
+    </ScoutBox>
   );
 }
 
@@ -865,7 +831,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles from Hirebase matched to your profile — sorted by match score (best fits first). Apply within 48 hours for the best response rate.
+              Roles matched to your profile — sorted by fit (best first). Apply within 48 hours for the best response rate.
             </p>
             <div style={{ marginTop: 10 }}>
               <JobFreshnessLegend compact />
@@ -955,20 +921,18 @@ export function PipelineRecommendedSection({
         )}
         {hasActiveSearch && !error && hasLoadedOnce && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            Custom filters run a live Hirebase search — results may differ from your daily snapshot.
+            Custom filters run a live search — results may differ from your daily snapshot.
           </p>
         )}
-        {revalidating && jobs.length > 0 && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            Updating recommendations…
-          </p>
-        )}
-        {(loading || revalidating) && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
-            {jobs.length > 0
-              ? "Still loading — switch tabs if you want; results update here when ready."
-              : "Loading roles — you can leave and come back. Results stick around for this session."}
-          </p>
+        {(revalidating || (loading && hasLoadedOnce)) && (
+          <div style={{ marginTop: 12 }}>
+            <KimchiProcessLoader
+              preset="recommendations"
+              variant="inline"
+              fullWidth
+              title={revalidating ? "Updating your matches…" : undefined}
+            />
+          </div>
         )}
       </ScoutBox>
 
