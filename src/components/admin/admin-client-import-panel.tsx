@@ -87,8 +87,15 @@ function ImportReviewModal({
         <h3 style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 600, margin: "0 0 8px", color: color.forest }}>
           Review import
         </h3>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 16px", lineHeight: 1.5 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 8px", lineHeight: 1.5 }}>
           Nothing is written until you click Apply selected. Uncheck rows you want to skip.
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.forest, margin: "0 0 16px", lineHeight: 1.5 }}>
+          {preview.pipelineJobs.length} pipeline jobs · {preview.companies.length} companies ·{" "}
+          {preview.contacts.length} contacts
+          {preview.pipelineJobs.length > 0
+            ? " — jobs import with stage from Application Status; companies match Hirebase when possible so they stay on the watchlist even if a posting is gone."
+            : ""}
         </p>
 
         {preview.warnings.length > 0 && (
@@ -145,21 +152,31 @@ function ImportReviewModal({
           </Section>
         )}
 
-        {preview.pipelineJobs.length > 0 && (
-          <Section title={`Pipeline jobs (${selectedJobs}/${preview.pipelineJobs.length})`}>
-            {preview.pipelineJobs.slice(0, 20).map((row) => (
-              <CheckRow
-                key={row.id}
-                checked={row.selected}
-                onChange={(v) => onToggle("pipelineJobs", row.id, v)}
-                label={`${row.data.company} — ${row.data.role} (${row.data.stage.toLowerCase()})`}
-              />
-            ))}
-            {preview.pipelineJobs.length > 20 && (
-              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>+{preview.pipelineJobs.length - 20} more jobs</p>
-            )}
-          </Section>
-        )}
+        <Section title={`Pipeline jobs (${selectedJobs}/${preview.pipelineJobs.length})`}>
+          {preview.pipelineJobs.length === 0 ? (
+            <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>
+              No jobs found. Your sheet needs a tab with Company and Job Title columns (e.g. Job Tracker).
+            </p>
+          ) : (
+            <>
+              {preview.pipelineJobs.slice(0, 20).map((row) => (
+                <CheckRow
+                  key={row.id}
+                  checked={row.selected}
+                  onChange={(v) => onToggle("pipelineJobs", row.id, v)}
+                  label={`${row.data.company} — ${row.data.role} (${row.data.stage.toLowerCase()})${
+                    row.data.url ? ` · ${row.data.url}` : ""
+                  }`}
+                />
+              ))}
+              {preview.pipelineJobs.length > 20 && (
+                <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+                  +{preview.pipelineJobs.length - 20} more jobs
+                </p>
+              )}
+            </>
+          )}
+        </Section>
 
         {preview.companies.length > 0 && (
           <Section title={`Target companies (${selectedCos}/${preview.companies.length})`}>

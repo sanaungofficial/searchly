@@ -16,6 +16,8 @@ export type ImportPipelineJob = {
   stage: JobStage;
   notes: string | null;
   appliedAt: string | null;
+  hirebaseSlug?: string | null;
+  apiLinked?: boolean;
 };
 
 export type ImportContact = {

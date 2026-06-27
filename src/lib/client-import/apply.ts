@@ -1,9 +1,10 @@
 import type { JobStage } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { applyIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
+import { applyIntakeTrackedCompanies, type SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
 import { upsertManualInboxContact } from "@/lib/inbox-crm/manual-contact";
 import { ensureProfileRow } from "@/lib/profile-write";
 import { fetchResumeBytes, extractRawResumeText, parseResumeText, fileExtFromUrl } from "@/lib/resume-extract";
+import { enrichImportCompanies } from "@/lib/client-import/enrich-companies";
 import type {
   ClientImportApplyPayload,
   ClientImportApplyResult,
@@ -24,6 +25,19 @@ function parseAppliedAt(raw: string | null): Date | null {
   if (!raw?.trim()) return null;
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function companyNamesFromJobs(jobs: { data: { company: string } }[]): string[] {
+  return [...new Set(jobs.map((j) => j.data.company.trim()).filter(Boolean))];
+}
+
+function hirebaseLinkNote(apiLinked: boolean): string | null {
+  return apiLinked ? "Company linked via Hirebase" : null;
+}
+
+function mergeNotes(...parts: Array<string | null | undefined>): string | null {
+  const merged = parts.filter(Boolean).join(" · ");
+  return merged || null;
 }
 
 export async function applyClientImport(
@@ -104,22 +118,70 @@ export async function applyClientImport(
   }
 
   const jobs = selectedRows(preview, preview.pipelineJobs, payload.pipelineJobIds);
+  const selectedCompanies = selectedRows(preview, preview.companies, payload.companyIds);
+
+  const allCompanyNames = [
+    ...selectedCompanies.map((c) => c.data.name),
+    ...companyNamesFromJobs(jobs),
+  ];
+  const enrichedByName = await enrichImportCompanies(allCompanyNames);
+
+  const companiesToApply: SuggestedTrackedCompany[] = [];
+  const seenCo = new Set<string>();
+  for (const row of selectedCompanies) {
+    const key = row.data.name.toLowerCase();
+    if (seenCo.has(key)) continue;
+    seenCo.add(key);
+    const enriched = enrichedByName.get(key);
+    companiesToApply.push({
+      ...row.data,
+      name: enriched?.name ?? row.data.name,
+      notes: row.data.notes,
+      priority: row.data.priority ?? "MEDIUM",
+    });
+  }
+  for (const job of jobs) {
+    const key = job.data.company.toLowerCase();
+    if (seenCo.has(key)) continue;
+    seenCo.add(key);
+    const enriched = enrichedByName.get(key);
+    companiesToApply.push({
+      name: enriched?.name ?? job.data.company,
+      priority: "MEDIUM",
+      notes: mergeNotes("Imported from job tracker", hirebaseLinkNote(Boolean(enriched?.apiLinked))),
+    });
+  }
+
+  if (companiesToApply.length) {
+    const companyResult = await applyIntakeTrackedCompanies(userId, companiesToApply, { max: 150 });
+    result.companies.added = companyResult.added;
+    result.companies.updated = companyResult.updated;
+    result.companies.skipped = companyResult.skipped;
+    result.errors.push(...companyResult.errors.map((n) => `Company: ${n}`));
+  }
+
+  const jobIdByCompanyRole = new Map<string, string>();
+
   for (const row of jobs) {
     const { company, role, url, stage, notes, appliedAt } = row.data;
+    const enriched = enrichedByName.get(company.toLowerCase());
+    const companyName = enriched?.name ?? company;
     try {
       const existing = await prisma.job.findFirst({
         where: {
           userId,
-          company: { equals: company, mode: "insensitive" },
+          company: { equals: companyName, mode: "insensitive" },
           role: { equals: role, mode: "insensitive" },
         },
       });
 
       if (existing) {
-        const patch: { stage?: JobStage; url?: string | null; notes?: string | null; appliedAt?: Date | null } = {};
+        const patch: { stage?: JobStage; url?: string | null; notes?: string | null; appliedAt?: Date | null; company?: string } = {};
         if (stage && stage !== existing.stage) patch.stage = stage;
         if (url && url !== existing.url) patch.url = url;
-        if (notes && notes !== existing.notes) patch.notes = notes;
+        const mergedNotes = mergeNotes(notes, hirebaseLinkNote(Boolean(enriched?.apiLinked)));
+        if (mergedNotes && mergedNotes !== existing.notes) patch.notes = mergedNotes;
+        if (companyName !== existing.company) patch.company = companyName;
         const parsedApplied = parseAppliedAt(appliedAt);
         if (parsedApplied && !existing.appliedAt) patch.appliedAt = parsedApplied;
 
@@ -129,34 +191,27 @@ export async function applyClientImport(
         } else {
           result.jobs.skipped++;
         }
+        jobIdByCompanyRole.set(`${companyName.toLowerCase()}::${role.toLowerCase()}`, existing.id);
         continue;
       }
 
-      await prisma.job.create({
+      const created = await prisma.job.create({
         data: {
           userId,
-          company,
+          company: companyName,
           role,
           url,
           stage,
-          notes,
+          notes: mergeNotes(notes, hirebaseLinkNote(Boolean(enriched?.apiLinked))),
           appliedAt: parseAppliedAt(appliedAt) ?? (stage === "APPLIED" ? new Date() : null),
         },
       });
+      jobIdByCompanyRole.set(`${companyName.toLowerCase()}::${role.toLowerCase()}`, created.id);
       result.jobs.added++;
     } catch (err) {
-      console.error("[applyClientImport job]", company, role, err);
-      result.errors.push(`Job: ${company} — ${role}`);
+      console.error("[applyClientImport job]", companyName, role, err);
+      result.errors.push(`Job: ${companyName} — ${role}`);
     }
-  }
-
-  const companies = selectedRows(preview, preview.companies, payload.companyIds).map((r) => r.data);
-  if (companies.length) {
-    const companyResult = await applyIntakeTrackedCompanies(userId, companies, { max: 100 });
-    result.companies.added = companyResult.added;
-    result.companies.updated = companyResult.updated;
-    result.companies.skipped = companyResult.skipped;
-    result.errors.push(...companyResult.errors.map((n) => `Company: ${n}`));
   }
 
   const contacts = selectedRows(preview, preview.contacts, payload.contactIds);
@@ -166,9 +221,25 @@ export async function applyClientImport(
       const existing = await prisma.inboxContact.findUnique({
         where: { userId_email: { userId, email: c.email.toLowerCase() } },
       });
-      await upsertManualInboxContact(userId, c);
+      const contact = await upsertManualInboxContact(userId, c);
       if (existing) result.contacts.updated++;
       else result.contacts.added++;
+
+      if (contact && c.company) {
+        const companyKey = c.company.toLowerCase();
+        const matchingJob = jobs.find((j) => j.data.company.toLowerCase() === companyKey);
+        if (matchingJob) {
+          const jobKey = `${matchingJob.data.company.toLowerCase()}::${matchingJob.data.role.toLowerCase()}`;
+          const jobId = jobIdByCompanyRole.get(jobKey);
+          if (jobId) {
+            await prisma.jobInboxContact.upsert({
+              where: { jobId_contactId: { jobId, contactId: contact.id } },
+              create: { userId, jobId, contactId: contact.id },
+              update: {},
+            }).catch(() => {});
+          }
+        }
+      }
     } catch (err) {
       console.error("[applyClientImport contact]", c.email, err);
       result.errors.push(`Contact: ${c.email}`);
