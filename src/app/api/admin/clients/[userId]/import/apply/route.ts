@@ -4,6 +4,8 @@ import { applyClientImport } from "@/lib/client-import/apply";
 import type { ClientImportApplyPayload } from "@/lib/client-import/types";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 300;
+
 type RouteParams = { params: Promise<{ userId: string }> };
 
 export async function POST(request: Request, { params }: RouteParams) {
@@ -65,6 +67,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("[admin import apply]", err);
-    return NextResponse.json({ error: "Import apply failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Import apply failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

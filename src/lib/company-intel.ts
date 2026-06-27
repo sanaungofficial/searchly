@@ -68,11 +68,23 @@ export async function findOrCreateCompanyIntel(input: {
   careersUrl?: string | null;
 }): Promise<CompanyIntel> {
   const slug = (input.slug ?? normalizeCompanySlug(input.name)).trim();
+  const name = input.name.trim();
   if (!slug) {
     throw new Error("Company name must contain at least one letter or number.");
   }
 
-  const existing = await prisma.companyIntel.findUnique({ where: { slug } });
+  async function findExisting(): Promise<CompanyIntel | null> {
+    const bySlug = await prisma.companyIntel.findUnique({ where: { slug } });
+    if (bySlug) return bySlug;
+    if (name) {
+      return prisma.companyIntel.findFirst({
+        where: { name: { equals: name, mode: "insensitive" } },
+      });
+    }
+    return null;
+  }
+
+  const existing = await findExisting();
   if (existing) {
     const needsUpdate =
       (!existing.website && input.website) ||
@@ -90,14 +102,23 @@ export async function findOrCreateCompanyIntel(input: {
     return existing;
   }
 
-  return prisma.companyIntel.create({
-    data: {
-      name: input.name.trim(),
-      slug,
-      website: input.website ?? null,
-      careersUrl: input.careersUrl ?? null,
-    },
-  });
+  try {
+    return await prisma.companyIntel.create({
+      data: {
+        name,
+        slug,
+        website: input.website ?? null,
+        careersUrl: input.careersUrl ?? null,
+      },
+    });
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    if (code === "P2002") {
+      const retry = await findExisting();
+      if (retry) return retry;
+    }
+    throw err;
+  }
 }
 
 export async function resolveCompanyIntelFromInput(body: {

@@ -116,13 +116,17 @@ async function findExistingWatchlistCompany(
   });
 }
 
-async function createTrackedCompany(userId: string, entry: SuggestedTrackedCompany) {
+async function createTrackedCompany(
+  userId: string,
+  entry: SuggestedTrackedCompany,
+  options?: { skipHydrate?: boolean },
+) {
   const intel = await resolveCompanyIntelFromInput({ name: entry.name });
   const catalogSlug = normalizeCompanySlug(entry.name);
   const catalogEntry = getCatalogCompany(catalogSlug);
 
   let hydratedIntel = intel;
-  if (intel) {
+  if (intel && !options?.skipHydrate) {
     hydratedIntel = await hydrateIntelFromHirebase(intel, {
       slugHint: catalogSlug || intel.slug,
       website: intel.website,
@@ -164,7 +168,7 @@ async function createTrackedCompany(userId: string, entry: SuggestedTrackedCompa
 export async function applyIntakeTrackedCompanies(
   userId: string,
   companies: SuggestedTrackedCompany[],
-  options?: { max?: number },
+  options?: { max?: number; skipHydrate?: boolean },
 ): Promise<IntakeCompaniesApplyResult> {
   const max = options?.max ?? 40;
   const result: IntakeCompaniesApplyResult = { added: 0, updated: 0, skipped: 0, errors: [] };
@@ -201,7 +205,7 @@ export async function applyIntakeTrackedCompanies(
         continue;
       }
 
-      await createTrackedCompany(userId, entry);
+      await createTrackedCompany(userId, entry, { skipHydrate: options?.skipHydrate });
       result.added++;
     } catch (err) {
       console.error("[applyIntakeTrackedCompanies]", name, err);
