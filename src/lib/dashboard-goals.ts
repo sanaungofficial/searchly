@@ -1,4 +1,4 @@
-export type DashboardGoalCategory = "job_search" | "coaching" | "career";
+export type DashboardGoalCategory = "job_search" | "coaching" | "career" | "applications";
 
 export type DashboardGoal = {
   id: string;
@@ -38,6 +38,33 @@ export type DashboardGoalOption = {
 
 export const DASHBOARD_GOAL_MAX = 3;
 
+export const GOAL_WIZARD_CATEGORIES: {
+  id: DashboardGoalCategory;
+  title: string;
+  description: string;
+}[] = [
+  {
+    id: "job_search",
+    title: "Find your next role",
+    description: "Land a role, step up, pivot, or close an offer.",
+  },
+  {
+    id: "coaching",
+    title: "Work with a coach",
+    description: "Interview prep, positioning, negotiation, and leadership transitions.",
+  },
+  {
+    id: "applications",
+    title: "Prepare for applications",
+    description: "Resume, LinkedIn, portfolio, and application quality.",
+  },
+  {
+    id: "career",
+    title: "Plan your career",
+    description: "Strategy, exploration, and building skills for what's next.",
+  },
+];
+
 export const DASHBOARD_GOAL_OPTIONS: DashboardGoalOption[] = [
   { value: "land_new_role", label: "Land a new role in my target field", category: "job_search" },
   {
@@ -62,15 +89,17 @@ export const DASHBOARD_GOAL_OPTIONS: DashboardGoalOption[] = [
   },
   { value: "interview_performance", label: "Get better at interviews", category: "job_search" },
   { value: "negotiate_offer", label: "Negotiate an offer", category: "job_search" },
-  {
-    value: "positioning",
-    label: "Sharpen my story and positioning",
-    category: "coaching",
-  },
-  { value: "resume_linkedin", label: "Fix my resume and LinkedIn", category: "coaching" },
+  { value: "positioning", label: "Sharpen my story and positioning", category: "coaching" },
   { value: "interview_coaching", label: "Interview prep with a coach", category: "coaching" },
   { value: "salary_negotiation", label: "Salary and offer negotiation", category: "coaching" },
   { value: "executive_transition", label: "Executive or leadership transition", category: "coaching" },
+  { value: "resume_linkedin", label: "Fix my resume and LinkedIn", category: "applications" },
+  {
+    value: "application_strategy",
+    label: "Improve how I apply (quality, volume, targeting)",
+    category: "applications",
+  },
+  { value: "portfolio_build", label: "Build portfolio or work samples", category: "applications" },
   { value: "career_strategy", label: "Build a career plan", category: "career" },
   { value: "explore_paths", label: "Explore what's next", category: "career" },
   { value: "skill_growth", label: "Build skills for my next role", category: "career" },
@@ -79,11 +108,16 @@ export const DASHBOARD_GOAL_OPTIONS: DashboardGoalOption[] = [
 const CATEGORY_LABELS: Record<DashboardGoalCategory, string> = {
   job_search: "Job search",
   coaching: "Coaching",
+  applications: "Applications",
   career: "Career",
 };
 
 export function dashboardGoalCategoryLabel(category: DashboardGoalCategory): string {
   return CATEGORY_LABELS[category];
+}
+
+export function goalOptionsForCategory(category: DashboardGoalCategory): DashboardGoalOption[] {
+  return DASHBOARD_GOAL_OPTIONS.filter((o) => o.category === category);
 }
 
 export function findDashboardGoalOption(value: string): DashboardGoalOption | undefined {
@@ -115,12 +149,14 @@ export function normalizeDashboardGoals(raw: unknown): DashboardGoal[] {
 
 export function recommendationPathForGoals(goals: DashboardGoal[]): string {
   if (goals.some((g) => g.category === "coaching")) return "/coaching";
+  if (goals.some((g) => g.category === "applications")) return "/profile";
   if (goals.some((g) => g.category === "career")) return "/profile/career-strategy";
   return "/opportunities/pipeline";
 }
 
 export function recommendationLabelForGoals(goals: DashboardGoal[]): string {
   if (goals.some((g) => g.category === "coaching")) return "Browse coaches";
+  if (goals.some((g) => g.category === "applications")) return "Open profile assets";
   if (goals.some((g) => g.category === "career")) return "Open career strategy";
   return "Find roles that fit";
 }

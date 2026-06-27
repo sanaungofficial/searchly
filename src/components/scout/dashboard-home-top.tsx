@@ -24,7 +24,16 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-overview";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
-import { DashboardAddGoalModal } from "@/components/scout/dashboard-add-goal-modal";
+import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-modal";
+import { DashboardGoalWizardModal } from "@/components/scout/dashboard-goal-wizard-modal";
+import { MatchingPrefPromptModal, type MatchingPrefProfile } from "@/components/scout/matching-pref-prompt-modal";
+import { RecommendationTuningPanel } from "@/components/scout/recommendation-tuning-panel";
+import {
+  isGoalsWizardDismissed,
+  type MatchingTuningGapId,
+  type RecommendationTuningInput,
+} from "@/lib/recommendation-tuning";
+import type { RelocationId, VisaNeedId, WorkArrangementId } from "@/lib/onboarding-preferences";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -41,7 +50,70 @@ type ProfileData = {
   careerMotivation: string | null;
   employmentStatus: string | null;
   dashboardGoals: DashboardGoal[];
+  targetRoles: string[];
+  prioritizedRoles: string[];
+  targetMarket: string | null;
+  priorities: string[];
+  relocationOpenness: string | null;
+  workAuthorization: string | null;
+  targetSalary: string | null;
+  resumeUrl: string | null;
+  parsedData: { location?: string | null; workExperience?: unknown[] } | null;
 };
+
+function inferWorkArrangement(priorities: string[]): WorkArrangementId {
+  const lower = priorities.map((p) => p.toLowerCase());
+  if (lower.some((p) => p.includes("remote-first"))) return "remote_only";
+  if (lower.some((p) => p.includes("hybrid"))) return "hybrid_ok";
+  return "";
+}
+
+function inferRelocationId(openness: string | null): RelocationId {
+  const lower = (openness ?? "").toLowerCase();
+  if (lower.includes("internationally")) return "international";
+  if (lower.includes("within")) return "domestic";
+  if (lower.includes("stay") || lower.includes("local")) return "local";
+  return "";
+}
+
+function inferVisaNeed(auth: string | null): VisaNeedId {
+  const lower = (auth ?? "").toLowerCase();
+  if (lower.includes("need") || lower.includes("sponsorship")) return "sponsored";
+  if (lower.includes("authorized")) return "authorized";
+  return "";
+}
+
+function matchingPrefFromProfile(p: ProfileData): MatchingPrefProfile {
+  const priorities = p.priorities ?? [];
+  return {
+    targetRoles: p.targetRoles ?? [],
+    prioritizedRoles: p.prioritizedRoles ?? [],
+    targetMarket: p.targetMarket ?? "",
+    fullyRemote: priorities.some((x) => x.toLowerCase().includes("remote-first")) && !p.targetMarket?.trim(),
+    workArrangement: inferWorkArrangement(priorities),
+    relocation: inferRelocationId(p.relocationOpenness),
+    visaNeed: inferVisaNeed(p.workAuthorization),
+    targetSalary: p.targetSalary ?? "",
+    jobTimeline: p.jobTimeline ?? "",
+    priorities,
+  };
+}
+
+function tuningInputFromProfile(p: ProfileData): RecommendationTuningInput {
+  return {
+    targetRoles: p.targetRoles,
+    prioritizedRoles: p.prioritizedRoles,
+    targetMarket: p.targetMarket,
+    parsedData: p.parsedData,
+    priorities: p.priorities,
+    relocationOpenness: p.relocationOpenness,
+    workAuthorization: p.workAuthorization,
+    targetSalary: p.targetSalary,
+    jobTimeline: p.jobTimeline,
+    dashboardGoals: p.dashboardGoals,
+    resumeUrl: p.resumeUrl,
+  };
+}
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -98,8 +170,9 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const [pickValue, setPickValue] = useState("");
-  const [pickTargetMonth, setPickTargetMonth] = useState("");
+  const [goalWizardIntro, setGoalWizardIntro] = useState(false);
+  const [activeGapId, setActiveGapId] = useState<MatchingTuningGapId | null>(null);
+  const goalWizardAutoOpenedRef = useRef(false);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [editTargetMonth, setEditTargetMonth] = useState("");
   const [bookedCoach, setBookedCoach] = useState<BookedCoach | null>(null);
@@ -130,6 +203,15 @@ export function DashboardHomeTop({ isMobile }: Props) {
           careerMotivation: data.careerMotivation ?? null,
           employmentStatus: data.employmentStatus ?? null,
           dashboardGoals: data.dashboardGoals ?? [],
+          targetRoles: data.targetRoles ?? [],
+          prioritizedRoles: data.prioritizedRoles ?? [],
+          targetMarket: data.targetMarket ?? null,
+          priorities: data.priorities ?? [],
+          relocationOpenness: data.relocationOpenness ?? null,
+          workAuthorization: data.workAuthorization ?? null,
+          targetSalary: data.targetSalary ?? null,
+          resumeUrl: data.resumeUrl ?? null,
+          parsedData: data.parsedData ?? null,
         });
       })
       .catch(() => {})
@@ -199,6 +281,37 @@ export function DashboardHomeTop({ isMobile }: Props) {
       .finally(() => setBookingLoading(false));
   }, [showClientCoachUi, withClientScope]);
 
+  useEffect(() => {
+    if (!showClientCoachUi || loading || !profile || goalWizardAutoOpenedRef.current) return;
+    if (profile.dashboardGoals.length > 0 || isGoalsWizardDismissed()) return;
+    goalWizardAutoOpenedRef.current = true;
+    setGoalWizardIntro(true);
+    setGoalModalOpen(true);
+  }, [showClientCoachUi, loading, profile]);
+
+  const tuningInput = useMemo(() => (profile ? tuningInputFromProfile(profile) : null), [profile]);
+  const matchingPrefProfile = useMemo(
+    () => (profile ? matchingPrefFromProfile(profile) : matchingPrefFromProfile({
+      name: "",
+      avatarUrl: null,
+      headline: null,
+      summary: null,
+      jobTimeline: null,
+      careerMotivation: null,
+      employmentStatus: null,
+      dashboardGoals: [],
+      targetRoles: [],
+      prioritizedRoles: [],
+      targetMarket: null,
+      priorities: [],
+      relocationOpenness: null,
+      workAuthorization: null,
+      targetSalary: null,
+      resumeUrl: null,
+      parsedData: null,
+    })),
+    [profile],
+  );
   const goals = profile?.dashboardGoals ?? [];
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
   const availableOptions = DASHBOARD_GOAL_OPTIONS.filter((o) => !usedValues.has(o.value));
@@ -256,25 +369,51 @@ export function DashboardHomeTop({ isMobile }: Props) {
     }
   };
 
-  const addGoal = async () => {
-    const option = findDashboardGoalOption(pickValue);
+  const saveGoalFromWizard = async (partial: Omit<DashboardGoal, "id" | "createdAt">) => {
+    const option = findDashboardGoalOption(partial.value);
     if (!option || !profile || usedValues.has(option.value) || goals.length >= DASHBOARD_GOAL_MAX) return;
 
     const next: DashboardGoal = {
       id: crypto.randomUUID(),
-      category: option.category,
-      value: option.value,
-      label: option.label,
+      category: partial.category,
+      value: partial.value,
+      label: partial.label,
       createdAt: new Date().toISOString(),
-      ...(pickTargetMonth.trim() ? { targetDate: pickTargetMonth.trim().slice(0, 7) } : {}),
+      ...(partial.targetDate ? { targetDate: partial.targetDate } : {}),
     };
     await persistGoals([...goals, next]);
-    setPickValue("");
-    setPickTargetMonth("");
     setGoalModalOpen(false);
+    setGoalWizardIntro(false);
 
     const sync = profileNeedsSyncForGoal(option.value, profile);
     if (sync) setPendingSync(sync);
+  };
+
+  const closeGoalModal = () => {
+    setGoalModalOpen(false);
+    setGoalWizardIntro(false);
+  };
+
+  const saveMatchingPref = async (patch: Record<string, unknown>) => {
+    const res = await fetch(withClientScope("/api/profile"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (res.ok) loadProfile();
+  };
+
+  const handleFixGap = (gapId: MatchingTuningGapId) => {
+    if (gapId === "primary_goal") {
+      setGoalWizardIntro(false);
+      setGoalModalOpen(true);
+      return;
+    }
+    if (gapId === "target_roles" || gapId === "resume") {
+      router.push(withClientReviewPath("/profile"));
+      return;
+    }
+    setActiveGapId(gapId);
   };
 
   const removeGoal = (id: string) => {
@@ -291,8 +430,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   const openGoalModal = () => {
-    setPickValue("");
-    setPickTargetMonth("");
+    setGoalWizardIntro(false);
     setGoalModalOpen(true);
   };
 
@@ -449,6 +587,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
           )}
         </div>
       </ScoutBox>
+
+      {showClientCoachUi && tuningInput && (
+        <RecommendationTuningPanel input={tuningInput} isMobile={isMobile} onFixGap={handleFixGap} />
+      )}
 
       {/* Kimchi Pro promo */}
       {showProPromo && (
@@ -1120,16 +1262,25 @@ export function DashboardHomeTop({ isMobile }: Props) {
       )}
       {scheduleOpen && <GrowthDiscoveryModal trigger="dashboard_schedule" onClose={() => setScheduleOpen(false)} />}
       {interestOpen && <EventInterestModal onClose={() => setInterestOpen(false)} />}
-      <DashboardAddGoalModal
+      <DashboardGoalWizardModal
         open={goalModalOpen}
-        onClose={() => setGoalModalOpen(false)}
-        pickValue={pickValue}
-        onPickValueChange={setPickValue}
-        pickTargetMonth={pickTargetMonth}
-        onPickTargetMonthChange={setPickTargetMonth}
+        showIntro={goalWizardIntro}
+        onClose={closeGoalModal}
+        onSave={saveGoalFromWizard}
         availableOptions={availableOptions}
         saving={saving}
-        onSave={() => void addGoal()}
+      />
+      <MatchingPrefPromptModal
+        open={activeGapId !== null}
+        gapId={activeGapId}
+        profile={matchingPrefProfile}
+        onClose={() => setActiveGapId(null)}
+        onSave={saveMatchingPref}
+        onOpenGoalWizard={() => {
+          setActiveGapId(null);
+          setGoalWizardIntro(false);
+          setGoalModalOpen(true);
+        }}
       />
     </>
   );

@@ -39,9 +39,9 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
-const ONBOARDING_STEP_COUNT = 11;
+const ONBOARDING_STEP_COUNT = 12;
 
 export interface Job {
   id: number;
@@ -1852,6 +1852,43 @@ export function ScreenTargetRoles({
         </div>
       )}
     </div>
+  );
+}
+
+export function ScreenOnboardingPriorityRole({
+  targetRoles,
+  priorityRole,
+  onPriorityRoleChange,
+  onContinue,
+  onSkip,
+  onBack,
+}: {
+  targetRoles: string[];
+  priorityRole: string;
+  onPriorityRoleChange: (role: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <ScreenOnboardingQuestion
+      title="Which role is your top priority?"
+      body="We boost this title in your recommended feed when several roles match."
+      onContinue={onContinue}
+      onSkip={onSkip}
+      onBack={onBack}
+      skipLabel="No priority — treat all equally"
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {targetRoles.map((role) =>
+          onboardingListOption(
+            priorityRole === role,
+            () => onPriorityRoleChange(priorityRole === role ? "" : role),
+            role,
+          ),
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
   );
 }
 
