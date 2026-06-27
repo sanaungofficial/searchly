@@ -26,13 +26,7 @@ import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { OnboardingCoachPanel } from "@/components/onboarding/onboarding-coach-panel";
-import {
-  ONBOARDING_COACH_COMPANY_STEPS,
-  ONBOARDING_COACH_PREFS_STEPS,
-  ONBOARDING_COACH_ROLE_STEPS,
-  ONBOARDING_COACH_SEARCH_STEPS,
-  type OnboardingJobSample,
-} from "@/lib/onboarding-coach/steps";
+import { type OnboardingJobSample } from "@/lib/onboarding-coach/steps";
 import type { OnboardingCompanyPick } from "@/lib/onboarding-coach/types";
 import type { VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
 import type { VoiceAgentFieldPatch } from "@/lib/voice-intake";
@@ -1847,14 +1841,7 @@ export function ScreenTargetRoles({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && onVoiceFieldUpdate && (
-        <OnboardingCoachPanel
-          steps={ONBOARDING_COACH_ROLE_STEPS}
-          onApplyPatch={onVoiceFieldUpdate}
-          getMultiCount={() => selectedTitles.length}
-          onVoiceComplete={onVoiceIntakeComplete}
-        />
-      )}
+      {onVoiceIntakeComplete && onVoiceFieldUpdate && <OnboardingCoachPanel />}
 
       <AboutYouIntro
         title="What roles are you targeting?"
@@ -2228,15 +2215,7 @@ export function ScreenTargetCompanies({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && (
-        <OnboardingCoachPanel
-          steps={ONBOARDING_COACH_COMPANY_STEPS}
-          onApplyPatch={() => {}}
-          onApplyCompany={onAddCompany}
-          getMultiCount={() => selectedCompanies.length}
-          onVoiceComplete={onVoiceIntakeComplete}
-        />
-      )}
+      {onVoiceIntakeComplete && <OnboardingCoachPanel />}
 
       <AboutYouIntro
         title="Any companies on your list?"
@@ -2575,11 +2554,7 @@ export function ScreenAboutYouSearch({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       {onVoiceIntakeComplete && onVoiceFieldUpdate && (
-        <OnboardingCoachPanel
-          steps={ONBOARDING_COACH_SEARCH_STEPS}
-          onApplyPatch={onVoiceFieldUpdate}
-          onVoiceComplete={onVoiceIntakeComplete}
-        />
+        <OnboardingCoachPanel />
       )}
 
       <AboutYouIntro
@@ -2690,13 +2665,7 @@ export function ScreenAboutYouPreferences({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && onVoiceFieldUpdate && (
-        <OnboardingCoachPanel
-          steps={ONBOARDING_COACH_PREFS_STEPS}
-          onApplyPatch={onVoiceFieldUpdate}
-          onVoiceComplete={onVoiceIntakeComplete}
-        />
-      )}
+      {onVoiceIntakeComplete && onVoiceFieldUpdate && <OnboardingCoachPanel />}
 
       <AboutYouIntro
         title="Preferences (all optional)"

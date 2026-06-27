@@ -31,6 +31,8 @@ type UseVoiceAgentSessionOptions = {
   voicePresetId?: string;
   /** Appended to onboarding config fetch — current coach step query string */
   onboardingCoachQuery?: string;
+  /** Keep the same Deepgram session when coach step query changes (update prompt in place). */
+  continuousOnboarding?: boolean;
   pageHint?: AssistantPageHint;
   onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
   onOnboardingPropose?: (field: string, value: string) => void;
@@ -103,6 +105,7 @@ export function useVoiceAgentSession({
   disabled,
   voicePresetId = "general",
   onboardingCoachQuery = "",
+  continuousOnboarding = false,
   pageHint,
   onFieldUpdate,
   onOnboardingPropose,
@@ -130,6 +133,12 @@ export function useVoiceAgentSession({
   const sessionStartedAtRef = useRef<number | null>(null);
   const pageHintRef = useRef(pageHint);
   pageHintRef.current = pageHint;
+  const onOnboardingProposeRef = useRef(onOnboardingPropose);
+  onOnboardingProposeRef.current = onOnboardingPropose;
+  const onOnboardingConfirmRef = useRef(onOnboardingConfirm);
+  onOnboardingConfirmRef.current = onOnboardingConfirm;
+  const sessionActiveRef = useRef(sessionActive);
+  sessionActiveRef.current = sessionActive;
 
   const setUiMode = useCallback((mode: VoiceOrbState) => {
     uiModeRef.current = mode;
@@ -137,6 +146,8 @@ export function useVoiceAgentSession({
   }, []);
 
   useEffect(() => {
+    if (continuousOnboarding && sessionActiveRef.current) return;
+
     void fetch(
       `/api/voice/agent/config?context=${context}&preset=${encodeURIComponent(voicePresetId)}${pageHintQuery(pageHint)}${onboardingCoachQuery}`,
       { cache: "no-store" },
@@ -150,6 +161,7 @@ export function useVoiceAgentSession({
   }, [
     context,
     voicePresetId,
+    continuousOnboarding,
     onboardingCoachQuery,
     pageHint?.pathname,
     pageHint?.jobDbId,
@@ -282,8 +294,8 @@ export function useVoiceAgentSession({
               fn.name === "save_onboarding_field" ||
               fn.name === "propose_onboarding_answer"
             ) {
-              if (onOnboardingPropose) {
-                onOnboardingPropose(args.field, args.value);
+              if (onOnboardingProposeRef.current) {
+                onOnboardingProposeRef.current(args.field, args.value);
               } else {
                 handleFieldSave(args.field, args.value);
               }
@@ -292,13 +304,13 @@ export function useVoiceAgentSession({
               fn.name === "propose_onboarding_company" &&
               args.companyName
             ) {
-              onOnboardingPropose?.("company", args.companyName);
+              onOnboardingProposeRef.current?.("company", args.companyName);
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "confirm_onboarding_answer") {
-              onOnboardingConfirm?.(args.field);
+              onOnboardingConfirmRef.current?.(args.field);
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "confirm_onboarding_company") {
-              onOnboardingConfirm?.("company");
+              onOnboardingConfirmRef.current?.("company");
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "finish_onboarding_chat") {
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
@@ -390,14 +402,16 @@ export function useVoiceAgentSession({
     finishSession,
     handleFieldSave,
     onNavigate,
-    onOnboardingConfirm,
-    onOnboardingPropose,
     sessionActive,
     setUiMode,
     startVisualizer,
     stopVisualizer,
     teardownSession,
   ]);
+
+  const updateCoachPrompt = useCallback((prompt: string) => {
+    sessionRef.current?.updatePrompt(prompt);
+  }, []);
 
   const endSession = useCallback(() => {
     if (!sessionActive) return;
@@ -443,5 +457,6 @@ export function useVoiceAgentSession({
     resetSession,
     toggleSession,
     teardownSession,
+    updateCoachPrompt,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { VoiceOrb } from "@/components/voice/voice-orb";
+import { useOnboardingCoachContext } from "@/contexts/onboarding-coach-context";
 import { useOnboardingCoach } from "@/hooks/use-onboarding-coach";
 import { useVoiceAgentSession, type VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
 import type { OnboardingCoachStep } from "@/lib/onboarding-coach/steps";
@@ -9,25 +9,64 @@ import type { OnboardingCompanyPick } from "@/lib/onboarding-coach/types";
 import type { VoiceAgentFieldPatch } from "@/lib/voice-intake";
 
 type Props = {
-  steps: OnboardingCoachStep[];
-  onApplyPatch: (patch: VoiceAgentFieldPatch) => void;
+  steps?: OnboardingCoachStep[];
+  onApplyPatch?: (patch: VoiceAgentFieldPatch) => void;
   onApplyCompany?: (company: OnboardingCompanyPick) => void;
   getMultiCount?: (field: string) => number;
   onVoiceComplete?: (result: VoiceAgentSessionResult) => void;
   disabled?: boolean;
 };
 
-export function OnboardingCoachPanel({
+/** Standalone coach (legacy per-screen). Prefer OnboardingCoachProvider on the onboarding page. */
+function StandaloneOnboardingCoachPanel({
   steps,
   onApplyPatch,
   onApplyCompany,
   getMultiCount,
   onVoiceComplete,
   disabled,
-}: Props) {
+}: Required<Pick<Props, "steps" | "onApplyPatch">> & Props) {
   const coach = useOnboardingCoach({ steps, onApplyPatch, onApplyCompany, getMultiCount });
-  const prevStepIdRef = useRef<string | null>(null);
 
+  const voice = useVoiceAgentSession({
+    context: "onboarding",
+    disabled: disabled || coach.isComplete,
+    onboardingCoachQuery: coach.coachQuery,
+    onOnboardingPropose: coach.handleVoicePropose,
+    onOnboardingConfirm: coach.handleVoiceConfirm,
+    onComplete: onVoiceComplete,
+  });
+
+  return (
+    <OnboardingCoachPanelUI coach={coach} voice={voice} disabled={disabled} />
+  );
+}
+
+export function OnboardingCoachPanel(props: Props) {
+  const ctx = useOnboardingCoachContext();
+
+  if (ctx) {
+    if (!ctx.showPanel) return null;
+    return (
+      <OnboardingCoachPanelUI
+        coach={ctx.coach}
+        voice={ctx.voice}
+        disabled={props.disabled}
+      />
+    );
+  }
+
+  if (!props.steps || !props.onApplyPatch) return null;
+  return <StandaloneOnboardingCoachPanel {...props} steps={props.steps} onApplyPatch={props.onApplyPatch} />;
+}
+
+type PanelUIProps = {
+  coach: ReturnType<typeof useOnboardingCoach>;
+  voice: ReturnType<typeof useVoiceAgentSession>;
+  disabled?: boolean;
+};
+
+function OnboardingCoachPanelUI({ coach, voice, disabled }: PanelUIProps) {
   const {
     available,
     agentSettings,
@@ -38,22 +77,7 @@ export function OnboardingCoachPanel({
     sessionActive,
     toggleSession,
     endSession,
-    resetSession,
-  } = useVoiceAgentSession({
-    context: "onboarding",
-    disabled: disabled || coach.isComplete,
-    onboardingCoachQuery: coach.coachQuery,
-    onOnboardingPropose: coach.handleVoicePropose,
-    onOnboardingConfirm: coach.handleVoiceConfirm,
-    onComplete: onVoiceComplete,
-  });
-
-  useEffect(() => {
-    const stepId = coach.currentStep?.id ?? null;
-    if (!stepId || stepId === prevStepIdRef.current) return;
-    prevStepIdRef.current = stepId;
-    if (sessionActive) resetSession();
-  }, [coach.currentStep?.id, resetSession, sessionActive]);
+  } = voice;
 
   if (available === false) {
     return (
@@ -89,6 +113,12 @@ export function OnboardingCoachPanel({
       <OnboardingCoachStyles />
 
       <p className="onboarding-coach__eyebrow">Talk it out · optional</p>
+
+      {sessionActive && (
+        <p className="onboarding-coach__continuous-hint">
+          Same conversation — Kimchi will ask the next question as you go.
+        </p>
+      )}
 
       <div className="onboarding-coach__orb-block">
         <VoiceOrb
@@ -266,6 +296,15 @@ function OnboardingCoachStyles() {
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: rgba(26, 58, 47, 0.5);
+      }
+
+      .onboarding-coach__continuous-hint {
+        margin: 0;
+        max-width: 400px;
+        font-family: var(--font-ui);
+        font-size: 12px;
+        line-height: 1.45;
+        color: rgba(26, 58, 47, 0.55);
       }
 
       .onboarding-coach__orb-block {
