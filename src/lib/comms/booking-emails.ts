@@ -85,7 +85,7 @@ export async function sendBookingCoachNotificationEmail(params: {
       <p style="margin:0;font-size:15px;color:#52493F;line-height:1.7;">
         <strong>${escapeHtml(date)}</strong><br />${escapeHtml(time)}
       </p>
-      ${ctaButton(`${base}/expert/ops?section=clients`, "View in Kimchi →")}`,
+      ${ctaButton(`${base}/expert/clients`, "View in Kimchi →")}`,
   });
 
   await sendKimchiEmail({ to: params.coachEmail, subject, html, template: "booking_confirm", bypassAutomatedGate: true });

@@ -22,5 +22,5 @@ export async function exitAdminClientReview(): Promise<void> {
   clearAdminReviewClient();
   clearClientSessionCaches();
   setActingUserScope(null);
-  window.location.href = "/expert/ops?section=clients";
+  window.location.href = "/expert/clients";
 }

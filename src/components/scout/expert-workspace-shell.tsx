@@ -41,10 +41,12 @@ function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
       </svg>
     );
   }
-  if (id === "reviews") {
+  if (id === "live") {
     return (
       <svg {...common}>
-        <path d="M12 3.5 14.6 9l5.9.5-4.5 3.9 1.4 5.7L12 16.8 6.6 19.1l1.4-5.7-4.5-3.9 5.9-.5z" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="3" fill={stroke} stroke="none" />
+        <path d="M12 4v2M12 18v2" strokeLinecap="round" />
       </svg>
     );
   }
