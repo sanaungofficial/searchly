@@ -18,6 +18,7 @@ import {
   filterSourcesByLocationPreference,
   profileLocationToHirebaseFilters,
   resolveProfileLocation,
+  type LocationPreferenceInput,
 } from "@/lib/profile-location";
 import { filterSourcesByRadiusMiles } from "@/lib/job-location-radius";
 import { normalizePostedDateFilters } from "@/lib/job-posted-filter";
@@ -101,6 +102,7 @@ async function loadUserContext(userId: string) {
     targetMarket: profile?.targetMarket,
   });
   const priorities = profile?.priorities ?? [];
+  const relocationOpenness = profile?.relocationOpenness ?? null;
 
   return {
     profile,
@@ -109,6 +111,7 @@ async function loadUserContext(userId: string) {
     resumeText,
     profileLocation,
     priorities,
+    relocationOpenness,
     roleTitlePreferences,
     profileSkills: extractProfileSkills(parsedData),
     nameMatchExcludeTerms: personalNameMatchTokens(parsedData),
@@ -200,6 +203,85 @@ function recommendedFeedNeedsSupplement(sources: RecommendedJobSource[]): boolea
   );
 }
 
+function locationInputFromContext(ctx: {
+  profileLocation?: string | null;
+  priorities?: string[];
+  relocationOpenness?: string | null;
+  scopeOverride?: LocationPreferenceInput["scopeOverride"];
+}): LocationPreferenceInput {
+  return {
+    profileLocation: ctx.profileLocation,
+    priorities: ctx.priorities,
+    relocationOpenness: ctx.relocationOpenness,
+    scopeOverride: ctx.scopeOverride,
+  };
+}
+
+function mergeLocationBackfillSources<T extends RecommendedJobSource>(
+  kept: T[],
+  pool: T[],
+  locationInput: LocationPreferenceInput,
+  minCount: number,
+): { sources: T[]; backfilled: boolean } {
+  if (kept.length >= minCount || !pool.length) {
+    return { sources: kept, backfilled: false };
+  }
+
+  const existingKeys = displayKeysFromSources(kept);
+  const domesticPool = filterSourcesByLocationPreference(pool, {
+    ...locationInput,
+    scopeOverride: "domestic",
+  });
+  const extra = domesticPool.filter((source) => {
+    const key = jobListingDedupeKey({
+      companyName: source.companyName,
+      title: source.cached.title,
+      url: source.cached.url,
+    });
+    return key && !existingKeys.has(key);
+  });
+
+  if (!extra.length) return { sources: kept, backfilled: false };
+
+  return {
+    sources: dedupeRecommendedSources([...kept, ...extra], RECOMMENDED_FETCH_POOL),
+    backfilled: true,
+  };
+}
+
+function mergeLocationBackfillJobs(
+  kept: VectorMatchedJob[],
+  pool: VectorMatchedJob[],
+  locationInput: LocationPreferenceInput,
+  minCount: number,
+  maxJobs: number,
+): { jobs: VectorMatchedJob[]; backfilled: boolean } {
+  if (kept.length >= minCount || !pool.length) {
+    return { jobs: kept, backfilled: false };
+  }
+
+  const existingKeys = displayKeysFromJobs(kept);
+  const domesticPool = filterJobsByLocationPreference(pool, {
+    ...locationInput,
+    scopeOverride: "domestic",
+  });
+  const extra = domesticPool.filter((job) => {
+    const key = jobListingDedupeKey({
+      companyName: job.companyName,
+      title: job.title,
+      url: job.url,
+    });
+    return key && !existingKeys.has(key);
+  });
+
+  if (!extra.length) return { jobs: kept, backfilled: false };
+
+  return {
+    jobs: sortRecommendedJobs(dedupeVectorMatchedJobs([...kept, ...extra])).slice(0, maxJobs),
+    backfilled: true,
+  };
+}
+
 async function supplementSparseRecommendedSources(input: {
   sources: RecommendedJobSource[];
   targetRoles: string[];
@@ -240,6 +322,7 @@ async function supplementSparseRecommendedJobs(input: {
   profileSkills: string[];
   profileLocation?: string | null;
   priorities?: string[];
+  relocationOpenness?: string | null;
   applyLocationFilter?: boolean;
   excludeMatchTerms?: string[];
 }): Promise<VectorMatchedJob[]> {
@@ -259,10 +342,18 @@ async function supplementSparseRecommendedJobs(input: {
 
   let extraSources = broad.sources;
   if (input.applyLocationFilter) {
-    extraSources = filterSourcesByLocationPreference(extraSources, {
+    const locationInput = locationInputFromContext({
       profileLocation: input.profileLocation,
       priorities: input.priorities,
+      relocationOpenness: input.relocationOpenness,
     });
+    extraSources = filterSourcesByLocationPreference(extraSources, locationInput);
+    if (!extraSources.length) {
+      extraSources = filterSourcesByLocationPreference(broad.sources, {
+        ...locationInput,
+        scopeOverride: "domestic",
+      });
+    }
     if (!extraSources.length) return input.jobs;
   }
 
@@ -282,10 +373,20 @@ async function supplementSparseRecommendedJobs(input: {
 
   let merged = sortRecommendedJobs(dedupeVectorMatchedJobs([...input.jobs, ...extra])).slice(0, input.maxJobs);
   if (input.applyLocationFilter) {
-    merged = filterJobsByLocationPreference(merged, {
+    const locationInput = locationInputFromContext({
       profileLocation: input.profileLocation,
       priorities: input.priorities,
+      relocationOpenness: input.relocationOpenness,
     });
+    merged = filterJobsByLocationPreference(merged, locationInput);
+    const backfill = mergeLocationBackfillJobs(
+      merged,
+      sortRecommendedJobs(dedupeVectorMatchedJobs([...input.jobs, ...extra])),
+      locationInput,
+      RECOMMENDED_MIN_DISPLAY_ROLES,
+      input.maxJobs,
+    );
+    merged = backfill.jobs;
   }
   return merged;
 }
@@ -490,12 +591,13 @@ export async function generateRecommendedJobsForUser(
     profile,
     profileLocation,
     priorities,
+    relocationOpenness,
     roleTitlePreferences,
     profileSkills,
     nameMatchExcludeTerms,
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
-  const locationInput = { profileLocation, priorities };
+  const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
   /** Default feed uses profile location post-filter + country pre-filter on Hirebase fetch. */
   let mergedFilters = normalizePostedDateFilters({
     ...requestFilters,
@@ -605,8 +707,20 @@ export async function generateRecommendedJobsForUser(
   const sourcesBeforeLocation = sources;
   if (defaultFeed) {
     const locationFiltered = filterSourcesByLocationPreference(sources, locationInput);
-    if (locationFiltered.length) {
-      sources = locationFiltered;
+    const backfill = mergeLocationBackfillSources(
+      locationFiltered.length ? locationFiltered : [],
+      sourcesBeforeLocation,
+      locationInput,
+      Math.min(RECOMMENDED_FETCH_POOL, RECOMMENDED_MIN_DISPLAY_ROLES * 3),
+    );
+    if (backfill.sources.length) {
+      sources = backfill.sources;
+      if (backfill.backfilled) {
+        notice = appendNotice(
+          notice,
+          "Included US-wide and remote roles to fill your feed — enable relocation in Career preferences to narrow geography.",
+        );
+      }
     } else if (sourcesBeforeLocation.length) {
       sources = [];
       notice = appendNotice(
@@ -633,6 +747,7 @@ export async function generateRecommendedJobsForUser(
       anchorLocation,
       radiusMiles,
       priorities,
+      relocationOpenness,
     });
     if (radiusFiltered.length) {
       sources = radiusFiltered;
@@ -664,6 +779,7 @@ export async function generateRecommendedJobsForUser(
       profileSkills,
       profileLocation,
       priorities,
+      relocationOpenness,
       applyLocationFilter: defaultFeed,
       excludeMatchTerms: nameMatchExcludeTerms,
     });
@@ -686,7 +802,14 @@ export async function generateRecommendedJobsForUser(
       })
     ).sources;
     if (defaultFeed && broadSources.length) {
-      broadSources = filterSourcesByLocationPreference(broadSources, locationInput);
+      const filtered = filterSourcesByLocationPreference(broadSources, locationInput);
+      const backfill = mergeLocationBackfillSources(
+        filtered,
+        broadSources,
+        locationInput,
+        RECOMMENDED_MIN_DISPLAY_ROLES,
+      );
+      broadSources = backfill.sources.length ? backfill.sources : filtered;
     }
     if (broadSources.length) {
       sources = broadSources;
@@ -703,8 +826,23 @@ export async function generateRecommendedJobsForUser(
     }
   }
 
+  let jobsBeforeFinalLocation = jobs;
   if (defaultFeed && jobs.length) {
     jobs = filterJobsByLocationPreference(jobs, locationInput);
+    const backfill = mergeLocationBackfillJobs(
+      jobs,
+      jobsBeforeFinalLocation,
+      locationInput,
+      RECOMMENDED_MIN_DISPLAY_ROLES,
+      maxJobs,
+    );
+    jobs = backfill.jobs;
+    if (backfill.backfilled && jobs.length > jobsBeforeFinalLocation.length) {
+      notice = appendNotice(
+        notice,
+        "Included US-wide and remote roles to fill your feed — enable relocation in Career preferences to narrow geography.",
+      );
+    }
   }
 
   if (!jobs.length) return null;

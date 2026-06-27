@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import { selectDisplayJobs } from "@/lib/job-fit-ranking";
 import {
   formatCompactProfileLocation,
+  jobMatchesLocationPreference,
   parseProfileLocationString,
   profileLocationToHirebaseFilters,
+  relocationScopeFromProfile,
   resolveProfileLocation,
 } from "@/lib/profile-location";
 import { personalNameMatchTokens, parsedResumeToMatchText } from "@/lib/resume-parse";
 import { fallbackJobMatch } from "@/lib/resume-match";
+import type { CachedJob } from "@/lib/cached-job";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 function mockJob(companyName: string, title: string, score: number): VectorMatchedJob {
@@ -36,7 +39,7 @@ describe("resolveProfileLocation", () => {
 });
 
 describe("profileLocationToHirebaseFilters", () => {
-  it("returns US country filter for local US profiles", () => {
+  it("returns US country filter for US profiles", () => {
     const filters = profileLocationToHirebaseFilters({
       profileLocation: "Richmond, VA",
       priorities: [],
@@ -46,6 +49,70 @@ describe("profileLocationToHirebaseFilters", () => {
 
   it("returns empty filters when location is unknown", () => {
     expect(profileLocationToHirebaseFilters({ profileLocation: null })).toEqual([]);
+  });
+});
+
+describe("relocationScopeFromProfile", () => {
+  it("defaults to domestic when relocation is unspecified", () => {
+    expect(relocationScopeFromProfile({ priorities: [] })).toBe("domestic");
+  });
+
+  it("uses local scope when user prefers to stay in current area", () => {
+    expect(
+      relocationScopeFromProfile({
+        priorities: ["Prefer to stay in my current area"],
+      }),
+    ).toBe("local");
+  });
+});
+
+describe("jobMatchesLocationPreference", () => {
+  function cachedJob(location: string, remote?: boolean): CachedJob {
+    return {
+      title: "Engineer",
+      companyName: "Acme",
+      location,
+      remote,
+      url: "https://example.com/job",
+    } as CachedJob;
+  }
+
+  const vaProfile = { profileLocation: "Fairfax, VA", priorities: [] as string[] };
+
+  it("includes US remote roles for domestic-default profiles", () => {
+    expect(jobMatchesLocationPreference(cachedJob("Remote", true), undefined, vaProfile)).toBe(true);
+    expect(jobMatchesLocationPreference(cachedJob("Remote, United States", true), undefined, vaProfile)).toBe(
+      true,
+    );
+  });
+
+  it("includes in-person roles in other US states under domestic default", () => {
+    expect(jobMatchesLocationPreference(cachedJob("San Francisco, CA"), undefined, vaProfile)).toBe(true);
+  });
+
+  it("blocks overseas in-person roles for US profiles", () => {
+    expect(jobMatchesLocationPreference(cachedJob("Paris, France"), undefined, vaProfile)).toBe(false);
+  });
+
+  it("blocks overseas-tagged remote roles for US profiles", () => {
+    expect(jobMatchesLocationPreference(cachedJob("Remote — Zurich, Switzerland", true), undefined, vaProfile)).toBe(
+      false,
+    );
+  });
+
+  it("restricts other US states when user prefers local area", () => {
+    expect(
+      jobMatchesLocationPreference(cachedJob("San Francisco, CA"), undefined, {
+        profileLocation: "Fairfax, VA",
+        priorities: ["Prefer to stay in my current area"],
+      }),
+    ).toBe(false);
+    expect(
+      jobMatchesLocationPreference(cachedJob("Fairfax, VA"), undefined, {
+        profileLocation: "Fairfax, VA",
+        priorities: ["Prefer to stay in my current area"],
+      }),
+    ).toBe(true);
   });
 });
 

@@ -1,6 +1,6 @@
 import type { CachedJob } from "@/lib/cached-job";
 import type { HirebaseJob } from "@/lib/hirebase";
-import { parseProfileLocationString, relocationScopeFromPriorities, type ParsedProfileLocation } from "@/lib/profile-location";
+import { parseProfileLocationString, relocationScopeFromProfile, type ParsedProfileLocation } from "@/lib/profile-location";
 
 export const LOCATION_RADIUS_OPTIONS = [
   { miles: 0, label: "Any distance" },
@@ -121,12 +121,16 @@ export async function filterSourcesByRadiusMiles<T extends RecommendedJobSourceL
     anchorLocation?: string | null;
     radiusMiles?: number;
     priorities?: string[];
+    relocationOpenness?: string | null;
   },
 ): Promise<T[]> {
   const radius = input.radiusMiles ?? 0;
   if (radius <= 0) return sources;
 
-  const scope = relocationScopeFromPriorities(input.priorities ?? []);
+  const scope = relocationScopeFromProfile({
+    priorities: input.priorities ?? [],
+    relocationOpenness: input.relocationOpenness,
+  });
   if (scope === "international") return sources;
 
   const home = parseProfileLocationString(input.anchorLocation);
