@@ -1,7 +1,7 @@
 import { postedWithinDaysLabel } from "@/lib/job-posted-filter";
 import { locationRadiusLabel } from "@/lib/job-location-radius";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
-import { parseProfileLocationString, type ParsedProfileLocation } from "@/lib/profile-location";
+import { parseProfileLocationString, resolveProfileLocation, type ParsedProfileLocation } from "@/lib/profile-location";
 import { profilePreferencesToFilters } from "@/lib/profile-preference-filters";
 
 export const HIREBASE_FILTER_COUNTRIES = [
@@ -51,12 +51,17 @@ export function locationFieldsFromProfileString(raw: string | null | undefined):
 /** Profile-derived Hirebase filters for UI pre-fill (search filters panel — not auto-applied on API). */
 export function profileDerivedSearchFilters(input: {
   profileLocation?: string | null;
+  targetMarket?: string | null;
   priorities?: string[];
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
 }): VectorSearchFilters {
-  const fields = locationFieldsFromProfileString(input.profileLocation);
+  const resolvedLocation = resolveProfileLocation({
+    parsedLocation: input.profileLocation,
+    targetMarket: input.targetMarket,
+  });
+  const fields = locationFieldsFromProfileString(resolvedLocation);
   const prefs = profilePreferencesToFilters({
     priorities: input.priorities ?? [],
     targetSalary: input.targetSalary,

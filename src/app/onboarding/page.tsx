@@ -57,6 +57,7 @@ function saveAboutYou(fields: {
   jobTimeline: string;
   currentSalary: string;
   targetSalary: string;
+  targetMarket: string;
   priorities: string[];
   attribution: string;
 }): Promise<void> {
@@ -68,6 +69,7 @@ function saveAboutYou(fields: {
       jobTimeline: fields.jobTimeline || null,
       currentSalary: fields.currentSalary || null,
       targetSalary: fields.targetSalary || null,
+      targetMarket: fields.targetMarket || null,
       priorities: fields.priorities,
       attribution: fields.attribution || null,
     }),
@@ -122,6 +124,7 @@ export default function OnboardingPage() {
   const [jobTimeline, setJobTimeline] = useState("");
   const [currentSalary, setCurrentSalary] = useState("");
   const [targetSalary, setTargetSalary] = useState("");
+  const [targetMarket, setTargetMarket] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
   const [resumeError, setResumeError] = useState(false);
@@ -138,6 +141,7 @@ export default function OnboardingPage() {
     jobTimeline,
     currentSalary,
     targetSalary,
+    targetMarket,
     priorities,
     attribution,
   };
@@ -563,10 +567,12 @@ export default function OnboardingPage() {
               jobTimeline={jobTimeline}
               currentSalary={currentSalary}
               targetSalary={targetSalary}
+              targetMarket={targetMarket}
               priorities={priorities}
               attribution={attribution}
               onCurrentSalaryChange={setCurrentSalary}
               onTargetSalaryChange={setTargetSalary}
+              onTargetMarketChange={setTargetMarket}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
               onContinue={onAboutPrefsContinue}

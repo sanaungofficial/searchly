@@ -1,5 +1,6 @@
 import {
   RECOMMENDED_DISPLAY_COUNT,
+  RECOMMENDED_MAX_JOBS_PER_COMPANY,
   RECOMMENDED_PREFERRED_MIN_SCORE,
 } from "@/lib/recommended-jobs-config";
 import type { RecommendedFetchLane } from "@/lib/recommended-jobs-fallback";
@@ -166,26 +167,48 @@ export function sortRecommendedJobsByFit(jobs: VectorMatchedJob[]): VectorMatche
   return [...jobs].sort(compareRecommendedByFit);
 }
 
-/** Prefer scores >= preferredMin; backfill so the feed is never empty. */
+/** Prefer scores >= preferredMin; backfill so the feed is never empty. Cap roles per employer. */
 export function selectDisplayJobs(
   jobs: VectorMatchedJob[],
-  options?: { displayCount?: number; preferredMinScore?: number },
+  options?: { displayCount?: number; preferredMinScore?: number; maxJobsPerCompany?: number },
 ): VectorMatchedJob[] {
   const displayCount = options?.displayCount ?? RECOMMENDED_DISPLAY_COUNT;
   const preferredMinScore = options?.preferredMinScore ?? RECOMMENDED_PREFERRED_MIN_SCORE;
+  const maxJobsPerCompany = options?.maxJobsPerCompany ?? RECOMMENDED_MAX_JOBS_PER_COMPANY;
   if (!jobs.length) return [];
 
   const sorted = sortRecommendedJobsByFit(jobs);
   const preferred = sorted.filter((job) => job.matchScore >= preferredMinScore);
-  if (preferred.length >= displayCount) {
-    return preferred.slice(0, displayCount);
+  const pool = preferred.length >= displayCount ? preferred : sorted;
+
+  const selected: VectorMatchedJob[] = [];
+  const companyCounts = new Map<string, number>();
+
+  for (const job of pool) {
+    if (selected.length >= displayCount) break;
+    const companyKey = job.companyName.trim().toLowerCase() || "unknown";
+    const count = companyCounts.get(companyKey) ?? 0;
+    if (count >= maxJobsPerCompany) continue;
+    companyCounts.set(companyKey, count + 1);
+    selected.push(job);
   }
 
-  const preferredKeys = new Set(preferred.map((job) => `${job.companyName}:${job.title}:${job.url}`));
-  const backfill = sorted.filter(
-    (job) => !preferredKeys.has(`${job.companyName}:${job.title}:${job.url}`),
-  );
-  return [...preferred, ...backfill].slice(0, displayCount);
+  if (selected.length >= displayCount) return selected.slice(0, displayCount);
+
+  const selectedKeys = new Set(selected.map((job) => `${job.companyName}:${job.title}:${job.url}`));
+  for (const job of sorted) {
+    if (selected.length >= displayCount) break;
+    const key = `${job.companyName}:${job.title}:${job.url}`;
+    if (selectedKeys.has(key)) continue;
+    const companyKey = job.companyName.trim().toLowerCase() || "unknown";
+    const count = companyCounts.get(companyKey) ?? 0;
+    if (count >= maxJobsPerCompany) continue;
+    companyCounts.set(companyKey, count + 1);
+    selectedKeys.add(key);
+    selected.push(job);
+  }
+
+  return selected.slice(0, displayCount);
 }
 
 export function enrichJobsWithFitTiers(

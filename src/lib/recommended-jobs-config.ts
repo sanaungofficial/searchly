@@ -39,6 +39,9 @@ export const RECOMMENDED_MIN_DISPLAY_ROLES = RECOMMENDED_DISPLAY_COUNT;
 /** Supplement with broad Hirebase results when the feed has fewer than this many employers. */
 export const RECOMMENDED_MIN_DISTINCT_COMPANIES = 3;
 
+/** Max roles from the same employer in the Open Roles feed. */
+export const RECOMMENDED_MAX_JOBS_PER_COMPANY = 2;
+
 /** Cooldown between manual live refreshes — 0 disables rate limiting. */
 export const RECOMMENDED_MANUAL_REFRESH_COOLDOWN_MS = 0;
 

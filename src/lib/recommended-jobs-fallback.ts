@@ -399,6 +399,15 @@ function normalizeCompanyKey(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
 }
 
+/** Exact or prefix match — avoids loose substring hits on short tokens. */
+function trackedCompanyNameMatches(jobKey: string, trackedKey: string): boolean {
+  if (jobKey === trackedKey) return true;
+  const longer = jobKey.length >= trackedKey.length ? jobKey : trackedKey;
+  const shorter = jobKey.length >= trackedKey.length ? trackedKey : jobKey;
+  if (shorter.length < 4) return false;
+  return longer.startsWith(`${shorter} `) || longer.endsWith(` ${shorter}`);
+}
+
 type TrackedCompanyRow = Awaited<ReturnType<typeof prisma.trackedCompany.findMany>>[number] & {
   companyIntel?: { name?: string; slug?: string | null; enrichmentCache?: unknown } | null;
 };
@@ -427,7 +436,7 @@ export function jobMatchesTrackedCompany(job: HirebaseJob, index: ReturnType<typ
   if (index.names.has(key)) return true;
 
   for (const tracked of index.names) {
-    if (key.includes(tracked) || tracked.includes(key)) return true;
+    if (trackedCompanyNameMatches(key, tracked)) return true;
   }
   return false;
 }
@@ -439,7 +448,7 @@ export function companyNameMatchesTracked(
   const key = normalizeCompanyKey(companyName);
   if (index.names.has(key)) return true;
   for (const tracked of index.names) {
-    if (key.includes(tracked) || tracked.includes(key)) return true;
+    if (trackedCompanyNameMatches(key, tracked)) return true;
   }
   return false;
 }

@@ -1,5 +1,6 @@
 import {
   normalizeParsedResumeData,
+  parsedResumeToMatchText,
   parsedResumeToText,
   type ParsedResumeData,
 } from "@/lib/resume-parse";
@@ -56,7 +57,7 @@ export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | n
 
   const resumeBlob =
     input.resumeText?.trim() ||
-    (parsed ? parsedResumeToText(parsed as ParsedResumeData) : "");
+    (parsed ? parsedResumeToMatchText(parsed as ParsedResumeData) : "");
   if (resumeBlob.length >= 15) {
     return trimVSearchQuery(resumeBlob);
   }
@@ -76,7 +77,7 @@ export function profileTextForMatchReasons(input: ProfileVSearchInput): string {
   const parsed = normalizeParsedResumeData(input.parsedData ?? null);
   return (
     input.resumeText?.trim() ||
-    (parsed ? parsedResumeToText(parsed as ParsedResumeData) : "") ||
+    (parsed ? parsedResumeToMatchText(parsed as ParsedResumeData) : "") ||
     buildProfileVSearchQuery(input) ||
     ""
   );

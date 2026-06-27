@@ -136,13 +136,36 @@ export function relocationScopeFromPriorities(priorities: string[]): RelocationS
   return "local";
 }
 
-export function profileLocationToHirebaseFilters(_input: {
+/** Prefer explicit target market, then resume-parsed location. */
+export function resolveProfileLocation(input: {
+  parsedLocation?: string | null;
+  targetMarket?: string | null;
+}): string | null {
+  const target = input.targetMarket?.trim();
+  if (target) return target;
+  const parsed = input.parsedLocation?.trim();
+  return parsed || null;
+}
+
+export function profileLocationToHirebaseFilters(input: {
   profileLocation?: string | null;
   priorities?: string[];
 }): HirebaseLocationFilter[] {
-  // Location preference is enforced in post-filter only — city/region on the Hirebase
-  // API is too strict and often returns zero matches before we can rank results.
-  return [];
+  const home = parseProfileLocationString(input.profileLocation);
+  if (!home) return [];
+
+  const scope = relocationScopeFromPriorities(input.priorities ?? []);
+  if (scope === "international") return [];
+
+  const filters: HirebaseLocationFilter[] = [];
+  if (home.country?.trim()) {
+    filters.push({ country: home.country.trim() });
+    return filters;
+  }
+  if (home.region?.trim()) {
+    filters.push({ region: home.region.trim(), country: "United States" });
+  }
+  return filters;
 }
 
 function jobLocationParts(cached: CachedJob, raw?: HirebaseJob): ParsedProfileLocation {

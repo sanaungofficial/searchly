@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { profileDerivedSearchFilters, describeActiveFilters } from "@/lib/recommended-filter-utils";
+import { resolveProfileLocation } from "@/lib/profile-location";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { prisma } from "@/lib/prisma";
 
@@ -16,8 +17,14 @@ export async function GET(request: Request) {
     profile?.readbackData,
   );
 
+  const profileLocation = resolveProfileLocation({
+    parsedLocation: parsedData.location,
+    targetMarket: profile?.targetMarket,
+  });
+
   const filters = profileDerivedSearchFilters({
     profileLocation: parsedData.location ?? null,
+    targetMarket: profile?.targetMarket ?? null,
     priorities: profile?.priorities ?? [],
     targetSalary: profile?.targetSalary,
     employmentStatus: profile?.employmentStatus,
@@ -27,7 +34,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     filters,
     labels: describeActiveFilters(filters),
-    profileLocation: parsedData.location ?? null,
+    profileLocation,
     priorities: profile?.priorities ?? [],
   });
 }

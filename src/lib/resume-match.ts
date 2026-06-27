@@ -37,8 +37,17 @@ function labelForScore(score: number): string {
   return "Poor";
 }
 
-export function fallbackJobMatch(description: string, resumeText: string): JobMatchResult {
-  const terms = extractTerms(description).slice(0, 15);
+export function fallbackJobMatch(
+  description: string,
+  resumeText: string,
+  options?: { excludeTerms?: string[] },
+): JobMatchResult {
+  const exclude = new Set(
+    (options?.excludeTerms ?? []).map((t) => t.trim().toLowerCase()).filter(Boolean),
+  );
+  const terms = extractTerms(description)
+    .filter((term) => !exclude.has(term))
+    .slice(0, 15);
   const resumeLower = resumeText.toLowerCase();
   const keywords = terms.map((text) => ({ text, matched: resumeLower.includes(text) }));
   const matched = keywords.filter((k) => k.matched).length;

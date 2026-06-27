@@ -721,3 +721,28 @@ export function parsedResumeToText(data: ParsedResumeData): string {
   ];
   return parts.filter(Boolean).join("\n");
 }
+
+/** Resume text for keyword/heuristic matching — omits name so first names don't match company names. */
+export function parsedResumeToMatchText(data: ParsedResumeData): string {
+  const parts = [
+    data.location,
+    data.summary,
+    sectionTextBlob(data, "skills"),
+    sectionTextBlob(data, "experience"),
+    sectionTextBlob(data, "education"),
+    sectionTextBlob(data, "certifications"),
+  ];
+  return parts.filter(Boolean).join("\n");
+}
+
+/** Lowercase tokens from the candidate's name — excluded from heuristic job keyword matching. */
+export function personalNameMatchTokens(data: ParsedResumeData | null | undefined): string[] {
+  const raw = data?.name?.trim();
+  if (!raw) return [];
+  const tokens = raw
+    .toLowerCase()
+    .split(/[\s,.-]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3);
+  return [...new Set(tokens)];
+}

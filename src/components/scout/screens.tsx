@@ -2449,10 +2449,12 @@ interface AboutYouPreferencesProps {
   jobTimeline: string;
   currentSalary: string;
   targetSalary: string;
+  targetMarket: string;
   priorities: string[];
   attribution: string;
   onCurrentSalaryChange: (v: string) => void;
   onTargetSalaryChange: (v: string) => void;
+  onTargetMarketChange: (v: string) => void;
   onTogglePriority: (p: string) => void;
   onAttributionChange: (v: string) => void;
   onContinue: () => void;
@@ -2463,10 +2465,12 @@ export function ScreenAboutYouPreferences({
   jobTimeline,
   currentSalary,
   targetSalary,
+  targetMarket,
   priorities,
   attribution,
   onCurrentSalaryChange,
   onTargetSalaryChange,
+  onTargetMarketChange,
   onTogglePriority,
   onAttributionChange,
   onContinue,
@@ -2498,8 +2502,36 @@ export function ScreenAboutYouPreferences({
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
         title="Preferences (all optional)"
-        body="Salary, priorities, timeline — helps us filter roles that won't work for you."
+        body="Location, salary, and priorities — helps us filter roles that won't work for you."
       />
+
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.15s" }}>
+        {aboutYouSectionLabel(
+          "Where are you based?",
+          "We use this to prioritize roles in your area — not overseas listings unless you opt into relocation.",
+          true,
+        )}
+        <input
+          type="text"
+          value={targetMarket}
+          onChange={(e) => onTargetMarketChange(e.target.value)}
+          placeholder="e.g. Richmond, VA"
+          style={{
+            width: "100%",
+            minHeight: 48,
+            padding: "11px 14px",
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: "var(--scout-radius)",
+            background: ONBOARDING_FIELD_BG,
+            fontFamily: "var(--font-ui)",
+            fontSize: 16,
+            fontWeight: 500,
+            color: targetMarket ? ONBOARDING_TEXT : ONBOARDING_TEXT_SECONDARY,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>

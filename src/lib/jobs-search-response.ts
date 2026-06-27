@@ -10,6 +10,7 @@ export async function enrichRecommendedSources(
     heuristicOnly?: boolean;
     roleTitlePreferences?: RoleTitlePreferences;
     profileSkills?: string[];
+    excludeMatchTerms?: string[];
   },
 ): Promise<VectorMatchedJob[]> {
   if (!sources.length) return [];
@@ -22,6 +23,7 @@ export async function enrichRecommendedSources(
     roleTitlePreferences: options?.roleTitlePreferences,
     profileSkills: options?.profileSkills,
     fetchLanes: sources.map((s) => s.fetchLane),
+    excludeMatchTerms: options?.excludeMatchTerms,
   });
 }
 

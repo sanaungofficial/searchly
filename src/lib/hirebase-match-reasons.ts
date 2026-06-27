@@ -42,9 +42,10 @@ function heuristicMatch(
   total: number,
   roleTitlePreferences?: RoleTitlePreferences,
   profileSkills: string[] = [],
+  excludeMatchTerms: string[] = [],
 ): Pick<VectorMatchedJob, "matchScore" | "matchLabel" | "matchReasons" | "matchedSkills" | "gapSkills" | "baseMatchScore"> {
   const description = jobDescriptionForMatch(job, cached);
-  const fallback = fallbackJobMatch(description, resumeText);
+  const fallback = fallbackJobMatch(description, resumeText, { excludeTerms: excludeMatchTerms });
   const jobSkills = [...(job.skills ?? []), ...(job.technologies ?? [])].map((s) => s.trim()).filter(Boolean);
   const overlap = computeJobSkillsOverlap(jobSkills, profileSkills);
   const resumeLower = resumeText.toLowerCase();
@@ -172,6 +173,7 @@ export async function enrichVectorJobsWithMatchReasons(input: {
   roleTitlePreferences?: RoleTitlePreferences;
   profileSkills?: string[];
   fetchLanes?: Array<RecommendedFetchLane | undefined>;
+  excludeMatchTerms?: string[];
 }): Promise<VectorMatchedJob[]> {
   const {
     rawJobs,
@@ -182,6 +184,7 @@ export async function enrichVectorJobsWithMatchReasons(input: {
     roleTitlePreferences,
     profileSkills = [],
     fetchLanes = [],
+    excludeMatchTerms = [],
   } = input;
   const pairs = rawJobs.map((job, index) => ({
     job,
@@ -209,6 +212,7 @@ export async function enrichVectorJobsWithMatchReasons(input: {
       pairs.length,
       roleTitlePreferences,
       profileSkills,
+      excludeMatchTerms,
     );
 
     const matchScore = ai?.matchScore != null ? Math.min(100, Math.max(0, Math.round(ai.matchScore))) : heuristic.matchScore;
