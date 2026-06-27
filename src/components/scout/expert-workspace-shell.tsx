@@ -75,12 +75,12 @@ function ExpertNavLinks({
   if (variant === "sidebar") {
     return (
       <aside
+        className="expert-workspace-desktop-sidebar"
         style={{
           width: 220,
           flexShrink: 0,
           borderRight: border.line,
           background: surface.card,
-          display: "flex",
           flexDirection: "column",
           padding: "20px 0",
         }}
@@ -282,6 +282,10 @@ export function ExpertWorkspaceShell({ children }: Props) {
   const activeLabel = EXPERT_WORKSPACE_NAV.find((item) => item.id === activeId)?.label ?? "Expert";
 
   useEffect(() => {
+    if (!isMobile && menuOpen) setMenuOpen(false);
+  }, [isMobile, menuOpen]);
+
+  useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
@@ -315,73 +319,7 @@ export function ExpertWorkspaceShell({ children }: Props) {
         position: "relative",
       }}
     >
-      {isMobile && (
-        <header
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "10px 16px",
-            borderBottom: border.line,
-            background: surface.card,
-            flexShrink: 0,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open expert navigation menu"
-            aria-expanded={menuOpen}
-            aria-controls="expert-mobile-nav"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              padding: 0,
-              border: border.line,
-              borderRadius: radius.box,
-              background: surface.card,
-              color: color.forest,
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-          >
-            <BurgerIcon />
-          </button>
-          <div style={{ minWidth: 0 }}>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: fontSans,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: color.muted,
-              }}
-            >
-              Expert
-            </p>
-            <p
-              style={{
-                margin: "2px 0 0",
-                fontFamily: fontSans,
-                fontSize: T.bodySm,
-                fontWeight: 600,
-                color: color.forest,
-              }}
-            >
-              {activeLabel}
-            </p>
-          </div>
-        </header>
-      )}
-
-      {isMobile && (
-        <ExpertMobileNavDrawer open={menuOpen} activeId={activeId} onClose={() => setMenuOpen(false)} />
-      )}
+      <ExpertMobileNavDrawer open={menuOpen} activeId={activeId} onClose={() => setMenuOpen(false)} />
 
       <div
         style={{
@@ -401,6 +339,7 @@ export function ExpertWorkspaceShell({ children }: Props) {
             flex: 1,
             minHeight: 0,
             display: "flex",
+            flexDirection: "column",
             overflow: "hidden",
             background: surface.card,
             border: border.line,
@@ -408,12 +347,100 @@ export function ExpertWorkspaceShell({ children }: Props) {
             boxShadow: shadow.card,
           }}
         >
-          {!isMobile && <ExpertNavLinks activeId={activeId} variant="sidebar" />}
-          <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            {children}
+          <header
+            className="expert-workspace-mobile-bar"
+            style={{
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 16px",
+              borderBottom: border.line,
+              background: surface.card,
+              flexShrink: 0,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open expert navigation menu"
+              aria-expanded={menuOpen}
+              aria-controls="expert-mobile-nav"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                padding: 0,
+                border: border.line,
+                borderRadius: radius.box,
+                background: surface.card,
+                color: color.forest,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <BurgerIcon />
+            </button>
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: fontSans,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: color.muted,
+                }}
+              >
+                Expert
+              </p>
+              <p
+                style={{
+                  margin: "2px 0 0",
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  fontWeight: 600,
+                  color: color.forest,
+                }}
+              >
+                {activeLabel}
+              </p>
+            </div>
+          </header>
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              overflow: "hidden",
+            }}
+          >
+            <ExpertNavLinks activeId={activeId} variant="sidebar" />
+            <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              {children}
+            </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        .expert-workspace-mobile-bar {
+          display: none;
+        }
+        .expert-workspace-desktop-sidebar {
+          display: flex;
+        }
+        @media (max-width: 767px) {
+          .expert-workspace-mobile-bar {
+            display: flex;
+          }
+          .expert-workspace-desktop-sidebar {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
