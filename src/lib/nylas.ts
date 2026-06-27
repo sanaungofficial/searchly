@@ -233,13 +233,14 @@ export function buildNylasAuthUrl(params: {
   if (params.inboxAccess || params.emailSync) {
     const scope =
       params.provider === "microsoft"
-        ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite"
+        ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Contacts.Read"
         : [
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send",
             "https://www.googleapis.com/auth/gmail.compose",
             "https://www.googleapis.com/auth/calendar.readonly",
             "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/contacts.readonly",
           ].join(" ");
     query.set("scope", scope);
   } else if (params.provider === "microsoft") {

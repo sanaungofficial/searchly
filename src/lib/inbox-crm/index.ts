@@ -11,7 +11,7 @@ import { logInboxMessage } from "@/lib/inbox-crm/log-message";
 export { logInboxMessage } from "@/lib/inbox-crm/log-message";
 export { logInboxEvent } from "@/lib/inbox-crm/log-event";
 export { logOutboundSend } from "@/lib/inbox-crm/log-send";
-export { categorizeInboxMail, categorizeCalendarEvent } from "@/lib/inbox-crm/categorize";
+export { syncNylasContactsForUser, syncAllNylasContacts, saveInboxContactToNylas } from "@/lib/inbox-crm/sync-contacts";
 
 async function resolveUserEmail(userId: string, grantEmail: string | null | undefined) {
   if (grantEmail) return grantEmail;

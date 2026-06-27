@@ -35,6 +35,7 @@ export type ContactCardData = {
     name: string | null;
     company: string | null;
     title: string | null;
+    savedToNylas?: boolean;
   };
   linkedJobs: Array<PipelineJobOption & { contactRole: string | null }>;
   timeline: ContactTimelineItem[];

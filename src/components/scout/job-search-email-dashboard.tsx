@@ -41,6 +41,11 @@ export function JobSearchEmailDashboard() {
   }, [bootstrap]);
 
   useEffect(() => {
+    if (!status?.connected) return;
+    fetch(withClientScope("/api/user/inbox/contacts/sync"), { method: "POST" }).catch(() => {});
+  }, [status?.connected, withClientScope, mailRefreshKey]);
+
+  useEffect(() => {
     const msgId = searchParams.get("messageId");
     if (msgId) setOpenMessageId(msgId);
   }, [searchParams]);
