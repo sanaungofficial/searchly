@@ -1,11 +1,20 @@
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
+import type { NetworkJobFilterForm } from "@/lib/network-job-filters";
+import { createEmptyNetworkJobFilterForm } from "@/lib/network-job-filters";
 import { getActingUserScope } from "@/lib/client-session";
 
-const CACHE_PREFIX = "kimchi_network_jobs_v3";
+const CACHE_PREFIX = "kimchi_network_jobs_v4";
 
 export type NetworkJobsCacheEntry = {
+  jobs: NetworkMatchedJob[];
+  appliedForm: NetworkJobFilterForm;
+  total: number;
+  hasMore: boolean;
+  page: number;
   needsProfile?: boolean;
   hint?: string | null;
+  profileSuggestedLabels?: string[];
+  profileForm?: NetworkJobFilterForm;
   fetchedAt: number;
 };
 
@@ -20,7 +29,7 @@ export function readNetworkJobsCache(): NetworkJobsCacheEntry | null {
     const raw = sessionStorage.getItem(storageKey());
     if (!raw) return null;
     const parsed = JSON.parse(raw) as NetworkJobsCacheEntry;
-    if (!parsed?.fetchedAt) return null;
+    if (!parsed?.fetchedAt || !Array.isArray(parsed.jobs) || !parsed.appliedForm) return null;
     return parsed;
   } catch {
     return null;
@@ -39,21 +48,28 @@ export function writeNetworkJobsCache(entry: NetworkJobsCacheEntry): void {
 export function clearNetworkJobsCache(): void {
   if (typeof window === "undefined") return;
   try {
-    const keys: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key?.startsWith("kimchi_network_jobs_")) keys.push(key);
-    }
-    for (const key of keys) sessionStorage.removeItem(key);
+    sessionStorage.removeItem(storageKey());
   } catch {
     /* ignore */
   }
 }
 
-/** @deprecated v2 cache stored full job lists — no longer used */
-export type LegacyNetworkJobsCacheEntry = {
-  jobs: NetworkMatchedJob[];
-  fetchedAt: number;
-  needsProfile?: boolean;
-  hint?: string | null;
-};
+export function defaultNetworkCacheEntry(
+  partial: Omit<NetworkJobsCacheEntry, "appliedForm" | "fetchedAt"> & {
+    appliedForm?: NetworkJobFilterForm;
+    fetchedAt?: number;
+  },
+): NetworkJobsCacheEntry {
+  return {
+    appliedForm: partial.appliedForm ?? createEmptyNetworkJobFilterForm(),
+    fetchedAt: partial.fetchedAt ?? Date.now(),
+    jobs: partial.jobs,
+    total: partial.total,
+    hasMore: partial.hasMore,
+    page: partial.page,
+    needsProfile: partial.needsProfile,
+    hint: partial.hint,
+    profileSuggestedLabels: partial.profileSuggestedLabels,
+    profileForm: partial.profileForm,
+  };
+}
