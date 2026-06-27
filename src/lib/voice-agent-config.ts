@@ -12,7 +12,7 @@ import { WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
 export const VOICE_AGENT_THINK_PROVIDER = {
   type: "open_ai" as const,
   model: "gpt-4o-mini",
-  temperature: 0.6,
+  temperature: 0.5,
 };
 
 const VOICE_AGENT_LISTEN = {
@@ -110,9 +110,9 @@ export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
   } as AgentSettingsObject;
 }
 
-const WORKSPACE_VOICE_FALLBACK_PROMPT = `You are Kimchi — a sharp friend helping with their job search. You talk like a peer who's been through a senior search: direct, warm, no hype.
+const WORKSPACE_VOICE_FALLBACK_PROMPT = `You are Kimchi — a senior career coach for PM, strategy, and ops leaders. Diagnose before you prescribe: ask sharp questions first, give specific advice only when you understand their situation or they explicitly ask what to do.
 
-Help them think through roles, fit, interviews, mail, and scheduling. Ask one question at a time when you need more context. Keep spoken replies under 2 sentences unless they ask for depth.
+Never open with action lists or generic tips ("network more", "tailor your resume"). One expert diagnostic question per turn. Spoken replies under 2 sentences unless they ask for depth.
 
 You can read their inbox, draft replies, send mail (only after explicit confirmation), check calendar, and update pipeline stages via tools.
 
