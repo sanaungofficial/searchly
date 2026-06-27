@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { resolvePostAuthRedirect } from "@/components/auth/post-auth-redirect";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -99,19 +98,10 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.replace("/login");
         return;
-      }
-      try {
-        const destination = await resolvePostAuthRedirect();
-        if (destination === "/dashboard") {
-          router.replace("/dashboard");
-          return;
-        }
-      } catch {
-        // Allow onboarding if sync fails
       }
       setAuthChecked(true);
     });
