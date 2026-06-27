@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
@@ -10,6 +19,11 @@ import {
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
 import { CoachExperienceCompanies } from "@/components/scout/coach-experience-companies";
+import {
+  ScoutBox,
+  ScoutPrimaryBtn,
+  ScoutSecondaryBtn,
+} from "@/components/scout/scout-box";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -115,7 +129,7 @@ function ReviewFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -280,7 +294,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
     setTimeout(onClose, 220);
   };
 
-  const closeFromBackdrop = (e: React.MouseEvent) => {
+  const closeFromBackdrop = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     close();
@@ -710,9 +724,9 @@ function GoldBookBtn({
   onClick,
   style,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   onClick?: () => void;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }) {
   return (
     <button type="button" onClick={onClick} style={{ ...goldBookBtnStyle, ...style }}>
@@ -721,7 +735,7 @@ function GoldBookBtn({
   );
 }
 
-const goldBookBtnStyle: React.CSSProperties = {
+const goldBookBtnStyle: CSSProperties = {
   width: "100%",
   minHeight: 44,
   padding: "12px 16px",
@@ -751,7 +765,7 @@ function OfferingRow({
   secondaryPrice?: string;
   onBook?: () => void;
   bookLabel?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }) {
   return (
     <div
