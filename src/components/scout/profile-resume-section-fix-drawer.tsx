@@ -6,6 +6,7 @@ import { ChevronRight, HelpCircle, ThumbsDown, ThumbsUp } from "lucide-react";
 import { JR } from "./profile-resume-editor-panels";
 import type { ResumeSectionId } from "@/lib/resume-parse";
 import type { FullAnalysisReport } from "./profile-resume-analysis-report";
+import { completenessFixCopy } from "@/lib/resume-analysis-stats";
 
 export interface SectionFixIssue {
   id: string;
@@ -53,14 +54,18 @@ export function getSectionFixIssues(
 
   const fromIssues = fullReport.issues
     .filter((issue) => pattern.test(`${issue.title} ${issue.detail}`))
-    .map((issue, i) => ({
-      id: `${sectionId}-i-${i}`,
-      severity: issue.priority,
-      title: issue.title,
-      issueDetected: issue.detail,
-      whyItMatters: issue.detail,
-      howToImprove: issue.detail,
-    }));
+    .map((issue, i) => {
+      const missingMatch = issue.title.match(/^Missing (.+)$/);
+      const copy = missingMatch ? completenessFixCopy(missingMatch[1]) : null;
+      return {
+        id: `${sectionId}-i-${i}`,
+        severity: issue.priority,
+        title: issue.title,
+        issueDetected: copy?.issueDetected ?? issue.detail,
+        whyItMatters: copy?.whyItMatters ?? issue.detail,
+        howToImprove: copy?.howToImprove ?? issue.detail,
+      };
+    });
 
   const combined = fromHighlights.length ? fromHighlights : fromIssues;
   if (mode === "impact") {

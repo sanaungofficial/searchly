@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
+import { getOwnedAssetForActingUser } from "@/lib/owned-asset";
+import { getActingUser } from "@/lib/acting-user";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { fallbackSectionSuggestion } from "@/lib/resume-section-fallback";
 import { parseJsonFromModel, sectionTextBlob, normalizeParsedResumeData, type ResumeSectionId } from "@/lib/resume-parse";
-import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {
@@ -36,24 +38,14 @@ function experienceSlice(
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { authUser } = await getActingUser(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const owned = await getOwnedAssetForActingUser(id, request);
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const asset = await prisma.userAsset.findFirst({
-    where: { id, userId: dbUser.id, type: "RESUME" },
-  });
-  if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
+  const { dbUser, asset } = owned;
   const parsed = normalizeParsedResumeData(asset.parsedData);
   if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
 
@@ -70,15 +62,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? experienceSlice(parsed, entryId, entryLabel)
       : sectionTextBlob(parsed, sectionId, entryId);
 
-  const targetRoles = (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+  const targetRoles = (profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
+  const fallbackText = fallbackSectionSuggestion(sectionId, parsed, targetRoles);
 
   if (!isKimchiAiConfigured()) {
     return NextResponse.json({
       issues: [],
       suggestions: [
         {
-          label: "Dev preview",
-          text: draftSlice.slice(0, 500) || "Add content here — full AI suggestions available on production.",
+          id: "opt-fallback",
+          label: "Recommended draft",
+          text: draftSlice.trim() || fallbackText || "Add content here — full AI suggestions available on production.",
         },
       ],
     });
@@ -124,7 +119,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           .filter((row) => row.issueDetected || row.howToImprove)
       : [];
 
-    const suggestions = Array.isArray(result?.suggestions)
+    let suggestions = Array.isArray(result?.suggestions)
       ? result!.suggestions
           .map((s, i) => ({
             id: `opt-${i}`,
@@ -134,8 +129,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           .filter((s) => s.text.trim())
       : [];
 
+    if (!suggestions.length && fallbackText) {
+      suggestions = [{ id: "opt-fallback", label: "Recommended draft", text: fallbackText }];
+    }
+
     return NextResponse.json({ issues, suggestions });
   } catch {
+    if (fallbackText) {
+      return NextResponse.json({
+        issues: [],
+        suggestions: [{ id: "opt-fallback", label: "Recommended draft", text: fallbackText }],
+      });
+    }
     return NextResponse.json({ error: "Could not generate suggestions" }, { status: 500 });
   }
 }

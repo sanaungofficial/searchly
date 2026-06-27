@@ -1,4 +1,5 @@
-import { createClient } from "@/utils/supabase/server";
+import { getActingUser } from "@/lib/acting-user";
+import { getOwnedAssetForActingUser } from "@/lib/owned-asset";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
@@ -11,32 +12,23 @@ import {
 import { normalizeQualityScore } from "@/components/scout/profile-resume-analysis-report";
 import { NextResponse } from "next/server";
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { authUser } = await getActingUser(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const owned = await getOwnedAssetForActingUser(id, request);
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const asset = await prisma.userAsset.findFirst({
-    where: { id, userId: dbUser.id, type: "RESUME" },
-  });
-  if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
+  const { dbUser, asset } = owned;
   const parsed = normalizeParsedResumeData(asset.parsedData);
   if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
 
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const analysis = (asset.analysisData ?? {}) as Record<string, unknown>;
   const improvements = Array.isArray(analysis.improvements) ? analysis.improvements : [];
   const gaps = Array.isArray(analysis.gaps) ? analysis.gaps : [];
@@ -51,7 +43,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         }));
 
   const targetRoles =
-    (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "general professional roles";
+    (profile?.targetRoles as string[] | null)?.join(", ") || "general professional roles";
 
   const template = await getPrompt("RESUME_BULK_IMPROVE");
   const prompt = interpolate(template, {
