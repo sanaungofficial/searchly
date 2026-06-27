@@ -155,10 +155,10 @@ export function recommendationPathForGoals(goals: DashboardGoal[]): string {
 }
 
 export function recommendationLabelForGoals(goals: DashboardGoal[]): string {
-  if (goals.some((g) => g.category === "coaching")) return "Browse coaches";
-  if (goals.some((g) => g.category === "applications")) return "Open profile assets";
-  if (goals.some((g) => g.category === "career")) return "Open career strategy";
-  return "Find roles that fit";
+  if (goals.some((g) => g.category === "coaching")) return "Find a coach";
+  if (goals.some((g) => g.category === "applications")) return "Prep my materials";
+  if (goals.some((g) => g.category === "career")) return "Work on my plan";
+  return "Show me matching roles";
 }
 
 export function hasCoachingGoal(goals: DashboardGoal[]): boolean {
