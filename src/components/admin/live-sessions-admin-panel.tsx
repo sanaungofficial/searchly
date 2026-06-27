@@ -211,6 +211,7 @@ export function LiveSessionsAdminPanel() {
     const sessions = data?.sessions ?? [];
     return {
       live: sessions.filter((s) => s.status === "LIVE"),
+      pending: sessions.filter((s) => s.status === "PENDING_APPROVAL"),
       upcoming: sessions.filter((s) => s.status === "SCHEDULED" || s.status === "DRAFT"),
       past: sessions.filter((s) => s.status === "ENDED" || s.status === "CANCELLED"),
     };
@@ -260,6 +261,25 @@ export function LiveSessionsAdminPanel() {
       if (expandedId === sessionId) await loadSessionDetail(sessionId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update session");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const runApproval = async (sessionId: string, action: "approve" | "reject") => {
+    setBusyId(sessionId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/live/sessions/${sessionId}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: action === "reject" ? JSON.stringify({ reason: "Please revise and resubmit." }) : "{}",
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Action failed");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed");
     } finally {
       setBusyId(null);
     }
@@ -327,6 +347,24 @@ export function LiveSessionsAdminPanel() {
         )}
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {(session.status === "PENDING_APPROVAL" || session.status === "DRAFT") && (
+            <>
+              <ScoutPrimaryBtn
+                disabled={busyId === session.id}
+                onClick={() => void runApproval(String(session.legacyNumericId ?? session.id), "approve")}
+                style={{ minHeight: 40 }}
+              >
+                Approve & publish
+              </ScoutPrimaryBtn>
+              <ScoutSecondaryBtn
+                disabled={busyId === session.id}
+                onClick={() => void runApproval(String(session.legacyNumericId ?? session.id), "reject")}
+                style={{ minHeight: 40 }}
+              >
+                Send back
+              </ScoutSecondaryBtn>
+            </>
+          )}
           {session.status !== "LIVE" && (
             <ScoutPrimaryBtn
               disabled={busyId === session.id || !data?.hmsConfigured}
@@ -548,6 +586,12 @@ export function LiveSessionsAdminPanel() {
             <section>
               <h3 style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: "0 0 12px", color: "#C4574A" }}>● Live now</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{grouped.live.map(renderSession)}</div>
+            </section>
+          )}
+          {grouped.pending.length > 0 && (
+            <section>
+              <h3 style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: "0 0 12px", color: color.forest }}>Awaiting approval</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{grouped.pending.map(renderSession)}</div>
             </section>
           )}
           {grouped.upcoming.length > 0 && (

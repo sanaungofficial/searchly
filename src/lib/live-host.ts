@@ -2,21 +2,17 @@ import type { User } from "@prisma/client";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hmsGuestRole, hmsHostRole } from "@/lib/hms";
+import { hmsGuestRole, hmsHostRole, hmsViewerRole } from "@/lib/hms";
 
 export type LiveJoinIntent = "host" | "guest";
 
 /**
- * Host access policy:
- * - Admins / super admins → any session
- * - Assigned coach (session.coachProfileId) → their session only
- * - Legacy fallback: coach displayName matches session.host when no coachProfileId set
- * - Everyone else → guest only (including coaches on other hosts' sessions)
+ * Host access: admin, primary coach, or listed co-host (by coach profile or email).
  */
 export async function canHostLiveSession(args: {
   operator: User;
   authEmail: string;
-  session: Pick<LiveSessionView, "coachProfileId" | "host">;
+  session: Pick<LiveSessionView, "id" | "coachProfileId" | "host">;
   isImpersonating: boolean;
 }): Promise<boolean> {
   const { operator, authEmail, session, isImpersonating } = args;
@@ -31,26 +27,45 @@ export async function canHostLiveSession(args: {
     select: { id: true, displayName: true },
   });
 
-  if (!coach) return false;
-
-  if (session.coachProfileId) {
-    return coach.id === session.coachProfileId;
+  if (!coach) {
+    const coHostByEmail = authEmail
+      ? await prisma.liveSessionCoHost.findFirst({
+          where: { liveSessionId: session.id, email: authEmail.toLowerCase() },
+        })
+      : null;
+    return Boolean(coHostByEmail);
   }
 
-  // Legacy sessions created before coachProfileId was set
-  return coach.displayName.trim().toLowerCase() === session.host.trim().toLowerCase();
+  if (session.coachProfileId && coach.id === session.coachProfileId) return true;
+
+  const coHost = await prisma.liveSessionCoHost.findFirst({
+    where: {
+      liveSessionId: session.id,
+      OR: [{ coachProfileId: coach.id }, ...(authEmail ? [{ email: authEmail.toLowerCase() }] : [])],
+    },
+  });
+  if (coHost) return true;
+
+  if (!session.coachProfileId) {
+    return coach.displayName.trim().toLowerCase() === session.host.trim().toLowerCase();
+  }
+
+  return false;
 }
 
 export async function resolveLiveJoinRole(args: {
   operator: User;
   authEmail: string;
-  session: Pick<LiveSessionView, "coachProfileId" | "host">;
+  session: Pick<LiveSessionView, "id" | "coachProfileId" | "host" | "format">;
   isImpersonating: boolean;
   requestedIntent?: LiveJoinIntent;
 }): Promise<{ role: string; isHost: boolean }> {
   const canHost = await canHostLiveSession(args);
 
   if (args.requestedIntent === "guest") {
+    if (args.session.format === "BROADCAST") {
+      return { role: hmsViewerRole(), isHost: false };
+    }
     return { role: hmsGuestRole(), isHost: false };
   }
 
@@ -61,9 +76,12 @@ export async function resolveLiveJoinRole(args: {
     return { role: hmsHostRole(), isHost: true };
   }
 
-  // Default: assigned hosts join as host; everyone else as guest
   if (canHost) {
     return { role: hmsHostRole(), isHost: true };
+  }
+
+  if (args.session.format === "BROADCAST") {
+    return { role: hmsViewerRole(), isHost: false };
   }
 
   return { role: hmsGuestRole(), isHost: false };

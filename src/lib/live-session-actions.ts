@@ -18,7 +18,10 @@ import { notifyLiveSessionLiveNow } from "@/lib/live-session-cron";
 export async function goLiveSession(session: LiveSessionRecord) {
   const roomId = await prepareLiveRoom(session);
   const recordingId = await startLiveRecording(session);
-  const hls = await startHlsLiveStream(session);
+  const hls =
+    session.format === "BROADCAST"
+      ? await startHlsLiveStream(session)
+      : { streamId: null, playbackUrl: null };
 
   const updated = await setLiveSessionStatus(session.id, "LIVE", {
     hmsRoomId: roomId,
