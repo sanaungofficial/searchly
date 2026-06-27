@@ -29,8 +29,12 @@ type UseVoiceAgentSessionOptions = {
   context?: VoiceAgentContext;
   disabled?: boolean;
   voicePresetId?: string;
+  /** Appended to onboarding config fetch — current coach step query string */
+  onboardingCoachQuery?: string;
   pageHint?: AssistantPageHint;
   onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
+  onOnboardingPropose?: (field: string, value: string) => void;
+  onOnboardingConfirm?: (field: string) => void;
   onComplete?: (result: VoiceAgentSessionResult) => void;
   onNavigate?: (route: string, label?: string) => void;
 };
@@ -98,8 +102,11 @@ export function useVoiceAgentSession({
   context = "workspace",
   disabled,
   voicePresetId = "general",
+  onboardingCoachQuery = "",
   pageHint,
   onFieldUpdate,
+  onOnboardingPropose,
+  onOnboardingConfirm,
   onComplete,
   onNavigate,
 }: UseVoiceAgentSessionOptions = {}) {
@@ -131,7 +138,7 @@ export function useVoiceAgentSession({
 
   useEffect(() => {
     void fetch(
-      `/api/voice/agent/config?context=${context}&preset=${encodeURIComponent(voicePresetId)}${pageHintQuery(pageHint)}`,
+      `/api/voice/agent/config?context=${context}&preset=${encodeURIComponent(voicePresetId)}${pageHintQuery(pageHint)}${onboardingCoachQuery}`,
       { cache: "no-store" },
     )
       .then((res) => res.json())
@@ -140,7 +147,15 @@ export function useVoiceAgentSession({
         setAgentSettings(data?.agent ?? null);
       })
       .catch(() => setAvailable(false));
-  }, [context, voicePresetId, pageHint?.pathname, pageHint?.jobDbId, pageHint?.jobRole, pageHint?.chatView]);
+  }, [
+    context,
+    voicePresetId,
+    onboardingCoachQuery,
+    pageHint?.pathname,
+    pageHint?.jobDbId,
+    pageHint?.jobRole,
+    pageHint?.chatView,
+  ]);
 
   const stopVisualizer = useCallback(() => {
     if (rafRef.current) {
@@ -263,8 +278,27 @@ export function useVoiceAgentSession({
           if (!fn.client_side) continue;
           try {
             const args = JSON.parse(fn.arguments || "{}") as Record<string, string>;
-            if (fn.name === "save_onboarding_field") {
-              handleFieldSave(args.field, args.value);
+            if (
+              fn.name === "save_onboarding_field" ||
+              fn.name === "propose_onboarding_answer"
+            ) {
+              if (onOnboardingPropose) {
+                onOnboardingPropose(args.field, args.value);
+              } else {
+                handleFieldSave(args.field, args.value);
+              }
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (
+              fn.name === "propose_onboarding_company" &&
+              args.companyName
+            ) {
+              onOnboardingPropose?.("company", args.companyName);
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (fn.name === "confirm_onboarding_answer") {
+              onOnboardingConfirm?.(args.field);
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (fn.name === "confirm_onboarding_company") {
+              onOnboardingConfirm?.("company");
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "finish_onboarding_chat") {
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
@@ -356,6 +390,8 @@ export function useVoiceAgentSession({
     finishSession,
     handleFieldSave,
     onNavigate,
+    onOnboardingConfirm,
+    onOnboardingPropose,
     sessionActive,
     setUiMode,
     startVisualizer,
