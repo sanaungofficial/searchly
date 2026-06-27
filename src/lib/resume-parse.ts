@@ -455,11 +455,15 @@ export function skillsFromReadback(readbackData: unknown): string[] {
 export function mergeParsedWithReadback(
   parsed: ParsedResumeData | null,
   readbackData: unknown,
-): ParsedResumeData | null {
+): ParsedResumeData {
   const readbackSkills = skillsFromReadback(readbackData);
   if (!parsed) {
-    if (!readbackSkills.length) return null;
-    return { ...emptyParsedResumeData(), skills: readbackSkills, skillGroups: [{ id: "sg_0", label: "Skills", skills: readbackSkills }] };
+    if (!readbackSkills.length) return emptyParsedResumeData();
+    return {
+      ...emptyParsedResumeData(),
+      skills: readbackSkills,
+      skillGroups: [{ id: "sg_0", label: "Skills", skills: readbackSkills }],
+    };
   }
   if (parsed.skills.length || parsed.tools.length || !readbackSkills.length) return parsed;
   return { ...parsed, skills: readbackSkills, skillGroups: [{ id: "sg_0", label: "Skills", skills: readbackSkills }] };

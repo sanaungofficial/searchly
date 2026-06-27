@@ -995,7 +995,7 @@ export function PipelineRecommendedSection({
     const priorities = profilePrioritiesFromForm(filtersForm);
     const unchanged =
       profileBaseline &&
-      location.trim() === profileBaseline.location.trim() &&
+      location.trim() === (profileBaseline.location ?? "").trim() &&
       JSON.stringify([...priorities].sort()) === JSON.stringify([...profileBaseline.priorities].sort());
     if (unchanged) return;
 

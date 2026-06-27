@@ -50,7 +50,7 @@ import {
 import { extractProfileSkills } from "@/lib/job-fit-ranking";
 import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
-import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import { mergeParsedWithReadback, normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 
@@ -705,13 +705,17 @@ export function hasProfileSignals(input: {
   resumeAssetUrl: string | null;
   profileResumeUrl: string | null | undefined;
   resumeText: string;
-  parsedData: ReturnType<typeof normalizeParsedResumeData>;
+  parsedData: ParsedResumeData;
 }): boolean {
   if (input.roleTitlePreferences && hasRoleTitlePreferenceSignals(input.roleTitlePreferences)) return true;
   if (input.targetRoles.length > 0) return true;
   if (input.resumeAssetUrl || input.profileResumeUrl) return true;
   if (input.resumeText.trim().length >= 40) return true;
-  return (input.parsedData?.workExperience?.length ?? 0) > 0;
+  return (
+    input.parsedData.skills.length > 0 ||
+    input.parsedData.tools.length > 0 ||
+    input.parsedData.workExperience.length > 0
+  );
 }
 
 export async function userEligibleForRecommendedSnapshot(userId: string): Promise<boolean> {
