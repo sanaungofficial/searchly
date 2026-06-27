@@ -1194,6 +1194,9 @@ model InboxContact {
   name           String?
   company        String?
   title          String?
+  linkedinUrl    String?
+  notes          String?            @db.Text
+  contacted      Boolean?
   nylasContactId String?
   source         InboxContactSource @default(EMAIL)
   createdAt      DateTime           @default(now())
