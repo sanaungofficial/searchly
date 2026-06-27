@@ -9,7 +9,6 @@ import {
   ScreenReadBack,
   ScreenTargetRoles,
   ScreenTargetCompanies,
-  ScreenOnboardingJobSamples,
   ScreenAboutYouSearch,
   ScreenAboutYouPreferences,
   ScreenSetup,
@@ -26,8 +25,6 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
-import { OnboardingCoachProvider } from "@/contexts/onboarding-coach-context";
-import type { VoiceAgentFieldPatch, VoiceAgentSessionResult } from "@/components/voice/voice-intake-recorder";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -368,43 +365,9 @@ export default function OnboardingPage() {
     setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }, []);
 
-  const applyVoiceFieldPatch = useCallback((patch: VoiceAgentFieldPatch) => {
-    if (patch.careerMotivation) setCareerMotivation(patch.careerMotivation);
-    if (patch.jobTimeline) setJobTimeline(patch.jobTimeline);
-    if (patch.currentSalary) setCurrentSalary(patch.currentSalary);
-    if (patch.targetSalary) setTargetSalary(patch.targetSalary);
-    if (patch.priorities?.length) {
-      setPriorities((prev) => [...new Set([...prev, ...patch.priorities!])]);
-    }
-    if (patch.targetRoles?.length) {
-      setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
-      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])].slice(0, 3));
-    }
-  }, []);
-
-  const onVoiceIntakeComplete = useCallback((result: VoiceAgentSessionResult) => {
-    if (result.transcript) {
-      void fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategyIntakeNotes: result.transcript }),
-      });
-    }
-  }, []);
-
-  const coachGetMultiCount = useCallback(
-    (field: string) => {
-      if (field === "targetRoles") return selectedTitles.length;
-      if (field === "company") return selectedCompanies.length;
-      if (field === "priorities") return priorities.length;
-      return 0;
-    },
-    [selectedTitles, selectedCompanies, priorities],
-  );
-
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(7);
+    goTo(6);
 
     let primaryAssetId: string | undefined;
     const companiesSnapshot = selectedCompanies;
@@ -505,21 +468,13 @@ export default function OnboardingPage() {
 
   const onCompaniesContinue = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
-    goTo(6);
-  }, [aboutYouFields, goTo]);
+    void runFinishSetup();
+  }, [aboutYouFields, runFinishSetup]);
 
   const onCompaniesSkip = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
-    goTo(6);
-  }, [aboutYouFields, goTo]);
-
-  const onJobSamplesContinue = useCallback(() => {
     void runFinishSetup();
-  }, [runFinishSetup]);
-
-  const onJobSamplesSkip = useCallback(() => {
-    void runFinishSetup();
-  }, [runFinishSetup]);
+  }, [aboutYouFields, runFinishSetup]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -537,8 +492,6 @@ export default function OnboardingPage() {
     } else if (screen === 4) {
       goTo(5);
     } else if (screen === 5) {
-      goTo(6);
-    } else if (screen === 6) {
       void runFinishSetup();
     }
   };
@@ -553,7 +506,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = screen === 7 ? 6 : screen;
+  const headerScreen = screen === 6 ? 5 : screen;
   const showProcessingBanner =
     screen >= 1 && screen <= 2 && (resumeUploading || readbackStatus === "loading");
 
@@ -568,13 +521,6 @@ export default function OnboardingPage() {
       />
       <div className="onboarding-shell">
         <ScoutHeader screen={headerScreen} />
-        <OnboardingCoachProvider
-          screen={screen}
-          onApplyPatch={applyVoiceFieldPatch}
-          onApplyCompany={onAddTargetCompany}
-          getMultiCount={coachGetMultiCount}
-          onVoiceComplete={onVoiceIntakeComplete}
-        >
         <div className="onboarding-content">
           {showProcessingBanner && (
             <OnboardingProcessingBanner
@@ -608,8 +554,6 @@ export default function OnboardingPage() {
               jobTimeline={jobTimeline}
               onCareerMotivationChange={setCareerMotivation}
               onJobTimelineChange={setJobTimeline}
-              onVoiceFieldUpdate={applyVoiceFieldPatch}
-              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onAboutSearchContinue}
               onSkip={onAboutSearchSkip}
             />
@@ -625,8 +569,6 @@ export default function OnboardingPage() {
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
-              onVoiceFieldUpdate={applyVoiceFieldPatch}
-              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onAboutPrefsContinue}
               onSkip={onAboutPrefsSkip}
             />
@@ -646,8 +588,6 @@ export default function OnboardingPage() {
               suggestedTitles={readbackRoleSuggestions}
               onAddTitle={onAddTargetRole}
               onRemoveTitle={onRemoveTargetRole}
-              onVoiceFieldUpdate={applyVoiceFieldPatch}
-              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onRolesContinue}
               onSkip={onRolesSkip}
             />
@@ -658,23 +598,14 @@ export default function OnboardingPage() {
               targetRoles={selectedTitles}
               onAddCompany={onAddTargetCompany}
               onRemoveCompany={onRemoveTargetCompany}
-              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onCompaniesContinue}
               onSkip={onCompaniesSkip}
             />
           )}
-          {screen === 6 && (
-            <ScreenOnboardingJobSamples
-              targetRoles={selectedTitles}
-              onContinue={onJobSamplesContinue}
-              onSkip={onJobSamplesSkip}
-            />
-          )}
-          {screen === 7 && <ScreenSetup steps={setupSteps} />}
+          {screen === 6 && <ScreenSetup steps={setupSteps} />}
         </div>
-        </OnboardingCoachProvider>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== 7 && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== 6 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }

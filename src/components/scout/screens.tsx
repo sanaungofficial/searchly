@@ -25,21 +25,13 @@ import {
 import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
-import { OnboardingCoachPanel } from "@/components/onboarding/onboarding-coach-panel";
-import { type OnboardingJobSample } from "@/lib/onboarding-coach/steps";
-import type { OnboardingCompanyPick } from "@/lib/onboarding-coach/types";
-import type { VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
-import type { VoiceAgentFieldPatch } from "@/lib/voice-intake";
-import { matchScoreStyle } from "@/lib/match-score";
 
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-const ONBOARDING_STEP_COUNT = 7;
-
-export type { OnboardingCompanyPick, OnboardingJobSample };
+const ONBOARDING_STEP_COUNT = 6;
 
 export interface Job {
   id: number;
@@ -1515,8 +1507,6 @@ interface TargetRolesProps {
   suggestedTitles?: string[];
   onAddTitle: (title: string) => void;
   onRemoveTitle: (title: string) => void;
-  onVoiceFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
-  onVoiceIntakeComplete?: (result: VoiceAgentSessionResult) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -1831,8 +1821,6 @@ export function ScreenTargetRoles({
   suggestedTitles = [],
   onAddTitle,
   onRemoveTitle,
-  onVoiceFieldUpdate,
-  onVoiceIntakeComplete,
   onContinue,
   onSkip,
 }: TargetRolesProps) {
@@ -1841,11 +1829,9 @@ export function ScreenTargetRoles({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && onVoiceFieldUpdate && <OnboardingCoachPanel />}
-
       <AboutYouIntro
         title="What roles are you targeting?"
-        body="Pick up to 3 titles — talk it out above or use search below. We use these to find matches and score fit."
+        body="Pick up to 3 titles. We use these to find matches and score how well you fit."
       />
 
       <div
@@ -1892,6 +1878,14 @@ export function ScreenTargetRoles({
 /* ──────────────────────────────────────────────────────────────
    Screen 3 — Target companies (watchlist)
    ────────────────────────────────────────────────────────────── */
+export type OnboardingCompanyPick = {
+  catalogSlug: string;
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  type: string | null;
+};
+
 type CompanySuggestion = {
   catalogSlug: string;
   name: string;
@@ -1905,7 +1899,6 @@ interface TargetCompaniesProps {
   targetRoles: string[];
   onAddCompany: (company: OnboardingCompanyPick) => void;
   onRemoveCompany: (catalogSlug: string) => void;
-  onVoiceIntakeComplete?: (result: VoiceAgentSessionResult) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -2205,7 +2198,6 @@ export function ScreenTargetCompanies({
   targetRoles,
   onAddCompany,
   onRemoveCompany,
-  onVoiceIntakeComplete,
   onContinue,
   onSkip,
 }: TargetCompaniesProps) {
@@ -2215,11 +2207,9 @@ export function ScreenTargetCompanies({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && <OnboardingCoachPanel />}
-
       <AboutYouIntro
         title="Any companies on your list?"
-        body={`Add up to ${ONBOARDING_MAX_TARGET_COMPANIES} employers you want to watch — talk it out above or search below.`}
+        body={`Add up to ${ONBOARDING_MAX_TARGET_COMPANIES} employers you want to watch. We'll scan their boards for roles that match your titles.`}
       />
 
       {targetRoles.length > 0 && (
@@ -2271,153 +2261,6 @@ export function ScreenTargetCompanies({
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Screen — Job samples preview (before setup)
-   ────────────────────────────────────────────────────────────── */
-interface JobSamplesProps {
-  targetRoles: string[];
-  onContinue: () => void;
-  onSkip: () => void;
-}
-
-function JobSampleCard({ job }: { job: OnboardingJobSample }) {
-  const scoreStyle = job.matchScore != null && job.matchScore > 0 ? matchScoreStyle(job.matchScore) : null;
-
-  return (
-    <div
-      style={{
-        ...ONBOARDING_CARD,
-        padding: "16px 18px",
-        textAlign: "left" as const,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <p
-            style={{
-              margin: "0 0 4px",
-              fontFamily: "var(--font-ui)",
-              fontSize: 15,
-              fontWeight: 600,
-              color: ONBOARDING_TEXT,
-              lineHeight: 1.35,
-            }}
-          >
-            {job.title}
-          </p>
-          <p style={{ margin: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY }}>
-            {job.companyName}
-            {job.location ? ` · ${job.location}` : ""}
-          </p>
-        </div>
-        {scoreStyle && (
-          <span
-            style={{
-              flexShrink: 0,
-              padding: "4px 10px",
-              borderRadius: 999,
-              background: scoreStyle.bg,
-              color: scoreStyle.accent,
-              fontFamily: "var(--font-ui)",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            {job.matchLabel ?? scoreStyle.label}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function ScreenOnboardingJobSamples({ targetRoles, onContinue, onSkip }: JobSamplesProps) {
-  const [samples, setSamples] = useState<OnboardingJobSample[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState(false);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-
-    void fetch("/api/onboarding/job-samples", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roles: targetRoles }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("fetch failed");
-        const data = (await res.json()) as { samples?: OnboardingJobSample[]; preview?: boolean };
-        if (cancelled) return;
-        setSamples(Array.isArray(data.samples) ? data.samples.slice(0, 3) : []);
-        setPreview(Boolean(data.preview));
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [targetRoles]);
-
-  const rolesPreview = targetRoles.slice(0, 2).join(", ");
-
-  return (
-    <div className="flex flex-col gap-5 onboarding-screen-gap">
-      <AboutYouIntro
-        title="Here's what we might surface for you"
-        body={
-          targetRoles.length
-            ? `A quick taste of roles like ${rolesPreview}${targetRoles.length > 2 ? ` +${targetRoles.length - 2} more` : ""} — your full feed builds after setup.`
-            : "Sample listings to show how Kimchi surfaces matches — add target roles anytime in your profile."
-        }
-      />
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.15s" }}>
-        {loading ? (
-          <KimchiProcessLoader preset="recommendations" variant="inline" title="Finding sample roles…" />
-        ) : error || samples.length === 0 ? (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY, margin: 0, lineHeight: 1.55 }}>
-            We couldn&apos;t load samples right now — you&apos;ll still get matches on your dashboard after setup.
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {preview && (
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, margin: "0 0 4px", lineHeight: 1.5 }}>
-                Example listings — live matches appear once your profile is set up.
-              </p>
-            )}
-            {samples.map((job, i) => (
-              <JobSampleCard key={`${job.companyName}-${job.title}-${i}`} job={job} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="anim-fade-up" style={ONBOARDING_CARD}>
-        <button
-          className="onboarding-cta"
-          onClick={onContinue}
-          style={{ ...PRIMARY_CTA, width: "100%" }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-        >
-          Finish setup →
-        </button>
-        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 14 }}>
-          Skip preview
-        </button>
-      </div>
     </div>
   );
 }
@@ -2535,8 +2378,6 @@ interface AboutYouSearchProps {
   jobTimeline: string;
   onCareerMotivationChange: (v: string) => void;
   onJobTimelineChange: (v: string) => void;
-  onVoiceFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
-  onVoiceIntakeComplete?: (result: VoiceAgentSessionResult) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -2546,20 +2387,14 @@ export function ScreenAboutYouSearch({
   jobTimeline,
   onCareerMotivationChange,
   onJobTimelineChange,
-  onVoiceFieldUpdate,
-  onVoiceIntakeComplete,
   onContinue,
   onSkip,
 }: AboutYouSearchProps) {
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && onVoiceFieldUpdate && (
-        <OnboardingCoachPanel />
-      )}
-
       <AboutYouIntro
         title="A few questions about your search."
-        body="Use the talk panel above, pick below, or mix both — whatever's easier."
+        body="Pick the options below — quick and easy."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
@@ -2620,8 +2455,6 @@ interface AboutYouPreferencesProps {
   onTargetSalaryChange: (v: string) => void;
   onTogglePriority: (p: string) => void;
   onAttributionChange: (v: string) => void;
-  onVoiceFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
-  onVoiceIntakeComplete?: (result: VoiceAgentSessionResult) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -2636,8 +2469,6 @@ export function ScreenAboutYouPreferences({
   onTargetSalaryChange,
   onTogglePriority,
   onAttributionChange,
-  onVoiceFieldUpdate,
-  onVoiceIntakeComplete,
   onContinue,
   onSkip,
 }: AboutYouPreferencesProps) {
@@ -2665,11 +2496,9 @@ export function ScreenAboutYouPreferences({
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      {onVoiceIntakeComplete && onVoiceFieldUpdate && <OnboardingCoachPanel />}
-
       <AboutYouIntro
         title="Preferences (all optional)"
-        body="Salary, priorities, timeline — talk it out above or use the picks below."
+        body="Salary, priorities, timeline — helps us filter roles that won't work for you."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>

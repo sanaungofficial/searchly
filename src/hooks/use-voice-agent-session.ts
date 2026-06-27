@@ -29,14 +29,8 @@ type UseVoiceAgentSessionOptions = {
   context?: VoiceAgentContext;
   disabled?: boolean;
   voicePresetId?: string;
-  /** Appended to onboarding config fetch — current coach step query string */
-  onboardingCoachQuery?: string;
-  /** Keep the same Deepgram session when coach step query changes (update prompt in place). */
-  continuousOnboarding?: boolean;
   pageHint?: AssistantPageHint;
   onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
-  onOnboardingPropose?: (field: string, value: string) => void;
-  onOnboardingConfirm?: (field: string) => void;
   onComplete?: (result: VoiceAgentSessionResult) => void;
   onNavigate?: (route: string, label?: string) => void;
 };
@@ -104,12 +98,8 @@ export function useVoiceAgentSession({
   context = "workspace",
   disabled,
   voicePresetId = "general",
-  onboardingCoachQuery = "",
-  continuousOnboarding = false,
   pageHint,
   onFieldUpdate,
-  onOnboardingPropose,
-  onOnboardingConfirm,
   onComplete,
   onNavigate,
 }: UseVoiceAgentSessionOptions = {}) {
@@ -133,12 +123,6 @@ export function useVoiceAgentSession({
   const sessionStartedAtRef = useRef<number | null>(null);
   const pageHintRef = useRef(pageHint);
   pageHintRef.current = pageHint;
-  const onOnboardingProposeRef = useRef(onOnboardingPropose);
-  onOnboardingProposeRef.current = onOnboardingPropose;
-  const onOnboardingConfirmRef = useRef(onOnboardingConfirm);
-  onOnboardingConfirmRef.current = onOnboardingConfirm;
-  const sessionActiveRef = useRef(sessionActive);
-  sessionActiveRef.current = sessionActive;
 
   const setUiMode = useCallback((mode: VoiceOrbState) => {
     uiModeRef.current = mode;
@@ -146,10 +130,8 @@ export function useVoiceAgentSession({
   }, []);
 
   useEffect(() => {
-    if (continuousOnboarding && sessionActiveRef.current) return;
-
     void fetch(
-      `/api/voice/agent/config?context=${context}&preset=${encodeURIComponent(voicePresetId)}${pageHintQuery(pageHint)}${onboardingCoachQuery}`,
+      `/api/voice/agent/config?context=${context}&preset=${encodeURIComponent(voicePresetId)}${pageHintQuery(pageHint)}`,
       { cache: "no-store" },
     )
       .then((res) => res.json())
@@ -158,16 +140,7 @@ export function useVoiceAgentSession({
         setAgentSettings(data?.agent ?? null);
       })
       .catch(() => setAvailable(false));
-  }, [
-    context,
-    voicePresetId,
-    continuousOnboarding,
-    onboardingCoachQuery,
-    pageHint?.pathname,
-    pageHint?.jobDbId,
-    pageHint?.jobRole,
-    pageHint?.chatView,
-  ]);
+  }, [context, voicePresetId, pageHint?.pathname, pageHint?.jobDbId, pageHint?.jobRole, pageHint?.chatView]);
 
   const stopVisualizer = useCallback(() => {
     if (rafRef.current) {
@@ -290,27 +263,8 @@ export function useVoiceAgentSession({
           if (!fn.client_side) continue;
           try {
             const args = JSON.parse(fn.arguments || "{}") as Record<string, string>;
-            if (
-              fn.name === "save_onboarding_field" ||
-              fn.name === "propose_onboarding_answer"
-            ) {
-              if (onOnboardingProposeRef.current) {
-                onOnboardingProposeRef.current(args.field, args.value);
-              } else {
-                handleFieldSave(args.field, args.value);
-              }
-              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
-            } else if (
-              fn.name === "propose_onboarding_company" &&
-              args.companyName
-            ) {
-              onOnboardingProposeRef.current?.("company", args.companyName);
-              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
-            } else if (fn.name === "confirm_onboarding_answer") {
-              onOnboardingConfirmRef.current?.(args.field);
-              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
-            } else if (fn.name === "confirm_onboarding_company") {
-              onOnboardingConfirmRef.current?.("company");
+            if (fn.name === "save_onboarding_field") {
+              handleFieldSave(args.field, args.value);
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
             } else if (fn.name === "finish_onboarding_chat") {
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
@@ -409,10 +363,6 @@ export function useVoiceAgentSession({
     teardownSession,
   ]);
 
-  const updateCoachPrompt = useCallback((prompt: string) => {
-    sessionRef.current?.updatePrompt(prompt);
-  }, []);
-
   const endSession = useCallback(() => {
     if (!sessionActive) return;
     finishSession("Wrapped up — see your summary below.");
@@ -457,6 +407,5 @@ export function useVoiceAgentSession({
     resetSession,
     toggleSession,
     teardownSession,
-    updateCoachPrompt,
   };
 }

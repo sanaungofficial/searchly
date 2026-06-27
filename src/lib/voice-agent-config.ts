@@ -3,14 +3,6 @@ import { buildPresetVoicePrompt } from "@/lib/kimchi-assistant/prompts";
 import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
 import { isVoicePresetId, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import { WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
-import {
-  buildOnboardingCoachPrompt,
-  ONBOARDING_VOICE_AGENT_PROMPT,
-  type OnboardingCoachContext,
-} from "@/lib/onboarding-coach/voice-prompt";
-
-export type { OnboardingCoachContext } from "@/lib/onboarding-coach/voice-prompt";
-export { buildOnboardingCoachPrompt, ONBOARDING_VOICE_AGENT_BASE } from "@/lib/onboarding-coach/voice-prompt";
 
 /**
  * Deepgram-managed LLM for Voice Agent think step.
@@ -37,11 +29,35 @@ const VOICE_AGENT_SPEAK = {
   },
 };
 
-const ONBOARDING_AGENT_FUNCTIONS = [
+export const ONBOARDING_VOICE_AGENT_PROMPT = `You are Kimchi — a sharp friend helping someone set up their job search during onboarding. You talk like a peer who's been through a senior search: direct, warm, no hype or corporate fluff.
+
+Your job is to learn enough to personalize their search by asking short follow-up questions about:
+1. What's driving their move (motivation)
+2. When they want to make a move (timeline)
+3. Target roles they're aiming for (up to 3)
+4. Salary context if they're willing to share (current + target — optional)
+5. What matters most in their next role (priorities)
+
+Conversation rules:
+- Ask ONE question at a time. Keep spoken replies under 2 sentences.
+- Start by introducing yourself briefly and asking what's driving their search.
+- After the user answers something concrete, call save_onboarding_field with the mapped value.
+- If they say they prefer the form or want to skip talking, say "No problem — the picks below work too" and call finish_onboarding_chat.
+- When you have motivation, timeline, and at least one target role (or they clearly want to move on), wrap up warmly and call finish_onboarding_chat with a one-sentence summary.
+- Never ask for passwords, SSN, mailing addresses, or login credentials.
+
+Field mapping (use exact values where listed):
+- careerMotivation: Higher compensation | More interesting work | Better work-life balance | Step up in level | A career pivot
+- jobTimeline: asap | 3-6mo | open
+- currentSalary / targetSalary: Under $75K | $75K–$99K | $100K–$124K | $125K–$149K | $150K–$174K | $175K–$199K | $200K–$249K | $250K–$299K | $300K–$399K | $400K+
+- priorities (call once per priority): Remote-first | Hybrid-friendly | Higher compensation | Fast growth | Strong team culture | Specific location
+- targetRoles: short role title strings (call once per role, max 3)`;
+
+const AGENT_FUNCTIONS = [
   {
-    name: "propose_onboarding_answer",
+    name: "save_onboarding_field",
     description:
-      "Propose the user's answer for the CURRENT onboarding question. Shows a confirm card — does not save until they confirm.",
+      "Save one onboarding field after the user answers. Call this as you learn each piece — do not wait until the end.",
     parameters: {
       type: "object",
       properties: {
@@ -58,99 +74,37 @@ const ONBOARDING_AGENT_FUNCTIONS = [
         },
         value: {
           type: "string",
-          description: "Mapped value — use exact enum strings where specified.",
+          description: "The value to save — use exact enum strings where specified in the system prompt.",
         },
       },
       required: ["field", "value"],
-    },
-  },
-  {
-    name: "confirm_onboarding_answer",
-    description: "User confirmed the proposed answer on screen. Advance to the next question.",
-    parameters: {
-      type: "object",
-      properties: {
-        field: {
-          type: "string",
-          enum: [
-            "careerMotivation",
-            "jobTimeline",
-            "currentSalary",
-            "targetSalary",
-            "priorities",
-            "targetRoles",
-          ],
-        },
-      },
-      required: ["field"],
-    },
-  },
-  {
-    name: "save_onboarding_field",
-    description: "Alias for propose_onboarding_answer — propose a value for confirm.",
-    parameters: {
-      type: "object",
-      properties: {
-        field: {
-          type: "string",
-          enum: [
-            "careerMotivation",
-            "jobTimeline",
-            "currentSalary",
-            "targetSalary",
-            "priorities",
-            "targetRoles",
-          ],
-        },
-        value: { type: "string" },
-      },
-      required: ["field", "value"],
-    },
-  },
-  {
-    name: "propose_onboarding_company",
-    description: "Propose a company name for the user's watchlist. Shows confirm card before adding.",
-    parameters: {
-      type: "object",
-      properties: {
-        companyName: { type: "string", description: "Company name as the user said it." },
-      },
-      required: ["companyName"],
-    },
-  },
-  {
-    name: "confirm_onboarding_company",
-    description: "User confirmed the proposed company on screen.",
-    parameters: {
-      type: "object",
-      properties: {
-        companyName: { type: "string" },
-      },
-      required: ["companyName"],
     },
   },
   {
     name: "finish_onboarding_chat",
-    description: "User wants to stop talking and use the form picks instead.",
+    description:
+      "End the voice conversation when enough is collected or the user wants to use the form instead.",
     parameters: {
       type: "object",
       properties: {
-        summary: { type: "string" },
+        summary: {
+          type: "string",
+          description: "One sentence summarizing what you learned.",
+        },
       },
       required: ["summary"],
     },
   },
 ] as const;
 
-export function buildOnboardingVoiceAgentSettings(coach?: OnboardingCoachContext | null): AgentSettingsObject {
-  const prompt = coach ? buildOnboardingCoachPrompt(coach) : ONBOARDING_VOICE_AGENT_PROMPT;
+export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
   return {
     language: "en",
     listen: VOICE_AGENT_LISTEN,
     think: {
       provider: VOICE_AGENT_THINK_PROVIDER,
-      prompt,
-      functions: [...ONBOARDING_AGENT_FUNCTIONS],
+      prompt: ONBOARDING_VOICE_AGENT_PROMPT,
+      functions: [...AGENT_FUNCTIONS],
     },
     speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;
