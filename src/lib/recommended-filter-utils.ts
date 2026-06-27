@@ -52,6 +52,7 @@ export function locationFieldsFromProfileString(raw: string | null | undefined):
 export function profileDerivedSearchFilters(input: {
   profileLocation?: string | null;
   targetMarket?: string | null;
+  workAuthorization?: string | null;
   priorities?: string[];
   targetSalary?: string | null;
   employmentStatus?: string | null;
@@ -67,6 +68,7 @@ export function profileDerivedSearchFilters(input: {
     targetSalary: input.targetSalary,
     employmentStatus: input.employmentStatus,
     jobTimeline: input.jobTimeline,
+    workAuthorization: input.workAuthorization,
     profileLocation: null, // location applied via structured fields below, not API auto-inject
   });
 
