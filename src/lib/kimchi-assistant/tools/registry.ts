@@ -2,22 +2,37 @@
 
 export const VOICE_RESEARCH_TOOLS = [
   {
+    name: "list_active_roles",
+    description:
+      "List roles the user is applying to or interviewing for. Call when they haven't named ONE specific role yet, or when multiple roles might match. Read company + role names aloud and ask which one — never pick for them. Do not call get_job_detail until they choose.",
+    parameters: {
+      type: "object",
+      properties: {
+        filter: {
+          type: "string",
+          enum: ["interviewing", "applied", "all"],
+          description: "Default interviewing for prep; applied for follow-ups; all when unclear",
+        },
+      },
+    },
+  },
+  {
     name: "refresh_context",
     description:
-      "Reload the user's profile, pipeline, watchlist, and strategy from the database. Call after they say they updated something, or before deep prep if context may be stale.",
+      "Reload what you know about the user after they say they updated their profile, resume, or added a role. Do not call proactively.",
     parameters: { type: "object", properties: {} },
   },
   {
     name: "get_job_detail",
     description:
-      "Load a pipeline job by id: stage, fit score, notes, posting excerpt, and interview format inference. Use for interview prep and 'why this role' questions. Always confirm interviewInference.confirmQuestion with the user before drilling.",
+      "Load details for ONE role they already picked (jobId required). Returns fit notes and interview format hints. Only call after they confirm which role — never call for multiple roles. Confirm interview format aloud before drilling.",
     parameters: {
       type: "object",
       properties: {
-        jobId: { type: "string", description: "Job id from pipeline context" },
+        jobId: { type: "string", description: "Internal id from list_active_roles — never say aloud" },
         parsePosting: {
           type: "boolean",
-          description: "Fetch/parse job URL if saved (default true). Set false to skip credits.",
+          description: "Pull job listing from saved URL. Default false — ask first unless they already said yes.",
         },
       },
       required: ["jobId"],
@@ -25,7 +40,8 @@ export const VOICE_RESEARCH_TOOLS = [
   },
   {
     name: "parse_job_posting",
-    description: "Fetch and parse a job posting URL (or job's saved URL via jobId). Uses credits.",
+    description:
+      "Pull text from a job listing URL. Ask permission first ('Want me to pull up that listing?'). Only call after they say yes.",
     parameters: {
       type: "object",
       properties: {
@@ -37,7 +53,7 @@ export const VOICE_RESEARCH_TOOLS = [
   {
     name: "get_company_brief",
     description:
-      "Load a target company from the watchlist: priority, candidate edge, intel, cached open roles. Cite as 'your target companies watchlist'.",
+      "Load notes about ONE company they're tracking. If multiple companies could match, ask which one first.",
     parameters: {
       type: "object",
       properties: {
@@ -49,7 +65,7 @@ export const VOICE_RESEARCH_TOOLS = [
   {
     name: "scan_company_roles",
     description:
-      "Refresh open roles at a tracked company (Hirebase scan). Uses credits/time — ask user before scanning.",
+      "Check what's currently open at a tracked company. Ask first ('Want me to see what's open there?') — do not call without permission.",
     parameters: {
       type: "object",
       properties: { companyId: { type: "string" } },
@@ -59,7 +75,7 @@ export const VOICE_RESEARCH_TOOLS = [
   {
     name: "save_job_note",
     description:
-      "Save interview prep notes or voice insights to a pipeline job's user notes. Summarize what you're saving before calling.",
+      "Save prep notes to ONE role they confirmed. Summarize what you'll save and ask 'Want me to jot that down?' before calling.",
     parameters: {
       type: "object",
       properties: {
@@ -91,13 +107,13 @@ export const WORKSPACE_READ_TOOLS = [
   {
     name: "suggest_next_actions",
     description:
-      "Get fresh proactive suggestions based on the user's pipeline and profile. Call when they ask what to do next or when you want to recommend priorities.",
+      "Get fresh suggestions based on what you know about the user. Call when they ask what to do next — summarize briefly, don't read a long list.",
     parameters: { type: "object", properties: {} },
   },
   {
     name: "open_ui_route",
     description:
-      "Navigate the user to a relevant in-app screen. Use when they want to open their pipeline, profile, a job, inbox, or coaching.",
+      "Open a screen in the app when they ask (profile, applications, inbox, etc.). Say what you're opening in plain language.",
     parameters: {
       type: "object",
       properties: {
@@ -170,7 +186,8 @@ export const WORKSPACE_READ_TOOLS = [
   },
   {
     name: "update_job_stage",
-    description: "Update a pipeline job stage when the user confirms.",
+    description:
+      "Move ONE application to a new stage after the user confirms which role and the new stage.",
     parameters: {
       type: "object",
       properties: {

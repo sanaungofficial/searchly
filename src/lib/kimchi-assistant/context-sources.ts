@@ -1,4 +1,8 @@
 import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
+import {
+  VOICE_HUMAN_LANGUAGE_RULES,
+  VOICE_INTERNAL_TOOL_GUIDE,
+} from "@/lib/kimchi-assistant/voice-human-rules";
 import { profileTargetCompaniesUrl } from "@/lib/workspace-urls";
 
 /** Editable source the voice agent can cite and point users to update. */
@@ -26,7 +30,7 @@ export function buildContextSourceRefs(ctx: AssistantContextPayload): ContextSou
     refs.push({
       id: "watchlist-companies",
       label: "Watchlist → Target companies",
-      citeAs: "your target companies watchlist",
+      citeAs: "companies you're watching",
       route: "/profile/target-companies",
       snippet: ctx.targetCompaniesSnippet.split("\n")[0]?.replace(/^- /, "") ?? "",
     });
@@ -55,8 +59,8 @@ export function buildContextSourceRefs(ctx: AssistantContextPayload): ContextSou
   if (ctx.activeApplicationsSnippet && !ctx.activeApplicationsSnippet.includes("No roles")) {
     refs.push({
       id: "active-applications",
-      label: "Pipeline → Active applications",
-      citeAs: "your active applications",
+      label: "Active applications",
+      citeAs: "what you're working on right now",
       route: "/opportunities/pipeline",
       snippet: ctx.activeApplicationsSnippet.split("\n").find((l) => l.startsWith("-"))?.slice(0, 120) ?? "",
     });
@@ -88,8 +92,8 @@ export function formatLabeledContextForPrompt(ctx: AssistantContextPayload): str
 
   const sourceIndex =
     sources.length > 0
-      ? `\nSource index (cite aloud + tell user where to edit if stale):\n${sources
-          .map((s) => `- [${s.label}] → cite as "${s.citeAs}" · update at ${s.route}`)
+      ? `\nWhere things live (internal — cite in plain English, never read labels or routes aloud):\n${sources
+          .map((s) => `- ${s.label} → say "${s.citeAs}" if needed · edit path ${s.route}`)
           .join("\n")}`
       : "";
 
@@ -140,21 +144,17 @@ ${ctx.pageHint}
 ${ctx.creditsHint}
 ${suggestionBlock}
 
-Citation rules (required):
-- Prefix claims with where you read them: "According to your profile…", "From your pipeline…", "Your career strategy doc says…", "On your target companies list…"
-- On FIRST reply: acknowledge their ask, say you're looking at their file, cite ONE specific detail from a labeled source above.
-- If data may be stale: "If that's changed, update it under [route from source index]."
-- For interview prep: call get_job_detail (and parse_job_posting if needed) before guessing format — then CONFIRM: "I'm thinking this is mostly behavioral — does that match what you know?"
-- If something isn't in context or tools, ask — don't invent.
+${VOICE_HUMAN_LANGUAGE_RULES}
 
-Voice tools available:
-- refresh_context — reload profile/pipeline after they update something
-- get_job_detail — full job + fit + interview inference (use job id from pipeline)
-- parse_job_posting — fetch JD from job URL
-- get_company_brief — watchlist company + intel
-- scan_company_roles — refresh open roles at a tracked company
-- save_job_note — save prep notes to a pipeline job
-- list_recent_emails, get_email, draft_email_reply, send_email, list_calendar_events, update_job_stage, open_ui_route`;
+Citation (spoken — plain English only):
+- Ground claims naturally: "I see you're targeting…", "You've got something in flight at…", "Your strategy doc mentions…"
+- On FIRST reply: acknowledge their ask, say you're catching up on what you know about them, mention ONE specific detail — then ask one question.
+- If something might be outdated: "If that's changed, update it in your profile."
+- For interview prep: if multiple roles could apply, call list_active_roles and ask which one BEFORE get_job_detail. Never assume.
+- After loading one role: confirm interview format in your own words before drilling ("Sounds like mostly behavioral — does that match what you've heard?")
+- If you don't know something, ask — don't invent.
+
+${VOICE_INTERNAL_TOOL_GUIDE}`;
 }
 
 export function companySourceRoute(companyId: string): string {

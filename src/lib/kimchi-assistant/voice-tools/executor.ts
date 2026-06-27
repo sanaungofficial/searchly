@@ -1,3 +1,4 @@
+import { JobStage } from "@prisma/client";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { buildAssistantContext } from "@/lib/kimchi-assistant/context";
 import { formatLabeledContextForPrompt, companySourceRoute } from "@/lib/kimchi-assistant/context-sources";
@@ -11,6 +12,48 @@ import { prisma } from "@/lib/prisma";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 
 export type VoiceToolResult = { ok: true; data: unknown } | { ok: false; error: string };
+
+const INTERVIEW_STAGES = [JobStage.INTERVIEWING, JobStage.OFFER] as const;
+const APPLIED_STAGES = [
+  JobStage.APPLYING,
+  JobStage.APPLIED,
+  JobStage.SCREENING,
+  JobStage.INTERVIEWING,
+  JobStage.OFFER,
+] as const;
+
+type RoleRow = {
+  id: string;
+  company: string;
+  role: string;
+  stage: string;
+  appliedAt: Date | null;
+  fitAnalysis: string | null;
+};
+
+function roleSummary(j: RoleRow) {
+  const fit = parseFitScore(j.fitAnalysis);
+  return {
+    id: j.id,
+    company: j.company,
+    role: j.role,
+    stage: jobStageLabel(j.stage),
+    fitScore: fit,
+    spokenLabel: `${j.role} at ${j.company}`,
+  };
+}
+
+function buildDisambiguationPrompt(roles: ReturnType<typeof roleSummary>[]) {
+  if (roles.length === 0) {
+    return "No matching roles found — ask which company and role they're thinking about.";
+  }
+  if (roles.length === 1) {
+    const r = roles[0]!;
+    return `Only one match — still confirm: "Still talking about ${r.spokenLabel}?"`;
+  }
+  const names = roles.map((r) => r.spokenLabel).join(", ");
+  return `Multiple matches — ask which one: "I've got ${roles.length} on the go — ${names} — which one?" Never read ids aloud.`;
+}
 
 function parseFitScore(fitAnalysis: string | null): number | null {
   if (!fitAnalysis) return null;
@@ -39,6 +82,50 @@ function parseFitRationale(fitAnalysis: string | null): string | null {
     /* ignore */
   }
   return null;
+}
+
+export async function voiceListActiveRoles(
+  userId: string,
+  filter: "interviewing" | "applied" | "all" = "interviewing",
+): Promise<VoiceToolResult> {
+  const stageFilter =
+    filter === "interviewing"
+      ? { in: [...INTERVIEW_STAGES] }
+      : filter === "applied"
+        ? { in: [...APPLIED_STAGES] }
+        : undefined;
+
+  const jobs = await prisma.job.findMany({
+    where: {
+      userId,
+      ...(stageFilter ? { stage: stageFilter } : {}),
+    },
+    orderBy: [{ stage: "asc" }, { updatedAt: "desc" }],
+    take: 12,
+    select: {
+      id: true,
+      company: true,
+      role: true,
+      stage: true,
+      appliedAt: true,
+      fitAnalysis: true,
+    },
+  });
+
+  const roles = jobs.map(roleSummary);
+
+  return {
+    ok: true,
+    data: {
+      count: roles.length,
+      filter,
+      roles,
+      needsChoice: roles.length > 1,
+      spokenPrompt: buildDisambiguationPrompt(roles),
+      coachingHint:
+        "Read company + role names only. Ask which one. Do not call get_job_detail until they pick.",
+    },
+  };
 }
 
 export async function voiceRefreshContext(userId: string): Promise<VoiceToolResult> {
@@ -78,10 +165,10 @@ export async function voiceGetJobDetail(
       fitAnalysis: true,
     },
   });
-  if (!job) return { ok: false, error: "Job not found in your pipeline." };
+  if (!job) return { ok: false, error: "I couldn't find that role — ask which company and title they mean." };
 
   let posting: Awaited<ReturnType<typeof parseJobPostingFromUrl>> | null = null;
-  if (opts?.parsePosting !== false && job.url?.trim()) {
+  if (opts?.parsePosting === true && job.url?.trim()) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true, subscription: true },
@@ -128,8 +215,8 @@ export async function voiceGetJobDetail(
     ok: true,
     data: {
       source: {
-        label: "Pipeline → Job",
-        citeAs: "your pipeline",
+        label: "Active role",
+        citeAs: `${job.role} at ${job.company}`,
         editRoute: pipelineJobUrl(job.id),
         fitRoute: pipelineJobUrl(job.id, "fit"),
       },
@@ -158,7 +245,7 @@ export async function voiceGetJobDetail(
       interviewInference,
       inboxPrep,
       coachingHint:
-        "Confirm interview format with the candidate using interviewInference.confirmQuestion before drilling questions.",
+        "Confirm interview format in plain English using interviewInference.confirmQuestion — then ask one prep question.",
     },
   };
 }
@@ -177,7 +264,7 @@ export async function voiceParseJobPosting(
     if (!job.url?.trim()) {
       return {
         ok: false,
-        error: `No job URL saved for ${job.role} at ${job.company}. Add the posting URL in your pipeline.`,
+        error: `I don't have a job link saved for ${job.role} at ${job.company} — ask them to paste the listing URL.`,
       };
     }
     url = job.url;
@@ -189,7 +276,7 @@ export async function voiceParseJobPosting(
     include: { profile: true, subscription: true },
   });
   const quotaError = await requireAiQuota(user, "SCOUT");
-  if (quotaError) return { ok: false, error: "Job parse quota exceeded." };
+  if (quotaError) return { ok: false, error: "You're out of lookups for today — skip pulling the listing unless they upgrade." };
 
   try {
     const parsed = await parseJobPostingFromUrl(userId, url);
@@ -199,7 +286,7 @@ export async function voiceParseJobPosting(
       data: {
         ...rest,
         parseSource,
-        source: { label: "External → Job posting URL", citeAs: "the job posting", url },
+        source: { label: "Job listing", citeAs: "the job posting", url },
         descriptionExcerpt: parsed.description?.slice(0, 2000) ?? null,
       },
     };
@@ -224,7 +311,7 @@ export async function voiceGetCompanyBrief(
         })
       : null;
 
-  if (!company) return { ok: false, error: "Company not found on your watchlist." };
+  if (!company) return { ok: false, error: "I couldn't find that company — ask which one they mean." };
 
   const merged = mergeTrackedWithIntel(company, company.companyIntel);
   const enrichment =
@@ -243,8 +330,8 @@ export async function voiceGetCompanyBrief(
     ok: true,
     data: {
       source: {
-        label: "Watchlist → Company",
-        citeAs: "your target companies watchlist",
+        label: "Tracked company",
+        citeAs: company.name,
         editRoute: companySourceRoute(company.id),
       },
       company: {
@@ -280,8 +367,8 @@ export async function voiceScanCompanyRoles(userId: string, companyId: string): 
     ok: true,
     data: {
       source: {
-        label: "Watchlist → Company scan",
-        citeAs: "a fresh scan of their careers page",
+        label: "Company role check",
+        citeAs: `what's open at ${result.company.name}`,
         editRoute: companySourceRoute(companyId),
       },
       company: result.company.name,
@@ -333,12 +420,17 @@ export async function executeVoiceTool(
   args: Record<string, unknown>,
 ): Promise<VoiceToolResult> {
   switch (tool) {
+    case "list_active_roles":
+      return voiceListActiveRoles(
+        userId,
+        args.filter === "applied" || args.filter === "all" ? args.filter : "interviewing",
+      );
     case "refresh_context":
       return voiceRefreshContext(userId);
     case "get_job_detail":
       return typeof args.jobId === "string"
         ? voiceGetJobDetail(userId, args.jobId, {
-            parsePosting: args.parsePosting !== false,
+            parsePosting: args.parsePosting === true,
           })
         : { ok: false, error: "jobId required" };
     case "parse_job_posting":

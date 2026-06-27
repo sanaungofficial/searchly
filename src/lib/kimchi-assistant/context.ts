@@ -328,10 +328,10 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
     .join("\n\n");
 
   const creditsHint = unlimited
-    ? "Credits: unlimited (Pro/admin)."
+    ? "Lookups: unlimited (internal — only mention if they ask about limits)."
     : scoutCredits.remaining === null
-      ? "Credits: check plan."
-      : `Scout credits remaining today: ${scoutCredits.remaining} of ${scoutCredits.dailyLimit ?? "?"}.`;
+      ? "Lookups: check plan (internal)."
+      : `Lookups left today: ${scoutCredits.remaining} of ${scoutCredits.dailyLimit ?? "?"} (internal — only mention if they ask).`;
 
   const pipelineSuggestions = buildAssistantSuggestions(jobs, profile, pageHint);
   const inboxSuggestions = inboxSuggestionsFromSnapshot(inbox);

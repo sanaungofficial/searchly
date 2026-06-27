@@ -24,7 +24,7 @@ function heuristicFromRole(role: string, company: string): InterviewFormatInfere
   return {
     likelyFormats: [...new Set(formats)].slice(0, 3),
     likelyStages: ["recruiter screen", "hiring manager"],
-    confirmQuestion: `For ${role} at ${company}, I'm guessing recruiter screen plus behavioral with the hiring manager — does that match what you've heard?`,
+    confirmQuestion: `For ${role} at ${company}, I'm guessing a recruiter chat first, then behavioral with the hiring manager — does that sound right?`,
     rationale: "Inferred from role title — no job description loaded yet.",
     source: "role_heuristic",
   };
@@ -98,7 +98,7 @@ ${desc.slice(0, 3500)}`,
   return {
     likelyFormats: formats.slice(0, 4),
     likelyStages: stages.slice(0, 4),
-    confirmQuestion: `From the posting, this looks like ${formatLabel} — does that match what you're expecting?`,
+    confirmQuestion: `From the listing, this looks like ${formatLabel} — does that match what you're expecting?`,
     rationale: "Inferred from job description keywords.",
     source: "job_posting",
   };

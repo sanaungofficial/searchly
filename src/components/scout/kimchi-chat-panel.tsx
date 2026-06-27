@@ -646,15 +646,18 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     const resolveJobId = (): string | null => {
       if (action.payload?.jobId) return action.payload.jobId;
       if (pageHint?.jobDbId) return pageHint.jobDbId;
-      const interviewing = pipelineJobs.find((j) =>
-        /interview/i.test(j.stage),
-      );
-      return interviewing?.id ?? pipelineJobs[0]?.id ?? null;
+      const interviewing = pipelineJobs.filter((j) => /interview/i.test(j.stage));
+      if (interviewing.length === 1) return interviewing[0]!.id;
+      return null;
     };
 
     if (action.type === "open_pipeline_job") {
       const jobId = resolveJobId();
-      goTo(jobId ? pipelineJobUrl(jobId) : "/opportunities/pipeline");
+      if (!jobId) {
+        void sendMessage("Which role should I open — company and title?");
+        return;
+      }
+      goTo(pipelineJobUrl(jobId));
       return;
     }
     if (action.type === "open_target_company") {
@@ -678,12 +681,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         const job = pipelineJobs.find((j) => j.id === jobId);
         void sendMessage(
           job
-            ? `Saved prep notes to ${job.role} at ${job.company}. Open the job to review or edit.`
-            : "Saved prep notes to your pipeline job.",
+            ? `Saved prep notes to ${job.role} at ${job.company}.`
+            : "Saved prep notes to that role.",
         );
         goTo(pipelineJobUrl(jobId));
       } else {
-        void sendMessage("I couldn't save those notes — try again from the job in your pipeline.");
+        void sendMessage("Couldn't save those notes — try again from the role card.");
       }
       return;
     }
