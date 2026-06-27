@@ -9,6 +9,7 @@ type Props = {
   primaryCount?: number;
   onSelect: (tab: InboxTab | string) => void;
   extraFolders?: { id: string; name: string }[];
+  mailConnected?: boolean;
 };
 
 const TAB_STYLE = (active: boolean) => ({
@@ -24,7 +25,7 @@ const TAB_STYLE = (active: boolean) => ({
   whiteSpace: "nowrap" as const,
 });
 
-export function InboxTopTabs({ active, primaryCount, onSelect, extraFolders = [] }: Props) {
+export function InboxTopTabs({ active, primaryCount, onSelect, extraFolders = [], mailConnected = true }: Props) {
   return (
     <div
       style={{
@@ -37,20 +38,24 @@ export function InboxTopTabs({ active, primaryCount, onSelect, extraFolders = []
         overflowX: "auto",
       }}
     >
-      <button type="button" style={TAB_STYLE(active === "primary")} onClick={() => onSelect("primary")}>
-        Primary{primaryCount ? ` (${primaryCount})` : ""}
-      </button>
-      <button type="button" style={TAB_STYLE(active === "sent")} onClick={() => onSelect("sent")}>
-        Sent
-      </button>
       <button type="button" style={TAB_STYLE(active === "contacts")} onClick={() => onSelect("contacts")}>
         Contacts
       </button>
-      {extraFolders.map((f) => (
-        <button key={f.id} type="button" style={TAB_STYLE(active === f.id)} onClick={() => onSelect(f.id)}>
-          {f.name}
-        </button>
-      ))}
+      {mailConnected && (
+        <>
+          <button type="button" style={TAB_STYLE(active === "primary")} onClick={() => onSelect("primary")}>
+            Primary{primaryCount ? ` (${primaryCount})` : ""}
+          </button>
+          <button type="button" style={TAB_STYLE(active === "sent")} onClick={() => onSelect("sent")}>
+            Sent
+          </button>
+          {extraFolders.map((f) => (
+            <button key={f.id} type="button" style={TAB_STYLE(active === f.id)} onClick={() => onSelect(f.id)}>
+              {f.name}
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }

@@ -75,7 +75,7 @@ export function InboxMailView({
   const isMobile = useIsMobile();
   const { withClientScope } = useWorkspace();
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [activeTab, setActiveTab] = useState<InboxTab | string>("primary");
+  const [activeTab, setActiveTab] = useState<InboxTab | string>("contacts");
   const [messages, setMessages] = useState<MessageSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -143,7 +143,6 @@ export function InboxMailView({
     if (!connected) return;
     setFoldersReady(false);
     setFolders([]);
-    setActiveTab("primary");
     setMessages([]);
     setExpandedId(null);
     setDetail(null);
@@ -374,6 +373,7 @@ export function InboxMailView({
       <InboxTopTabs
         active={activeTab}
         primaryCount={activeTab === "primary" ? primaryUnread : undefined}
+        mailConnected={connected}
         onSelect={(tab) => {
           setActiveTab(tab);
           setExpandedId(null);
@@ -517,6 +517,7 @@ export function InboxMailView({
         <InboxContactDrawer
           contactId={selectedContactId}
           scopePath={withClientScope}
+          mailConnected={connected}
           onClose={() => setSelectedContactId(null)}
           onOpenMessage={(messageId) => {
             setActiveTab("primary");

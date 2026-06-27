@@ -14,7 +14,7 @@ export function JobSearchEmailDashboard() {
   const isMobile = useIsMobile();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { withClientScope, isAdminReviewing } = useWorkspace();
+  const { withClientScope, isAdminReviewing, adminReviewClientId } = useWorkspace();
 
   const [status, setStatus] = useState<InboxStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,20 +56,23 @@ export function JobSearchEmailDashboard() {
     if (inbox === "connected") {
       setNotice({
         type: "success",
-        text: "Inbox connected — ask Kimchi in chat about your mail anytime.",
+        text: isAdminReviewing
+          ? "Client inbox connected — mail and contacts will sync shortly."
+          : "Inbox connected — ask Kimchi in chat about your mail anytime.",
       });
-      router.replace(INBOX_PATH);
+      router.replace(withClientScope(INBOX_PATH));
       bootstrap().catch(() => {});
     } else if (inbox === "error") {
       setNotice({
         type: "error",
-        text: reason === "denied" ? "Connection cancelled." : "Could not connect your inbox.",
+        text: reason === "denied" ? "Connection cancelled." : "Could not connect inbox.",
       });
-      router.replace(INBOX_PATH);
+      router.replace(withClientScope(INBOX_PATH));
     }
-  }, [searchParams, router, bootstrap]);
+  }, [searchParams, router, bootstrap, isAdminReviewing, withClientScope]);
 
   async function handleRefresh() {
+    if (!status?.connected) return;
     setMailRefreshKey((k) => k + 1);
     setNotice({ type: "success", text: "Mail refreshed." });
   }
@@ -99,6 +102,14 @@ export function JobSearchEmailDashboard() {
     }
   }
 
+  function connectInbox(provider: "google" | "microsoft") {
+    if (isAdminReviewing && adminReviewClientId) {
+      window.location.href = `/api/admin/clients/${encodeURIComponent(adminReviewClientId)}/nylas/connect?provider=${provider}`;
+      return;
+    }
+    window.location.href = `/api/nylas/user/connect?returnTo=inbox&provider=${provider}`;
+  }
+
   const connected = Boolean(status?.connected);
 
   if (loading) {
@@ -115,31 +126,6 @@ export function JobSearchEmailDashboard() {
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: 0 }}>
           Email integration is not configured on this environment.
         </p>
-      </ScoutBox>
-    );
-  }
-
-  if (!connected) {
-    return (
-      <ScoutBox padding={isMobile ? "16px" : "20px"} style={{ marginTop: 0, maxWidth: 520 }}>
-        <h2 style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
-          Inbox
-        </h2>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 20px" }}>
-          {isAdminReviewing
-            ? "This client has not connected Gmail or Outlook yet. They need to connect from their own account."
-            : "Connect Gmail or Outlook to read and send mail here. For summaries, drafts, and pipeline updates, use Kimchi chat or voice."}
-        </p>
-        {!isAdminReviewing && (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=google"; }}>
-            Connect Gmail
-          </ScoutPrimaryBtn>
-          <ScoutSecondaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=microsoft"; }}>
-            Connect Outlook
-          </ScoutSecondaryBtn>
-        </div>
-        )}
       </ScoutBox>
     );
   }
@@ -174,17 +160,53 @@ export function JobSearchEmailDashboard() {
             Inbox & CRM
           </h2>
           <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-            {status.email}
-            {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
-            {" · "}
-            Mail, contacts, and pipeline links in one place
+            {connected ? (
+              <>
+                {status.email}
+                {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
+                {" · "}
+                Mail, contacts, and pipeline links in one place
+              </>
+            ) : (
+              <>
+                CRM contacts available now
+                {isAdminReviewing ? " — connect this client’s inbox when ready" : " — connect mail to read and send email"}
+              </>
+            )}
           </p>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
-          <ScoutSecondaryBtn onClick={handleRefresh}>Refresh</ScoutSecondaryBtn>
-        </div>
+        {connected && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
+            <ScoutSecondaryBtn onClick={handleRefresh}>Refresh</ScoutSecondaryBtn>
+          </div>
+        )}
       </div>
+
+      {!connected && (
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: border.line,
+            background: "rgba(42,107,74,0.06)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
+            {isAdminReviewing
+              ? "This client’s Gmail or Outlook isn’t connected yet. You can manage contacts below, or connect their inbox on their behalf."
+              : "Your CRM contacts are ready. Connect Gmail or Outlook when you want to read and send mail here."}
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <ScoutPrimaryBtn onClick={() => connectInbox("google")}>Connect Gmail</ScoutPrimaryBtn>
+            <ScoutSecondaryBtn onClick={() => connectInbox("microsoft")}>Connect Outlook</ScoutSecondaryBtn>
+          </div>
+        </div>
+      )}
 
       {notice && (
         <div

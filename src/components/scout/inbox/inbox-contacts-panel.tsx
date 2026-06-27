@@ -67,7 +67,7 @@ export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
           }}
         />
         <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: 11, color: color.muted }}>
-          Your CRM contacts — built from mail and synced from your address book.
+          Your CRM contacts — from imports, mail sync, and manual adds.
         </p>
       </div>
 
@@ -76,7 +76,7 @@ export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
       )}
       {!loading && contacts.length === 0 && (
         <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-          No contacts yet. Open a message and use Save contact or link them to an opportunity.
+          No contacts yet. Import a client packet, open a message and save a contact, or link someone to an opportunity.
         </p>
       )}
 
