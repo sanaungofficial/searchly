@@ -126,6 +126,43 @@ export function mergeExecThreadJobExport(bundle: ExecThreadJobExportBundle): Exe
       layer.notificationRecipients,
     );
     merged.hiringManagers = mergeArrayField(merged.hiringManagers, layer.hiringManagers);
+    if (layer.hiringManager && isRecord(layer.hiringManager)) {
+      merged.hiringManagers = mergeArrayField(merged.hiringManagers, [
+        layer.hiringManager as NonNullable<ExecThreadListingRaw["hiringManagers"]>[number],
+      ]);
+    }
+
+    const layerRecord = layer as Record<string, unknown>;
+    merged.recruiters = mergeArrayField(
+      merged.recruiters,
+      Array.isArray(layerRecord.recruiterList) ? (layerRecord.recruiterList as NonNullable<ExecThreadListingRaw["recruiters"]>) : undefined,
+    );
+    merged.hiringManagers = mergeArrayField(
+      merged.hiringManagers,
+      Array.isArray(layerRecord.hiringManagerList)
+        ? (layerRecord.hiringManagerList as NonNullable<ExecThreadListingRaw["hiringManagers"]>)
+        : undefined,
+    );
+    const existingRed = layerRecord.existingRed;
+    if (existingRed && isRecord(existingRed)) {
+      merged.recruiters = mergeArrayField(
+        merged.recruiters,
+        Array.isArray(existingRed.recruiterList)
+          ? (existingRed.recruiterList as NonNullable<ExecThreadListingRaw["recruiters"]>)
+          : undefined,
+      );
+      merged.hiringManagers = mergeArrayField(
+        merged.hiringManagers,
+        Array.isArray(existingRed.hiringManagerList)
+          ? (existingRed.hiringManagerList as NonNullable<ExecThreadListingRaw["hiringManagers"]>)
+          : undefined,
+      );
+      if (existingRed.hiringManager && isRecord(existingRed.hiringManager)) {
+        merged.hiringManagers = mergeArrayField(merged.hiringManagers, [
+          existingRed.hiringManager as NonNullable<ExecThreadListingRaw["hiringManagers"]>[number],
+        ]);
+      }
+    }
 
     if (layer.company && isRecord(layer.company)) {
       merged.company = mergeObjects(

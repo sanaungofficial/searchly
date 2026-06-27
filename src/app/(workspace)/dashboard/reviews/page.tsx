@@ -1,5 +1,5 @@
-import { ExpertReviewsView } from "@/components/scout/expert-reviews-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardReviewsPage() {
-  return <ExpertReviewsView />;
+  redirect("/expert/reviews");
 }

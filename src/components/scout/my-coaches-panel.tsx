@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { bookingStatusColor, bookingStatusLabel, formatBookingWhen } from "@/lib/booking-display";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, fontMono, fontSans } from "@/lib/typography";
@@ -208,16 +209,17 @@ function ClientSessionRow({
 
 export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
+  const { withClientScope } = useWorkspace();
   const [coaches, setCoaches] = useState<ClientCoachRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/coaching/my-coaches")
+    fetch(withClientScope("/api/coaching/my-coaches"))
       .then((r) => (r.ok ? r.json() : { coaches: [] }))
       .then((d) => setCoaches(d.coaches ?? []))
       .catch(() => setCoaches([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [withClientScope]);
 
   const upcomingSessions = useMemo(() => {
     return coaches

@@ -19,7 +19,7 @@ import { allMatchableSkills } from "@/lib/skills-tools";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 async function saveRoleAnalysis(
   userId: string,
@@ -212,7 +212,7 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("[role-gap]", err);
     try {
-      const { dbUser } = await getActingUser();
+      const { dbUser } = await getActingUser(request);
       if (!dbUser) return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
 
       const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });

@@ -9,8 +9,9 @@ import {
   expertWorkspaceNavId,
   type ExpertWorkspaceNavId,
 } from "@/lib/staff-portal";
+import { WORKSPACE_MAX_WIDTH, workspaceContentPadding } from "@/components/scout/workspace-content";
 import { TOP_NAV_HEIGHT_MOBILE } from "@/components/scout/workspace-top-nav";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { border, color, fontSans, radius, shadow, surface, type as T } from "@/lib/typography";
 
 function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
   const stroke = "currentColor";
@@ -42,10 +43,12 @@ function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
       </svg>
     );
   }
-  if (id === "reviews") {
+  if (id === "live") {
     return (
       <svg {...common}>
-        <path d="M12 3.5 14.6 9l5.9.5-4.5 3.9 1.4 5.7L12 16.8 6.6 19.1l1.4-5.7-4.5-3.9 5.9-.5z" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="3" fill={stroke} stroke="none" />
+        <path d="M12 4v2M12 18v2" strokeLinecap="round" />
       </svg>
     );
   }
@@ -69,11 +72,70 @@ function ExpertNavLinks({
   variant: "sidebar" | "drawer";
   onNavigate?: () => void;
 }) {
+  if (variant === "sidebar") {
+    return (
+      <aside
+        style={{
+          width: 220,
+          flexShrink: 0,
+          borderRight: border.line,
+          background: surface.card,
+          display: "flex",
+          flexDirection: "column",
+          padding: "20px 0",
+        }}
+      >
+        <p
+          style={{
+            margin: "0 0 16px",
+            padding: "0 20px",
+            fontFamily: fontSans,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: color.muted,
+          }}
+        >
+          Expert
+        </p>
+        <nav aria-label="Expert workspace" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
+            const active = activeId === id;
+            return (
+              <Link
+                key={id}
+                href={path}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: "0 10px",
+                  padding: "10px 12px",
+                  borderRadius: radius.box,
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? color.forest : color.stone,
+                  textDecoration: "none",
+                  background: active ? "rgba(26,58,47,0.08)" : "transparent",
+                  borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
+                }}
+              >
+                <NavIcon id={id} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+    );
+  }
+
   return (
     <nav aria-label="Expert workspace" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
         const active = activeId === id;
-        const isDrawer = variant === "drawer";
         return (
           <Link
             key={id}
@@ -83,9 +145,9 @@ function ExpertNavLinks({
               display: "flex",
               alignItems: "center",
               gap: 10,
-              margin: isDrawer ? "0 12px" : "0 10px",
+              margin: "0 12px",
               padding: "10px 12px",
-              borderRadius: "var(--scout-radius)",
+              borderRadius: radius.box,
               fontFamily: fontSans,
               fontSize: T.bodySm,
               fontWeight: active ? 600 : 500,
@@ -101,6 +163,109 @@ function ExpertNavLinks({
         );
       })}
     </nav>
+  );
+}
+
+function ExpertMobileNavDrawer({
+  open,
+  activeId,
+  onClose,
+}: {
+  open: boolean;
+  activeId: ExpertWorkspaceNavId | null;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Close expert navigation menu"
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          top: TOP_NAV_HEIGHT_MOBILE,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          border: "none",
+          padding: 0,
+          background: "rgba(15, 24, 20, 0.35)",
+          zIndex: 120,
+          cursor: "pointer",
+        }}
+      />
+      <aside
+        id="expert-mobile-nav"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Expert navigation"
+        style={{
+          position: "fixed",
+          top: TOP_NAV_HEIGHT_MOBILE,
+          left: 0,
+          bottom: 0,
+          width: "min(280px, calc(100vw - 48px))",
+          background: surface.card,
+          borderRight: border.line,
+          boxShadow: "4px 0 24px rgba(0,0,0,0.12)",
+          zIndex: 121,
+          display: "flex",
+          flexDirection: "column",
+          padding: "16px 0 24px",
+          animation: "expertNavSlideIn 0.2s ease both",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 16px 12px",
+            marginBottom: 8,
+            borderBottom: border.line,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontFamily: fontSans,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: color.muted,
+            }}
+          >
+            Expert workspace
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 22,
+              lineHeight: 1,
+              color: color.muted,
+              cursor: "pointer",
+              padding: 4,
+            }}
+          >
+            ×
+          </button>
+        </div>
+        <ExpertNavLinks activeId={activeId} variant="drawer" onNavigate={onClose} />
+      </aside>
+      <style>{`
+        @keyframes expertNavSlideIn {
+          from { transform: translateX(-100%); opacity: 0.6; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
+    </>
   );
 }
 
@@ -138,19 +303,19 @@ export function ExpertWorkspaceShell({ children }: Props) {
     };
   }, [menuOpen, isMobile]);
 
-  if (isMobile) {
-    return (
-      <div
-        style={{
-          height: "100%",
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          background: surface.page,
-          position: "relative",
-        }}
-      >
+  return (
+    <div
+      style={{
+        height: "100%",
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        background: surface.page,
+        position: "relative",
+      }}
+    >
+      {isMobile && (
         <header
           style={{
             display: "flex",
@@ -176,7 +341,7 @@ export function ExpertWorkspaceShell({ children }: Props) {
               height: 40,
               padding: 0,
               border: border.line,
-              borderRadius: "var(--scout-radius)",
+              borderRadius: radius.box,
               background: surface.card,
               color: color.forest,
               cursor: "pointer",
@@ -212,142 +377,42 @@ export function ExpertWorkspaceShell({ children }: Props) {
             </p>
           </div>
         </header>
+      )}
 
-        {menuOpen && (
-          <>
-            <button
-              type="button"
-              aria-label="Close expert navigation menu"
-              onClick={() => setMenuOpen(false)}
-              style={{
-                position: "fixed",
-                top: TOP_NAV_HEIGHT_MOBILE,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                border: "none",
-                padding: 0,
-                background: "rgba(15, 24, 20, 0.35)",
-                zIndex: 120,
-                cursor: "pointer",
-              }}
-            />
-            <aside
-              id="expert-mobile-nav"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Expert navigation"
-              style={{
-                position: "fixed",
-                top: TOP_NAV_HEIGHT_MOBILE,
-                left: 0,
-                bottom: 0,
-                width: "min(280px, calc(100vw - 48px))",
-                background: surface.card,
-                borderRight: border.line,
-                boxShadow: "4px 0 24px rgba(0,0,0,0.12)",
-                zIndex: 121,
-                display: "flex",
-                flexDirection: "column",
-                padding: "16px 0 24px",
-                animation: "expertNavSlideIn 0.2s ease both",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "0 16px 12px",
-                  marginBottom: 8,
-                  borderBottom: border.line,
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: color.muted,
-                  }}
-                >
-                  Expert workspace
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(false)}
-                  aria-label="Close menu"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: 22,
-                    lineHeight: 1,
-                    color: color.muted,
-                    cursor: "pointer",
-                    padding: 4,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <ExpertNavLinks activeId={activeId} variant="drawer" onNavigate={() => setMenuOpen(false)} />
-            </aside>
-            <style>{`
-              @keyframes expertNavSlideIn {
-                from { transform: translateX(-100%); opacity: 0.6; }
-                to { transform: translateX(0); opacity: 1; }
-              }
-            `}</style>
-          </>
-        )}
+      {isMobile && (
+        <ExpertMobileNavDrawer open={menuOpen} activeId={activeId} onClose={() => setMenuOpen(false)} />
+      )}
 
-        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{children}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        height: "100%",
-        minHeight: 0,
-        display: "flex",
-        overflow: "hidden",
-        background: surface.page,
-      }}
-    >
-      <aside
+      <div
         style={{
-          width: 220,
-          flexShrink: 0,
-          borderRight: border.line,
-          background: surface.card,
+          width: "100%",
+          maxWidth: WORKSPACE_MAX_WIDTH,
+          margin: "0 auto",
+          padding: workspaceContentPadding(isMobile),
+          boxSizing: "border-box",
+          flex: 1,
+          minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          padding: "20px 0",
         }}
       >
-        <p
+        <div
           style={{
-            margin: "0 0 16px",
-            padding: "0 20px",
-            fontFamily: fontSans,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: color.muted,
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            overflow: "hidden",
+            background: surface.card,
+            border: border.line,
+            borderRadius: radius.box,
+            boxShadow: shadow.card,
           }}
         >
-          Expert
-        </p>
-        <ExpertNavLinks activeId={activeId} variant="sidebar" />
-      </aside>
-      <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {children}
+          {!isMobile && <ExpertNavLinks activeId={activeId} variant="sidebar" />}
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import { ExpertInboxView } from "@/components/scout/expert-inbox-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardInboxPage() {
-  return (
-    <Suspense fallback={<p style={{ padding: 24, color: "var(--scout-muted)" }}>Loading inbox…</p>}>
-      <ExpertInboxView />
-    </Suspense>
-  );
+  redirect("/expert/inbox");
 }

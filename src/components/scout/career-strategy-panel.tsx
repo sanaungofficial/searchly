@@ -11,8 +11,7 @@ import {
   type StrategyVersion,
 } from "@/lib/career-strategy";
 import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
-import { profileAboutSectionUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
-import { withClientUserId } from "@/lib/workspace-urls";
+import { profileAboutSectionUrl, profileTargetCompaniesUrl, withClientUserId, withClientReviewPagePath } from "@/lib/workspace-urls";
 import { CareerPreferencesPanel } from "./career-preferences-panel";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -175,6 +174,7 @@ function applyStrategyPayload(
 
 export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin = false, clientUserId }: Props) {
   const api = (path: string) => withClientUserId(path, clientUserId);
+  const reviewPath = (path: string) => withClientReviewPagePath(path, clientUserId);
   const router = useRouter();
   const [intakeNotes, setIntakeNotes] = useState("");
   const [document, setDocument] = useState<CareerStrategyDocument>(EMPTY_STRATEGY);
@@ -279,7 +279,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
 
   useEffect(() => {
     loadStrategy();
-    fetch("/api/companies")
+    fetch(api("/api/companies"))
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d)) setCompanies(d);
@@ -414,7 +414,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       const trackedCompanies = mergeIntakeTrackedCompanies(parseResult);
       let companyMessage = "";
       if (trackedCompanies.length > 0) {
-        const res = await fetch("/api/companies/intake-apply", {
+        const res = await fetch(api("/api/companies/intake-apply"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ suggestedTrackedCompanies: trackedCompanies }),
@@ -438,7 +438,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       }
       await loadStrategy();
       if (trackedCompanies.length > 0) {
-        fetch("/api/companies")
+        fetch(api("/api/companies"))
           .then((r) => r.json())
           .then((d) => {
             if (Array.isArray(d)) setCompanies(d);
@@ -643,14 +643,14 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
               Synced from your Target Roles tab
             </p>
           </div>
-          <button type="button" onClick={() => router.push("/profile/dream-role")} style={navLinkStyle}>
+          <button type="button" onClick={() => router.push(reviewPath("/profile/dream-role"))} style={navLinkStyle}>
             Edit target roles →
           </button>
         </div>
         {profile.targetRoles.length === 0 ? (
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>
             No target roles yet.{" "}
-            <button type="button" onClick={() => router.push("/profile/dream-role")} style={{ ...navLinkStyle, fontSize: 13 }}>
+            <button type="button" onClick={() => router.push(reviewPath("/profile/dream-role"))} style={{ ...navLinkStyle, fontSize: 13 }}>
               Add roles →
             </button>
           </p>
@@ -660,7 +660,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
               <button
                 key={role}
                 type="button"
-                onClick={() => router.push("/profile/dream-role")}
+                onClick={() => router.push(reviewPath("/profile/dream-role"))}
                 style={{
                   padding: "6px 12px",
                   borderRadius: "var(--scout-radius)",
@@ -689,14 +689,14 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
               Synced from your Target Companies watchlist
             </p>
           </div>
-          <button type="button" onClick={() => router.push("/profile/target-companies")} style={navLinkStyle}>
+          <button type="button" onClick={() => router.push(reviewPath("/profile/target-companies"))} style={navLinkStyle}>
             Manage companies →
           </button>
         </div>
         {companies.length === 0 ? (
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>
             No companies tracked yet.{" "}
-            <button type="button" onClick={() => router.push("/profile/target-companies")} style={{ ...navLinkStyle, fontSize: 13 }}>
+            <button type="button" onClick={() => router.push(reviewPath("/profile/target-companies"))} style={{ ...navLinkStyle, fontSize: 13 }}>
               Add companies →
             </button>
           </p>

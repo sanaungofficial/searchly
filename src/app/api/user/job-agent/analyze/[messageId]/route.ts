@@ -6,7 +6,7 @@ import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(req);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {

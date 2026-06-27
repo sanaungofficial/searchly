@@ -1,5 +1,5 @@
-import { ExpertClientsView } from "@/components/scout/expert-clients-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardClientsPage() {
-  return <ExpertClientsView />;
+  redirect("/expert/clients");
 }

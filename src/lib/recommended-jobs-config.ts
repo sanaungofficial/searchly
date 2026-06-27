@@ -1,5 +1,20 @@
-/** Minimum match score to show in feed — 0 = disabled (show all pulled results). */
+/** Jobs shown in Open Roles recommended feed. */
+export const RECOMMENDED_DISPLAY_COUNT = 15;
+
+/** Prefer this score when selecting display jobs; backfill below if needed. */
+export const RECOMMENDED_PREFERRED_MIN_SCORE = 70;
+
+/** Minimum match score hard floor — 0 = disabled (show all pulled results). */
 export const RECOMMENDED_MATCH_SCORE_FLOOR = 0;
+
+/** Max similar-job vsearch calls per feed refresh (search_type=job). */
+export const RECOMMENDED_SIMILAR_JOB_SEED_COUNT = 3;
+
+/** Max target titles to expand into related role families per refresh. */
+export const RECOMMENDED_EXPANDED_ROLE_MAX_SEEDS = 2;
+
+/** TTL for cached expanded role titles per user (ms). */
+export const RECOMMENDED_EXPANDED_ROLE_CACHE_MS = 1000 * 60 * 60 * 24;
 
 /** Max roles included in the daily match digest email. */
 export const RECOMMENDED_DIGEST_EMAIL_MAX_JOBS = 3;
@@ -15,11 +30,11 @@ export function recommendedDigestMinScore(): number {
 /** Over-fetch before optional score floor so enough jobs survive filtering. */
 export const RECOMMENDED_FETCH_POOL = 60;
 
-/** Max jobs stored per user snapshot / API response. */
-export const RECOMMENDED_SNAPSHOT_MAX_JOBS = 40;
+/** Max jobs stored per user snapshot / API response (after tier ranking). */
+export const RECOMMENDED_SNAPSHOT_MAX_JOBS = RECOMMENDED_DISPLAY_COUNT;
 
 /** Minimum distinct company+title roles before we supplement with broad Hirebase results. */
-export const RECOMMENDED_MIN_DISPLAY_ROLES = 12;
+export const RECOMMENDED_MIN_DISPLAY_ROLES = RECOMMENDED_DISPLAY_COUNT;
 
 /** Supplement with broad Hirebase results when the feed has fewer than this many employers. */
 export const RECOMMENDED_MIN_DISTINCT_COMPANIES = 3;

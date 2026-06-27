@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
 import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
-import { syncUserInbox } from "@/lib/job-email-agent";
+import { syncInboxActivities } from "@/lib/inbox-crm";
+import { syncNylasContactsForUser } from "@/lib/inbox-crm/sync-contacts";
 import {
   clearNylasOAuthCookie,
   exchangeNylasCode,
@@ -136,7 +137,12 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      syncUserInbox(parsed.userId).catch((err) => console.error("[nylas/callback] initial sync", err));
+      syncInboxActivities(parsed.userId).catch((err) =>
+        console.error("[nylas/callback] initial inbox sync", err),
+      );
+      syncNylasContactsForUser(parsed.userId).catch((err) =>
+        console.error("[nylas/callback] initial contacts sync", err),
+      );
 
     return redirectUser({ inbox: "connected" });
     }

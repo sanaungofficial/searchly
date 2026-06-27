@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { StoredThreadMessage } from "@/lib/kimchi-assistant/thread-serialize";
 import { WELCOME_MESSAGE, NEW_THREAD_TITLE } from "@/lib/kimchi-assistant/chat-chips";
 import { normalizeThreadMessages } from "@/lib/kimchi-assistant/thread-messages";
+import { useWorkspace } from "@/contexts/workspace-context";
 
 export type ThreadSummary = {
   id: string;
@@ -19,6 +20,7 @@ const WELCOME: StoredThreadMessage = {
 };
 
 export function useKimchiThreads() {
+  const { withClientScope } = useWorkspace();
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [activeThreadTitle, setActiveThreadTitle] = useState<string>(NEW_THREAD_TITLE);
@@ -28,13 +30,13 @@ export function useKimchiThreads() {
   const initRef = useRef(false);
 
   const refreshThreadList = useCallback(async () => {
-    const res = await fetch("/api/assistant/threads", { cache: "no-store" });
+    const res = await fetch(withClientScope("/api/assistant/threads"), { cache: "no-store" });
     if (!res.ok) return [];
     const data = await res.json();
     const list = (data.threads ?? []) as ThreadSummary[];
     setThreads(list);
     return list;
-  }, []);
+  }, [withClientScope]);
 
   const applyThread = useCallback((thread: { id: string; title?: string; messages?: unknown }) => {
     setActiveThreadId(thread.id);
@@ -44,18 +46,18 @@ export function useKimchiThreads() {
 
   const loadThread = useCallback(
     async (threadId: string) => {
-      const res = await fetch(`/api/assistant/threads/${threadId}`, { cache: "no-store" });
+      const res = await fetch(withClientScope(`/api/assistant/threads/${threadId}`), { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       if (data.thread) applyThread(data.thread);
     },
-    [applyThread],
+    [applyThread, withClientScope],
   );
 
   const ensureThread = useCallback(async () => {
     if (activeThreadId) return activeThreadId;
 
-    const res = await fetch("/api/assistant/threads", { method: "POST" });
+    const res = await fetch(withClientScope("/api/assistant/threads"), { method: "POST" });
     if (!res.ok) return null;
     const data = await res.json();
     const thread = data.thread;
@@ -64,7 +66,7 @@ export function useKimchiThreads() {
     applyThread(thread);
     void refreshThreadList();
     return thread.id as string;
-  }, [activeThreadId, applyThread, refreshThreadList]);
+  }, [activeThreadId, applyThread, refreshThreadList, withClientScope]);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -95,7 +97,7 @@ export function useKimchiThreads() {
   );
 
   const createThread = useCallback(async () => {
-    const res = await fetch("/api/assistant/threads", { method: "POST" });
+    const res = await fetch(withClientScope("/api/assistant/threads"), { method: "POST" });
     if (!res.ok) return;
     const data = await res.json();
     const thread = data.thread;
@@ -104,12 +106,12 @@ export function useKimchiThreads() {
     applyThread(thread);
     setThreadMenuOpen(false);
     void refreshThreadList();
-  }, [applyThread, refreshThreadList]);
+  }, [applyThread, refreshThreadList, withClientScope]);
 
   const persistMessages = useCallback(
     async (threadId: string, toSave: StoredThreadMessage[]) => {
       if (toSave.length === 0) return;
-      const res = await fetch(`/api/assistant/threads/${threadId}/messages`, {
+      const res = await fetch(withClientScope(`/api/assistant/threads/${threadId}/messages`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: toSave }),
@@ -129,7 +131,7 @@ export function useKimchiThreads() {
       });
       void refreshThreadList();
     },
-    [refreshThreadList],
+    [refreshThreadList, withClientScope],
   );
 
   const appendLocal = useCallback((msg: StoredThreadMessage | StoredThreadMessage[]) => {

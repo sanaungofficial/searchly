@@ -543,7 +543,9 @@ function RecommendedLoadingSkeleton() {
   const barWidths = ["72%", "58%", "84%", "64%"];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <KimchiProcessLoader preset="recommendations" variant="inline" />
+      <ScoutBox padding={24} style={{ textAlign: "center" }}>
+        <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
+      </ScoutBox>
       {[0, 1, 2].map((card) => (
         <ScoutBox key={card} padding={18}>
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -1156,7 +1158,7 @@ export function PipelineRecommendedSection({
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
-              {showFilters ? "Hide filters" : "Filters"}
+              {showFilters ? "Hide filters" : activeFilterLabels.length > 0 && !showFilters ? `Filters (${activeFilterLabels.length})` : "Filters"}
             </ScoutSecondaryBtn>
             <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating}>
               {loading || revalidating ? "Loading…" : "Refresh"}

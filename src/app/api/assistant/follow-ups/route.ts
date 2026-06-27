@@ -11,7 +11,7 @@ import type { AssistantProfileGaps } from "@/lib/kimchi-assistant/types";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -26,7 +26,7 @@ function formatProfileGaps(gaps: AssistantProfileGaps): string {
 }
 
 export async function POST(request: Request) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as {

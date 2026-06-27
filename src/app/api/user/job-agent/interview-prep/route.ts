@@ -4,7 +4,7 @@ import { generateInterviewPrep } from "@/lib/job-email-agent";
 import { isNylasConfigured } from "@/lib/nylas";
 
 export async function POST(req: NextRequest) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(req);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {

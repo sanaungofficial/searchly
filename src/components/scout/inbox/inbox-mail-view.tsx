@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
+import { ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
+import { InboxContactsPanel } from "./inbox-contacts-panel";
+import { InboxContactDrawer } from "./inbox-contact-drawer";
 import { InboxExpandedMessage } from "./inbox-expanded-message";
-import { InboxFolderNav } from "./inbox-folder-nav";
 import { InboxMeetingsPanel } from "./inbox-meetings-panel";
 import { InboxMessageRow } from "./inbox-message-row";
 import { readLastOpenedMessageId, writeLastOpenedMessageId } from "./inbox-row-styles";
+import { InboxTopTabs, type InboxTab } from "./inbox-top-tabs";
 import type { ComposeState, Folder, InboxStatus, MessageDetail, MessageSummary } from "./inbox-types";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
@@ -19,6 +21,22 @@ function pickInboxFolder(folders: Folder[]): Folder | null {
     folders[0] ??
     null
   );
+}
+
+function pickSentFolder(folders: Folder[]): Folder | null {
+  return (
+    folders.find((f) => f.name.toLowerCase() === "sent" || f.name === "Sent") ??
+    folders.find((f) => f.id.toLowerCase().includes("sent")) ??
+    null
+  );
+}
+
+function extraTabFolders(folders: Folder[]): Folder[] {
+  const skip = new Set(["inbox", "sent"]);
+  return folders.filter((f) => {
+    const n = f.name.toLowerCase();
+    return !skip.has(n) && (n.includes("archive") || n.includes("draft") || n.includes("spam") || n.includes("trash"));
+  });
 }
 
 async function readFetchError(res: Response, fallback: string): Promise<string> {
@@ -57,7 +75,7 @@ export function InboxMailView({
   const isMobile = useIsMobile();
   const { withClientScope } = useWorkspace();
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<InboxTab | string>("primary");
   const [messages, setMessages] = useState<MessageSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -70,10 +88,25 @@ export function InboxMailView({
   const [meetingsCollapsed, setMeetingsCollapsed] = useState(false);
   const [tagSaving, setTagSaving] = useState(false);
   const [jobLinkSaving, setJobLinkSaving] = useState(false);
+  const [saveContactSaving, setSaveContactSaving] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
   const [focusUnreadId, setFocusUnreadId] = useState<string | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const connected = Boolean(status.connected);
+
+  const inboxFolder = useMemo(() => pickInboxFolder(folders), [folders]);
+  const sentFolder = useMemo(() => pickSentFolder(folders), [folders]);
+  const extraFolders = useMemo(() => extraTabFolders(folders), [folders]);
+
+  const selectedFolderId = useMemo(() => {
+    if (activeTab === "contacts") return null;
+    if (activeTab === "primary") return inboxFolder?.id ?? null;
+    if (activeTab === "sent") return sentFolder?.id ?? null;
+    return activeTab;
+  }, [activeTab, inboxFolder, sentFolder]);
+
+  const primaryUnread = useMemo(() => messages.filter((m) => m.unread).length, [messages]);
 
   const loadFolders = useCallback(async () => {
     const res = await fetch(withClientScope("/api/user/email/folders"));
@@ -110,15 +143,12 @@ export function InboxMailView({
     if (!connected) return;
     setFoldersReady(false);
     setFolders([]);
-    setSelectedFolderId(null);
+    setActiveTab("primary");
     setMessages([]);
     setExpandedId(null);
     setDetail(null);
     loadFolders()
-      .then((f) => {
-        setFolders(f);
-        setSelectedFolderId(pickInboxFolder(f)?.id ?? null);
-      })
+      .then(setFolders)
       .catch((err) =>
         onNotice({
           type: "error",
@@ -129,7 +159,7 @@ export function InboxMailView({
   }, [connected, loadFolders, onNotice, mailRefreshKey]);
 
   useEffect(() => {
-    if (!connected || !foldersReady) return;
+    if (!connected || !foldersReady || activeTab === "contacts") return;
     setListLoading(true);
     setExpandedId(null);
     setDetail(null);
@@ -154,7 +184,7 @@ export function InboxMailView({
         .finally(() => setListLoading(false));
     }, search ? 350 : 0);
     return () => clearTimeout(t);
-  }, [connected, foldersReady, selectedFolderId, search, loadMessages, onNotice, mailRefreshKey]);
+  }, [connected, foldersReady, activeTab, selectedFolderId, search, loadMessages, onNotice, mailRefreshKey, status.email]);
 
   useEffect(() => {
     if (!expandedId) {
@@ -173,6 +203,7 @@ export function InboxMailView({
 
   useEffect(() => {
     if (!initialMessageId) return;
+    setActiveTab("primary");
     setExpandedId(initialMessageId);
     setLastOpenedId(initialMessageId);
     writeLastOpenedMessageId(initialMessageId, status.email);
@@ -236,6 +267,51 @@ export function InboxMailView({
     }
   }
 
+  async function createAndLinkJob(messageId: string, company: string, role: string) {
+    setJobLinkSaving(true);
+    try {
+      const res = await fetch(withClientScope(`/api/user/email/messages/${encodeURIComponent(messageId)}/job`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ create: { company, role } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not create opportunity");
+      const activity = data.activity ?? null;
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, activity } : m)));
+      if (detail?.id === messageId) {
+        setDetail(await loadDetail(messageId));
+      }
+      onNotice({ type: "success", text: "Opportunity created and linked." });
+    } catch (e) {
+      onNotice({ type: "error", text: e instanceof Error ? e.message : "Could not create opportunity." });
+    } finally {
+      setJobLinkSaving(false);
+    }
+  }
+
+  async function saveContact(messageId: string) {
+    const contactId = detail?.contactCard?.contact?.id;
+    if (!contactId) return;
+    setSaveContactSaving(true);
+    try {
+      const res = await fetch(withClientScope(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}/save`), {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not save contact");
+      setDetail(await loadDetail(messageId));
+      onNotice({ type: "success", text: "Contact saved to your address book." });
+    } catch (e) {
+      onNotice({
+        type: "error",
+        text: e instanceof Error ? e.message : "Could not save contact — reconnect inbox for contacts access.",
+      });
+    } finally {
+      setSaveContactSaving(false);
+    }
+  }
+
   async function linkJob(messageId: string, jobId: string | null) {
     setJobLinkSaving(true);
     try {
@@ -249,10 +325,9 @@ export function InboxMailView({
       const activity = data.activity ?? null;
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, activity } : m)));
       if (detail?.id === messageId) {
-        const refreshed = await loadDetail(messageId);
-        setDetail(refreshed);
+        setDetail(await loadDetail(messageId));
       }
-      onNotice({ type: "success", text: jobId ? "Linked to opportunity." : "Opportunity link removed." });
+      onNotice({ type: "success", text: jobId ? "Linked to opportunity." : "Link removed." });
     } catch (e) {
       onNotice({ type: "error", text: e instanceof Error ? e.message : "Could not link opportunity." });
     } finally {
@@ -292,161 +367,175 @@ export function InboxMailView({
     });
   }
 
-  const showMeetingsPanel = !isMobile && !meetingsCollapsed;
+  const showMeetingsPanel = !isMobile && !meetingsCollapsed && activeTab !== "contacts";
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "10px 16px",
-          borderBottom: border.line,
-          background: surface.card,
+      <InboxTopTabs
+        active={activeTab}
+        primaryCount={activeTab === "primary" ? primaryUnread : undefined}
+        onSelect={(tab) => {
+          setActiveTab(tab);
+          setExpandedId(null);
         }}
-      >
-        <input
-          type="search"
-          placeholder="Search mail…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            padding: "9px 12px",
-            border: border.line,
-            borderRadius: 10,
-            fontFamily: fontSans,
-            fontSize: T.bodySm,
-            background: surface.card,
-          }}
-        />
-        {!isMobile && (
-          <button
-            type="button"
-            onClick={() => setMeetingsCollapsed((v) => !v)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 10,
-              border: border.line,
-              background: meetingsCollapsed ? surface.card : "rgba(42,107,74,0.08)",
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              color: color.forest,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {meetingsCollapsed ? "Show meetings" : "Hide meetings"}
-          </button>
-        )}
-      </div>
+        extraFolders={extraFolders.map((f) => ({ id: f.id, name: f.name }))}
+      />
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {!isMobile && folders.length > 0 && (
-          <InboxFolderNav folders={folders} selectedId={selectedFolderId} onSelect={setSelectedFolderId} />
-        )}
-
-        <section
+      {activeTab !== "contacts" && (
+        <div
           style={{
-            flex: 1,
-            minWidth: 0,
-            overflowY: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 16px",
+            borderBottom: border.line,
             background: surface.card,
-            borderRight: showMeetingsPanel ? border.line : undefined,
           }}
         >
-          {isMobile && folders.length > 0 && (
-            <div style={{ padding: "8px 12px", borderBottom: border.line, background: surface.page }}>
-              <select
-                value={selectedFolderId ?? ""}
-                onChange={(e) => setSelectedFolderId(e.target.value)}
-                aria-label="Mail folder"
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  border: border.line,
-                  borderRadius: 8,
-                  background: surface.card,
-                }}
-              >
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                    {f.unread_count ? ` (${f.unread_count})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <input
+            type="search"
+            placeholder="Search mail…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: "8px 12px",
+              border: border.line,
+              borderRadius: 8,
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              background: surface.card,
+            }}
+          />
+          {!isMobile && activeTab === "primary" && (
+            <button
+              type="button"
+              onClick={() => setMeetingsCollapsed((v) => !v)}
+              style={{
+                padding: "7px 11px",
+                borderRadius: 8,
+                border: border.line,
+                background: meetingsCollapsed ? surface.card : "rgba(42,107,74,0.08)",
+                fontFamily: fontSans,
+                fontSize: 11,
+                fontWeight: 600,
+                color: color.forest,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {meetingsCollapsed ? "Meetings" : "Hide meetings"}
+            </button>
           )}
+        </div>
+      )}
 
-          {listLoading && (
-            <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>
-          )}
-          {!listLoading && messages.length === 0 && (
-            <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No messages here.</p>
-          )}
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {activeTab === "contacts" ? (
+          <InboxContactsPanel
+            scopePath={withClientScope}
+            onSelectContact={(id) => setSelectedContactId(id)}
+          />
+        ) : (
+          <section
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflowY: "auto",
+              background: surface.card,
+              borderRight: showMeetingsPanel ? border.line : undefined,
+            }}
+          >
+            {listLoading && (
+              <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>
+            )}
+            {!listLoading && messages.length === 0 && (
+              <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No messages here.</p>
+            )}
 
-          {messages.map((msg) => {
-            const expanded = msg.id === expandedId;
-            return (
-              <div key={msg.id} style={{ borderBottom: border.line }}>
-                <InboxMessageRow
-                  msg={msg}
-                  expanded={expanded}
-                  hovered={hoveredId === msg.id}
-                  isLastOpened={lastOpenedId === msg.id && !expanded}
-                  isFocusUnread={focusUnreadId === msg.id && !expanded && lastOpenedId !== msg.id}
-                  onToggle={() => toggleMessage(msg.id)}
-                  onHover={(hovering) => handleRowHover(msg.id, hovering)}
-                />
-
-                {expanded && detailLoading && (
-                  <p style={{ padding: "8px 16px 16px 68px", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-                    Opening…
-                  </p>
-                )}
-                {expanded && detail && !detailLoading && detail.id === msg.id && (
-                  <InboxExpandedMessage
-                    detail={detail}
-                    tagSaving={tagSaving}
-                    jobLinkSaving={jobLinkSaving}
-                    onClose={() => setExpandedId(null)}
-                    onReply={openReply}
-                    onPatch={patchMessage}
-                    onTagChange={(tag) => void updateTag(detail.id, tag)}
-                    onLinkJob={(jobId) => void linkJob(detail.id, jobId)}
-                    onOpenThreadMessage={(id) => {
-                      setLastOpenedId(id);
-                      writeLastOpenedMessageId(id, status.email);
-                      setExpandedId(id);
-                    }}
-                    scopePath={withClientScope}
+            {messages.map((msg) => {
+              const expanded = msg.id === expandedId;
+              return (
+                <div key={msg.id} style={{ borderBottom: border.line }}>
+                  <InboxMessageRow
+                    msg={msg}
+                    expanded={expanded}
+                    hovered={hoveredId === msg.id}
+                    isLastOpened={lastOpenedId === msg.id && !expanded}
+                    isFocusUnread={focusUnreadId === msg.id && !expanded && lastOpenedId !== msg.id}
+                    onToggle={() => toggleMessage(msg.id)}
+                    onHover={(hovering) => handleRowHover(msg.id, hovering)}
                   />
-                )}
-              </div>
-            );
-          })}
 
-          {nextCursor && (
-            <div style={{ padding: 16, textAlign: "center" }}>
-              <ScoutSecondaryBtn onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? "Loading…" : "Load more"}
-              </ScoutSecondaryBtn>
-            </div>
-          )}
-        </section>
+                  {expanded && detailLoading && (
+                    <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Opening…</p>
+                  )}
+                  {expanded && detail && !detailLoading && detail.id === msg.id && (
+                    <InboxExpandedMessage
+                      detail={detail}
+                      tagSaving={tagSaving}
+                      jobLinkSaving={jobLinkSaving}
+                      saveContactSaving={saveContactSaving}
+                      onClose={() => setExpandedId(null)}
+                      onReply={openReply}
+                      onPatch={patchMessage}
+                      onTagChange={(tag) => void updateTag(detail.id, tag)}
+                      onLinkJob={(jobId) => void linkJob(detail.id, jobId)}
+                      onCreateAndLink={(company, role) => void createAndLinkJob(detail.id, company, role)}
+                      onSaveContact={() => void saveContact(detail.id)}
+                      onOpenThreadMessage={(id) => {
+                        setLastOpenedId(id);
+                        writeLastOpenedMessageId(id, status.email);
+                        setExpandedId(id);
+                      }}
+                      scopePath={withClientScope}
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+            {nextCursor && (
+              <div style={{ padding: 16, textAlign: "center" }}>
+                <ScoutSecondaryBtn onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "Loading…" : "Load more"}
+                </ScoutSecondaryBtn>
+              </div>
+            )}
+          </section>
+        )}
 
         {showMeetingsPanel ? (
           <InboxMeetingsPanel refreshKey={mailRefreshKey} onToggleCollapse={() => setMeetingsCollapsed(true)} />
-        ) : !isMobile && meetingsCollapsed ? (
+        ) : !isMobile && meetingsCollapsed && activeTab === "primary" ? (
           <InboxMeetingsPanel collapsed onToggleCollapse={() => setMeetingsCollapsed(false)} />
         ) : null}
       </div>
+
+      {selectedContactId && (
+        <InboxContactDrawer
+          contactId={selectedContactId}
+          scopePath={withClientScope}
+          onClose={() => setSelectedContactId(null)}
+          onOpenMessage={(messageId) => {
+            setActiveTab("primary");
+            setExpandedId(messageId);
+            setLastOpenedId(messageId);
+            writeLastOpenedMessageId(messageId, status.email);
+          }}
+          onComposeTo={(email) => {
+            setActiveTab("primary");
+            onComposeChange({
+              open: true,
+              to: email,
+              subject: "",
+              body: "",
+            });
+          }}
+          onNotice={onNotice}
+        />
+      )}
 
       {compose.open && (
         <>
@@ -532,12 +621,6 @@ export function InboxMailView({
                   }}
                 />
               </label>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <ScoutSecondaryBtn onClick={() => onComposeChange({ ...compose, open: false })}>Cancel</ScoutSecondaryBtn>
-                <ScoutPrimaryBtn onClick={onSend} disabled={sending}>
-                  {sending ? "Sending…" : "Send"}
-                </ScoutPrimaryBtn>
-              </div>
             </div>
           </div>
         </>

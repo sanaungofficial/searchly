@@ -1,7 +1,7 @@
 import { enrichCoachesWithMatch } from "@/lib/coach-match";
 import { buildCoachMatchUserContext } from "@/lib/coach-match-context";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { getClientCoachingUser } from "@/lib/coach-api";
 
@@ -32,8 +32,8 @@ const coachListSelect = {
   reviews: { select: { rating: true } },
 } as const;
 
-export async function GET() {
-  const me = await getClientCoachingUser();
+export async function GET(request: NextRequest) {
+  const me = await getClientCoachingUser(request);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const follows = await prisma.coachFollow.findMany({

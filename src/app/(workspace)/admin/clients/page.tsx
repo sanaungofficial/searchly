@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Clients live under Expert dashboard — admins see all clients there. */
+/** Clients live under Expert mode (/expert/clients) — admins see all clients there. */
 export default function AdminClientsPage() {
-  redirect("/dashboard/clients");
+  redirect("/expert/clients");
 }

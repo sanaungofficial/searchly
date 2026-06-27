@@ -5,12 +5,19 @@ import {
   recruitingFirmName,
 } from "@/lib/execthread/map-network-recruiter";
 import { execThreadListingUrl, resolveExecThreadExternalId } from "@/lib/execthread/execthread-url";
+import { isGenericNetworkCompanyLabel } from "@/lib/network-employer-labels";
 import { stripHtml } from "@/lib/topechelon/html";
 
 function str(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function companyRecord(job: ExecThreadListingRaw): Record<string, unknown> | null {
+  const company = job.company;
+  if (!company || typeof company !== "object") return null;
+  return company as Record<string, unknown>;
 }
 
 function locationFromJob(job: ExecThreadListingRaw): {
@@ -60,9 +67,11 @@ function industries(job: ExecThreadListingRaw): string[] {
   const industry = str(job.industry) ?? str(job.company?.industry);
   const compType = str(job.compType) ?? str(job.company?.type);
   const employeeCount = str(job.company?.employeeCountRange);
+  const companyAge = str(job.company?.age);
   if (industry) out.push(industry);
   if (compType) out.push(compType);
   if (employeeCount) out.push(`${employeeCount} employees`);
+  if (companyAge) out.push(companyAge);
   return out;
 }
 
@@ -99,10 +108,27 @@ function resolveDescriptionText(job: ExecThreadListingRaw): string | null {
 }
 
 function resolveCompanySummary(job: ExecThreadListingRaw): string | null {
+  const company = companyRecord(job);
   const companyText = stripHtml(
-    job.longCompanyDescription ?? job.companyDescription ?? job.companyDescriptionSafeHTML ?? null,
+    job.longCompanyDescription ??
+      job.companyDescription ??
+      job.companyDescriptionSafeHTML ??
+      str(company?.description) ??
+      str(job.alternateDescription) ??
+      null,
   );
   return companyText || null;
+}
+
+function resolveCompanyLinkedInUrl(job: ExecThreadListingRaw): string | null {
+  const company = companyRecord(job);
+  const direct = str(company?.linkedInUrl);
+  if (direct) return direct;
+  const linkedInId = str(company?.linkedInId);
+  if (!linkedInId) return null;
+  if (linkedInId.startsWith("http")) return linkedInId;
+  const slug = linkedInId.replace(/^\/company\//, "").replace(/^\//, "");
+  return slug ? `https://www.linkedin.com/company/${slug}` : null;
 }
 
 function resolveCompensation(job: ExecThreadListingRaw): {
@@ -114,6 +140,14 @@ function resolveCompensation(job: ExecThreadListingRaw): {
   if (comp === true) {
     return {
       salary: "Compensation discussed with recruiter",
+      minimumCompensation: null,
+      maximumCompensation: null,
+    };
+  }
+  if (typeof comp === "string") {
+    const salary = comp.trim();
+    return {
+      salary: salary || null,
       minimumCompensation: null,
       maximumCompensation: null,
     };
@@ -138,9 +172,12 @@ function resolveCompensation(job: ExecThreadListingRaw): {
   };
 }
 
+/** Prefer explicit ET company name when provided — confidential flag alone does not redact a named employer. */
 function hiringCompanyName(job: ExecThreadListingRaw): string | null {
+  const named = str(job.company?.name);
+  if (named && !isGenericNetworkCompanyLabel(named)) return named;
   if (job.confidential) return null;
-  return str(job.company?.name);
+  return named;
 }
 
 export function mapExecThreadNetworkJob(job: ExecThreadListingRaw) {
@@ -156,6 +193,14 @@ export function mapExecThreadNetworkJob(job: ExecThreadListingRaw) {
   const recruitingFirm = recruitingFirmName(job);
   const applyUrl = resolveApplyUrl(job);
   const listingUrl = execThreadListingUrl(job);
+  const company = companyRecord(job);
+  const companyLogoUrl = str(company?.logoUrl);
+  const companyWebsiteUrl = str(company?.url);
+  const companyLinkedInUrl = resolveCompanyLinkedInUrl(job);
+  const companyFounded =
+    company?.founded != null && String(company.founded).trim() ? String(company.founded).trim() : null;
+  const companyType = str(job.compType) ?? str(job.company?.type);
+  const companyStockExchange = str(company?.stockExchange) ?? str(job.companyStockExchange);
 
   const descriptionParts: string[] = [];
   if (descriptionText) descriptionParts.push(`About the Role\n${descriptionText}`);
@@ -201,6 +246,12 @@ export function mapExecThreadNetworkJob(job: ExecThreadListingRaw) {
       salaryLabel: compensation.salary,
       applyUrl,
       listingUrl,
+      companyLogoUrl,
+      companyWebsiteUrl,
+      companyLinkedInUrl,
+      companyFounded,
+      companyType,
+      companyStockExchange,
       contacts: mapExecThreadListingContacts(job),
     },
   };

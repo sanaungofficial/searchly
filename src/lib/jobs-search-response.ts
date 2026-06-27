@@ -6,7 +6,11 @@ import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 export async function enrichRecommendedSources(
   sources: RecommendedJobSource[],
   resumeText: string,
-  options?: { heuristicOnly?: boolean; roleTitlePreferences?: RoleTitlePreferences },
+  options?: {
+    heuristicOnly?: boolean;
+    roleTitlePreferences?: RoleTitlePreferences;
+    profileSkills?: string[];
+  },
 ): Promise<VectorMatchedJob[]> {
   if (!sources.length) return [];
   return enrichVectorJobsWithMatchReasons({
@@ -16,6 +20,8 @@ export async function enrichRecommendedSources(
     resumeText,
     heuristicOnly: options?.heuristicOnly !== false,
     roleTitlePreferences: options?.roleTitlePreferences,
+    profileSkills: options?.profileSkills,
+    fetchLanes: sources.map((s) => s.fetchLane),
   });
 }
 

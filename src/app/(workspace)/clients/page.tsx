@@ -4,6 +4,6 @@ import { CoachClientsPage } from "./coach-clients-page";
 
 export default async function ClientsPage() {
   const admin = await requireAdmin();
-  if (admin) redirect("/dashboard/clients");
+  if (admin) redirect("/expert/clients");
   return <CoachClientsPage />;
 }

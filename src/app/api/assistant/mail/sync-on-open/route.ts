@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { getKimchiAiSettings } from "@/lib/kimchi-ai-settings";
 import { syncInboxOnChatOpen } from "@/lib/kimchi-assistant/mail/triage";
 import { loadInboxSnapshot } from "@/lib/kimchi-assistant/inbox-suggestions";
 
 export async function POST(request: Request) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as { triage?: boolean };

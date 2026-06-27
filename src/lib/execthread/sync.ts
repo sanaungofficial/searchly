@@ -205,6 +205,82 @@ export async function runExecThreadSync(
   };
 }
 
+/** Re-fetch full export for specific ExecThread jobs already stored in Kimchi. */
+export async function runExecThreadRefreshByExternalIds(
+  externalIds: string[],
+  options: Pick<RunExecThreadSyncOptions, "forceLogin"> = {},
+): Promise<ExecThreadSyncSummary> {
+  const started = Date.now();
+  const ids = [...new Set(externalIds.map((id) => id.trim()).filter(Boolean))];
+
+  if (!ids.length) {
+    return {
+      mode: "refresh",
+      fetched: 0,
+      upserted: 0,
+      failed: 0,
+      totalHits: null,
+      durationMs: Date.now() - started,
+      authenticated: false,
+      previewHits: 0,
+      redeemHits: 0,
+    };
+  }
+
+  if (!execthreadConfigured()) {
+    throw new Error("EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD are not configured.");
+  }
+
+  const storedJobs = await prisma.networkJob.findMany({
+    where: { source: "EXECTHREAD", externalId: { in: ids } },
+    select: { externalId: true, networkId: true, raw: true },
+  });
+
+  const { client, authenticated } = await getAuthenticatedExecThreadClient(options.forceLogin === true);
+
+  let upserted = 0;
+  let failed = 0;
+  let previewHits = 0;
+  let redeemHits = 0;
+
+  for (const row of storedJobs) {
+    const searchRow = searchRowFromStoredExecThreadJob(row);
+    if (!searchRow) {
+      failed += 1;
+      continue;
+    }
+
+    try {
+      const job = await client.fetchListingFullExport(searchRow);
+      const hits = exportHitCounts(job);
+      previewHits += hits.previewHits;
+      redeemHits += hits.redeemHits;
+      await persistExecThreadListing(job);
+      upserted += 1;
+    } catch (err) {
+      failed += 1;
+      console.warn(`[execthread] refresh failed for ${searchRow._id}:`, err);
+    }
+  }
+
+  failed += ids.length - storedJobs.length;
+
+  await saveExecThreadSession(client.getSession());
+  await recordExecThreadSyncResult(true);
+
+  return {
+    mode: "refresh",
+    fetched: storedJobs.length,
+    upserted,
+    failed,
+    totalHits: null,
+    durationMs: Date.now() - started,
+    authenticated,
+    previewHits,
+    redeemHits,
+  };
+}
+
 /** Re-fetch full export for every ExecThread job already stored in Kimchi. */
 export async function runExecThreadRefreshExisting(
   options: Pick<RunExecThreadSyncOptions, "forceLogin"> = {},

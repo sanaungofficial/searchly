@@ -151,14 +151,27 @@ export class ExecThreadClient {
 
     // Always redeem when syncing with an authenticated session — no point budgeting in Kimchi.
     // Premium ExecThread accounts have unlimited redemptions; "already redeemed" is OK.
+    // ET may only apply one disclosure flag per redeem call — run focused passes.
     try {
       bundle.redeem = await this.redeemListing(searchRow._id, {
         recruitersOrHiringManager: true,
-        companyContact: true,
+        companyContact: false,
       });
     } catch (err) {
       if (!isExecThreadBenignRedeemError(err)) {
-        console.warn(`[execthread] redeem skipped for ${searchRow._id}:`, err);
+        console.warn(`[execthread] recruiter/hm redeem skipped for ${searchRow._id}:`, err);
+      }
+    }
+
+    try {
+      const companyRedeem = await this.redeemListing(searchRow._id, {
+        recruitersOrHiringManager: false,
+        companyContact: true,
+      });
+      bundle.redeem = { ...(bundle.redeem ?? {}), ...companyRedeem };
+    } catch (err) {
+      if (!isExecThreadBenignRedeemError(err)) {
+        console.warn(`[execthread] company redeem skipped for ${searchRow._id}:`, err);
       }
     }
 

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { resolvePostAuthRedirect } from "@/components/auth/post-auth-redirect";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -26,7 +25,6 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
-import type { VoiceAgentFieldPatch, VoiceAgentSessionResult } from "@/components/voice/voice-intake-recorder";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -99,19 +97,10 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.replace("/login");
         return;
-      }
-      try {
-        const destination = await resolvePostAuthRedirect();
-        if (destination === "/dashboard") {
-          router.replace("/dashboard");
-          return;
-        }
-      } catch {
-        // Allow onboarding if sync fails
       }
       setAuthChecked(true);
     });
@@ -376,30 +365,6 @@ export default function OnboardingPage() {
     setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }, []);
 
-  const applyVoiceFieldPatch = useCallback((patch: VoiceAgentFieldPatch) => {
-    if (patch.careerMotivation) setCareerMotivation(patch.careerMotivation);
-    if (patch.jobTimeline) setJobTimeline(patch.jobTimeline);
-    if (patch.currentSalary) setCurrentSalary(patch.currentSalary);
-    if (patch.targetSalary) setTargetSalary(patch.targetSalary);
-    if (patch.priorities?.length) {
-      setPriorities((prev) => [...new Set([...prev, ...patch.priorities!])]);
-    }
-    if (patch.targetRoles?.length) {
-      setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
-      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
-    }
-  }, []);
-
-  const onVoiceIntakeComplete = useCallback((result: VoiceAgentSessionResult) => {
-    if (result.transcript) {
-      void fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategyIntakeNotes: result.transcript }),
-      });
-    }
-  }, []);
-
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
     goTo(6);
@@ -589,8 +554,6 @@ export default function OnboardingPage() {
               jobTimeline={jobTimeline}
               onCareerMotivationChange={setCareerMotivation}
               onJobTimelineChange={setJobTimeline}
-              onVoiceFieldUpdate={applyVoiceFieldPatch}
-              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onAboutSearchContinue}
               onSkip={onAboutSearchSkip}
             />

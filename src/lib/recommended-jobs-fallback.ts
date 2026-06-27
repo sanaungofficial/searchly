@@ -4,6 +4,7 @@ import {
   fetchHirebaseMatchingJobs,
   fetchHirebaseRecentJobs,
   fetchHirebaseRoleMatchingJobs,
+  fetchHirebaseSimilarJobs,
   fetchHirebaseSummarySearch,
   fetchHirebaseVectorJobs,
   mapHirebaseJob,
@@ -16,12 +17,24 @@ import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
 import { applyListingFiltersToSources, jobMatchesListingFilters } from "@/lib/job-listing-filters";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
-import { RECOMMENDED_FETCH_POOL } from "@/lib/recommended-jobs-config";
+import { RECOMMENDED_FETCH_POOL, RECOMMENDED_SIMILAR_JOB_SEED_COUNT } from "@/lib/recommended-jobs-config";
+import { resolveExpandedRoleTitles } from "@/lib/expanded-role-titles-cache";
+import { profileRoleTitlesForMatch, type RoleTitlePreferences } from "@/lib/role-title-preferences";
+
+export type RecommendedFetchLane =
+  | "resume_vsearch"
+  | "profile_summary"
+  | "profile_roles"
+  | "expanded_roles"
+  | "similar_job"
+  | "tracked"
+  | "broad";
 
 export type RecommendedJobSource = {
   cached: CachedJob;
   companyName: string;
   raw: HirebaseJob;
+  fetchLane?: RecommendedFetchLane;
 };
 
 export function cachedJobToHirebaseJob(job: CachedJob, companyName: string): HirebaseJob {
@@ -39,6 +52,62 @@ export function cachedJobToHirebaseJob(job: CachedJob, companyName: string): Hir
     job_type: job.jobType ?? undefined,
     location_type: job.remote === true ? "Remote" : job.remote === false ? "In-Person" : undefined,
   };
+}
+
+function lanePriority(lane?: RecommendedFetchLane): number {
+  switch (lane) {
+    case "resume_vsearch":
+      return 1;
+    case "profile_summary":
+      return 2;
+    case "similar_job":
+      return 3;
+    case "profile_roles":
+      return 4;
+    case "expanded_roles":
+      return 5;
+    case "tracked":
+      return 6;
+    case "broad":
+      return 7;
+    default:
+      return 8;
+  }
+}
+
+function mergeFetchLane(
+  existing?: RecommendedFetchLane,
+  next?: RecommendedFetchLane,
+): RecommendedFetchLane | undefined {
+  if (!existing) return next;
+  if (!next) return existing;
+  return lanePriority(next) < lanePriority(existing) ? next : existing;
+}
+
+export function sourceListingKey(source: RecommendedJobSource): string {
+  return jobListingDedupeKey({
+    companyName: source.companyName,
+    title: source.cached.title,
+    url: source.cached.url,
+  });
+}
+
+export function buildFetchLaneMap(sources: RecommendedJobSource[]): Map<string, RecommendedFetchLane> {
+  const map = new Map<string, RecommendedFetchLane>();
+  for (const source of sources) {
+    if (!source.fetchLane) continue;
+    const key = sourceListingKey(source);
+    if (!key) continue;
+    map.set(key, mergeFetchLane(map.get(key), source.fetchLane) ?? source.fetchLane);
+  }
+  return map;
+}
+
+export function tagSourcesWithLane(
+  sources: RecommendedJobSource[],
+  fetchLane: RecommendedFetchLane,
+): RecommendedJobSource[] {
+  return sources.map((source) => ({ ...source, fetchLane: mergeFetchLane(source.fetchLane, fetchLane) }));
 }
 
 export function dedupeRecommendedSources(sources: RecommendedJobSource[], maxJobs: number): RecommendedJobSource[] {
@@ -59,7 +128,12 @@ export function dedupeRecommendedSources(sources: RecommendedJobSource[], maxJob
     }
     const existingPosted = existing.cached.datePosted ? Date.parse(existing.cached.datePosted) : 0;
     const nextPosted = entry.cached.datePosted ? Date.parse(entry.cached.datePosted) : 0;
-    if (nextPosted >= existingPosted) byKey.set(key, entry);
+    const keep = nextPosted >= existingPosted ? entry : existing;
+    const drop = nextPosted >= existingPosted ? existing : entry;
+    byKey.set(key, {
+      ...keep,
+      fetchLane: mergeFetchLane(keep.fetchLane, drop.fetchLane),
+    });
   }
   return [...byKey.values()].slice(0, maxJobs);
 }
@@ -233,7 +307,10 @@ export async function fetchRecommendedFromTrackedCompanies(input: {
     collected.push(...sources);
   }
 
-  const sources = applyListingFiltersToSources(dedupeSources(collected, maxJobs), filters);
+  const sources = tagSourcesWithLane(
+    applyListingFiltersToSources(dedupeSources(collected, maxJobs), filters),
+    "tracked",
+  );
   const trackedWithMatches = new Set(sources.map((s) => s.companyName)).size;
 
   return {
@@ -446,7 +523,7 @@ export async function fetchRecommendedFromProfileRoles(input: {
       if (sources.length >= maxJobs) break;
     }
 
-    return { sources: applyListingFiltersToSources(sources, filters) };
+    return { sources: tagSourcesWithLane(applyListingFiltersToSources(sources, filters), "profile_roles") };
   } catch {
     return { sources: [] };
   }
@@ -503,7 +580,7 @@ export async function fetchRecommendedViaResumeVSearch(input: {
   const trackedWithMatches = filtered.filter((s) => jobMatchesTrackedCompany(s.raw, trackedIndex)).length;
 
   return {
-    sources: filtered,
+    sources: tagSourcesWithLane(filtered, "resume_vsearch"),
     companyCount: tracked.length,
     trackedWithMatches,
   };
@@ -547,7 +624,7 @@ export async function fetchRecommendedViaProfileSummary(input: {
   const trackedWithMatches = filtered.filter((s) => jobMatchesTrackedCompany(s.raw, trackedIndex)).length;
 
   return {
-    sources: filtered,
+    sources: tagSourcesWithLane(filtered, "profile_summary"),
     companyCount: tracked.length,
     trackedWithMatches,
   };
@@ -604,7 +681,7 @@ export async function fetchRecommendedBroadFallback(input: {
       excludeDisplayKeys: input.excludeDisplayKeys,
     });
     if (recentSources.length) {
-      return { sources: recentSources };
+      return { sources: tagSourcesWithLane(recentSources, "broad") };
     }
   } catch {
     /* try summary search */
@@ -629,8 +706,110 @@ export async function fetchRecommendedBroadFallback(input: {
       if (input.excludeDisplayKeys?.size && hasDisplayKey(input.excludeDisplayKeys, source)) continue;
       sources.push(source);
     }
-    return { sources: dedupeSources(sources, maxJobs) };
+    return { sources: tagSourcesWithLane(dedupeSources(sources, maxJobs), "broad") };
   } catch {
     return { sources: [] };
   }
+}
+
+function pickSimilarJobSeedIds(sources: RecommendedJobSource[], maxSeeds: number): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const priority: RecommendedFetchLane[] = ["resume_vsearch", "profile_summary", "profile_roles", "similar_job"];
+
+  const ordered = [...sources].sort((a, b) => {
+    const laneA = a.fetchLane ? priority.indexOf(a.fetchLane) : 99;
+    const laneB = b.fetchLane ? priority.indexOf(b.fetchLane) : 99;
+    return laneA - laneB;
+  });
+
+  for (const source of ordered) {
+    const id = source.raw._id?.trim() || source.cached.hirebaseId?.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+    if (ids.length >= maxSeeds) break;
+  }
+  return ids;
+}
+
+/** Similar roles via Hirebase vsearch (`search_type=job`) — capped seeds per refresh. */
+export async function fetchRecommendedFromSimilarJobs(input: {
+  seedSources: RecommendedJobSource[];
+  filters?: VectorSearchFilters;
+  maxJobs?: number;
+  maxSeeds?: number;
+}): Promise<{ sources: RecommendedJobSource[] }> {
+  const maxJobs = Math.min(input.maxJobs ?? RECOMMENDED_FETCH_POOL, RECOMMENDED_FETCH_POOL);
+  const seedIds = pickSimilarJobSeedIds(
+    input.seedSources,
+    input.maxSeeds ?? RECOMMENDED_SIMILAR_JOB_SEED_COUNT,
+  );
+  if (!seedIds.length) return { sources: [] };
+
+  const perSeed = Math.max(5, Math.ceil(maxJobs / seedIds.length));
+  const collected: RecommendedJobSource[] = [];
+
+  for (const jobId of seedIds) {
+    try {
+      const similar = await fetchHirebaseSimilarJobs({
+        jobId,
+        filters: {
+          ...input.filters,
+          limit: perSeed,
+          page: input.filters?.page ?? 1,
+        },
+        limit: perSeed,
+      });
+      for (let i = 0; i < similar.rawJobs.length; i++) {
+        const raw = similar.rawJobs[i]!;
+        collected.push({
+          cached: similar.jobs[i] ?? mapHirebaseJob(raw),
+          companyName: similar.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
+          raw,
+          fetchLane: "similar_job",
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    sources: tagSourcesWithLane(
+      applyListingFiltersToSources(dedupeSources(collected, maxJobs), input.filters),
+      "similar_job",
+    ),
+  };
+}
+
+/** Target-title family expansion — related roles from Hirebase search API. */
+export async function fetchRecommendedFromExpandedRoles(input: {
+  userId: string;
+  roleTitlePreferences: RoleTitlePreferences;
+  filters?: VectorSearchFilters;
+  maxJobs?: number;
+}): Promise<{ sources: RecommendedJobSource[]; expandedTitles: string[] }> {
+  const expandedTitles = await resolveExpandedRoleTitles({
+    userId: input.userId,
+    roleTitlePreferences: input.roleTitlePreferences,
+  });
+  const baseTitles = profileRoleTitlesForMatch(input.roleTitlePreferences);
+  const extraTitles = expandedTitles.filter(
+    (title) => !baseTitles.some((base) => base.toLowerCase() === title.toLowerCase()),
+  );
+  if (!extraTitles.length) {
+    return { sources: [], expandedTitles };
+  }
+
+  const result = await fetchRecommendedFromProfileRoles({
+    profileTargetRoles: extraTitles,
+    filters: input.filters,
+    maxJobs: input.maxJobs,
+  });
+
+  return {
+    sources: tagSourcesWithLane(result.sources, "expanded_roles"),
+    expandedTitles,
+  };
 }

@@ -28,6 +28,7 @@ import {
 import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
 import {
@@ -102,6 +103,7 @@ export function ProfileResumeEditor({
   onboardingJobLabel,
 }: ProfileResumeEditorProps) {
   const isMobile = useIsMobile();
+  const { withClientScope } = useWorkspace();
   const [loading, setLoading] = useState(false);
   const [reparsing, setReparsing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -210,7 +212,7 @@ export function ProfileResumeEditor({
     setImproveLoading(true);
     setImproveError(null);
     setImprovePreview(null);
-    void fetch(`/api/assets/${assetId}/improve`, { method: "POST" })
+    void fetch(withClientScope(`/api/assets/${assetId}/improve`), { method: "POST" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
@@ -233,7 +235,7 @@ export function ProfileResumeEditor({
     setFixSuggestionsLoading(true);
     setFixPreview(null);
     try {
-      const res = await fetch(`/api/assets/${assetId}/section-suggest`, {
+      const res = await fetch(withClientScope(`/api/assets/${assetId}/section-suggest`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -294,7 +296,7 @@ export function ProfileResumeEditor({
   const loadAnalysis = useCallback(async (id: string, force = false) => {
     setAnalysisLoading(true);
     try {
-      const url = force ? `/api/assets/${id}/analysis?force=true` : `/api/assets/${id}/analysis`;
+      const url = withClientScope(force ? `/api/assets/${id}/analysis?force=true` : `/api/assets/${id}/analysis`);
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok) setAnalysis(data);
@@ -304,13 +306,13 @@ export function ProfileResumeEditor({
     } finally {
       setAnalysisLoading(false);
     }
-  }, []);
+  }, [withClientScope]);
 
   const saveParsedData = useCallback(async (updated: ParsedResumeData) => {
     if (!assetId) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/assets/${assetId}`, {
+      const res = await fetch(withClientScope(`/api/assets/${assetId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parsedData: updated }),
@@ -428,7 +430,7 @@ export function ProfileResumeEditor({
     setMatchError(null);
     try {
       localStorage.setItem(`resume-match-jd-${assetId}`, jobDescription);
-      const res = await fetch(`/api/assets/${assetId}/match`, {
+      const res = await fetch(withClientScope(`/api/assets/${assetId}/match`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: jobDescription }),
@@ -466,7 +468,7 @@ export function ProfileResumeEditor({
     setLoading(true);
     setParseError(null);
     try {
-      const res = await fetch(`/api/assets/${id}`);
+      const res = await fetch(withClientScope(`/api/assets/${id}`));
       if (!res.ok) return;
       const data: AssetResponse = await res.json();
       setAssetName(data.name || "Resume");
@@ -480,7 +482,7 @@ export function ProfileResumeEditor({
       if (!hasResumeBodyContent(pd)) {
         setReparsing(true);
         try {
-          const reparseRes = await fetch(`/api/assets/${id}/reparse`, { method: "POST" });
+          const reparseRes = await fetch(withClientScope(`/api/assets/${id}/reparse`), { method: "POST" });
           const reparseData = await reparseRes.json();
           if (reparseRes.ok && reparseData.parsedData) pd = reparseData.parsedData;
           else if (!reparseRes.ok) parseErr = reparseData.error || "Could not parse resume structure";
@@ -542,7 +544,7 @@ export function ProfileResumeEditor({
     setDownloading(true);
     setDownloadMenuOpen(false);
     try {
-      const res = await fetch(`/api/assets/${assetId}/download?format=${format}`);
+      const res = await fetch(withClientScope(`/api/assets/${assetId}/download?format=${format}`));
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
