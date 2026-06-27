@@ -415,6 +415,10 @@ export function AdminClientsPanel({
           onViewClientProfile={onViewClientProfile}
           startingUserId={startingUserId}
           showViewAsClient={!!onViewAsClient}
+          onClientUpdated={(updated) => {
+            setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+            setSelected(updated);
+          }}
         />
       </div>
     );

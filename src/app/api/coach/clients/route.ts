@@ -89,14 +89,27 @@ export async function GET() {
             take: 5,
           }
         : undefined,
+      coachClientAssignments: coachProfileId
+        ? {
+            where: { coachProfileId },
+            select: { id: true },
+            take: 1,
+          }
+        : undefined,
       _count: { select: { jobs: true, tailoredResumes: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
+  const payload = clients.map((c) => ({
+    ...c,
+    isAssignedCoach: Boolean(c.coachClientAssignments?.length),
+    coachClientAssignments: undefined,
+  }));
+
   if (me.role === UserRole.ADMIN) {
-    return NextResponse.json(clients);
+    return NextResponse.json(payload);
   }
 
-  return NextResponse.json(clients);
+  return NextResponse.json(payload);
 }
