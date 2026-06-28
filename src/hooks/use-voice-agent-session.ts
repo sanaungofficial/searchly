@@ -25,15 +25,41 @@ export type VoiceAgentSessionResult = {
   transcript: string;
 };
 
+export type VoiceChatHistoryEntry = { role: "user" | "assistant"; content: string };
+
 type UseVoiceAgentSessionOptions = {
   context?: VoiceAgentContext;
   disabled?: boolean;
   voicePresetId?: string;
   pageHint?: AssistantPageHint;
+  chatHistory?: VoiceChatHistoryEntry[];
   onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
   onComplete?: (result: VoiceAgentSessionResult) => void;
   onNavigate?: (route: string, label?: string) => void;
 };
+
+function buildSettingsWithChatHistory(
+  settings: AgentSettingsObject,
+  history: VoiceChatHistoryEntry[],
+): AgentSettingsObject {
+  const recent = history.slice(-12);
+  if (!recent.length) return settings;
+  const lines = recent
+    .map((m) => `${m.role === "assistant" ? "Kimchi" : "User"}: ${m.content}`)
+    .join("\n");
+  const injection =
+    "\n\n--- Recent chat context (before this voice session) ---\n" +
+    lines +
+    "\n--- End of recent chat context ---";
+  const think = settings.think as { prompt?: string; [key: string]: unknown };
+  return {
+    ...settings,
+    think: {
+      ...think,
+      prompt: (think?.prompt ?? "") + injection,
+    },
+  };
+}
 
 function pageHintQuery(hint?: AssistantPageHint): string {
   if (!hint) return "";
@@ -113,6 +139,7 @@ export function useVoiceAgentSession({
   disabled,
   voicePresetId = "general",
   pageHint,
+  chatHistory,
   onFieldUpdate,
   onComplete,
   onNavigate,
@@ -137,6 +164,8 @@ export function useVoiceAgentSession({
   const sessionStartedAtRef = useRef<number | null>(null);
   const pageHintRef = useRef(pageHint);
   pageHintRef.current = pageHint;
+  const chatHistoryRef = useRef(chatHistory);
+  chatHistoryRef.current = chatHistory;
 
   const setUiMode = useCallback((mode: VoiceOrbState) => {
     uiModeRef.current = mode;
@@ -237,12 +266,17 @@ export function useVoiceAgentSession({
     setTranscriptLines([]);
     setUiMode("connecting");
 
+    const effectiveSettings =
+      chatHistoryRef.current?.length
+        ? buildSettingsWithChatHistory(agentSettings, chatHistoryRef.current)
+        : agentSettings;
+
     try {
       const session = new AgentSession({
         auth: {
           tokenFactory: fetchVoiceAgentToken,
         },
-        agent: agentSettings,
+        agent: effectiveSettings,
         audio: VOICE_AGENT_AUDIO,
         tags: ["kimchi", context],
       });
