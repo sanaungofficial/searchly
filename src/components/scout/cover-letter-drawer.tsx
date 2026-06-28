@@ -8,6 +8,7 @@ import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
+import { scoutPrimaryCtaStyle } from "@/components/scout/scout-box";
 
 interface CoverLetterDrawerProps {
   jobTitle: string;
@@ -281,6 +282,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
 
       {/* Side drawer — matches ResumeMatchDrawer */}
       <div
+        className="bruddle"
         style={{
           position: "fixed",
           right: 0,
@@ -288,10 +290,11 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
           bottom: 0,
           width: "min(960px, 85vw)",
           background: "#FFFFFF",
+          borderLeft: "var(--scout-border)",
           zIndex: 201,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
+          boxShadow: "-4px 4px 0 #161616",
           transform: visible ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(0.32, 0, 0.16, 1)",
         }}
@@ -398,9 +401,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                       onClick={() => generate()}
                       style={{
                         padding: "12px 20px",
-                        background: "#1C3A2F",
-                        color: "#E8D5A3",
-                        border: "none",
+                        ...scoutPrimaryCtaStyle,
                         fontFamily: fontSans,
                         fontSize: 14,
                         fontWeight: 600,
@@ -486,11 +487,11 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                     padding: "12px 0",
                     background: "none",
                     border: "none",
-                    borderBottom: activeTab === tab ? "2px solid #1C3A2F" : "2px solid transparent",
+                    borderBottom: activeTab === tab ? "2px solid #161616" : "2px solid transparent",
                     fontFamily: fontSans,
                     fontSize: 14,
                     fontWeight: activeTab === tab ? 600 : 400,
-                    color: activeTab === tab ? "#1C3A2F" : "#9CA3AF",
+                    color: activeTab === tab ? "#161616" : "#9CA3AF",
                     cursor: "pointer",
                     transition: "all 0.15s",
                   }}
@@ -553,9 +554,12 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                           disabled={!manualDesc.trim()}
                           style={{
                             marginTop: 8, width: "100%", padding: "10px",
-                            background: manualDesc.trim() ? "#1C3A2F" : "rgba(0,0,0,0.05)",
-                            color: manualDesc.trim() ? "#E8D5A3" : "var(--scout-muted)",
-                            border: "none", borderRadius: "var(--scout-radius)",
+                            ...(manualDesc.trim() ? scoutPrimaryCtaStyle : {
+                              background: "rgba(0,0,0,0.05)",
+                              color: "var(--scout-muted)",
+                              border: "none",
+                            }),
+                            borderRadius: "var(--scout-radius)",
                             fontFamily: fontSans,
                             fontSize: 14, fontWeight: 600,
                             cursor: manualDesc.trim() ? "pointer" : "not-allowed",
@@ -650,9 +654,12 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                       disabled={!chatInput.trim() || !letter || streaming}
                       style={{
                         padding: "10px 16px",
-                        background: (chatInput.trim() && letter && !streaming) ? "#1C3A2F" : "rgba(0,0,0,0.06)",
-                        color: (chatInput.trim() && letter && !streaming) ? "#E8D5A3" : "var(--scout-muted)",
-                        border: "none", borderRadius: "var(--scout-radius)",
+                        ...(chatInput.trim() && letter && !streaming ? scoutPrimaryCtaStyle : {
+                          background: "rgba(0,0,0,0.06)",
+                          color: "var(--scout-muted)",
+                          border: "none",
+                        }),
+                        borderRadius: "var(--scout-radius)",
                         fontFamily: fontSans,
                         fontSize: 14, fontWeight: 600,
                         cursor: (chatInput.trim() && letter && !streaming) ? "pointer" : "not-allowed",
@@ -777,9 +784,12 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                 disabled={streaming}
                 style={{
                   flex: 1, padding: "11px 14px",
-                  background: streaming ? "rgba(0,0,0,0.06)" : "#1A3A2F",
-                  color: streaming ? "var(--scout-muted)" : "#E8D5A3",
-                  border: "none", borderRadius: "var(--scout-radius)",
+                  ...(streaming ? {
+                    background: "rgba(0,0,0,0.06)",
+                    color: "var(--scout-muted)",
+                    border: "none",
+                  } : scoutPrimaryCtaStyle),
+                  borderRadius: "var(--scout-radius)",
                   fontFamily: fontSans, fontSize: 13, fontWeight: 700,
                   cursor: streaming ? "not-allowed" : "pointer",
                   transition: "all 0.15s",

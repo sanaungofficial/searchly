@@ -153,7 +153,7 @@ export default function CoachOnboardingPage() {
 
   if (!authChecked) {
     return (
-      <div className="onboarding-loading" role="status" aria-live="polite">
+      <div className="onboarding-loading bruddle" role="status" aria-live="polite">
         <div className="onboarding-loading__spinner" aria-hidden="true" />
         <span>Loading…</span>
       </div>
@@ -162,7 +162,7 @@ export default function CoachOnboardingPage() {
 
   return (
     <div style={{ background: "var(--scout-page)" }}>
-      <div className="onboarding-shell">
+      <div className="onboarding-shell bruddle">
         <CoachOnboardingHeader screen={screen} />
         <div className="onboarding-content">
           {screen === 0 && (

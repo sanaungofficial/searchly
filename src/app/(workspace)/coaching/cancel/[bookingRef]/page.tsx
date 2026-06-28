@@ -33,6 +33,7 @@ export default function CancelBookingPage() {
   }, [bookingRef]);
 
   return (
+    <div className="bruddle" style={{ minHeight: "100vh", background: "var(--scout-page)" }}>
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 24px 64px" }}>
       <h1 style={{ ...displayTitleStyle(28), margin: "0 0 8px" }}>Cancel session</h1>
       <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 24px", lineHeight: 1.6 }}>
@@ -57,6 +58,7 @@ export default function CancelBookingPage() {
           />
         </ScoutBox>
       )}
+    </div>
     </div>
   );
 }
