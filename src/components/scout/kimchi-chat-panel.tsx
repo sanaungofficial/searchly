@@ -248,11 +248,26 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setPageHint: setVoicePageHint,
     setOnComplete: setVoiceOnComplete,
     setOnNavigate: setVoiceOnNavigate,
+    setChatHistory: setVoiceChatHistory,
   } = voiceAgent;
 
   useEffect(() => {
     setVoicePageHint(pageHint);
   }, [pageHint, setVoicePageHint]);
+
+  useEffect(() => {
+    const history = messages.flatMap((m) => {
+      if (m.kind === "text" && (m.role === "user" || m.role === "assistant") && m.content.trim()) {
+        return [{ role: m.role as "user" | "assistant", content: m.content }];
+      }
+      if (m.kind === "voice") {
+        const vm = m as VoiceMessage;
+        if (vm.summary) return [{ role: "assistant" as const, content: "[Voice chat - " + vm.presetTitle + "]: " + vm.summary }];
+      }
+      return [];
+    });
+    setVoiceChatHistory(history.length ? history : undefined);
+  }, [messages, setVoiceChatHistory]);
 
   useEffect(() => {
     setVoiceOnComplete((result: VoiceAgentSessionResult) => {
@@ -386,12 +401,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, followUpChips]);
-
-  useEffect(() => {
-    if (sessionActive && transcriptLines.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [sessionActive, transcriptLines.length]);
 
   const isCoachPrep = chatView === "coach-prep" && !!coachPrepCoach;
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
@@ -637,9 +646,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setCanAskAiSuggestions(false);
     setNextStepsVisible(false);
 
-    const textThread = messages.filter(
-      (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
-    );
+    const textThread = messages.flatMap((m): Array<{ kind: "text"; role: "user" | "assistant"; content: string }> => {
+      if (m.kind === "text" && (m.role === "user" || m.role === "assistant")) return [{ kind: "text", role: m.role, content: m.content }];
+      if (m.kind === "voice" && (m as VoiceMessage).summary) return [{ kind: "text", role: "assistant" as const, content: "[Voice chat - " + (m as VoiceMessage).presetTitle + "]: " + (m as VoiceMessage).summary }];
+      return [];
+    });
     const nextMessages = [...textThread, { role: "user" as const, content: trimmed }];
 
     const userMsg: StoredThreadMessage = { kind: "text", role: "user", content: trimmed };
@@ -722,9 +733,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setNextStepsVisible(false);
     setSuggestionsVisible(false);
 
-    const textThread = messages.filter(
-      (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
-    );
+    const textThread = messages.flatMap((m): Array<{ kind: "text"; role: "user" | "assistant"; content: string }> => {
+      if (m.kind === "text" && (m.role === "user" || m.role === "assistant")) return [{ kind: "text", role: m.role, content: m.content }];
+      if (m.kind === "voice" && (m as VoiceMessage).summary) return [{ kind: "text", role: "assistant" as const, content: "[Voice chat - " + (m as VoiceMessage).presetTitle + "]: " + (m as VoiceMessage).summary }];
+      return [];
+    });
     const nextMessages = [...textThread, { role: "user" as const, content: trimmed }];
 
     const userMsg: StoredThreadMessage = { kind: "text", role: "user", content: trimmed };
@@ -1057,54 +1070,45 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           );
         })}
 
-        {sessionActive && transcriptLines.length > 0 && (
-          <>
-            {transcriptLines.map((line, idx) => (
-              <div
-                key={`vt-${idx}-${line.content.slice(0, 16)}`}
-                className={`kimchi-msg-row kimchi-msg-row--${line.role === "Kimchi" ? "assistant" : "user"}`}
-              >
-                {line.role === "Kimchi" && (
-                  <div className="kimchi-msg-avatar kimchi-msg-avatar--kimchi" aria-hidden="true">✦</div>
-                )}
-                <div className="kimchi-msg-body">
-                  <div className="kimchi-msg-meta">
-                    <span className={`kimchi-msg-sender${line.role !== "Kimchi" ? " kimchi-msg-sender--user" : ""}`}>
-                      {line.role === "Kimchi" ? "Kimchi" : "You"}
-                    </span>
-                    <span className="kimchi-voice-live-badge">Voice</span>
-                  </div>
-                  <div className={`kimchi-chat-bubble kimchi-chat-bubble--${line.role === "Kimchi" ? "assistant" : "user"}`}>
-                    {line.content}
-                  </div>
-                </div>
-                {line.role !== "Kimchi" && (
-                  <div className="kimchi-msg-avatar kimchi-msg-avatar--user" aria-hidden="true">{userInitials}</div>
-                )}
-              </div>
-            ))}
-            {(orbState === "thinking" || orbState === "connecting") && (
-              <div className="kimchi-msg-row kimchi-msg-row--assistant">
-                <div className="kimchi-msg-avatar kimchi-msg-avatar--kimchi" aria-hidden="true">✦</div>
-                <div className="kimchi-msg-body">
-                  <div className="kimchi-chat-bubble kimchi-chat-bubble--assistant">
-                    <KimchiTypingIndicator />
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        {sessionActive && transcriptLines.length === 0 && (
-          <div className="kimchi-voice-waiting">
-            <span className="kimchi-voice-waiting__text">
-              {orbState === "connecting" ? "Connecting…" : "Listening — just start speaking"}
+      {!voiceUnavailable && voiceAvailable !== false && sessionActive && (
+        <div className="kimchi-chat-panel__voice-bar">
+          <VoiceOrb
+            variant="composer"
+            state={orbState}
+            audioLevel={audioLevel}
+            onClick={toggleSession}
+            disabled={!agentSettings}
+          />
+          <div className="kimchi-chat-panel__voice-status">
+            <span className="kimchi-chat-panel__voice-label">
+              {getVoicePreset(selectedPreset).emoji}{" "}
+              {orbState === "listening" || orbState === "live"
+                ? "Listening…"
+                : orbState === "speaking"
+                  ? "Kimchi is speaking"
+                  : orbState === "connecting"
+                    ? "Connecting…"
+                    : orbState === "thinking"
+                      ? "Thinking…"
+                      : "Talking"}
             </span>
+            {transcriptLines.length === 0 &&
+              (orbState === "live" || orbState === "listening" || orbState === "connecting") && (
+                <span className="kimchi-chat-panel__voice-hint">Just start speaking — Kimchi is listening.</span>
+              )}
           </div>
-        )}
+          <button type="button" className="kimchi-voice-done-btn" onClick={endSession}>
+            Done talking
+          </button>
+          {voiceError && <span className="kimchi-chat-panel__voice-error">{voiceError}</span>}
+        </div>
+      )}
 
-        {!sessionActive && !voiceUnavailable && voiceAvailable !== false && presetMenuOpen && (
+      {!voiceUnavailable && voiceAvailable !== false && !sessionActive && presetMenuOpen && (
+        <div className="kimchi-chat-panel__voice-bar">
           <div className="kimchi-preset-menu">
             {VOICE_PRESETS.map((p) => (
               <button
@@ -1125,47 +1129,9 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               Cancel
             </button>
           </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {sessionActive ? (
-        <div className="kimchi-voice-controls">
-          <div className="kimchi-voice-controls__orb">
-            <VoiceOrb
-              variant="composer"
-              state={orbState}
-              audioLevel={audioLevel}
-              onClick={toggleSession}
-              disabled={!agentSettings}
-            />
-          </div>
-          <span className="kimchi-voice-controls__status">
-            {orbState === "listening" || orbState === "live"
-              ? "Listening…"
-              : orbState === "speaking"
-                ? "Speaking…"
-                : orbState === "connecting"
-                  ? "Connecting…"
-                  : orbState === "thinking"
-                    ? "Thinking…"
-                    : "Active"}
-          </span>
-          <button
-            type="button"
-            className="kimchi-voice-controls__end"
-            onClick={endSession}
-            aria-label="End voice session"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
-            End
-          </button>
-          {voiceError && <span className="kimchi-chat-panel__voice-error">{voiceError}</span>}
         </div>
-      ) : (
+      )}
+
       <div className="kimchi-chat-panel__composer">
         <div className="kimchi-composer-box">
           <div className="kimchi-composer-box__input-wrap">
@@ -1245,7 +1211,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           </div>
         )}
       </div>
-      )}
 
       <div className="kimchi-chips-below">
         {showWelcomeStarters && (welcomeChips.length > 0 || welcomeChipsLoading) && (
@@ -1701,68 +1666,6 @@ function KimchiChatPanelStyles() {
         font-family: ${sans};
         font-size: 12px;
         color: #9B3A2A;
-      }
-      .kimchi-voice-live-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 1px 6px;
-        border-radius: 999px;
-        background: rgba(61, 170, 156, 0.14);
-        color: rgba(61, 170, 156, 0.9);
-        font-family: ${sans};
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        margin-left: 6px;
-      }
-      .kimchi-voice-waiting {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px 18px;
-      }
-      .kimchi-voice-waiting__text {
-        font-family: ${sans};
-        font-size: 14px;
-        color: rgba(26, 58, 47, 0.5);
-        font-style: italic;
-      }
-      .kimchi-voice-controls {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 18px;
-        border-top: 1px solid rgba(0,0,0,0.06);
-        flex-shrink: 0;
-      }
-      .kimchi-voice-controls__orb {
-        flex-shrink: 0;
-      }
-      .kimchi-voice-controls__status {
-        flex: 1;
-        font-family: ${sans};
-        font-size: 13px;
-        color: rgba(61, 170, 156, 0.85);
-        font-weight: 500;
-      }
-      .kimchi-voice-controls__end {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 6px 14px;
-        border: none;
-        border-radius: 999px;
-        background: rgba(155, 58, 42, 0.12);
-        color: #9B3A2A;
-        font-family: ${sans};
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        flex-shrink: 0;
-      }
-      .kimchi-voice-controls__end:hover {
-        background: rgba(155, 58, 42, 0.2);
       }
       .kimchi-preset-menu {
         display: flex;
