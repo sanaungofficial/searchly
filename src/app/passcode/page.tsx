@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KimchiBySecondLadder, ScoutPrimaryBtn } from "@/components/scout/scout-box";
-import { border, color, fontSans, surface, displayTitleStyle } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, surface, displayTitleStyle } from "@/lib/typography";
 
 export default function PasscodePage() {
   const router = useRouter();
@@ -30,6 +30,7 @@ export default function PasscodePage() {
 
   return (
     <div
+      className="bruddle"
       style={{
         minHeight: "100vh",
         background: surface.page,
@@ -50,7 +51,7 @@ export default function PasscodePage() {
       <div
         style={{
           background: surface.card,
-          border: border.lineStrong,
+          border: "var(--scout-border)",
           padding: "40px 32px",
           textAlign: "center",
           width: "100%",
@@ -59,7 +60,7 @@ export default function PasscodePage() {
           boxSizing: "border-box",
         }}
       >
-        <h1 style={{ ...displayTitleStyle(20), marginBottom: 8 }}>Almost there.</h1>
+        <h1 style={{ ...bruddleHeadingStyle("h4"), marginBottom: 8 }}>Almost there.</h1>
         <p style={{ fontSize: 13, color: color.muted, marginBottom: 28, lineHeight: 1.5 }}>
           Kimchi is in early access. Enter your code to get in.
         </p>
@@ -82,7 +83,7 @@ export default function PasscodePage() {
             fontSize: 28,
             letterSpacing: "0.3em",
             padding: "12px 16px",
-            border: error ? "1px solid #C4574A" : border.lineStrong,
+            border: error ? "1px solid #C4574A" : "var(--scout-border)",
             borderRadius: "var(--scout-radius)",
             outline: "none",
             color: color.ink,

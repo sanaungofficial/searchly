@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { bruddleHeadingStyle } from "@/lib/typography";
 import { AuthCredentialsForm } from "@/components/auth/auth-credentials-form";
 import { AuthPageBenefits } from "@/components/auth/auth-page-benefits";
 import { KimchiBySecondLadder } from "@/components/scout/scout-box";
@@ -24,7 +25,7 @@ function LoginContent() {
   }, [searchParams]);
 
   return (
-    <div className="auth-split-outer">
+    <div className="auth-split-outer bruddle">
       {/* Left: form */}
       <div className="auth-split-form">
         <div className="auth-page__logo">
@@ -46,9 +47,7 @@ function LoginContent() {
         <div className="auth-card">
           <h2
             style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 26,
-              fontWeight: 600,
+              ...bruddleHeadingStyle("h3"),
               color: "#1C3A2F",
               marginBottom: 8,
               fontStyle: "italic",

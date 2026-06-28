@@ -13,9 +13,9 @@ import { bioSnippet } from "@/lib/coach-directory";
 import type { CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
-import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
-const line = border.line;
+const line = "var(--scout-border)";
 const cardBg = surface.card;
 
 function Section({
@@ -30,7 +30,7 @@ function Section({
   return (
     <ScoutBox padding={20} style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <h3 style={{ fontFamily: fontSans, fontSize: 17, fontWeight: 700, margin: 0, color: color.ink }}>{title}</h3>
+        <h3 style={{ ...bruddleHeadingStyle("h5"), margin: 0, color: color.ink }}>{title}</h3>
         {action}
       </div>
       {children}

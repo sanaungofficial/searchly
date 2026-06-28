@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { bruddleHeadingStyle } from "@/lib/typography";
 import { createClient } from "@/utils/supabase/client";
 import { friendlyAuthMessage } from "@/lib/auth-errors";
 
@@ -129,9 +130,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
       <div style={{ textAlign: "center" }}>
         <h2
           style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 24,
-            fontWeight: 600,
+            ...bruddleHeadingStyle("h4"),
             color: "#1C3A2F",
             marginBottom: 12,
           }}
@@ -154,7 +153,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
         style={{
           background: "#FFFFFF",
           color: "#1C3A2F",
-          border: "1px solid #E5DDD0",
+          border: "var(--scout-border)",
           marginBottom: 12,
           transition: "background 0.15s",
         }}
@@ -220,7 +219,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
           style={{
             background: loading ? "rgba(26,58,47,0.35)" : "#1A3A2F",
             color: "#E8D5A3",
-            border: "1px solid rgba(17,17,17,0.22)",
+            border: "var(--scout-border)",
             fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",
             transition: "opacity 0.15s",

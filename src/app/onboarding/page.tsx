@@ -662,7 +662,7 @@ export default function OnboardingPage() {
 
   if (!authChecked) {
     return (
-      <div className="onboarding-loading" role="status" aria-live="polite">
+      <div className="onboarding-loading bruddle" role="status" aria-live="polite">
         <span style={{ fontSize: 40, lineHeight: 1 }} aria-hidden="true">🥬</span>
         <div className="onboarding-loading__spinner" aria-hidden="true" />
         <span>One sec…</span>
@@ -682,7 +682,7 @@ export default function OnboardingPage() {
         style={{ display: "none" }}
         onChange={onFileChange}
       />
-      <div className="onboarding-shell">
+      <div className="onboarding-shell bruddle">
         <ScoutHeader screen={headerScreen} />
         <div className="onboarding-content">
           {/* Pre-flow: career intent */}

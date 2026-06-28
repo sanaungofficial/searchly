@@ -93,12 +93,12 @@ const ONBOARDING_CARD: React.CSSProperties = {
   background: "#FFFFFF",
   borderRadius: "var(--scout-radius)",
   padding: ONBOARDING_SECTION_PAD,
-  border: "1px solid rgba(26,58,47,0.14)",
-  boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
+  border: "var(--scout-border)",
+  boxShadow: "var(--scout-shadow-card)",
 };
 
 const ONBOARDING_FIELD_BG = "var(--scout-inset)";
-const ONBOARDING_FIELD_BORDER = "1.5px solid rgba(26,58,47,0.2)";
+const ONBOARDING_FIELD_BORDER = "var(--scout-border)";
 const ONBOARDING_TEXT = "#1A1A1A";
 const ONBOARDING_TEXT_SECONDARY = "#52493F";
 const ONBOARDING_LABEL_COLOR = "#2A2218";
