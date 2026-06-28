@@ -38,9 +38,9 @@ describe("buildOnboardingProfilePatch", () => {
       visaNeed: "unspecified",
       targetSalary: "$150K – $200K",
       jobTimeline: "asap",
-      deprioritizedRoles: ["Sales"],
+      deprioritizedCategories: ["Sales Jobs"],
     });
     expect(patch.targetMarket).toBeNull();
-    expect(patch.deprioritizedRoles).toEqual(["Sales"]);
+    expect(patch.deprioritizedCategories).toEqual(["Sales Jobs"]);
   });
 });

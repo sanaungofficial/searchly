@@ -58,19 +58,25 @@ function saveLinkedIn(handle: string): Promise<void> {
   }).then(() => {});
 }
 
-async function importLinkedInProfile(handle: string): Promise<SetupStepStatus> {
+type LinkedInImportStepResult = "done" | "skipped" | "failed" | "unavailable";
+
+async function importLinkedInProfile(
+  handle: string,
+  importAvailable: boolean,
+): Promise<LinkedInImportStepResult> {
   const url = normalizeLinkedInUrl(handle);
   if (!url) return "skipped";
+  if (!importAvailable) return "unavailable";
   try {
     const res = await fetch("/api/profile/linkedin-import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ linkedinUrl: url }),
     });
-    if (res.status === 503) return "skipped";
-    return res.ok ? "done" : "skipped";
+    if (res.status === 503) return "unavailable";
+    return res.ok ? "done" : "failed";
   } catch {
-    return "skipped";
+    return "failed";
   }
 }
 
@@ -100,13 +106,19 @@ function saveTargetRoles(roles: string[]): Promise<void> {
   }).then(() => {});
 }
 
-const INITIAL_SETUP_STEPS: SetupStep[] = [
-  { id: "profile", label: "Saving your answers", status: "pending" },
-  { id: "linkedin", label: "Importing your LinkedIn", status: "pending" },
-  { id: "resume", label: "Setting up your resume", status: "pending" },
-  { id: "analysis", label: "Reviewing your resume", status: "pending" },
-  { id: "companies", label: "Scanning your target companies", status: "pending" },
-];
+function buildInitialSetupSteps(linkedinImportAvailable: boolean): SetupStep[] {
+  return [
+    { id: "profile", label: "Saving your answers", status: "pending" },
+    {
+      id: "linkedin",
+      label: linkedinImportAvailable ? "Importing your LinkedIn" : "Saving your LinkedIn URL",
+      status: "pending",
+    },
+    { id: "resume", label: "Setting up your resume", status: "pending" },
+    { id: "analysis", label: "Reviewing your resume", status: "pending" },
+    { id: "companies", label: "Scanning your target companies", status: "pending" },
+  ];
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -150,12 +162,27 @@ export default function OnboardingPage() {
   const [visaNeed, setVisaNeed] = useState<VisaNeedId>("");
   const [targetSalary, setTargetSalary] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
-  const [deprioritizedRoles, setDeprioritizedRoles] = useState<string[]>([]);
+  const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
   const [locationHint, setLocationHint] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState(false);
-  const [setupSteps, setSetupSteps] = useState<SetupStep[]>(INITIAL_SETUP_STEPS);
+  const [linkedinImportAvailable, setLinkedinImportAvailable] = useState<boolean | null>(null);
+  const [setupSteps, setSetupSteps] = useState<SetupStep[]>(() => buildInitialSetupSteps(false));
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
+
+  useEffect(() => {
+    void fetch("/api/profile")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { linkedinImportAvailable?: boolean } | null) => {
+        if (typeof data?.linkedinImportAvailable === "boolean") {
+          setLinkedinImportAvailable(data.linkedinImportAvailable);
+          setSetupSteps(buildInitialSetupSteps(data.linkedinImportAvailable));
+        } else {
+          setLinkedinImportAvailable(false);
+        }
+      })
+      .catch(() => setLinkedinImportAvailable(false));
+  }, []);
 
   useEffect(() => {
     if (screen !== 4 || locationHintFetchedRef.current) return;
@@ -184,7 +211,7 @@ export default function OnboardingPage() {
       visaNeed,
       targetSalary,
       jobTimeline,
-      deprioritizedRoles,
+      deprioritizedCategories,
     }),
     [
       targetMarket,
@@ -194,7 +221,7 @@ export default function OnboardingPage() {
       visaNeed,
       targetSalary,
       jobTimeline,
-      deprioritizedRoles,
+      deprioritizedCategories,
     ],
   );
 
@@ -498,20 +525,14 @@ export default function OnboardingPage() {
     }
   }, []);
 
-  const onToggleAvoidRole = useCallback((role: string) => {
-    setDeprioritizedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role].slice(0, 10),
+  const onAddAvoidCategory = useCallback((category: string) => {
+    setDeprioritizedCategories((prev) =>
+      prev.some((c) => c.toLowerCase() === category.toLowerCase()) ? prev : [...prev, category].slice(0, 10),
     );
   }, []);
 
-  const onAddAvoidRole = useCallback((role: string) => {
-    setDeprioritizedRoles((prev) =>
-      prev.includes(role) ? prev : [...prev, role].slice(0, 10),
-    );
-  }, []);
-
-  const onRemoveAvoidRole = useCallback((role: string) => {
-    setDeprioritizedRoles((prev) => prev.filter((r) => r !== role));
+  const onRemoveAvoidCategory = useCallback((category: string) => {
+    setDeprioritizedCategories((prev) => prev.filter((c) => c !== category));
   }, []);
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
@@ -626,6 +647,7 @@ export default function OnboardingPage() {
     selectedCompanies,
     setStepStatus,
     router,
+    linkedinImportAvailable,
   ]);
 
   const onCompaniesContinue = useCallback(() => {
@@ -707,7 +729,7 @@ export default function OnboardingPage() {
                 workArrangement,
                 targetSalary,
                 jobTimeline,
-                deprioritizedRoles,
+                deprioritizedCategories,
                 visaNeed,
               } satisfies FinalSummaryProfile}
               onConfirm={onFinalSummaryConfirm}
@@ -729,6 +751,7 @@ export default function OnboardingPage() {
               resumeError={resumeError}
               isDragging={isDragging}
               liInput={liInput}
+              linkedinImportAvailable={linkedinImportAvailable}
               onLIChange={onLIChange}
               onLIKey={onLIKey}
               onContinue={onWelcomeContinue}
@@ -828,9 +851,9 @@ export default function OnboardingPage() {
               )}
               {screen === 10 && (
                 <ScreenOnboardingAvoidRoles
-                  deprioritizedRoles={deprioritizedRoles}
-                  onAddAvoidRole={onAddAvoidRole}
-                  onRemoveAvoidRole={onRemoveAvoidRole}
+                  deprioritizedCategories={deprioritizedCategories}
+                  onAddAvoidCategory={onAddAvoidCategory}
+                  onRemoveAvoidCategory={onRemoveAvoidCategory}
                   onContinue={() => void onAvoidContinue()}
                   onSkip={() => void onAvoidSkip()}
                   onBack={() => goTo(9)}

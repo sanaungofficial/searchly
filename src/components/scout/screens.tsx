@@ -254,6 +254,7 @@ interface WelcomeProps {
   resumeError?: boolean;
   isDragging: boolean;
   liInput: string;
+  linkedinImportAvailable?: boolean | null;
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onContinue: () => void;
@@ -333,6 +334,7 @@ export function ScreenWelcome({
   resumeError,
   isDragging,
   liInput,
+  linkedinImportAvailable = null,
   onLIChange,
   onLIKey,
   onContinue,
