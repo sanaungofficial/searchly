@@ -38,6 +38,9 @@ export type DashboardGoalOption = {
 
 export const DASHBOARD_GOAL_MAX = 3;
 
+/** Goals shown on dashboard home card before "See all". */
+export const DASHBOARD_GOALS_CARD_PREVIEW = 2;
+
 export const GOAL_WIZARD_CATEGORIES: {
   id: DashboardGoalCategory;
   title: string;

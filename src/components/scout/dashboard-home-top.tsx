@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import {
   DASHBOARD_GOAL_MAX,
+  DASHBOARD_GOALS_CARD_PREVIEW,
   DASHBOARD_GOAL_OPTIONS,
   type DashboardGoal,
-  dashboardGoalCategoryLabel,
   findDashboardGoalOption,
-  formatGoalTargetDate,
   profileNeedsSyncForGoal,
   recommendationLabelForGoals,
   recommendationPathForGoals,
@@ -18,12 +17,13 @@ import {
 import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
-import { AssignedCoachSummaryBox } from "@/components/scout/assigned-coach-summary-box";
 import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-overview";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
 import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-modal";
 import { DashboardGoalWizardModal } from "@/components/scout/dashboard-goal-wizard-modal";
+import { DashboardGoalItem } from "@/components/scout/dashboard-goal-item";
+import { DashboardGoalsDrawer } from "@/components/scout/dashboard-goals-drawer";
 import { MatchingPrefPromptModal, type MatchingPrefProfile } from "@/components/scout/matching-pref-prompt-modal";
 import { SectionHeadingWithHelp, SectionHelpTip } from "@/components/scout/section-help-tip";
 import { DashboardGetStarted } from "@/components/scout/dashboard-get-started";
@@ -36,7 +36,7 @@ import {
   type RecommendationTuningInput,
 } from "@/lib/recommendation-tuning";
 import type { RelocationId, VisaNeedId, WorkArrangementId } from "@/lib/onboarding-preferences";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutFieldStyle, scoutInsetChipStyle } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "@/components/scout/scout-box";
 import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
 
 type Props = {
@@ -142,6 +142,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [interestOpen, setInterestOpen] = useState(false);
   const [actionItemsOpen, setActionItemsOpen] = useState(true);
+  const [goalsDrawerOpen, setGoalsDrawerOpen] = useState(false);
 
   const [allSessions, setAllSessions] = useState<LiveSessionView[]>([]);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
@@ -215,6 +216,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
     [profile],
   );
   const goals = profile?.dashboardGoals ?? [];
+  const previewGoals = goals.slice(0, DASHBOARD_GOALS_CARD_PREVIEW);
+  const hasMoreGoals = goals.length > DASHBOARD_GOALS_CARD_PREVIEW;
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
   const availableOptions = DASHBOARD_GOAL_OPTIONS.filter((o) => !usedValues.has(o.value));
   const canAdd = goals.length < DASHBOARD_GOAL_MAX && availableOptions.length > 0;
@@ -603,8 +606,16 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   // ── Goals card ────────────────────────────────────────────────────────────
   const goalsCard = (
-    <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 }}>
+    <ScoutBox
+      padding={isMobile ? "16px 18px" : "18px 20px"}
+      style={{
+        height: isMobile ? undefined : "100%",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8, flexShrink: 0 }}>
         <SectionHeadingWithHelp
           title="Your goals"
           help="What you're working toward right now — landing a role, prepping for interviews, leveling up, and so on."
@@ -630,7 +641,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {loading ? (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading…</p>
       ) : goals.length === 0 ? (
-        <div>
+        <div style={{ flex: isMobile ? undefined : 1, display: "flex", flexDirection: "column" }}>
           <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
             What are you trying to achieve? You can add up to {DASHBOARD_GOAL_MAX} goals.
           </p>
@@ -639,60 +650,44 @@ export function DashboardHomeTop({ isMobile }: Props) {
               Add a goal
             </ScoutPrimaryBtn>
           )}
+          {!isMobile && <div aria-hidden style={{ flex: 1, minHeight: 0 }} />}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: canAdd ? 14 : 0 }}>
-          {goals.map((goal) => {
-            const targetLabel = formatGoalTargetDate(goal.targetDate);
-            const isEditingTarget = editingTargetId === goal.id;
-            return (
-              <div key={goal.id} style={{ borderBottom: "var(--scout-border)", paddingBottom: 12 }}>
-                {targetLabel && (
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>{targetLabel}</p>
-                )}
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px", lineHeight: 1.4 }}>
-                  {goal.label}
-                </p>
-                {isEditingTarget && (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                    <input
-                      type="month"
-                      value={editTargetMonth}
-                      onChange={(e) => setEditTargetMonth(e.target.value)}
-                      style={{ ...scoutFieldStyle, flex: 1, minWidth: 140, padding: "8px 10px", fontSize: isMobile ? 16 : T.bodySm }}
-                    />
-                    <ScoutSecondaryBtn onClick={() => updateGoalTarget(goal.id, editTargetMonth || null)} disabled={saving} style={{ minHeight: 36 }}>
-                      Save
-                    </ScoutSecondaryBtn>
-                    <button type="button" onClick={() => { setEditingTargetId(null); setEditTargetMonth(""); }}
-                      style={{ background: "none", border: "none", fontFamily: fontSans, fontSize: T.caption, color: color.muted, cursor: "pointer" }}>
-                      Cancel
-                    </button>
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span style={scoutInsetChipStyle}>{dashboardGoalCategoryLabel(goal.category)}</span>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button type="button" onClick={() => { setEditingTargetId(goal.id); setEditTargetMonth(goal.targetDate ?? ""); }} disabled={saving}
-                      style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, color: color.forest, cursor: saving ? "default" : "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => removeGoal(goal.id)} disabled={saving}
-                      style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, cursor: saving ? "default" : "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>
+            {previewGoals.map((goal, index) => (
+              <DashboardGoalItem
+                key={goal.id}
+                goal={goal}
+                saving={saving}
+                isMobile={isMobile}
+                isEditingTarget={editingTargetId === goal.id}
+                editTargetMonth={editTargetMonth}
+                onStartEdit={() => { setEditingTargetId(goal.id); setEditTargetMonth(goal.targetDate ?? ""); }}
+                onCancelEdit={() => { setEditingTargetId(null); setEditTargetMonth(""); }}
+                onEditMonthChange={setEditTargetMonth}
+                onSaveTarget={() => updateGoalTarget(goal.id, editTargetMonth || null)}
+                onRemove={() => removeGoal(goal.id)}
+                isLast={index === previewGoals.length - 1 && !hasMoreGoals}
+              />
+            ))}
+          </div>
 
-      {canAdd && goals.length > 0 && (
-        <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42, marginTop: 14 }}>
-          Add another goal
-        </ScoutPrimaryBtn>
+          {!isMobile && <div aria-hidden style={{ flex: 1, minHeight: 0 }} />}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, flexShrink: 0, marginTop: hasMoreGoals || canAdd ? 14 : 0 }}>
+            {hasMoreGoals && (
+              <ScoutSecondaryBtn onClick={() => setGoalsDrawerOpen(true)} style={{ width: "100%", minHeight: 40 }}>
+                See all ({goals.length})
+              </ScoutSecondaryBtn>
+            )}
+            {canAdd && (
+              <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42 }}>
+                Add another goal
+              </ScoutPrimaryBtn>
+            )}
+          </div>
+        </>
       )}
     </ScoutBox>
   );
@@ -817,22 +812,21 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       )}
 
-      {/* Goals (bigger, more prominent) */}
+      {/* Goals + events — stretch columns on desktop so bottoms align */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: isMobile ? "1fr" : "minmax(280px, 340px) minmax(0, 1fr)",
           gap: isMobile ? 20 : 28,
           marginBottom: isMobile ? 24 : 28,
-          alignItems: "start",
+          alignItems: isMobile ? "start" : "stretch",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: 0, height: isMobile ? undefined : "100%" }}>
           {goalsCard}
-          <AssignedCoachSummaryBox isMobile={isMobile} enabled={showClientCoachUi} />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
           {!showClientCoachUi && showExpertDashboard && <ExpertDashboardOverview isMobile={isMobile} />}
           {eventsSection}
         </div>
@@ -846,6 +840,21 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {scheduleOpen && <GrowthDiscoveryModal trigger="dashboard_schedule" onClose={() => setScheduleOpen(false)} />}
       {interestOpen && <EventInterestModal onClose={() => setInterestOpen(false)} />}
       <DashboardGoalWizardModal open={goalModalOpen} showIntro={goalWizardIntro} onClose={closeGoalModal} onSave={saveGoalFromWizard} availableOptions={availableOptions} saving={saving} />
+      <DashboardGoalsDrawer
+        open={goalsDrawerOpen}
+        goals={goals}
+        saving={saving}
+        canAdd={canAdd}
+        editingTargetId={editingTargetId}
+        editTargetMonth={editTargetMonth}
+        onClose={() => setGoalsDrawerOpen(false)}
+        onAddGoal={openGoalModal}
+        onStartEdit={(id, month) => { setEditingTargetId(id); setEditTargetMonth(month); }}
+        onCancelEdit={() => { setEditingTargetId(null); setEditTargetMonth(""); }}
+        onEditMonthChange={setEditTargetMonth}
+        onSaveTarget={(id) => updateGoalTarget(id, editTargetMonth || null)}
+        onRemove={removeGoal}
+      />
       <MatchingPrefPromptModal
         open={activeGapId !== null}
         gapId={activeGapId}
