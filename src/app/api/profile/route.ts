@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
+import { isApifyConfigured } from "@/lib/apify-linkedin";
 
 export async function GET(request: Request) {
   try {
@@ -79,6 +80,7 @@ export async function GET(request: Request) {
       readbackUpdatedAt: profile?.readbackUpdatedAt?.toISOString() ?? null,
       primaryResumeUpdatedAt: primaryResume?.updatedAt?.toISOString() ?? null,
       linkedInAnalysisScore,
+      linkedinImportAvailable: isApifyConfigured(),
       adminReview: clientUserId ? { clientId: dbUser.id, name: dbUser.name, email: dbUser.email } : undefined,
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }

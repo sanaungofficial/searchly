@@ -549,7 +549,8 @@ export default function OnboardingPage() {
   }, []);
 
   const runFinishSetup = useCallback(async () => {
-    setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
+    const importAvailable = linkedinImportAvailable === true;
+    setSetupSteps(buildInitialSetupSteps(importAvailable).map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
     goTo(12);
 
     let primaryAssetId: string | undefined;
@@ -564,7 +565,14 @@ export default function OnboardingPage() {
 
       if (liInput.trim()) {
         setStepStatus("linkedin", "active");
-        setStepStatus("linkedin", await importLinkedInProfile(liInput));
+        const importResult = await importLinkedInProfile(liInput, importAvailable);
+        if (importResult === "done") {
+          setStepStatus("linkedin", "done");
+        } else if (importResult === "failed") {
+          setStepStatus("linkedin", "failed");
+        } else {
+          setStepStatus("linkedin", "skipped");
+        }
       } else {
         setStepStatus("linkedin", "skipped");
       }
