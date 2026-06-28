@@ -28,6 +28,7 @@ import {
   ScreenOnboardingSalary,
   ScreenOnboardingTimeline,
   ScreenOnboardingAvoidRoles,
+  ScreenFinalSummary,
   ScreenSetup,
   DemoNextButton,
   OnboardingProcessingBanner,
@@ -35,6 +36,7 @@ import {
   ScreenCareerIntent,
   ScreenOneLiner,
   type CareerIntentId,
+  type FinalSummaryProfile,
   type Screen,
   type ReadBackData,
   type ReadBackStatus,
@@ -433,18 +435,12 @@ export default function OnboardingPage() {
   );
 
   const onLocationContinue = useCallback(async () => {
-    if (fullyRemote) setWorkArrangement("remote_only");
-    await saveMatchingPreferences({
-      ...matchingState,
-      workArrangement: fullyRemote ? "remote_only" : matchingState.workArrangement,
-      fullyRemote,
-    });
-    goTo(fullyRemote ? 6 : 5);
-  }, [fullyRemote, matchingState, goTo]);
+    await persistMatchingAndGo(5);
+  }, [persistMatchingAndGo]);
 
   const onLocationSkip = useCallback(async () => {
-    await persistMatchingAndGo(fullyRemote ? 6 : 5);
-  }, [fullyRemote, persistMatchingAndGo]);
+    await persistMatchingAndGo(5);
+  }, [persistMatchingAndGo]);
 
   const onWorkArrangementContinue = useCallback(async () => {
     await persistMatchingAndGo(6);
@@ -506,6 +502,16 @@ export default function OnboardingPage() {
     setDeprioritizedRoles((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role].slice(0, 10),
     );
+  }, []);
+
+  const onAddAvoidRole = useCallback((role: string) => {
+    setDeprioritizedRoles((prev) =>
+      prev.includes(role) ? prev : [...prev, role].slice(0, 10),
+    );
+  }, []);
+
+  const onRemoveAvoidRole = useCallback((role: string) => {
+    setDeprioritizedRoles((prev) => prev.filter((r) => r !== role));
   }, []);
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
@@ -630,10 +636,9 @@ export default function OnboardingPage() {
     setShowFinalSummary(true);
   }, []);
 
-  const onFinalSummaryConfirm = useCallback((data: ReadBackData | null) => {
-    applyReadbackRoles(data);
+  const onFinalSummaryConfirm = useCallback(() => {
     void runFinishSetup();
-  }, [applyReadbackRoles, runFinishSetup]);
+  }, [runFinishSetup]);
 
   const onFinalSummaryBack = useCallback(() => {
     setShowFinalSummary(false);
@@ -694,16 +699,19 @@ export default function OnboardingPage() {
           )}
           {/* Final summary overlay */}
           {intentDone && !showOneLiner && showFinalSummary && (
-            <ScreenReadBack
-              data={readbackData}
-              status={readbackStatus === "idle" ? "skipped" : readbackStatus}
+            <ScreenFinalSummary
+              readbackData={readbackData}
+              profile={{
+                targetRoles: selectedTitles,
+                targetMarket,
+                workArrangement,
+                targetSalary,
+                jobTimeline,
+                deprioritizedRoles,
+                visaNeed,
+              } satisfies FinalSummaryProfile}
               onConfirm={onFinalSummaryConfirm}
-              onRefine={onReadBackRefine}
-              onSkip={() => void runFinishSetup()}
               onBack={onFinalSummaryBack}
-              confirmLabel="Looks good, let's go →"
-              title="Here's your full profile."
-              body="We'll use this to run your search. Everything looks right?"
             />
           )}
           {/* Main onboarding screens */}
@@ -767,12 +775,9 @@ export default function OnboardingPage() {
               {screen === 4 && (
                 <ScreenOnboardingLocation
                   targetMarket={targetMarket}
-                  fullyRemote={fullyRemote}
                   locationHint={locationHint}
                   onTargetMarketChange={setTargetMarket}
-                  onFullyRemoteChange={onFullyRemoteChange}
                   onContinue={() => void onLocationContinue()}
-                  onSkip={() => void onLocationSkip()}
                   onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}
                 />
               )}
@@ -791,7 +796,7 @@ export default function OnboardingPage() {
                   onRelocationChange={setRelocation}
                   onContinue={() => void onRelocationContinue()}
                   onSkip={() => void onRelocationSkip()}
-                  onBack={() => goTo(fullyRemote ? 4 : 5)}
+                  onBack={() => goTo(5)}
                 />
               )}
               {screen === 7 && (
@@ -824,7 +829,8 @@ export default function OnboardingPage() {
               {screen === 10 && (
                 <ScreenOnboardingAvoidRoles
                   deprioritizedRoles={deprioritizedRoles}
-                  onToggleAvoidRole={onToggleAvoidRole}
+                  onAddAvoidRole={onAddAvoidRole}
+                  onRemoveAvoidRole={onRemoveAvoidRole}
                   onContinue={() => void onAvoidContinue()}
                   onSkip={() => void onAvoidSkip()}
                   onBack={() => goTo(9)}
