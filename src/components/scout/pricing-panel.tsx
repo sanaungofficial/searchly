@@ -79,6 +79,7 @@ export function PricingPanel({ compact = false }: Props) {
     color: color.ctaForeground,
     border: "var(--scout-border)",
     borderRadius: radius.px,
+    boxShadow: "var(--scout-shadow-bruddle)",
     fontFamily: fontSans,
     fontWeight: 600,
     cursor: "pointer" as const,

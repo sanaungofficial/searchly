@@ -11,10 +11,16 @@ export const displayVariation = '"opsz" 72, "WONK" 1' as const;
 
 export const color = {
   ink: "#1A1A1A",
+  /** Bruddle ink — borders, CTA text on purple */
+  bruddleInk: "#161616",
   forest: "#1A3A2F",
-  /** Primary CTA fill — `--scout-cta` (purple); forest remains brand/nav */
+  /** Primary CTA fill — `--scout-cta` / `--bruddle-purple`; forest remains brand/nav */
   cta: "var(--scout-cta)",
   ctaForeground: "var(--scout-cta-foreground)",
+  purple: "var(--bruddle-purple)",
+  /** Secondary yellow accent (chips) — not page surface */
+  bruddleCream: "var(--bruddle-cream)",
+  bruddleSurface: "var(--bruddle-surface)",
   stone: "#52493F",
   /** Body secondary — bumped from #6B6258 for AA on cream (~5.2:1) */
   muted: "#5C534A",

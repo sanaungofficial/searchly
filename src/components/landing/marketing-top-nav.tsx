@@ -78,6 +78,7 @@ function primaryBtnStyle(isMobile: boolean): CSSProperties {
     textDecoration: "none",
     background: color.cta,
     border: "var(--scout-border)",
+    boxShadow: "var(--scout-shadow-bruddle)",
     whiteSpace: "nowrap",
   };
 }
