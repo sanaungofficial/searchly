@@ -1,58 +1,111 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { PricingPanel } from "./pricing-panel";
+import { bruddleHeadingStyle, color, fontSans, radius, type as T } from "@/lib/typography";
 
 type Props = {
   onClose: () => void;
 };
 
 export function PricingModal({ onClose }: Props) {
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.45)",
+          background: "rgba(22, 22, 22, 0.45)",
           zIndex: 200,
         }}
         onClick={onClose}
         aria-hidden
       />
       <div
-        role="dialog"
-        aria-labelledby="pricing-modal-title"
         style={{
           position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 920,
-          maxWidth: "calc(100vw - 32px)",
-          maxHeight: "90vh",
-          overflow: "auto",
-          background: "var(--scout-page)",
-          borderRadius: "var(--scout-radius)",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           zIndex: 201,
-          padding: "24px 28px 28px",
-          fontFamily: "var(--font-ui), sans-serif",
+          padding: 16,
+          pointerEvents: "none",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span id="pricing-modal-title" style={{ fontSize: 13, fontWeight: 600, color: "#8A7F72", letterSpacing: "0.3px" }}>
-            PLANS & PRICING
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 4, color: "#8A7F72" }}
-            aria-label="Close"
-          >
-            ×
-          </button>
+        <div
+          role="dialog"
+          aria-labelledby="pricing-modal-title"
+          aria-modal="true"
+          className="bruddle"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            pointerEvents: "auto",
+            width: 920,
+            maxWidth: "calc(100vw - 32px)",
+            maxHeight: "min(90vh, calc(100dvh - 32px))",
+            overflow: "auto",
+            background: "#FAF4F0",
+            border: "var(--scout-border)",
+            borderRadius: radius.px,
+            boxShadow: "4px 4px 0 #161616",
+            padding: "24px 28px 28px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <span
+              id="pricing-modal-title"
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.label,
+                fontWeight: 600,
+                color: color.muted,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+              }}
+            >
+              Plans & pricing
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              style={{
+                background: "transparent",
+                border: "var(--scout-border)",
+                borderRadius: radius.px,
+                width: 32,
+                height: 32,
+                fontSize: 18,
+                lineHeight: 1,
+                cursor: "pointer",
+                color: "#161616",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <PricingPanel compact />
         </div>
-        <PricingPanel compact />
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

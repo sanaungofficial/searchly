@@ -260,15 +260,17 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
           : color.muted;
 
   const foundationMetrics = buildFoundationMetrics(profile, result);
-  const showGate = !subLoading && !hasAccess;
+  // Blur until Pro/admin is confirmed — never flash ungated content while /api/subscription loads
+  const showBlur = !hasAccess || subLoading;
+  const showOverlay = !subLoading && !hasAccess;
 
   return (
     <div style={{ position: "relative", paddingBottom: 40 }}>
       <div
         style={{
-          filter: showGate ? "blur(8px)" : "none",
-          pointerEvents: showGate ? "none" : "auto",
-          userSelect: showGate ? "none" : "auto",
+          filter: showBlur ? "blur(8px)" : "none",
+          pointerEvents: showBlur ? "none" : "auto",
+          userSelect: showBlur ? "none" : "auto",
         }}
       >
         {/* Hero score card */}
@@ -466,7 +468,7 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
         )}
       </div>
 
-      {showGate && <SubscribeGateOverlay onSubscribe={onSubscribe} />}
+      {showOverlay && <SubscribeGateOverlay onSubscribe={onSubscribe} />}
     </div>
   );
 }
