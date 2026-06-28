@@ -29,7 +29,7 @@ import { SectionHeadingWithHelp, SectionHelpTip } from "@/components/scout/secti
 import { DashboardGetStarted } from "@/components/scout/dashboard-get-started";
 import { DiscoveryScoreCard } from "@/components/scout/discovery-score-card";
 import {
-  recommendationTuningGaps,
+  recommendationTuningItems,
   recommendationTuningPct,
   isGoalsWizardDismissed,
   type MatchingTuningGapId,
@@ -120,11 +120,6 @@ function tuningInputFromProfile(p: ProfileData): RecommendationTuningInput {
   };
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return (parts[0]?.slice(0, 2) ?? "?").toUpperCase();
-}
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
@@ -349,11 +344,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   // ── Action items (gaps) ───────────────────────────────────────────────────
-  const gaps = tuningInput ? recommendationTuningGaps(tuningInput) : [];
+  const actionItems = tuningInput ? recommendationTuningItems(tuningInput) : [];
   const pct = tuningInput ? recommendationTuningPct(tuningInput) : 0;
   const barColor = pct >= 75 ? color.forest : pct >= 50 ? "#C4A86A" : "#C4574A";
 
-  const actionItemsAccordion = showClientCoachUi && pct < 100 && (
+  const actionItemsAccordion = showClientCoachUi && (
     <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
       <button
         type="button"
@@ -391,39 +386,56 @@ export function DashboardHomeTop({ isMobile }: Props) {
             <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
           </div>
 
-          {/* Gap items */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {gaps.slice(0, 5).map((gap) => (
+          {/* All items — completed stay visible with strikethrough */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {actionItems.map((item) => (
               <button
-                key={gap.id}
+                key={item.id}
                 type="button"
-                onClick={() => handleFixGap(gap.id)}
+                onClick={() => !item.complete && handleFixGap(item.id)}
+                disabled={item.complete}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
                   gap: 12,
                   width: "100%",
-                  padding: "10px 12px",
-                  border: "var(--scout-border)",
+                  padding: "10px 4px",
+                  border: "none",
                   borderRadius: "var(--scout-radius)",
-                  background: surface.inset,
-                  cursor: "pointer",
+                  background: "transparent",
+                  cursor: item.complete ? "default" : "pointer",
                   fontFamily: fontSans,
                   fontSize: T.caption,
-                  color: color.ink,
+                  color: item.complete ? color.muted : color.ink,
                   textAlign: "left",
+                  textDecoration: item.complete ? "line-through" : "none",
+                  opacity: item.complete ? 0.65 : 1,
                 }}
               >
-                <span>{gap.actionLabel}</span>
-                <span style={{ color: color.forest, fontWeight: 600, flexShrink: 0 }}>Add →</span>
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    border: item.complete ? "none" : "2px solid rgba(17,17,17,0.2)",
+                    background: item.complete ? color.forest : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    color: "#E8D5A3",
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.complete && "✓"}
+                </span>
+                <span style={{ flex: 1 }}>{item.actionLabel}</span>
+                {!item.complete && (
+                  <span style={{ color: color.forest, fontWeight: 600, flexShrink: 0 }}>→</span>
+                )}
               </button>
             ))}
-            {gaps.length > 5 && (
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: 0 }}>
-                +{gaps.length - 5} more in Profile → Preferences
-              </p>
-            )}
           </div>
         </>
       )}
@@ -682,22 +694,15 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   // ── Welcome header ────────────────────────────────────────────────────────
   const welcomeHeader = showClientCoachUi && profile && (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: isMobile ? 20 : 24 }}>
-      <div style={{ width: 44, height: 44, borderRadius: "50%", background: color.forest, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontSans, fontSize: 16, fontWeight: 700, flexShrink: 0, overflow: "hidden" }}>
-        {profile.avatarUrl ? (
-          <img src={profile.avatarUrl} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : initials(profile.name)}
-      </div>
-      <div>
-        <p style={{ ...bruddleHeadingStyle(isMobile ? "h4" : "h3"), margin: 0 }}>
-          Welcome, {profile.name.split(" ")[0]}
+    <div style={{ marginBottom: isMobile ? 20 : 24 }}>
+      <p style={{ ...bruddleHeadingStyle(isMobile ? "h4" : "h3"), margin: 0 }}>
+        Welcome, {profile.name.split(" ")[0]} 👋
+      </p>
+      {profile.headline && (
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
+          {profile.headline.slice(0, 80)}
         </p>
-        {profile.headline && (
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
-            {profile.headline.slice(0, 80)}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 
