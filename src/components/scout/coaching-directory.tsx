@@ -17,6 +17,7 @@ import {
 } from "@/lib/coach-directory";
 import { writeCoachMatchCache } from "@/lib/coach-match-cache";
 import type { CoachListItem, CoachSpotlightBadge } from "@/lib/coach-types";
+import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -143,7 +144,8 @@ function countActiveFilters(params: URLSearchParams): number {
 export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOpenCoach, myCoachIds: myCoachIdsProp, onMyCoachIdsChange }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userRole, isImpersonating } = useWorkspace();
+  const requireAuth = useRequireAuthRedirect();
+  const { userRole, isImpersonating, user, authChecked } = useWorkspace();
   const isAdmin = userRole === "ADMIN";
   const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
   const [allCoaches, setAllCoaches] = useState<CoachListItem[]>([]);
@@ -315,6 +317,10 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   };
 
   const toggleFollow = async (coach: CoachListItem) => {
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
     const slug = coach.slug ?? coach.id;
     const isFollowing = followedIds.has(coach.id);
     const res = await fetch(`/api/coaches/${slug}/follow`, { method: isFollowing ? "DELETE" : "POST" });
@@ -329,6 +335,10 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   };
 
   const toggleMyCoach = async (coach: CoachListItem) => {
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
     const isAssigned = myCoachIds.has(coach.id);
     if (!isAssigned && coach.isInternal) return;
     const res = isAssigned
