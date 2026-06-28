@@ -3,17 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
-import {
-  DiscoveryScoreCluster,
-  FoundationMetricWhyPopover,
-} from "@/components/scout/discovery-score-ui";
+import { DiscoveryScoreCluster } from "@/components/scout/discovery-score-ui";
 import { useSubscription } from "@/hooks/useSubscription";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import type { DiscoveryScoreInput, DiscoveryScoreResult } from "@/lib/discovery-score";
-import {
-  discoveryDimensionById,
-  tierPeerCopy,
-} from "@/lib/discovery-score";
+import { tierPeerCopy } from "@/lib/discovery-score";
 import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
 
 type ProfileInput = {
@@ -82,8 +76,6 @@ type FoundationMetric = {
   display: string;
   highImpact: boolean;
   detail: string;
-  hoverTitle?: string;
-  hoverBody?: string;
 };
 
 function buildFoundationMetrics(
@@ -94,12 +86,6 @@ function buildFoundationMetrics(
   const quality = result ? profileQualityScore(result.breakdown) : null;
   const rating = profile.linkedInAnalysisScore;
   const availability = availabilityScore(profile);
-  const breakdown = result?.breakdown;
-
-  const resumeDim = breakdown ? discoveryDimensionById("resumeStrength") : null;
-  const positioningDim = breakdown ? discoveryDimensionById("positioningClarity") : null;
-  const marketDim = breakdown ? discoveryDimensionById("marketReadiness") : null;
-  const signalsDim = breakdown ? discoveryDimensionById("competitiveSignals") : null;
 
   return [
     {
@@ -109,11 +95,6 @@ function buildFoundationMetrics(
       display: quality != null ? `${quality}%` : "—",
       highImpact: quality == null || quality < 60,
       detail: "Resume strength and positioning clarity",
-      hoverTitle: resumeDim && positioningDim ? "Profile quality breakdown" : "Profile quality",
-      hoverBody:
-        resumeDim && positioningDim && breakdown
-          ? `${resumeDim.label}: ${breakdown.resumeStrength}/${resumeDim.max} — ${resumeDim.description} ${positioningDim.label}: ${breakdown.positioningClarity}/${positioningDim.max} — ${positioningDim.description}`
-          : "Resume strength and positioning clarity across your Kimchi profile.",
     },
     {
       id: "completion",
@@ -122,8 +103,6 @@ function buildFoundationMetrics(
       display: `${completion}%`,
       highImpact: completion < 70,
       detail: "Fields filled across your Kimchi profile",
-      hoverTitle: "Profile completion",
-      hoverBody: "Weighted checklist — name, contact, resume, experience, skills, and job-search preferences.",
     },
     {
       id: "rating",
@@ -132,13 +111,6 @@ function buildFoundationMetrics(
       display: rating != null ? `${rating}%` : "—",
       highImpact: rating == null || rating < 60,
       detail: rating != null ? "From your LinkedIn analysis" : "Build your LinkedIn preview to score",
-      hoverTitle: signalsDim && breakdown ? signalsDim.label : "LinkedIn quality",
-      hoverBody:
-        signalsDim && breakdown
-          ? `${signalsDim.description} Competitive signals score: ${breakdown.competitiveSignals}/${signalsDim.max}.`
-          : rating != null
-            ? "From your LinkedIn analysis in Profile → LinkedIn."
-            : "Build your LinkedIn preview to unlock this score.",
     },
     {
       id: "availability",
@@ -147,11 +119,6 @@ function buildFoundationMetrics(
       display: `${availability}%`,
       highImpact: availability < 60,
       detail: "Timeline, status, and salary expectations",
-      hoverTitle: marketDim && breakdown ? marketDim.label : "Availability",
-      hoverBody:
-        marketDim && breakdown
-          ? `${marketDim.description} Market readiness score: ${breakdown.marketReadiness}/${marketDim.max}.`
-          : "Employment status, job timeline, and salary expectations recruiters look for.",
     },
   ];
 }
@@ -465,55 +432,49 @@ export function ProfileDiscoveryScorePanel({
             }}
           >
             {foundationMetrics.map((metric) => (
-              <FoundationMetricWhyPopover
-                key={metric.id}
-                title={metric.hoverTitle ?? metric.label}
-                body={metric.hoverBody ?? metric.detail}
-              >
-                <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>
-                      {metric.label}
-                    </p>
-                    {metric.highImpact && (
-                      <span
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: "0.06em",
-                          textTransform: "uppercase",
-                          color: "#b45309",
-                          background: "rgba(196,168,106,0.18)",
-                          padding: "3px 8px",
-                          borderRadius: "var(--scout-radius)",
-                          flexShrink: 0,
-                        }}
-                      >
-                        High impact
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: 400, color: color.forest, margin: "0 0 8px", lineHeight: 1 }}>
-                    {metric.display}
+              <ScoutBox key={metric.id} padding={isMobile ? "16px 18px" : "18px 20px"}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>
+                    {metric.label}
                   </p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
-                    {metric.detail}
-                  </p>
-                  {metric.value != null && (
-                    <div style={{ height: 4, borderRadius: "var(--scout-radius)", background: surface.inset, overflow: "hidden" }}>
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${Math.min(100, metric.value)}%`,
-                          background: metric.highImpact ? color.gold : color.forest,
-                          transition: "width 0.5s ease",
-                        }}
-                      />
-                    </div>
+                  {metric.highImpact && (
+                    <span
+                      style={{
+                        fontFamily: fontSans,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#b45309",
+                        background: "rgba(196,168,106,0.18)",
+                        padding: "3px 8px",
+                        borderRadius: "var(--scout-radius)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      High impact
+                    </span>
                   )}
-                </ScoutBox>
-              </FoundationMetricWhyPopover>
+                </div>
+                <p style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: 400, color: color.forest, margin: "0 0 8px", lineHeight: 1 }}>
+                  {metric.display}
+                </p>
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
+                  {metric.detail}
+                </p>
+                {metric.value != null && (
+                  <div style={{ height: 4, borderRadius: "var(--scout-radius)", background: surface.inset, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.min(100, metric.value)}%`,
+                        background: metric.highImpact ? color.gold : color.forest,
+                        transition: "width 0.5s ease",
+                      }}
+                    />
+                  </div>
+                )}
+              </ScoutBox>
             ))}
           </div>
         </div>
