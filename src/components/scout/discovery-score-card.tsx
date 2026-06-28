@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { useDiscoveryScore } from "@/hooks/use-discovery-score";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -59,6 +59,76 @@ export function DiscoveryScoreCard({
     tier === "building" ? "#C4A86A" :
     "#8A8178";
 
+  const showUnlock = !hasAccess && !subLoading;
+  const showRefresh = isLoggedIn;
+  const showActions = showRefresh || showUnlock;
+  const refreshDisabled = hasAccess && (loading || refreshing || subLoading);
+  const refreshLabel = hasAccess && (loading || refreshing) ? "…" : "Refresh";
+
+  const actionButtons = showActions ? (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        gap: 10,
+        alignItems: "center",
+        width: isMobile ? "100%" : undefined,
+      }}
+    >
+      {showRefresh && (
+        <ScoutSecondaryBtn
+          onClick={refresh}
+          disabled={refreshDisabled}
+          style={{
+            minHeight: 42,
+            whiteSpace: "nowrap",
+            paddingLeft: 16,
+            paddingRight: 16,
+            ...(isMobile && showUnlock ? { flex: 1 } : {}),
+            ...(isMobile && !showUnlock ? { width: "100%" } : {}),
+          }}
+        >
+          {refreshLabel}
+        </ScoutSecondaryBtn>
+      )}
+      {showUnlock && (
+        <ScoutPrimaryBtn
+          onClick={() => onSubscribe?.()}
+          style={{
+            minHeight: 42,
+            whiteSpace: "nowrap",
+            paddingLeft: 20,
+            paddingRight: 20,
+            ...(isMobile ? { flex: 1 } : {}),
+          }}
+        >
+          Unlock with PRO ✦
+        </ScoutPrimaryBtn>
+      )}
+    </div>
+  ) : null;
+
+  const whyLink = (
+    <button
+      type="button"
+      onClick={() => setWhyOpen(true)}
+      style={{
+        background: "none",
+        border: "none",
+        padding: 0,
+        fontFamily: fontSans,
+        fontSize: T.caption,
+        color: color.muted,
+        cursor: "pointer",
+        textDecoration: "underline",
+        textUnderlineOffset: 3,
+        ...(isMobile ? { textAlign: "center" as const } : {}),
+      }}
+    >
+      Why is this score important?
+    </button>
+  );
+
   return (
     <>
       <ScoutBox
@@ -102,32 +172,9 @@ export function DiscoveryScoreCard({
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: 0, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Discovery Score
-              </p>
-              {isLoggedIn && (
-                <button
-                  type="button"
-                  onClick={refresh}
-                  disabled={loading || refreshing || subLoading}
-                  style={{
-                    padding: "4px 10px",
-                    background: "transparent",
-                    color: color.forest,
-                    border: "1.5px solid rgba(26,58,47,0.2)",
-                    borderRadius: "var(--scout-radius)",
-                    fontFamily: fontSans,
-                    fontSize: T.label,
-                    fontWeight: 600,
-                    cursor: loading || refreshing || subLoading ? "not-allowed" : "pointer",
-                    opacity: loading || refreshing || subLoading ? 0.65 : 1,
-                  }}
-                >
-                  {loading || refreshing ? "…" : "Refresh"}
-                </button>
-              )}
-            </div>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "0 0 4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Discovery Score
+            </p>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
               {loading && hasAccess && isLoggedIn ? (
                 <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? T.h2 : T.h1, fontWeight: 400, color: color.ink, lineHeight: 1 }}>
@@ -167,58 +214,18 @@ export function DiscoveryScoreCard({
             )}
           </div>
 
-          {!isMobile && (
+          {!isMobile && showActions && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, flexShrink: 0, alignItems: "flex-end" }}>
-              <ScoutPrimaryBtn
-                onClick={() => onSubscribe?.()}
-                style={{ minHeight: 42, whiteSpace: "nowrap", paddingLeft: 20, paddingRight: 20 }}
-              >
-                Unlock with PRO ✦
-              </ScoutPrimaryBtn>
-              <button
-                type="button"
-                onClick={() => setWhyOpen(true)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  color: color.muted,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                Why is this score important?
-              </button>
+              {actionButtons}
+              {whyLink}
             </div>
           )}
         </div>
 
         {isMobile && (
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-            <ScoutPrimaryBtn onClick={() => onSubscribe?.()} style={{ minHeight: 42, width: "100%" }}>
-              Unlock with PRO ✦
-            </ScoutPrimaryBtn>
-            <button
-              type="button"
-              onClick={() => setWhyOpen(true)}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                color: color.muted,
-                cursor: "pointer",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-                textAlign: "center",
-              }}
-            >
-              Why is this score important?
-            </button>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, alignItems: "stretch" }}>
+            {actionButtons}
+            {whyLink}
           </div>
         )}
 

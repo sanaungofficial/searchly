@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { DiscoveryScoreCluster } from "@/components/scout/discovery-score-ui";
 import { useDiscoveryScore } from "@/hooks/use-discovery-score";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -381,25 +381,13 @@ export function ProfileDiscoveryScorePanel({
                   Discovery Score
                 </p>
                 {isLoggedIn && (
-                  <button
-                    type="button"
+                  <ScoutSecondaryBtn
                     onClick={refresh}
-                    disabled={loading || refreshing || subLoading}
-                    style={{
-                      padding: "6px 12px",
-                      background: "transparent",
-                      color: color.forest,
-                      border: border.lineStrong,
-                      borderRadius: "var(--scout-radius)",
-                      fontFamily: fontSans,
-                      fontSize: T.label,
-                      fontWeight: 600,
-                      cursor: loading || refreshing || subLoading ? "not-allowed" : "pointer",
-                      opacity: loading || refreshing || subLoading ? 0.65 : 1,
-                    }}
+                    disabled={hasAccess && (loading || refreshing || subLoading)}
+                    style={{ padding: "6px 12px", fontSize: T.label }}
                   >
-                    {loading || refreshing ? "Loading…" : "Refresh"}
-                  </button>
+                    {hasAccess && (loading || refreshing) ? "Loading…" : "Refresh"}
+                  </ScoutSecondaryBtn>
                 )}
               </div>
               {fetchedAt && hasAccess && !loading && (
