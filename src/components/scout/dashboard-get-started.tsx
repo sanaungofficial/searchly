@@ -10,7 +10,7 @@ import {
   readOnboardingFinishPayload,
   type OnboardingFinishPayload,
 } from "@/lib/onboarding-finish";
-import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
@@ -68,7 +68,7 @@ function ActivityFeedItem({
     color: stageColor,
     background: surface.inset,
     padding: "4px 10px",
-    border: border.line,
+    border: "var(--scout-border)",
     borderRadius: "var(--scout-radius)",
     fontWeight: 600,
     textTransform: "uppercase",
@@ -86,7 +86,7 @@ function ActivityFeedItem({
           textAlign: "left",
           padding: "14px 16px",
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           boxShadow: "var(--scout-shadow-card)",
           cursor: "pointer",
@@ -132,7 +132,7 @@ function ActivityFeedItem({
         width: "100%",
         padding: "14px 18px",
         background: surface.card,
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: "var(--scout-radius)",
         boxShadow: "var(--scout-shadow-card)",
         cursor: "pointer",
@@ -204,7 +204,7 @@ export function DashboardGetStarted({ isMobile }: Props) {
   return (
     <div
       style={{
-        borderTop: border.line,
+        borderTop: "var(--scout-border)",
         paddingTop: isMobile ? 24 : 32,
         paddingBottom: isMobile ? 24 : 32,
         marginTop: isMobile ? 8 : 0,
@@ -234,10 +234,10 @@ export function DashboardGetStarted({ isMobile }: Props) {
           }}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 6px" }}>
+            <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 6px" }}>
               {finishJobLabel ? "Pick up where you left off" : "Your resume is ready"}
             </p>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.55 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55 }}>
               {finishJobLabel
                 ? `You were looking at ${finishJobLabel}. Open it to see how you match, or save it to your list.`
                 : "Open your resume to see how you stack up against a job description, or start tailoring it."}
@@ -304,10 +304,10 @@ export function DashboardGetStarted({ isMobile }: Props) {
           ].map((card) => (
             <ScoutBox key={card.title} padding={isMobile ? "18px 16px" : "20px 20px"} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 6px" }}>
+                <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 6px" }}>
                   {card.title}
                 </p>
-                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.55 }}>
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55 }}>
                   {card.body}
                 </p>
               </div>

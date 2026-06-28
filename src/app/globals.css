@@ -58,6 +58,7 @@
   --scout-stack-plate: #D4CFC4;
   --scout-shadow-card: 0 1px 2px rgba(17, 17, 17, 0.04), 0 4px 12px rgba(17, 17, 17, 0.06);
   --scout-shadow-card-strong: 0 2px 4px rgba(17, 17, 17, 0.05), 0 8px 20px rgba(17, 17, 17, 0.07);
+  --scout-border: 1px solid rgba(17,17,17,0.14);
   --background: var(--scout-page);
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
@@ -211,6 +212,47 @@
 @keyframes pulse {
   0%, 100% { opacity: 0.35; }
   50%      { opacity: 1; }
+}
+
+/* ─────────────────────────────────────────────
+   Auth (login / signup) — split two-column layout
+   ───────────────────────────────────────────── */
+.auth-split-outer {
+  display: flex;
+  min-height: 100vh;
+}
+
+.auth-split-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--scout-page);
+  font-family: var(--font-ui);
+  box-sizing: border-box;
+}
+
+.auth-benefits-panel {
+  width: 460px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .auth-benefits-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .auth-split-form {
+    justify-content: flex-start;
+    padding: 32px 16px 40px;
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -416,4 +458,26 @@
   .onboarding-screen-gap {
     gap: 20px !important;
   }
+}
+
+/* ─────────────────────────────────────────────
+   Bruddle design scope — zero-radius, bold borders
+   ───────────────────────────────────────────── */
+.bruddle {
+  --scout-radius: 0px;
+  --radius: 0px;
+  --scout-page: #FAF4F0;
+  --scout-surface: #FFFFFF;
+  --scout-inset: #F0ECE8;
+  --scout-shadow-card: none;
+  --scout-shadow-card-strong: none;
+  --font-ui: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
+  --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --type-body: 16px;
+  --type-body-sm: 14px;
+  --type-caption: 14px;
+  --type-label: 12px;
+  --scout-border: 1.5px solid #161616;
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
 }

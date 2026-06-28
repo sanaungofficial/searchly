@@ -47,16 +47,15 @@ import {
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
 import { CompanyLogo } from "./company-logo";
-import { ScoutBox, ScoutInsetBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "./scout-box";
-import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
+import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
+import { ScoreExplainerLabel } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
-import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
-import { matchScoreStyle } from "@/lib/match-score";
+import { matchScoreStyle, isLowQualityMatchReason } from "@/lib/match-score";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
-import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
+import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
   RecommendedFiltersDrawer,
   RecommendedQuickFiltersBar,
@@ -290,7 +289,7 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.caption,
@@ -343,6 +342,417 @@ function recommendedDedupeKey(job: VectorMatchedJob): string {
   });
 }
 
+function CircularMatchScore({ score }: { score: number }) {
+  const radius = 30;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (score / 100) * circumference;
+  return (
+    <div style={{ position: "relative", width: 80, height: 80 }}>
+      <svg width="80" height="80" viewBox="0 0 80 80" style={{ display: "block" }}>
+        <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke="#44E8A4"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={dashOffset}
+          transform="rotate(-90 40 40)"
+        />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontFamily: fontMono, fontSize: 17, fontWeight: 700, color: "#FFFFFF", lineHeight: 1 }}>
+          {score}<span style={{ fontSize: 11 }}>%</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function WhyMatchPanel({ reasons, matchedSkills }: { reasons: string[]; matchedSkills: string[] }) {
+  return (
+    <div style={{ padding: "4px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M7.5 1L9 6H14.5L10 9.5L11.5 14.5L7.5 11.5L3.5 14.5L5 9.5L0.5 6H6L7.5 1Z" fill="#44E8A4" stroke="#44E8A4" strokeWidth="0.5" strokeLinejoin="round"/>
+        </svg>
+        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
+          Why This Job Is A Match
+        </span>
+      </div>
+      {reasons.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: matchedSkills.length > 0 ? 14 : 0 }}>
+          {reasons.map((r, i) => (
+            <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+              <span style={{ color: "#44E8A4", fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>✓</span>
+              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.45 }}>{r}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {matchedSkills.length > 0 && (
+        <div>
+          <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 7px" }}>
+            Matched Skills
+          </p>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {matchedSkills.map((skill) => (
+              <span key={skill} style={{ display: "inline-block", padding: "3px 10px", fontSize: T.label, fontWeight: 600, color: "#44E8A4", background: "rgba(68,232,164,0.12)", border: "1px solid rgba(68,232,164,0.35)", borderRadius: 4 }}>
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IconBriefcase() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="4" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M4.5 4V3a2 2 0 0 1 4 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="1" y1="7.5" x2="12" y2="7.5" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+function IconBarChart() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="7" width="2.5" height="5" rx="0.5" fill="currentColor"/>
+      <rect x="5" y="4" width="2.5" height="8" rx="0.5" fill="currentColor"/>
+      <rect x="9" y="1" width="2.5" height="11" rx="0.5" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function IconHome() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M1.5 6L6.5 1.5L11.5 6V12H8.5V9H4.5V12H1.5V6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="1" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="4" y1="1" x2="4" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="9" y1="1" x2="9" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function IconDollar() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M6.5 3V10M4.5 8.5C4.5 8.5 5 9.5 6.5 9.5C8 9.5 8.5 8.5 8.5 7.5C8.5 6 6.5 6 6.5 6C6.5 6 4.5 6 4.5 4.5C4.5 3.5 5 3 6.5 3C8 3 8.5 4 8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function MetadataGrid({
+  row,
+  isNetwork: _isNetwork,
+  networkJob: _networkJob,
+}: {
+  row: UnifiedListing;
+  isNetwork: boolean;
+  networkJob?: NetworkMatchedJob;
+}) {
+  const c = row.cached;
+  const items: { icon: JSX.Element; label: string }[] = [];
+  if (c.locationType) items.push({ icon: <IconHome />, label: c.locationType });
+  else if (c.remote) items.push({ icon: <IconHome />, label: "Remote" });
+  if (c.jobType) items.push({ icon: <IconBriefcase />, label: c.jobType });
+  if (c.seniority) items.push({ icon: <IconBarChart />, label: c.seniority });
+  if (c.salary) items.push({ icon: <IconDollar />, label: c.salary });
+  if (c.experienceLevel) items.push({ icon: <IconCalendar />, label: c.experienceLevel });
+  if (!items.length) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 18px", marginTop: 10 }}>
+      {items.map(({ icon, label }, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: color.muted }}>
+          <span style={{ display: "flex", flexShrink: 0, opacity: 0.65 }}>{icon}</span>
+          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecommendedJobCard({
+  row,
+  savingKey,
+  networkSavingId,
+  onOpenRecommended,
+  onSaveJob,
+  onOpenNetworkJob,
+  onSaveNetworkJob,
+  setSavingKey,
+  setNetworkSavingId,
+}: {
+  row: UnifiedListing;
+  savingKey: string | null;
+  networkSavingId: string | null;
+  onOpenRecommended: (job: VectorMatchedJob) => void;
+  onSaveJob: (job: VectorMatchedJob) => Promise<void>;
+  onOpenNetworkJob?: (job: NetworkJobListing) => void;
+  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
+  setSavingKey: (key: string | null) => void;
+  setNetworkSavingId: (id: string | null) => void;
+}) {
+  const [showWhy, setShowWhy] = useState(false);
+  const isNetwork = Boolean(row._networkJob);
+  const networkJob = row._networkJob;
+
+  const handleOpen = () => {
+    if (isNetwork && networkJob && onOpenNetworkJob) {
+      onOpenNetworkJob(networkJob);
+    } else {
+      onOpenRecommended(roleListingToVectorMatchedJob(row));
+    }
+  };
+
+  const handleSave = () => {
+    if (isNetwork && networkJob && onSaveNetworkJob) {
+      const nid = networkJob.id ?? networkJob.externalId ?? row.dedupeKey;
+      setNetworkSavingId(nid);
+      onSaveNetworkJob(networkJob).finally(() => setNetworkSavingId(null));
+    } else {
+      const matchJob = roleListingToVectorMatchedJob(row);
+      setSavingKey(row.dedupeKey);
+      onSaveJob(matchJob).finally(() => setSavingKey(null));
+    }
+  };
+
+  const isSaving = isNetwork
+    ? networkSavingId === (networkJob?.id ?? networkJob?.externalId ?? row.dedupeKey)
+    : savingKey === row.dedupeKey;
+
+  const matchScore = row.matchScore ?? 0;
+  const matchLabel = row.matchLabel ?? "";
+  const reasons = (row.matchReasons ?? []).filter((r) => !isLowQualityMatchReason(r)).slice(0, 4);
+  const matchedSkills = (row.matchedSkills ?? []).slice(0, 6);
+  const hasWhyContent = reasons.length > 0 || matchedSkills.length > 0;
+
+  const score = matchScoreStyle(matchScore);
+  const panelBg = matchScore >= 75 ? "#0D2419" : matchScore >= 60 ? "#1F1508" : "#1A1A1A";
+
+  const postedDays = !isNetwork && row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
+  const postedText =
+    postedDays === null
+      ? null
+      : postedDays === 0
+        ? "Posted today"
+        : postedDays === 1
+          ? "Posted 1 day ago"
+          : `Posted ${postedDays} days ago`;
+  const isRecentPost = postedDays !== null && postedDays <= 3;
+
+  return (
+    <div
+      key={row.dedupeKey}
+      style={{
+        display: "flex",
+        border: "1.5px solid #161616",
+        background: surface.card,
+        overflow: "hidden",
+      }}
+    >
+      {/* Left: job content area — swaps to "Why Match" when hovering score panel */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={handleOpen}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleOpen();
+            }
+          }}
+          style={{ flex: 1, padding: 18, cursor: "pointer" }}
+        >
+          {showWhy && hasWhyContent ? (
+            <WhyMatchPanel reasons={reasons} matchedSkills={matchedSkills} />
+          ) : (
+            <>
+              {/* Top badge row */}
+              {(isNetwork || postedText || row.isTrackedCompany) && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                  {isNetwork && networkJob?.sharedAt ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 9px",
+                        fontSize: T.label,
+                        fontWeight: 500,
+                        color: color.muted,
+                        background: "rgba(0,0,0,0.04)",
+                        border: "1px solid rgba(0,0,0,0.07)",
+                        borderRadius: 4,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
+                    </span>
+                  ) : postedText ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 9px",
+                        fontSize: T.label,
+                        fontWeight: 500,
+                        color: isRecentPost ? color.forest : color.muted,
+                        background: isRecentPost ? "rgba(26,58,47,0.07)" : "rgba(0,0,0,0.04)",
+                        border: `1px solid ${isRecentPost ? "rgba(26,58,47,0.15)" : "rgba(0,0,0,0.07)"}`,
+                        borderRadius: 4,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {postedText}
+                    </span>
+                  ) : null}
+                  {isNetwork && (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 9px",
+                        fontSize: T.label,
+                        fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                        color: "#7A4F00",
+                        background: "rgba(196,140,40,0.14)",
+                        border: "1px solid rgba(196,140,40,0.35)",
+                        borderRadius: 4,
+                      }}
+                    >
+                      {NETWORK_JOB_CLIENT_BADGE}
+                    </span>
+                  )}
+                  {row.isTrackedCompany && (
+                    <span
+                      style={{
+                        ...scoutInsetChipStyle,
+                        display: "inline-block",
+                        padding: "3px 9px",
+                        fontSize: T.label,
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: color.forest,
+                        background: "rgba(26,58,47,0.08)",
+                        border: border.lineStrong,
+                        borderRadius: 4,
+                      }}
+                    >
+                      Watchlist
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* Logo + Title + Company */}
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <CompanyLogo {...(isNetwork ? { name: row.companyName, size: 44 } : { ...companyLogoFromJobData(row.companyName, row.cached), size: 44 })} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                    {row.companyName}
+                    {row.location ? ` · ${row.location}` : ""}
+                  </p>
+                  <MetadataGrid row={row} isNetwork={isNetwork} networkJob={networkJob} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        <div
+          style={{ display: "flex", gap: 8, padding: "0 18px 16px", flexWrap: "wrap", alignItems: "center" }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            style={{
+              padding: "8px 16px",
+              background: isSaving ? "#888" : "#AE7AFF",
+              color: "#FFFFFF",
+              border: "1.5px solid #161616",
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
+              cursor: isSaving ? "not-allowed" : "pointer",
+              opacity: isSaving ? 0.65 : 1,
+            }}
+          >
+            {isSaving ? "Saving…" : "Save job"}
+          </button>
+          {row.url && (
+            <a
+              href={row.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
+            >
+              Open posting ↗
+            </a>
+          )}
+        </div>
+      </div>
+      {/* Right: dark score panel — hover triggers "Why Match" in left content */}
+      {matchScore > 0 && (
+        <div
+          onMouseEnter={() => setShowWhy(true)}
+          onMouseLeave={() => setShowWhy(false)}
+          style={{
+            width: 120,
+            flexShrink: 0,
+            background: panelBg,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            padding: "20px 12px",
+            cursor: "default",
+            borderLeft: "1.5px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          <CircularMatchScore score={matchScore} />
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#FFFFFF",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              textAlign: "center",
+              margin: 0,
+            }}
+          >
+            {matchLabel} Match
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecommendedResultsList({
   listings,
   savingKey,
@@ -368,7 +778,7 @@ function RecommendedResultsList({
 }) {
   if (!listings.length) {
     return (
-      <ScoutBox style={{ padding: 40, textAlign: "center" }}>
+      <ScoutBox style={{ padding: 40, textAlign: "center", border: "1.5px solid #161616" }}>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>{emptyMessage}</p>
       </ScoutBox>
     );
@@ -376,143 +786,20 @@ function RecommendedResultsList({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {listings.map((row) => {
-        const isNetwork = Boolean(row._networkJob);
-        const networkJob = row._networkJob;
-
-        const handleOpen = () => {
-          if (isNetwork && networkJob && onOpenNetworkJob) {
-            onOpenNetworkJob(networkJob);
-          } else {
-            onOpenRecommended(roleListingToVectorMatchedJob(row));
-          }
-        };
-
-        const handleSave = () => {
-          if (isNetwork && networkJob && onSaveNetworkJob) {
-            const nid = networkJob.id ?? networkJob.externalId ?? row.dedupeKey;
-            setNetworkSavingId(nid);
-            onSaveNetworkJob(networkJob).finally(() => setNetworkSavingId(null));
-          } else {
-            const matchJob = roleListingToVectorMatchedJob(row);
-            setSavingKey(row.dedupeKey);
-            onSaveJob(matchJob).finally(() => setSavingKey(null));
-          }
-        };
-
-        const isSaving = isNetwork
-          ? networkSavingId === (networkJob?.id ?? networkJob?.externalId ?? row.dedupeKey)
-          : savingKey === row.dedupeKey;
-
-        const matchScore = row.matchScore ?? 0;
-        const matchLabel = row.matchLabel ?? "";
-        const score = matchScoreStyle(matchScore);
-
-        return (
-          <ScoutBox key={row.dedupeKey} padding={18}>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={handleOpen}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleOpen();
-                }
-              }}
-              style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
-            >
-              <CompanyLogo {...(isNetwork ? { name: row.companyName, size: 44 } : { ...companyLogoFromJobData(row.companyName, row.cached), size: 44 })} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
-                      {row.companyName}
-                      {row.location ? ` · ${row.location}` : ""}
-                    </p>
-                    <div style={{ marginBottom: 8 }}>
-                      {isNetwork && networkJob?.sharedAt ? (
-                        <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
-                          Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
-                        </span>
-                      ) : (
-                        <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {isNetwork && (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "3px 10px",
-                            fontSize: T.bodySm,
-                            fontWeight: 700,
-                            letterSpacing: "0.04em",
-                            textTransform: "uppercase",
-                            color: "#7A4F00",
-                            background: "rgba(196,140,40,0.18)",
-                            border: "1.5px solid rgba(196,140,40,0.5)",
-                            borderRadius: "var(--scout-radius)",
-                          }}
-                        >
-                          {NETWORK_JOB_CLIENT_BADGE}
-                        </span>
-                      )}
-                      {row.isTrackedCompany && (
-                        <span
-                          style={{
-                            ...scoutInsetChipStyle,
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            fontSize: T.label,
-                            fontWeight: 600,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            color: color.forest,
-                            background: "rgba(26,58,47,0.08)",
-                            border: border.lineStrong,
-                          }}
-                        >
-                          Watchlist
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {matchScore > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                      <ScoreExplainerPopover variant={isNetwork ? "network-match" : "vector-match"} align="right" />
-                      <MatchScoreBadge score={matchScore} label={matchLabel} />
-                      <ScoreSourceHint />
-                    </div>
-                  )}
-                </div>
-                {matchScore > 0 && <MatchFitCallout job={isNetwork ? networkJob! : roleListingToVectorMatchedJob(row)} />}
-              </div>
-            </div>
-            <div
-              style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <ScoutPrimaryBtn onClick={handleSave} disabled={isSaving}>
-                {isSaving ? "Saving…" : "Save job"}
-              </ScoutPrimaryBtn>
-              {row.url && (
-                <a
-                  href={row.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
-                >
-                  Open posting ↗
-                </a>
-              )}
-            </div>
-          </ScoutBox>
-        );
-      })}
+      {listings.map((row) => (
+        <RecommendedJobCard
+          key={row.dedupeKey}
+          row={row}
+          savingKey={savingKey}
+          networkSavingId={networkSavingId}
+          onOpenRecommended={onOpenRecommended}
+          onSaveJob={onSaveJob}
+          onOpenNetworkJob={onOpenNetworkJob}
+          onSaveNetworkJob={onSaveNetworkJob}
+          setSavingKey={setSavingKey}
+          setNetworkSavingId={setNetworkSavingId}
+        />
+      ))}
     </div>
   );
 }
@@ -941,9 +1228,26 @@ export function PipelineRecommendedSection({
               </p>
             )}
           </div>
-          <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating} style={{ alignSelf: isMobile ? "flex-start" : "flex-end" }}>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading || revalidating}
+            style={{
+              alignSelf: isMobile ? "flex-start" : "flex-end",
+              padding: "8px 16px",
+              background: "transparent",
+              color: "#161616",
+              border: "1.5px solid #161616",
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
+              cursor: loading || revalidating ? "not-allowed" : "pointer",
+              opacity: loading || revalidating ? 0.65 : 1,
+            }}
+          >
             {loading || revalidating ? "Loading…" : "Refresh"}
-          </ScoutSecondaryBtn>
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexDirection: isMobile ? "column" : "row" }}>
@@ -961,13 +1265,27 @@ export function PipelineRecommendedSection({
             aria-label="Search roles"
             maxLength={400}
           />
-          <ScoutPrimaryBtn
+          <button
+            type="button"
             onClick={() => applyFilters()}
             disabled={loading || revalidating}
-            style={{ flexShrink: 0, minWidth: isMobile ? undefined : 96 }}
+            style={{
+              flexShrink: 0,
+              minWidth: isMobile ? undefined : 96,
+              padding: "8px 16px",
+              background: "#AE7AFF",
+              color: "#FFFFFF",
+              border: "1.5px solid #161616",
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
+              cursor: loading || revalidating ? "not-allowed" : "pointer",
+              opacity: loading || revalidating ? 0.65 : 1,
+            }}
           >
             {loading || revalidating ? "Loading…" : "Search"}
-          </ScoutPrimaryBtn>
+          </button>
         </div>
 
         <div

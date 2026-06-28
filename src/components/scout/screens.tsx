@@ -381,7 +381,7 @@ export function ScreenWelcome({
             title="Start from scratch"
             description="We'll walk you through it — type your answers or talk to Kimchi on the next step."
             selected={false}
-            onClick={() => setPath("scratch")}
+            onClick={onStartFromScratch}
           />
         </div>
       )}
@@ -830,6 +830,14 @@ interface ReadBackProps {
   onConfirm: (data: ReadBackData | null) => void;
   onRefine: () => void;
   onSkip: () => void;
+  /** When provided, replaces the "Try a different resume" refine button with a back button */
+  onBack?: () => void;
+  /** Override the confirm button label */
+  confirmLabel?: string;
+  /** Override the hero title */
+  title?: string;
+  /** Override the hero body */
+  body?: string;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -928,7 +936,7 @@ function fitColor(fit: string): string {
   return "#8A7A6A";
 }
 
-export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: ReadBackProps) {
+export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBack, confirmLabel, title, body }: ReadBackProps) {
   const loading = status === "loading";
   const pending = status === "pending";
   const skipped = status === "skipped";
@@ -937,8 +945,8 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <OnboardingEyebrowIntro
         eyebrow="Your read"
-        title="Here's what stood out."
-        body="From your resume — does this sound right?"
+        title={title ?? "Here's what stood out."}
+        body={body ?? "Based on what you shared — does this sound right?"}
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s", minHeight: loading || pending ? 280 : undefined }}>
@@ -1151,29 +1159,53 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              That&apos;s right →
+              {confirmLabel ?? "That's right →"}
             </button>
-            <button
-              className="onboarding-cta"
-              onClick={onRefine}
-              style={{
-                padding: "14px 24px",
-                background: ONBOARDING_FIELD_BG,
-                color: ONBOARDING_TEXT,
-                border: ONBOARDING_FIELD_BORDER,
-                borderRadius: "var(--scout-radius)",
-                fontFamily: "var(--font-ui)",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "background 0.15s",
-                flex: 1,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
-            >
-              Try a different resume
-            </button>
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                style={{
+                  padding: "14px 24px",
+                  background: ONBOARDING_FIELD_BG,
+                  color: ONBOARDING_TEXT,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "background 0.15s",
+                  flex: 1,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+              >
+                ← Go back
+              </button>
+            ) : (
+              <button
+                className="onboarding-cta"
+                onClick={onRefine}
+                style={{
+                  padding: "14px 24px",
+                  background: ONBOARDING_FIELD_BG,
+                  color: ONBOARDING_TEXT,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "background 0.15s",
+                  flex: 1,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+              >
+                Try a different resume
+              </button>
+            )}
           </div>
           <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
             Skip for now
@@ -1587,6 +1619,7 @@ function TargetRoleAutocomplete({
   const tryAdd = (raw: string) => {
     const normalized = normalizeCustomRoleTitle(raw);
     if (!normalized || selectedTitles.includes(normalized)) return false;
+    if (selectedTitles.length >= 10) return false;
     onAddTitle(normalized);
     setQuery("");
     setOpen(false);
@@ -1811,7 +1844,7 @@ export function ScreenTargetRoles({
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
         title="What roles are you targeting?"
-        body="Pick up to 3 titles. We use these to find matches and score how well you fit."
+        body="These are based on your background — add or remove as you like."
       />
 
       <div
@@ -2532,47 +2565,36 @@ function onboardingListOption(
 
 export function ScreenOnboardingLocation({
   targetMarket,
-  fullyRemote,
   locationHint,
   onTargetMarketChange,
-  onFullyRemoteChange,
   onContinue,
-  onSkip,
   onBack,
 }: {
   targetMarket: string;
-  fullyRemote: boolean;
   locationHint?: string | null;
   onTargetMarketChange: (v: string) => void;
-  onFullyRemoteChange: (v: boolean) => void;
   onContinue: () => void;
-  onSkip: () => void;
   onBack: () => void;
 }) {
   return (
     <ScreenOnboardingQuestion
       title="Where are you based?"
-      body="We prioritize roles near you unless you opt into relocation later."
+      body="We prioritize roles near you — set your remote preference on the next step."
       onContinue={onContinue}
-      onSkip={onSkip}
       onBack={onBack}
+      continueDisabled={!targetMarket.trim()}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {aboutYouChipBtn(fullyRemote, () => onFullyRemoteChange(!fullyRemote), "Fully remote — no fixed city")}
-        {!fullyRemote && (
-          <LocationAutocompleteInput
-            value={targetMarket}
-            onChange={onTargetMarketChange}
-            locationHint={locationHint}
-            placeholder="Start typing a city…"
-            fieldBorder={ONBOARDING_FIELD_BORDER}
-            fieldBg={ONBOARDING_FIELD_BG}
-            textColor={ONBOARDING_TEXT}
-            textSecondary={ONBOARDING_TEXT_SECONDARY}
-            labelColor={ONBOARDING_LABEL_COLOR}
-          />
-        )}
-      </div>
+      <LocationAutocompleteInput
+        value={targetMarket}
+        onChange={onTargetMarketChange}
+        locationHint={locationHint}
+        placeholder="Start typing a city…"
+        fieldBorder={ONBOARDING_FIELD_BORDER}
+        fieldBg={ONBOARDING_FIELD_BG}
+        textColor={ONBOARDING_TEXT}
+        textSecondary={ONBOARDING_TEXT_SECONDARY}
+        labelColor={ONBOARDING_LABEL_COLOR}
+      />
     </ScreenOnboardingQuestion>
   );
 }
@@ -2752,15 +2774,126 @@ export function ScreenOnboardingTimeline({
   );
 }
 
+function AvoidRoleAutocomplete({
+  deprioritizedRoles,
+  onAddRole,
+  onRemoveRole,
+}: {
+  deprioritizedRoles: string[];
+  onAddRole: (role: string) => void;
+  onRemoveRole: (role: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [options, setOptions] = useState<string[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const q = query.trim();
+    if (q.length < 2) { setOptions([]); setSearching(false); return; }
+    setSearching(true);
+    timerRef.current = setTimeout(() => {
+      void fetch(`/api/onboarding/search-roles?q=${encodeURIComponent(q)}`)
+        .then((res) => (res.ok ? res.json() : { titles: [] }))
+        .then((data: { titles: string[] }) => {
+          setOptions((data.titles ?? []).filter((t) => !deprioritizedRoles.includes(t)));
+          setSearching(false);
+          setOpen(true);
+        })
+        .catch(() => setSearching(false));
+    }, 300);
+  }, [query, deprioritizedRoles]);
+
+  useEffect(() => { setHighlight(0); }, [options]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const pick = (title: string) => {
+    if (!deprioritizedRoles.includes(title)) onAddRole(title);
+    setQuery(""); setOptions([]); setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div ref={containerRef}>
+      {deprioritizedRoles.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {deprioritizedRoles.map((role) => (
+            <span key={role} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(196,87,74,0.1)", border: "1.5px solid rgba(196,87,74,0.5)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#C4574A" }}>
+              {role}
+              <button type="button" onClick={() => onRemoveRole(role)} aria-label={`Remove ${role}`} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 16, lineHeight: 1, color: "#C4574A" }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ position: "relative" }}>
+        <label htmlFor="avoid-role-input" style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 10 }}>
+          Search roles to avoid
+        </label>
+        <input
+          id="avoid-role-input"
+          ref={inputRef}
+          type="text"
+          value={query}
+          placeholder="e.g. Sales, Customer Success…"
+          autoComplete="off"
+          onFocus={() => { if (options.length > 0) setOpen(true); }}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((i) => Math.min(i + 1, options.length - 1)); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((i) => Math.max(i - 1, 0)); }
+            else if (e.key === "Enter") { e.preventDefault(); if (options[highlight]) pick(options[highlight]); }
+            else if (e.key === "Escape") setOpen(false);
+          }}
+          style={{ width: "100%", minHeight: 48, padding: "12px 14px", border: ONBOARDING_FIELD_BORDER, borderRadius: "var(--scout-radius)", background: ONBOARDING_FIELD_BG, fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 500, color: ONBOARDING_TEXT, boxSizing: "border-box", outline: "none" }}
+        />
+        {searching && (
+          <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY }}>Searching…</span>
+        )}
+        {open && options.length > 0 && (
+          <ul role="listbox" style={{ position: "absolute", zIndex: 20, top: "calc(100% + 6px)", left: 0, right: 0, margin: 0, padding: 6, listStyle: "none", background: "#FFFFFF", border: "1px solid rgba(26,58,47,0.16)", borderRadius: "var(--scout-radius)", boxShadow: "0 8px 24px rgba(26,58,47,0.12)", maxHeight: 240, overflowY: "auto" }}>
+            {options.map((title, index) => (
+              <li key={title} role="option" aria-selected={index === highlight}>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(title)} onMouseEnter={() => setHighlight(index)} style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderRadius: "var(--scout-radius)", background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, cursor: "pointer" }}>
+                  {title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {!query && deprioritizedRoles.length === 0 && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+          Start typing to search roles — leave blank if you&apos;re open to everything.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function ScreenOnboardingAvoidRoles({
   deprioritizedRoles,
-  onToggleAvoidRole,
+  onAddAvoidRole,
+  onRemoveAvoidRole,
   onContinue,
   onSkip,
   onBack,
 }: {
   deprioritizedRoles: string[];
-  onToggleAvoidRole: (role: string) => void;
+  onAddAvoidRole: (role: string) => void;
+  onRemoveAvoidRole: (role: string) => void;
   onContinue: () => void;
   onSkip: () => void;
   onBack: () => void;
@@ -2774,14 +2907,171 @@ export function ScreenOnboardingAvoidRoles({
       onBack={onBack}
       skipLabel="None — continue"
     >
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {ONBOARDING_AVOID_ROLE_SUGGESTIONS.map((role) =>
-          aboutYouChipBtn(deprioritizedRoles.includes(role), () => onToggleAvoidRole(role), role),
-        )}
-      </div>
+      <AvoidRoleAutocomplete
+        deprioritizedRoles={deprioritizedRoles}
+        onAddRole={onAddAvoidRole}
+        onRemoveRole={onRemoveAvoidRole}
+      />
     </ScreenOnboardingQuestion>
   );
 }
+/* ──────────────────────────────────────────────────────────────
+   Final Summary Screen
+   ────────────────────────────────────────────────────────────── */
+
+export interface FinalSummaryProfile {
+  targetRoles: string[];
+  targetMarket: string;
+  workArrangement: WorkArrangementId;
+  targetSalary: string;
+  jobTimeline: string;
+  deprioritizedRoles: string[];
+  visaNeed: VisaNeedId;
+}
+
+function summaryLabel<T extends string>(v: T, options: { value: T; label: string }[]): string {
+  return options.find((o) => o.value === v)?.label ?? v;
+}
+
+export function ScreenFinalSummary({
+  readbackData,
+  profile,
+  onConfirm,
+  onBack,
+}: {
+  readbackData: ReadBackData | null;
+  profile: FinalSummaryProfile;
+  onConfirm: () => void;
+  onBack: () => void;
+}) {
+  const hasAI = readbackData != null;
+
+  return (
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <OnboardingEyebrowIntro
+        eyebrow="Almost done"
+        title="Here's your full profile."
+        body="We'll use this to run your search — does everything look right?"
+      />
+
+      {hasAI && (
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase" as const, marginBottom: 12, marginTop: 0 }}>
+            Your profile read
+          </p>
+          <p style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 400, color: "#2A2218", lineHeight: 1.75, marginBottom: 16, marginTop: 0 }}>
+            {readbackData.picture}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {readbackData.strengths.map((s) => (
+              <span key={s} style={{ padding: "6px 12px", background: ONBOARDING_FIELD_BG, border: ONBOARDING_FIELD_BORDER, borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: ONBOARDING_TEXT }}>
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: hasAI ? "0.35s" : "0.2s" }}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase" as const, marginBottom: 16, marginTop: 0 }}>
+          Your search setup
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {profile.targetRoles.length > 0 && (
+            <div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>Targeting</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {profile.targetRoles.map((r) => (
+                  <span key={r} style={{ padding: "6px 12px", background: "rgba(26,58,47,0.08)", border: "1.5px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
+                    {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hasAI && readbackData.targetRoles.length > 0 && (
+            <div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>Roles that fit your background</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {readbackData.targetRoles.slice(0, 5).map((r) => (
+                  <div key={r.role} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT }}>{r.role}</span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY }}>{r.fit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {profile.targetMarket && (
+              <div>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 3, marginTop: 0 }}>Location</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, margin: 0 }}>{profile.targetMarket}</p>
+              </div>
+            )}
+            {profile.workArrangement && (
+              <div>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 3, marginTop: 0 }}>Work style</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, margin: 0 }}>
+                  {summaryLabel(profile.workArrangement, ONBOARDING_WORK_ARRANGEMENTS)}
+                </p>
+              </div>
+            )}
+            {profile.targetSalary && (
+              <div>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 3, marginTop: 0 }}>Salary floor</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, margin: 0 }}>{profile.targetSalary}</p>
+              </div>
+            )}
+            {profile.jobTimeline && (
+              <div>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 3, marginTop: 0 }}>Timeline</p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, margin: 0 }}>
+                  {summaryLabel(profile.jobTimeline, JOB_TIMELINES)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {profile.deprioritizedRoles.length > 0 && (
+            <div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>Deprioritizing</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {profile.deprioritizedRoles.map((r) => (
+                  <span key={r} style={{ padding: "6px 12px", background: "rgba(196,87,74,0.08)", border: "1.5px solid rgba(196,87,74,0.3)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#C4574A" }}>
+                    {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
+        <button
+          className="onboarding-cta"
+          onClick={onConfirm}
+          style={{ ...PRIMARY_CTA, width: "100%", marginBottom: 10 }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Looks good, let&apos;s go →
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{ display: "block", width: "100%", padding: "12px 0", background: "none", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT_SECONDARY, cursor: "pointer", textAlign: "center" as const }}
+        >
+          ← Go back and edit
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ──────────────────────────────────────────────────────────────
    Screen 5 — Transition + first job
    ────────────────────────────────────────────────────────────── */
@@ -3383,6 +3673,182 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Pre-screen: Career Intent — "What brings you here?"
+   ────────────────────────────────────────────────────────────── */
+const CAREER_INTENT_OPTIONS = [
+  { id: "new-industry", label: "I'm trying to break into a new industry" },
+  { id: "new-role", label: "I'm targeting a role I haven't held before" },
+  { id: "active-search", label: "I'm actively applying and need to move fast" },
+  { id: "exploring", label: "I'm figuring out what I want next" },
+] as const;
+
+export type CareerIntentId = typeof CAREER_INTENT_OPTIONS[number]["id"];
+
+export function ScreenCareerIntent({ onSelect }: { onSelect: (id: CareerIntentId) => void }) {
+  const [selected, setSelected] = useState<CareerIntentId | null>(null);
+  const [hoveredId, setHoveredId] = useState<CareerIntentId | null>(null);
+
+  const handleSelect = (id: CareerIntentId) => {
+    setSelected(id);
+    onSelect(id);
+  };
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <OnboardingHeroIntro
+        title="What brings you here?"
+        body="Pick the one that fits best — it helps us point you in the right direction."
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {CAREER_INTENT_OPTIONS.map((opt) => {
+          const isSelected = selected === opt.id;
+          const isHovered = hoveredId === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => handleSelect(opt.id)}
+              onMouseEnter={() => setHoveredId(opt.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{
+                ...ONBOARDING_CARD,
+                width: "100%",
+                textAlign: "left",
+                cursor: "pointer",
+                border: isSelected ? "2px solid #1A3A2F" : isHovered ? "1.5px solid rgba(26,58,47,0.45)" : ONBOARDING_FIELD_BORDER,
+                background: isSelected
+                  ? "rgba(26,58,47,0.06)"
+                  : isHovered
+                  ? "rgba(26,58,47,0.03)"
+                  : ONBOARDING_FIELD_BG,
+                padding: "18px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                transition: "border-color 0.15s, background 0.15s",
+                transform: isHovered && !isSelected ? "translateY(-1px)" : "none",
+                boxShadow: isHovered && !isSelected ? "0 2px 8px rgba(26,58,47,0.08)" : "none",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 15,
+                  fontWeight: isSelected || isHovered ? 600 : 500,
+                  color: isSelected ? "#1A3A2F" : ONBOARDING_TEXT,
+                  lineHeight: 1.45,
+                  transition: "font-weight 0.1s, color 0.15s",
+                }}
+              >
+                {opt.label}
+              </span>
+              {isSelected ? (
+                <span style={{ color: "#1A3A2F", fontSize: 18, flexShrink: 0 }}>✓</span>
+              ) : isHovered ? (
+                <span style={{ color: "rgba(26,58,47,0.4)", fontSize: 16, flexShrink: 0 }}>→</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Pre-screen: One-liner — "Describe what you do"
+   ────────────────────────────────────────────────────────────── */
+export function ScreenOneLiner({
+  onContinue,
+  onBack,
+  loading = false,
+}: {
+  onContinue: (text: string) => void;
+  onBack: () => void;
+  loading?: boolean;
+}) {
+  const [value, setValue] = useState("");
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <OnboardingHeroIntro
+        title="Describe what you do, in your own words."
+        body="One sentence is enough. We'll use it to point you in the right direction."
+      />
+      <div style={ONBOARDING_CARD}>
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g. Operations manager at a healthcare startup, 6 years in consulting before that"
+          rows={3}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "14px 16px",
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: "var(--scout-radius)",
+            fontFamily: "var(--font-ui)",
+            fontSize: 15,
+            color: ONBOARDING_TEXT,
+            background: ONBOARDING_FIELD_BG,
+            resize: "none",
+            outline: "none",
+            lineHeight: 1.6,
+            marginBottom: 16,
+            boxSizing: "border-box",
+            opacity: loading ? 0.6 : 1,
+            transition: "opacity 0.2s",
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => value.trim() && onContinue(value.trim())}
+          disabled={!value.trim() || loading}
+          style={{
+            ...PRIMARY_CTA,
+            width: "100%",
+            opacity: !value.trim() || loading ? 0.5 : 1,
+            cursor: !value.trim() || loading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          {loading ? (
+            <>
+              <span
+                style={{
+                  width: 14,
+                  height: 14,
+                  border: "2px solid rgba(242,237,227,0.3)",
+                  borderTopColor: "#F2EDE3",
+                  borderRadius: "50%",
+                  animation: "spin 0.75s linear infinite",
+                  flexShrink: 0,
+                }}
+              />
+              Analyzing…
+            </>
+          ) : (
+            "Continue"
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          style={ONBOARDING_SKIP_LINK}
+        >
+          ← Back
+        </button>
       </div>
     </div>
   );

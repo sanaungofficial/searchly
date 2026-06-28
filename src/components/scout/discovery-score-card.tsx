@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
-import { border, color, fontSans, fontDisplay, displayVariation, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
 import type { DiscoveryScoreInput, DiscoveryScoreResult } from "@/lib/discovery-score";
 import { tierLabel } from "@/lib/discovery-score";
 
@@ -103,17 +103,17 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
 
           {/* Score number + label */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "0 0 4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Discovery Score
             </p>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
               {loading ? (
-                <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? 44 : 56, fontWeight: 500, fontVariationSettings: displayVariation, color: color.ink, lineHeight: 1 }}>
+                <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? T.h2 : T.h1, fontWeight: 400, color: color.ink, lineHeight: 1 }}>
                   —
                 </span>
               ) : (
                 <>
-                  <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? 44 : 56, fontWeight: 500, fontVariationSettings: displayVariation, color: scoreColor, lineHeight: 1 }}>
+                  <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? T.h2 : T.h1, fontWeight: 400, color: scoreColor, lineHeight: 1 }}>
                     {score}
                   </span>
                   <span style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, fontWeight: 600 }}>
@@ -122,12 +122,12 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
                   <span
                     style={{
                       fontFamily: fontSans,
-                      fontSize: T.caption,
+                      fontSize: T.btnSm,
                       fontWeight: 700,
                       color: scoreColor,
                       background: tier === "top" ? "rgba(26,58,47,0.08)" : tier === "strong" ? "rgba(45,106,79,0.08)" : "rgba(196,168,106,0.12)",
                       padding: "3px 10px",
-                      borderRadius: 99,
+                      borderRadius: "var(--scout-radius)",
                       marginLeft: 4,
                     }}
                   >
@@ -137,7 +137,7 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
               )}
             </div>
             {result?.summary && !loading && (
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "8px 0 0" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: "8px 0 0" }}>
                 {result.summary}
               </p>
             )}
@@ -227,8 +227,11 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
 
       {/* Why modal */}
       {whyOpen && (
-        <ScoutModal onClose={() => setWhyOpen(false)} title="Why is this score important?">
+        <ScoutModal open={whyOpen} bruddle onClose={() => setWhyOpen(false)} ariaLabelledBy="discovery-why-title" maxWidth={520}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p id="discovery-why-title" style={{ ...bruddleHeadingStyle("h4"), margin: "0 0 4px" }}>
+              Why is this score important?
+            </p>
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.ink, lineHeight: 1.65, margin: 0 }}>
               Your Discovery Score is a competitive ranking — it shows how well your profile stacks up against other professionals targeting the same types of roles.
             </p>
@@ -239,8 +242,8 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
               A higher score means more visibility, better job matches, and a stronger first impression — whether you're applying directly or being surfaced to hiring managers.
             </p>
             {result?.topImprovement && (
-              <div style={{ background: "rgba(26,58,47,0.06)", border: border.line, borderRadius: "var(--scout-radius)", padding: "14px 16px" }}>
-                <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.forest, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <div style={{ background: "rgba(26,58,47,0.06)", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", padding: "14px 16px" }}>
+                <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Top improvement
                 </p>
                 <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.ink, lineHeight: 1.55, margin: 0 }}>

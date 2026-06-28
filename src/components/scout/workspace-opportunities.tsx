@@ -469,10 +469,10 @@ export function WorkspaceOpportunities() {
 
   const oppActionBtn: React.CSSProperties = {
     padding: "8px 16px",
-    background: color.forest,
-    color: color.gold,
-    border: border.lineStrong,
-    borderRadius: "var(--scout-radius)",
+    background: "#AE7AFF",
+    color: "#FFFFFF",
+    border: "1.5px solid #161616",
+    borderRadius: 0,
     fontFamily: fontSans,
     fontSize: T.caption,
     fontWeight: 600,
@@ -485,13 +485,14 @@ export function WorkspaceOpportunities() {
 
   return (
     <div
+      className="bruddle"
       style={{
         height: "100%",
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: surface.page,
+        background: "var(--scout-page)",
         animation: "fadeIn 0.3s ease both",
       }}
     >
@@ -521,8 +522,8 @@ export function WorkspaceOpportunities() {
                 onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
                 style={{
                   ...oppActionBtn,
-                  background: showCsvPanel ? color.forest : surface.card,
-                  color: showCsvPanel ? color.gold : color.forest,
+                  background: showCsvPanel ? "#161616" : "transparent",
+                  color: showCsvPanel ? "#FFFFFF" : "#161616",
                 }}
               >
                 <UploadIcon /> Upload CSV
@@ -948,7 +949,7 @@ function PipelineTab({
         </p>
       </div>
 
-      <WorkspaceSegmentTabs tabs={pipelineTabs} active={pipelineView} onChange={setPipelineView} isMobile={isMobile} />
+      <WorkspaceSegmentTabs tabs={pipelineTabs} active={pipelineView} onChange={setPipelineView} isMobile={isMobile} variant="bruddle" />
 
       {pipelineView === "recommended" ? (
         <PipelineRecommendedSection

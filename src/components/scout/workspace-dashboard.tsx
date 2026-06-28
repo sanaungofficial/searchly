@@ -25,6 +25,7 @@ export function WorkspaceDashboard() {
 
   return (
     <div
+      className="bruddle"
       style={{
         height: "100%",
         minHeight: 0,

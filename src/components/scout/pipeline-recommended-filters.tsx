@@ -90,8 +90,8 @@ function FilterPill({
             alignItems: "center",
             gap: 4,
             padding: "6px 12px",
-            borderRadius: 999,
-            border: active ? border.lineStrong : border.line,
+            borderRadius: "var(--scout-radius)",
+            border: "var(--scout-border)",
             background: active ? surface.inset : surface.card,
             color: active ? color.forest : color.ink,
             fontFamily: fontSans,
@@ -109,7 +109,7 @@ function FilterPill({
         align="start"
         sideOffset={6}
         className="w-auto min-w-[220px] max-w-[340px] p-0 shadow-lg"
-        style={{ background: surface.card, border: border.line, borderRadius: "var(--scout-radius)" }}
+        style={{ background: surface.card, border: "var(--scout-border)", borderRadius: "var(--scout-radius)" }}
       >
         {children}
       </PopoverContent>

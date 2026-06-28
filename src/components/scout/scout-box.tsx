@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { border, color, radius, shadow, surface, displayTitleStyle } from "@/lib/typography";
+import { border, color, radius, shadow, surface, displayTitleStyle, type as T } from "@/lib/typography";
 
 type ScoutBoxProps = {
   children: ReactNode;
@@ -28,7 +28,7 @@ export function ScoutBox({
       className={className}
       style={{
         background: bg,
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: radius.box,
         padding,
         boxShadow: flat ? undefined : stack ? shadow.cardStrong : shadow.card,
@@ -44,10 +44,10 @@ export function ScoutBox({
 export const scoutFieldStyle: CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: radius.box,
   fontFamily: "var(--font-ui)",
-  fontSize: 13,
+  fontSize: T.bodySm,
   color: color.ink,
   background: surface.card,
   boxSizing: "border-box",
@@ -60,14 +60,14 @@ export const scoutInsetChipStyle: CSSProperties = {
   color: color.muted,
   background: surface.inset,
   padding: "4px 8px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: radius.box,
 };
 
 /** Inset callout panel inside a ScoutBox */
 export const scoutInsetPanelStyle: CSSProperties = {
   background: surface.inset,
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: radius.box,
 };
 
@@ -138,8 +138,8 @@ export function KimchiBySecondLadder({
 
 const btnBase: CSSProperties = {
   fontFamily: "var(--font-ui)",
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: T.btnMd,
+  fontWeight: 700,
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",

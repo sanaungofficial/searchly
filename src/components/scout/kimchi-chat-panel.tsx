@@ -12,7 +12,7 @@ import type {
   AssistantContextPayload,
   AssistantPageHint,
 } from "@/lib/kimchi-assistant/types";
-import { VOICE_PRESETS, getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
+import { getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import {
   buildFollowUpChips,
   buildContextSuggestionChips,
@@ -111,7 +111,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [streaming, setStreaming] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [assistantCtx, setAssistantCtx] = useState<AssistantContextPayload | null>(null);
-  const [presetMenuOpen, setPresetMenuOpen] = useState(false);
   // selectedPreset lives in VoiceAgentProvider context
   const [transcriptModal, setTranscriptModal] = useState<{ title: string; body: string } | null>(null);
   const [insightActivityId, setInsightActivityId] = useState<string | null>(null);
@@ -243,8 +242,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     toggleSession,
     endSession,
     agentSettings,
-    selectedPreset,
-    setSelectedPreset,
     setPageHint: setVoicePageHint,
     setOnComplete: setVoiceOnComplete,
     setOnNavigate: setVoiceOnNavigate,
@@ -935,10 +932,8 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     }
   };
 
-  const startPresetVoice = (presetId: VoicePresetId) => {
-    activePresetRef.current = presetId;
-    setSelectedPreset(presetId);
-    setPresetMenuOpen(false);
+  const startVoice = () => {
+    activePresetRef.current = "general";
     setPendingVoiceStart(true);
   };
 
@@ -1084,7 +1079,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           />
           <div className="kimchi-chat-panel__voice-status">
             <span className="kimchi-chat-panel__voice-label">
-              {getVoicePreset(selectedPreset).emoji}{" "}
               {orbState === "listening" || orbState === "live"
                 ? "Listening…"
                 : orbState === "speaking"
@@ -1104,31 +1098,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
             Done talking
           </button>
           {voiceError && <span className="kimchi-chat-panel__voice-error">{voiceError}</span>}
-        </div>
-      )}
-
-      {!voiceUnavailable && voiceAvailable !== false && !sessionActive && presetMenuOpen && (
-        <div className="kimchi-chat-panel__voice-bar">
-          <div className="kimchi-preset-menu">
-            {VOICE_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="kimchi-preset-menu__item"
-                style={{ borderLeftColor: p.accent, borderLeftWidth: 3, borderLeftStyle: "solid" }}
-                onClick={() => startPresetVoice(p.id)}
-              >
-                <span className="kimchi-preset-menu__emoji" aria-hidden="true">{p.emoji}</span>
-                <span className="kimchi-preset-menu__copy">
-                  <span className="kimchi-preset-menu__title">{p.title}</span>
-                  <span className="kimchi-preset-menu__desc">{p.description}</span>
-                </span>
-              </button>
-            ))}
-            <button type="button" className="kimchi-preset-menu__cancel" onClick={() => setPresetMenuOpen(false)}>
-              Cancel
-            </button>
-          </div>
         </div>
       )}
 
@@ -1172,7 +1141,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                 <button
                   type="button"
                   className="kimchi-composer-box__voice-pill"
-                  onClick={() => setPresetMenuOpen((v) => !v)}
+                  onClick={startVoice}
                   aria-label="Talk it out"
                   title="Talk it out — voice agent"
                 >
@@ -1650,11 +1619,16 @@ function KimchiChatPanelStyles() {
         flex-direction: column;
         gap: 2px;
         min-width: 0;
+        flex: 1;
+        overflow: hidden;
       }
       .kimchi-chat-panel__voice-label {
         font-family: ${sans};
         font-size: 13px;
         color: var(--scout-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .kimchi-chat-panel__voice-hint {
         font-family: ${sans};

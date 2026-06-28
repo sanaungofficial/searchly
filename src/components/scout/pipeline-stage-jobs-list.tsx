@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { JobMeta } from "@/lib/job-meta";
 import { companyLogoFromJobData } from "@/lib/cached-job";
 import { STAGE_COLORS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
-import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutLabel } from "./scout-box";
 import { CompanyLogo } from "./company-logo";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import { fontSans, color, border, displayTitleStyle, surface, type as T } from "@/lib/typography";
@@ -26,7 +26,8 @@ function StageDropdown({
         style={{
           padding: "6px 14px",
           background: surface.card,
-          border: border.line,
+          border: "1.5px solid #161616",
+          borderRadius: 0,
           fontFamily: fontSans,
           fontSize: T.caption,
           fontWeight: 600,
@@ -50,7 +51,7 @@ function StageDropdown({
               right: 0,
               marginTop: 4,
               background: surface.card,
-              border: border.line,
+              border: "1.5px solid #161616",
               zIndex: 100,
               minWidth: 150,
             }}
@@ -110,11 +111,25 @@ export function PipelineStageJobsList({
             {stageCards.length} role{stageCards.length === 1 ? "" : "s"} saved
           </p>
         </div>
-        <ScoutSecondaryBtn onClick={onBackToRecommendations}>← Back to Find roles</ScoutSecondaryBtn>
+        <button
+          type="button"
+          onClick={onBackToRecommendations}
+          style={{
+            padding: "8px 16px",
+            background: "transparent",
+            color: "#161616",
+            border: "1.5px solid #161616",
+            borderRadius: 0,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >← Back to Find roles</button>
       </div>
 
       {!stageCards.length ? (
-        <ScoutBox style={{ padding: 40, textAlign: "center" }}>
+        <ScoutBox style={{ padding: 40, textAlign: "center", border: "1.5px solid #161616" }}>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
             No roles in {STAGE_LABELS[stage].toLowerCase()} yet — save one from Find roles or paste a job URL.
           </p>
@@ -124,7 +139,7 @@ export function PipelineStageJobsList({
           {stageCards.map((card) => {
             const ext = card as KanbanCard & { _url?: string; _meta?: JobMeta };
             return (
-              <ScoutBox key={card.id} padding={18}>
+              <ScoutBox key={card.id} padding={18} style={{ border: "1.5px solid #161616" }}>
                 <div
                   role="button"
                   tabIndex={0}

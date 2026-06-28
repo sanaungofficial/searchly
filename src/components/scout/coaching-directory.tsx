@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachingDirectoryCard, type CoachCompanyLookupItem } from "@/components/scout/coaching-directory-card";
-import { CoachingDirectorySidebar } from "@/components/scout/coaching-directory-sidebar";
+import { CoachQuickFiltersBar, CoachFiltersDrawer } from "@/components/scout/coaching-directory-filters";
 import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { categoryToSlug } from "@/lib/coach-categories";
@@ -153,7 +153,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const setMyCoachIds = onMyCoachIdsChange ?? setLocalMyCoachIds;
   const [loading, setLoading] = useState(true);
   const [scored, setScored] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showAllFilters, setShowAllFilters] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
   const debouncedSearch = useDebouncedValue(searchInput);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -346,7 +346,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
   const sectionTitle = category ? `${category} Experts` : "All coaches";
 
-  const showSidebar = !isMobile || showFilters;
   const filtersActive = activeFilterCount > 0 || debouncedSearch.trim().length > 0;
 
   return (
@@ -365,11 +364,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
             <ScoutSecondaryBtn onClick={() => void loadCoaches()} disabled={loading}>
               {loading ? "Loading…" : "Refresh"}
             </ScoutSecondaryBtn>
-            {isMobile && (
-              <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
-                {showFilters ? "Hide filters" : "Filters"}
-              </ScoutSecondaryBtn>
-            )}
             {activeFilterCount > 0 && (
               <ScoutSecondaryBtn onClick={clearFilters}>Clear ({activeFilterCount})</ScoutSecondaryBtn>
             )}
@@ -393,7 +387,17 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
           placeholder="Search by name, specialty, or Kimchi coach…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          style={inputStyle}
+          style={{ ...inputStyle, marginBottom: 14 }}
+        />
+
+        <CoachQuickFiltersBar
+          allCoaches={categoryPool}
+          filters={sidebarFilters}
+          activeCount={activeFilterCount}
+          onChange={setFilter}
+          onBatchChange={setFilters}
+          onInternalChange={toggleInternalFilter}
+          onOpenAllFilters={() => setShowAllFilters(true)}
         />
 
         {loadError && (
@@ -409,86 +413,82 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
         )}
       </ScoutBox>
 
-      <div style={{ display: "flex", gap: isMobile ? 0 : 20, alignItems: "flex-start", marginBottom: 32 }}>
-        {showSidebar && (
-          <div style={{ width: isMobile ? "100%" : undefined, marginBottom: isMobile ? 16 : 0 }}>
-            <CoachingDirectorySidebar
-              allCoaches={categoryPool}
-              filters={sidebarFilters}
-              onChange={setFilter}
-              onBatchChange={setFilters}
-              onProfessionalChange={toggleProfessionalFilter}
-              onInternalChange={toggleInternalFilter}
-              onClear={clearFilters}
-              activeCount={activeFilterCount}
-            />
-          </div>
+      <div style={{ marginBottom: 32 }}>
+        {!loading && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 14px", lineHeight: 1.45 }}>
+            {filteredCoaches.length} coach{filteredCoaches.length !== 1 ? "es" : ""}
+            {!isPro && <span style={{ marginLeft: 10, color: "#b45309" }}>Subscribe to see rates and book sessions</span>}
+          </p>
         )}
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {!loading && (
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 14px", lineHeight: 1.45 }}>
-              {filteredCoaches.length} coach{filteredCoaches.length !== 1 ? "es" : ""}
-              {!isPro && <span style={{ marginLeft: 10, color: "#b45309" }}>Subscribe to see rates and book sessions</span>}
+        {loading ? (
+          <ScoutBox style={{ padding: 48, textAlign: "center" }}>
+            <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>Loading coaches…</p>
+          </ScoutBox>
+        ) : filteredCoaches.length === 0 ? (
+          <ScoutBox style={{ padding: 48, textAlign: "center" }}>
+            <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
+              {allCoaches.length === 0
+                ? "No coaches are available right now."
+                : filtersActive
+                  ? "No coaches match your filters — try broadening your search or clearing filters."
+                  : "No coaches in this category."}
             </p>
-          )}
-
-          {loading ? (
-            <ScoutBox style={{ padding: 48, textAlign: "center" }}>
-              <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>Loading coaches…</p>
-            </ScoutBox>
-          ) : filteredCoaches.length === 0 ? (
-            <ScoutBox style={{ padding: 48, textAlign: "center" }}>
-              <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-                {allCoaches.length === 0
-                  ? "No coaches are available right now."
-                  : filtersActive
-                    ? "No coaches match your filters — try broadening your search or clearing filters."
-                    : "No coaches in this category."}
-              </p>
-              {filtersActive && allCoaches.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  style={{
-                    marginTop: 14,
-                    background: "none",
-                    border: border.line,
-                    padding: "8px 14px",
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                    color: color.forest,
-                    cursor: "pointer",
-                  }}
-                >
-                  Clear filters
-                </button>
-              )}
-            </ScoutBox>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {filteredCoaches.map((c) => (
-                <CoachingDirectoryCard
-                  key={c.id}
-                  coach={c}
-                  isMobile={isMobile}
-                  isPro={isPro}
-                  onSubscribe={onSubscribe}
-                  onFollow={toggleFollow}
-                  following={followedIds.has(c.id)}
-                  onOpenCoach={onOpenCoach}
-                  isMyCoach={myCoachIds.has(c.id)}
-                  canSelfAssignCoach={canSelfAssignCoach}
-                  onToggleMyCoach={toggleMyCoach}
-                  companyLookup={companyLookup}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            {filtersActive && allCoaches.length > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  marginTop: 14,
+                  background: "none",
+                  border: border.line,
+                  padding: "8px 14px",
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  color: color.forest,
+                  cursor: "pointer",
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </ScoutBox>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {filteredCoaches.map((c) => (
+              <CoachingDirectoryCard
+                key={c.id}
+                coach={c}
+                isMobile={isMobile}
+                isPro={isPro}
+                onSubscribe={onSubscribe}
+                onFollow={toggleFollow}
+                following={followedIds.has(c.id)}
+                onOpenCoach={onOpenCoach}
+                isMyCoach={myCoachIds.has(c.id)}
+                canSelfAssignCoach={canSelfAssignCoach}
+                onToggleMyCoach={toggleMyCoach}
+                companyLookup={companyLookup}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} isPro={isPro} onSubscribe={onSubscribe} onOpenCoach={onOpenCoach} />
+
+      <CoachFiltersDrawer
+        open={showAllFilters}
+        onClose={() => setShowAllFilters(false)}
+        allCoaches={categoryPool}
+        filters={sidebarFilters}
+        activeCount={activeFilterCount}
+        onChange={setFilter}
+        onBatchChange={setFilters}
+        onProfessionalChange={toggleProfessionalFilter}
+        onInternalChange={toggleInternalFilter}
+        onClear={clearFilters}
+      />
     </div>
   );
 }
