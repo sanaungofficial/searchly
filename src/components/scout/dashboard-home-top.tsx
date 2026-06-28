@@ -601,6 +601,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
     </ScoutBox>
   );
 
+
   // ── Events carousel ───────────────────────────────────────────────────────
   const eventsSection = (
     <div style={{ minWidth: 0 }}>
