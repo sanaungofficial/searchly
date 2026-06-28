@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { DiscoveryScoreCluster } from "@/components/scout/discovery-score-ui";
+import { useDiscoveryScore } from "@/hooks/use-discovery-score";
 import { useSubscription } from "@/hooks/useSubscription";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import type { DiscoveryScoreInput, DiscoveryScoreResult } from "@/lib/discovery-score";
@@ -256,10 +257,6 @@ export function ProfileDiscoveryScorePanel({
   const { isPro, isAdmin, loading: subLoading } = useSubscription();
   const hasAccess = isPro || isAdmin;
 
-  const [result, setResult] = useState<DiscoveryScoreResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const fetchedRef = useRef(false);
-
   const discoveryInput: DiscoveryScoreInput = useMemo(
     () => ({
       name: profile.name,
@@ -289,31 +286,14 @@ export function ProfileDiscoveryScorePanel({
     ],
   );
 
-  useEffect(() => {
-    if (!isLoggedIn || !hasAccess || subLoading) return;
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-
-    fetch(withClientScope("/api/discovery-score"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(discoveryInput),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data && typeof data.score === "number") {
-          setResult(data as DiscoveryScoreResult);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [hasAccess, isLoggedIn, subLoading, withClientScope, discoveryInput]);
-
-  useEffect(() => {
-    if (!isLoggedIn || (!hasAccess && !subLoading)) {
-      setLoading(false);
-    }
-  }, [hasAccess, isLoggedIn, subLoading]);
+  const { result, loading, refreshing, refresh, fetchedAt } = useDiscoveryScore({
+    input: discoveryInput,
+    withClientScope,
+    hasAccess,
+    isLoggedIn,
+    subLoading,
+    onSubscribe,
+  });
 
   const previewScore = 72;
   const score = result?.score ?? previewScore;
@@ -377,19 +357,56 @@ export function ProfileDiscoveryScorePanel({
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p
+              <div
                 style={{
-                  fontFamily: fontSans,
-                  fontSize: T.label,
-                  color: color.muted,
-                  margin: "0 0 6px",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  marginBottom: 6,
+                  flexWrap: "wrap",
                 }}
               >
-                Discovery Score
-              </p>
+                <p
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    color: color.muted,
+                    margin: 0,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Discovery Score
+                </p>
+                {isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={refresh}
+                    disabled={loading || refreshing || subLoading}
+                    style={{
+                      padding: "6px 12px",
+                      background: "transparent",
+                      color: color.forest,
+                      border: border.lineStrong,
+                      borderRadius: "var(--scout-radius)",
+                      fontFamily: fontSans,
+                      fontSize: T.label,
+                      fontWeight: 600,
+                      cursor: loading || refreshing || subLoading ? "not-allowed" : "pointer",
+                      opacity: loading || refreshing || subLoading ? 0.65 : 1,
+                    }}
+                  >
+                    {loading || refreshing ? "Loading…" : "Refresh"}
+                  </button>
+                )}
+              </div>
+              {fetchedAt && hasAccess && !loading && (
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 6px" }}>
+                  Last updated {new Date(fetchedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                </p>
+              )}
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
                 {peerCopy}
               </p>
