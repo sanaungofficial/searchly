@@ -55,7 +55,7 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { matchScoreStyle, isLowQualityMatchReason } from "@/lib/match-score";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
-import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
+import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
   RecommendedFiltersDrawer,
   RecommendedQuickFiltersBar,
@@ -289,7 +289,7 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.caption,
@@ -412,6 +412,58 @@ function WhyMatchPanel({ reasons, matchedSkills }: { reasons: string[]; matchedS
   );
 }
 
+function MetadataChips({
+  row,
+  isNetwork,
+  networkJob,
+}: {
+  row: UnifiedListing;
+  isNetwork: boolean;
+  networkJob?: NetworkMatchedJob;
+}) {
+  if (isNetwork && networkJob?.sharedAt) {
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
+          Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
+        </span>
+      </div>
+    );
+  }
+  const c = row.cached;
+  const days = c.datePosted ? daysSincePosted(c.datePosted) : null;
+  const postedText =
+    days === null || days === undefined
+      ? null
+      : days === 0
+        ? "Today"
+        : days === 1
+          ? "1 day ago"
+          : `${days} days ago`;
+  const items: string[] = [];
+  if (postedText) items.push(postedText);
+  if (c.jobType) items.push(c.jobType);
+  if (c.seniority) items.push(c.seniority);
+  if (c.locationType) items.push(c.locationType);
+  else if (c.remote) items.push("Remote");
+  if (c.salary) items.push(c.salary);
+  if (c.experienceLevel) items.push(c.experienceLevel);
+  if (!items.length) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+      {items.map((item, i) => (
+        <span
+          key={i}
+          style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, whiteSpace: "nowrap" }}
+        >
+          {i > 0 ? " · " : ""}
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RecommendedJobCard({
   row,
   savingKey,
@@ -505,15 +557,7 @@ function RecommendedJobCard({
                   {row.companyName}
                   {row.location ? ` · ${row.location}` : ""}
                 </p>
-                <div style={{ marginBottom: 8 }}>
-                  {isNetwork && networkJob?.sharedAt ? (
-                    <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
-                      Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
-                    </span>
-                  ) : (
-                    <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
-                  )}
-                </div>
+                <MetadataChips row={row} isNetwork={isNetwork} networkJob={networkJob} />
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {isNetwork && (
                     <span

@@ -48,15 +48,17 @@ function buildSettingsWithChatHistory(
     .map((m) => `${m.role === "assistant" ? "Kimchi" : "User"}: ${m.content}`)
     .join("\n");
   const injection =
-    "\n\n--- Recent chat context (before this voice session) ---\n" +
+    "=== CONVERSATION CONTEXT (read first, reference in your opening) ===\n" +
+    "The user was already chatting with you before this voice session. " +
+    "Pick up the conversation — in your first reply, acknowledge what they were working on specifically, not just their profile.\n\n" +
     lines +
-    "\n--- End of recent chat context ---";
+    "\n=== END CONVERSATION CONTEXT ===\n\n";
   const think = settings.think as { prompt?: string; [key: string]: unknown };
   return {
     ...settings,
     think: {
       ...think,
-      prompt: (think?.prompt ?? "") + injection,
+      prompt: injection + (think?.prompt ?? ""),
     },
   };
 }

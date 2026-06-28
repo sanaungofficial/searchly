@@ -51,7 +51,21 @@ export async function POST(request: Request) {
     focusedJob?: { company: string; role: string; description?: string; intent?: string } | null;
   };
 
+  // Extract voice summaries that appear before the first user message.
+  // These come from voice debrief cards rendered in the chat UI.
+  // Anthropic rejects threads that start with an assistant message, so we
+  // pull these out and inject them into the system prompt instead.
+  const firstUserIdx = messages.findIndex((m) => m.role === "user" && m.content?.trim());
+  const leadingVoiceSummaries =
+    firstUserIdx > 0
+      ? messages
+          .slice(0, firstUserIdx)
+          .filter((m) => m.role === "assistant" && m.content?.trim())
+          .map((m) => m.content.trim())
+      : [];
+
   const cleanMessages = messages
+    .slice(firstUserIdx >= 0 ? firstUserIdx : 0)
     .filter((m) => m.content?.trim())
     .map((m) => ({ role: m.role, content: m.content.trim() }));
 
@@ -88,10 +102,15 @@ export async function POST(request: Request) {
 
   const template = await getPrompt("CHAT_SYSTEM");
   const useTools = wantsMailTools(cleanMessages);
+  const voiceSessionContext =
+    leadingVoiceSummaries.length > 0
+      ? `\n\nPrior voice session with Kimchi:\n${leadingVoiceSummaries.join("\n")}`
+      : "";
+
   const systemPrompt = `${interpolate(template, {
     pipelineContext,
     focusContext,
-    resumeContext: `${resumeContext}${strategyContext}`,
+    resumeContext: `${resumeContext}${strategyContext}${voiceSessionContext}`,
   })}${useTools ? MAIL_TOOL_GUIDE : TEXT_REPLY_RULE}`;
 
   const streamParams = {
