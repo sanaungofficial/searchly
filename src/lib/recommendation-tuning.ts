@@ -67,97 +67,126 @@ function hasLocation(input: RecommendationTuningInput): boolean {
   return (input.priorities ?? []).some((p) => p.toLowerCase().includes("remote-first"));
 }
 
+const GAP_CATALOG: Record<MatchingTuningGapId, Omit<MatchingTuningGap, "id">> = {
+  target_roles: {
+    label: "Target roles",
+    actionLabel: "Add the roles you're going for",
+    weight: WEIGHTS.target_roles,
+  },
+  priority_role: {
+    label: "Top priority role",
+    actionLabel: "Pick your top-priority role",
+    weight: WEIGHTS.priority_role,
+  },
+  location: {
+    label: "Location",
+    actionLabel: "Where do you want to work?",
+    weight: WEIGHTS.location,
+  },
+  work_mode: {
+    label: "Work arrangement",
+    actionLabel: "Remote, hybrid, or in-office?",
+    weight: WEIGHTS.work_mode,
+  },
+  relocation: {
+    label: "Relocation",
+    actionLabel: "Would you move for the right role?",
+    weight: WEIGHTS.relocation,
+  },
+  visa: {
+    label: "Work authorization",
+    actionLabel: "Do you need visa sponsorship?",
+    weight: WEIGHTS.visa,
+  },
+  salary: {
+    label: "Target salary",
+    actionLabel: "What's your target pay range?",
+    weight: WEIGHTS.salary,
+  },
+  timeline: {
+    label: "Search timeline",
+    actionLabel: "When are you hoping to land something?",
+    weight: WEIGHTS.timeline,
+  },
+  primary_goal: {
+    label: "Primary goal",
+    actionLabel: "Add a goal so we know what you're after",
+    weight: WEIGHTS.primary_goal,
+  },
+  resume: {
+    label: "Resume",
+    actionLabel: "Upload your resume",
+    weight: WEIGHTS.resume,
+  },
+};
+
+/** Fixed display order for dashboard action items (highest-impact first). */
+export const MATCHING_TUNING_ITEM_ORDER: MatchingTuningGapId[] = [
+  "target_roles",
+  "location",
+  "work_mode",
+  "salary",
+  "primary_goal",
+  "priority_role",
+  "timeline",
+  "resume",
+  "relocation",
+  "visa",
+];
+
+export type MatchingTuningItem = MatchingTuningGap & { complete: boolean };
+
+/** All tuning items in fixed order — completed items stay visible for strikethrough UI. */
+export function recommendationTuningItems(input: RecommendationTuningInput): MatchingTuningItem[] {
+  const openGapIds = new Set(recommendationTuningGaps(input).map((g) => g.id));
+  return MATCHING_TUNING_ITEM_ORDER.map((id) => ({
+    id,
+    ...GAP_CATALOG[id],
+    complete: !openGapIds.has(id),
+  }));
+}
+
 export function recommendationTuningGaps(input: RecommendationTuningInput): MatchingTuningGap[] {
   const gaps: MatchingTuningGap[] = [];
   const roles = (input.targetRoles ?? []).filter(Boolean);
   const priorities = input.priorities ?? [];
 
   if (roles.length === 0) {
-    gaps.push({
-      id: "target_roles",
-      label: "Target roles",
-      actionLabel: "Add the roles you're going for",
-      weight: WEIGHTS.target_roles,
-    });
+    gaps.push({ id: "target_roles", ...GAP_CATALOG.target_roles });
   } else if (roles.length >= 2 && !(input.prioritizedRoles ?? []).some((r) => roles.includes(r))) {
-    gaps.push({
-      id: "priority_role",
-      label: "Top priority role",
-      actionLabel: "Pick your top-priority role",
-      weight: WEIGHTS.priority_role,
-    });
+    gaps.push({ id: "priority_role", ...GAP_CATALOG.priority_role });
   }
 
   if (!hasLocation(input)) {
-    gaps.push({
-      id: "location",
-      label: "Location",
-      actionLabel: "Where do you want to work?",
-      weight: WEIGHTS.location,
-    });
+    gaps.push({ id: "location", ...GAP_CATALOG.location });
   }
 
   if (!hasWorkMode(priorities)) {
-    gaps.push({
-      id: "work_mode",
-      label: "Work arrangement",
-      actionLabel: "Remote, hybrid, or in-office?",
-      weight: WEIGHTS.work_mode,
-    });
+    gaps.push({ id: "work_mode", ...GAP_CATALOG.work_mode });
   }
 
   if (!input.relocationOpenness?.trim()) {
-    gaps.push({
-      id: "relocation",
-      label: "Relocation",
-      actionLabel: "Would you move for the right role?",
-      weight: WEIGHTS.relocation,
-    });
+    gaps.push({ id: "relocation", ...GAP_CATALOG.relocation });
   }
 
   if (!input.workAuthorization?.trim()) {
-    gaps.push({
-      id: "visa",
-      label: "Work authorization",
-      actionLabel: "Do you need visa sponsorship?",
-      weight: WEIGHTS.visa,
-    });
+    gaps.push({ id: "visa", ...GAP_CATALOG.visa });
   }
 
   if (!input.targetSalary?.trim()) {
-    gaps.push({
-      id: "salary",
-      label: "Target salary",
-      actionLabel: "What's your target pay range?",
-      weight: WEIGHTS.salary,
-    });
+    gaps.push({ id: "salary", ...GAP_CATALOG.salary });
   }
 
   if (!input.jobTimeline?.trim()) {
-    gaps.push({
-      id: "timeline",
-      label: "Search timeline",
-      actionLabel: "When are you hoping to land something?",
-      weight: WEIGHTS.timeline,
-    });
+    gaps.push({ id: "timeline", ...GAP_CATALOG.timeline });
   }
 
   if (!(input.dashboardGoals ?? []).length) {
-    gaps.push({
-      id: "primary_goal",
-      label: "Primary goal",
-      actionLabel: "Add a goal so we know what you're after",
-      weight: WEIGHTS.primary_goal,
-    });
+    gaps.push({ id: "primary_goal", ...GAP_CATALOG.primary_goal });
   }
 
   if (!input.resumeUrl?.trim() && !(input.parsedData?.workExperience ?? []).length) {
-    gaps.push({
-      id: "resume",
-      label: "Resume",
-      actionLabel: "Upload your resume",
-      weight: WEIGHTS.resume,
-    });
+    gaps.push({ id: "resume", ...GAP_CATALOG.resume });
   }
 
   return gaps.sort((a, b) => b.weight - a.weight);
