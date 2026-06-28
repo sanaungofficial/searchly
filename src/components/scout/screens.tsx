@@ -352,12 +352,15 @@ export function ScreenWelcome({
   const dropBg = resumeError ? "rgba(192,57,43,0.06)" : isDragging ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG;
   const canContinueWithResume = !!(resumeFilename && !resumeError);
   const canSaveLinkedInOnly = liInput.trim().length > 0 && !resumeFilename;
+  const linkedinScrapeReady = linkedinImportAvailable === true;
 
   const heroBody =
     path === "resume"
       ? "Upload a PDF or Word file — we'll read it while you answer a few quick questions."
       : path === "linkedin"
-        ? "Paste your LinkedIn link. If it's light on details, we'll help you fill in the rest."
+        ? linkedinScrapeReady
+          ? "Paste your LinkedIn link. If it's light on details, we'll help you fill in the rest."
+          : "Paste your LinkedIn link — we'll save it to your profile. Automatic import is coming soon on this environment."
         : path === "scratch"
           ? "No resume? No problem. We'll ask a few questions and help you build your profile step by step."
           : "Pick how you'd like to start. You can always add or change things later.";
@@ -376,7 +379,11 @@ export function ScreenWelcome({
           />
           <SetupPathCard
             title="Use my LinkedIn"
-            description="We'll pull what we can from your public LinkedIn profile."
+            description={
+              linkedinImportAvailable === false
+                ? "Save your profile link now — automatic import is coming soon here."
+                : "We'll pull what we can from your public LinkedIn profile."
+            }
             selected={false}
             onClick={() => setPath("linkedin")}
           />
@@ -535,6 +542,24 @@ export function ScreenWelcome({
           >
             Your LinkedIn
           </p>
+          {linkedinImportAvailable === false && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: "12px 14px",
+                borderRadius: "var(--scout-radius)",
+                border: "1px solid rgba(26,58,47,0.16)",
+                background: "rgba(26,58,47,0.05)",
+              }}
+            >
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#1A3A2F", margin: "0 0 4px" }}>
+                LinkedIn import — coming soon
+              </p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, margin: 0, lineHeight: 1.55 }}>
+                We&apos;ll save your URL and you can keep going. Import from Profile later when this is enabled.
+              </p>
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -582,7 +607,9 @@ export function ScreenWelcome({
             />
           </div>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
-            If your profile is pretty empty, no worries — we&apos;ll help you add the rest as you go.
+            {linkedinScrapeReady
+              ? "If your profile is pretty empty, no worries — we'll help you add the rest as you go."
+              : "You can still finish onboarding and build your profile from scratch or upload a resume later."}
           </p>
         </div>
       )}
@@ -622,7 +649,7 @@ export function ScreenWelcome({
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            Continue with LinkedIn →
+            {linkedinScrapeReady ? "Continue with LinkedIn →" : "Save & continue →"}
           </button>
         </OnboardingActions>
       )}
@@ -3617,7 +3644,7 @@ export function ScreenTransition({
   );
 }
 
-export type SetupStepStatus = "pending" | "active" | "done" | "skipped";
+export type SetupStepStatus = "pending" | "active" | "done" | "skipped" | "failed";
 
 export interface SetupStep {
   id: string;
@@ -3639,6 +3666,7 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
           const isDone = step.status === "done";
           const isActive = step.status === "active";
           const isSkipped = step.status === "skipped";
+          const isFailed = step.status === "failed";
           return (
             <div
               key={step.id}
@@ -3648,8 +3676,10 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
                 gap: 12,
                 padding: "14px 16px",
                 borderRadius: "var(--scout-radius)",
-                border: `1.5px solid ${isDone ? "#1A3A2F" : isActive ? "rgba(26,58,47,0.35)" : "rgba(26,58,47,0.12)"}`,
-                background: isDone ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
+                border: `1.5px solid ${
+                  isDone ? "#1A3A2F" : isFailed ? "#C0392B" : isActive ? "rgba(26,58,47,0.35)" : "rgba(26,58,47,0.12)"
+                }`,
+                background: isDone ? "rgba(26,58,47,0.06)" : isFailed ? "rgba(192,57,43,0.06)" : ONBOARDING_FIELD_BG,
               }}
             >
               <div
@@ -3661,24 +3691,25 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: isDone ? "#1A3A2F" : "rgba(26,58,47,0.08)",
-                  color: isDone ? "#E8D5A3" : ONBOARDING_TEXT_SECONDARY,
+                  background: isDone ? "#1A3A2F" : isFailed ? "#C0392B" : "rgba(26,58,47,0.08)",
+                  color: isDone ? "#E8D5A3" : isFailed ? "#FFFFFF" : ONBOARDING_TEXT_SECONDARY,
                   fontFamily: "var(--font-ui)",
                   fontSize: 12,
                   fontWeight: 700,
                 }}
               >
-                {isDone ? "✓" : isSkipped ? "—" : isActive ? "…" : ""}
+                {isDone ? "✓" : isFailed ? "!" : isSkipped ? "—" : isActive ? "…" : ""}
               </div>
               <span
                 style={{
                   fontFamily: "var(--font-ui)",
                   fontSize: 14,
-                  fontWeight: isActive || isDone ? 600 : 500,
-                  color: isSkipped ? ONBOARDING_TEXT_SECONDARY : ONBOARDING_TEXT,
+                  fontWeight: isActive || isDone || isFailed ? 600 : 500,
+                  color: isSkipped ? ONBOARDING_TEXT_SECONDARY : isFailed ? "#8B2E2E" : ONBOARDING_TEXT,
                 }}
               >
                 {step.label}
+                {isFailed ? " — saved your URL; import failed" : ""}
               </span>
             </div>
           );
