@@ -938,7 +938,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
       <OnboardingEyebrowIntro
         eyebrow="Your read"
         title="Here's what stood out."
-        body="From your resume — does this sound right?"
+        body="Based on what you shared — does this sound right?"
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s", minHeight: loading || pending ? 280 : undefined }}>
@@ -3383,6 +3383,166 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Pre-screen: Career Intent — "What brings you here?"
+   ────────────────────────────────────────────────────────────── */
+const CAREER_INTENT_OPTIONS = [
+  { id: "new-industry", label: "I'm trying to break into a new industry" },
+  { id: "new-role", label: "I'm targeting a role I haven't held before" },
+  { id: "active-search", label: "I'm actively applying and need to move fast" },
+  { id: "exploring", label: "I'm figuring out what I want next" },
+] as const;
+
+export type CareerIntentId = typeof CAREER_INTENT_OPTIONS[number]["id"];
+
+export function ScreenCareerIntent({ onSelect }: { onSelect: (id: CareerIntentId) => void }) {
+  const [selected, setSelected] = useState<CareerIntentId | null>(null);
+
+  const handleSelect = (id: CareerIntentId) => {
+    setSelected(id);
+    onSelect(id);
+  };
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <OnboardingHeroIntro
+        title="What brings you here?"
+        body="Pick the one that fits best — it helps us point you in the right direction."
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {CAREER_INTENT_OPTIONS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => handleSelect(opt.id)}
+            style={{
+              ...ONBOARDING_CARD,
+              width: "100%",
+              textAlign: "left",
+              cursor: "pointer",
+              border: selected === opt.id ? "2px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+              background: selected === opt.id ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
+              padding: "18px 20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              transition: "border-color 0.15s, background 0.15s",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 15,
+                fontWeight: 500,
+                color: ONBOARDING_TEXT,
+                lineHeight: 1.45,
+              }}
+            >
+              {opt.label}
+            </span>
+            {selected === opt.id && (
+              <span style={{ color: "#1A3A2F", fontSize: 18, flexShrink: 0 }}>✓</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Pre-screen: One-liner — "Describe what you do"
+   ────────────────────────────────────────────────────────────── */
+export function ScreenOneLiner({
+  onContinue,
+  onBack,
+  loading = false,
+}: {
+  onContinue: (text: string) => void;
+  onBack: () => void;
+  loading?: boolean;
+}) {
+  const [value, setValue] = useState("");
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <OnboardingHeroIntro
+        title="Describe what you do, in your own words."
+        body="One sentence is enough. We'll use it to point you in the right direction."
+      />
+      <div style={ONBOARDING_CARD}>
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g. Operations manager at a healthcare startup, 6 years in consulting before that"
+          rows={3}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "14px 16px",
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: "var(--scout-radius)",
+            fontFamily: "var(--font-ui)",
+            fontSize: 15,
+            color: ONBOARDING_TEXT,
+            background: ONBOARDING_FIELD_BG,
+            resize: "none",
+            outline: "none",
+            lineHeight: 1.6,
+            marginBottom: 16,
+            boxSizing: "border-box",
+            opacity: loading ? 0.6 : 1,
+            transition: "opacity 0.2s",
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => value.trim() && onContinue(value.trim())}
+          disabled={!value.trim() || loading}
+          style={{
+            ...PRIMARY_CTA,
+            width: "100%",
+            opacity: !value.trim() || loading ? 0.5 : 1,
+            cursor: !value.trim() || loading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          {loading ? (
+            <>
+              <span
+                style={{
+                  width: 14,
+                  height: 14,
+                  border: "2px solid rgba(242,237,227,0.3)",
+                  borderTopColor: "#F2EDE3",
+                  borderRadius: "50%",
+                  animation: "spin 0.75s linear infinite",
+                  flexShrink: 0,
+                }}
+              />
+              Analyzing…
+            </>
+          ) : (
+            "Continue"
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          style={ONBOARDING_SKIP_LINK}
+        >
+          ← Back
+        </button>
       </div>
     </div>
   );

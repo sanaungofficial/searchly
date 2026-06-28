@@ -214,6 +214,47 @@
 }
 
 /* ─────────────────────────────────────────────
+   Auth (login / signup) — split two-column layout
+   ───────────────────────────────────────────── */
+.auth-split-outer {
+  display: flex;
+  min-height: 100vh;
+}
+
+.auth-split-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--scout-page);
+  font-family: var(--font-ui);
+  box-sizing: border-box;
+}
+
+.auth-benefits-panel {
+  width: 460px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .auth-benefits-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .auth-split-form {
+    justify-content: flex-start;
+    padding: 32px 16px 40px;
+  }
+}
+
+/* ─────────────────────────────────────────────
    Auth (login / signup) — mobile
    ───────────────────────────────────────────── */
 .auth-page {

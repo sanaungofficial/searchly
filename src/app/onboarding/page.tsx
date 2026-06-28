@@ -32,6 +32,9 @@ import {
   DemoNextButton,
   OnboardingProcessingBanner,
   fetchReadbackWithRetry,
+  ScreenCareerIntent,
+  ScreenOneLiner,
+  type CareerIntentId,
   type Screen,
   type ReadBackData,
   type ReadBackStatus,
@@ -117,6 +120,11 @@ export default function OnboardingPage() {
       setAuthChecked(true);
     });
   }, [router]);
+
+  const [intentDone, setIntentDone] = useState(false);
+  const [showOneLiner, setShowOneLiner] = useState(false);
+  const [onelinerAnalyzing, setOnelinerAnalyzing] = useState(false);
+  const [careerMotivation, setCareerMotivation] = useState("");
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -292,10 +300,46 @@ export default function OnboardingPage() {
     [resumeFilename, resumeError, liInput, onWelcomeContinue, onLinkedInOnly],
   );
 
+  const onCareerIntentSelect = useCallback((id: CareerIntentId) => {
+    setCareerMotivation(id);
+    void fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ careerMotivation: id }),
+    });
+    setIntentDone(true);
+  }, []);
+
   const onSkipProfile = useCallback(() => {
-    setReadbackStatus("skipped");
-    goTo(2);
-  }, [goTo]);
+    setShowOneLiner(true);
+  }, []);
+
+  const onOneLinerSubmit = useCallback(async (text: string) => {
+    setOnelinerAnalyzing(true);
+    let nextScreen: Screen = 2;
+    try {
+      const res = await fetch("/api/onboarding/analyze-oneliner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oneliner: text }),
+      });
+      const data: ReadBackData | null = res.ok ? await res.json() : null;
+      if (data?.picture && Array.isArray(data.strengths)) {
+        setReadbackData(data);
+        setReadbackStatus("ready");
+        applyReadbackRoles(data);
+        nextScreen = 1;
+      } else {
+        setReadbackStatus("skipped");
+      }
+    } catch {
+      setReadbackStatus("skipped");
+    } finally {
+      setOnelinerAnalyzing(false);
+      setShowOneLiner(false);
+      goTo(nextScreen);
+    }
+  }, [applyReadbackRoles, goTo]);
 
   const hasResumeTrack = !!(resumeFilename || resumeUploaded || resumeUploading);
 
@@ -631,13 +675,26 @@ export default function OnboardingPage() {
       <div className="onboarding-shell">
         <ScoutHeader screen={headerScreen} />
         <div className="onboarding-content">
-          {showProcessingBanner && (
+          {/* Pre-flow: career intent */}
+          {!intentDone && (
+            <ScreenCareerIntent onSelect={onCareerIntentSelect} />
+          )}
+          {/* Pre-flow: start-from-scratch one-liner */}
+          {intentDone && showOneLiner && (
+            <ScreenOneLiner
+              onContinue={(text) => void onOneLinerSubmit(text)}
+              onBack={() => setShowOneLiner(false)}
+              loading={onelinerAnalyzing}
+            />
+          )}
+          {/* Main onboarding screens */}
+          {intentDone && !showOneLiner && showProcessingBanner && (
             <OnboardingProcessingBanner
               resumeUploading={resumeUploading}
               readbackLoading={readbackStatus === "loading"}
             />
           )}
-          {screen === 0 && (
+          {intentDone && !showOneLiner && screen === 0 && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
@@ -657,112 +714,116 @@ export default function OnboardingPage() {
               onFileChange={onFileChange}
             />
           )}
-          {screen === 1 && (
-            <ScreenReadBack
-              data={readbackData}
-              status={readbackStatus}
-              onConfirm={onReadBackConfirm}
-              onRefine={onReadBackRefine}
-              onSkip={onReadBackSkip}
-            />
+          {intentDone && !showOneLiner && (
+            <>
+              {screen === 1 && (
+                <ScreenReadBack
+                  data={readbackData}
+                  status={readbackStatus}
+                  onConfirm={onReadBackConfirm}
+                  onRefine={onReadBackRefine}
+                  onSkip={onReadBackSkip}
+                />
+              )}
+              {screen === 2 && (
+                <ScreenTargetRoles
+                  selectedTitles={selectedTitles}
+                  suggestedTitles={readbackRoleSuggestions}
+                  onAddTitle={onAddTargetRole}
+                  onRemoveTitle={onRemoveTargetRole}
+                  onContinue={onRolesContinue}
+                  onSkip={onRolesSkip}
+                />
+              )}
+              {screen === 3 && selectedTitles.length >= 2 && (
+                <ScreenOnboardingPriorityRole
+                  targetRoles={selectedTitles}
+                  priorityRole={priorityRole}
+                  onPriorityRoleChange={setPriorityRole}
+                  onContinue={() => void onPriorityContinue()}
+                  onSkip={onPrioritySkip}
+                  onBack={() => goTo(2)}
+                />
+              )}
+              {screen === 4 && (
+                <ScreenOnboardingLocation
+                  targetMarket={targetMarket}
+                  fullyRemote={fullyRemote}
+                  locationHint={locationHint}
+                  onTargetMarketChange={setTargetMarket}
+                  onFullyRemoteChange={onFullyRemoteChange}
+                  onContinue={() => void onLocationContinue()}
+                  onSkip={() => void onLocationSkip()}
+                  onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}
+                />
+              )}
+              {screen === 5 && (
+                <ScreenOnboardingWorkArrangement
+                  workArrangement={workArrangement}
+                  onWorkArrangementChange={setWorkArrangement}
+                  onContinue={() => void onWorkArrangementContinue()}
+                  onSkip={() => void onWorkArrangementSkip()}
+                  onBack={() => goTo(4)}
+                />
+              )}
+              {screen === 6 && (
+                <ScreenOnboardingRelocation
+                  relocation={relocation}
+                  onRelocationChange={setRelocation}
+                  onContinue={() => void onRelocationContinue()}
+                  onSkip={() => void onRelocationSkip()}
+                  onBack={() => goTo(fullyRemote ? 4 : 5)}
+                />
+              )}
+              {screen === 7 && (
+                <ScreenOnboardingVisa
+                  visaNeed={visaNeed}
+                  onVisaNeedChange={setVisaNeed}
+                  onContinue={() => void onVisaContinue()}
+                  onSkip={() => void onVisaSkip()}
+                  onBack={() => goTo(6)}
+                />
+              )}
+              {screen === 8 && (
+                <ScreenOnboardingSalary
+                  targetSalary={targetSalary}
+                  onTargetSalaryChange={setTargetSalary}
+                  onContinue={() => void onSalaryContinue()}
+                  onSkip={() => void onSalarySkip()}
+                  onBack={() => goTo(7)}
+                />
+              )}
+              {screen === 9 && (
+                <ScreenOnboardingTimeline
+                  jobTimeline={jobTimeline}
+                  onJobTimelineChange={setJobTimeline}
+                  onContinue={() => void onTimelineContinue()}
+                  onSkip={() => void onTimelineSkip()}
+                  onBack={() => goTo(8)}
+                />
+              )}
+              {screen === 10 && (
+                <ScreenOnboardingAvoidRoles
+                  deprioritizedRoles={deprioritizedRoles}
+                  onToggleAvoidRole={onToggleAvoidRole}
+                  onContinue={() => void onAvoidContinue()}
+                  onSkip={() => void onAvoidSkip()}
+                  onBack={() => goTo(9)}
+                />
+              )}
+              {screen === 11 && (
+                <ScreenTargetCompanies
+                  selectedCompanies={selectedCompanies}
+                  targetRoles={selectedTitles}
+                  onAddCompany={onAddTargetCompany}
+                  onRemoveCompany={onRemoveTargetCompany}
+                  onContinue={onCompaniesContinue}
+                  onSkip={onCompaniesSkip}
+                />
+              )}
+              {screen === 12 && <ScreenSetup steps={setupSteps} />}
+            </>
           )}
-          {screen === 2 && (
-            <ScreenTargetRoles
-              selectedTitles={selectedTitles}
-              suggestedTitles={readbackRoleSuggestions}
-              onAddTitle={onAddTargetRole}
-              onRemoveTitle={onRemoveTargetRole}
-              onContinue={onRolesContinue}
-              onSkip={onRolesSkip}
-            />
-          )}
-          {screen === 3 && selectedTitles.length >= 2 && (
-            <ScreenOnboardingPriorityRole
-              targetRoles={selectedTitles}
-              priorityRole={priorityRole}
-              onPriorityRoleChange={setPriorityRole}
-              onContinue={() => void onPriorityContinue()}
-              onSkip={onPrioritySkip}
-              onBack={() => goTo(2)}
-            />
-          )}
-          {screen === 4 && (
-            <ScreenOnboardingLocation
-              targetMarket={targetMarket}
-              fullyRemote={fullyRemote}
-              locationHint={locationHint}
-              onTargetMarketChange={setTargetMarket}
-              onFullyRemoteChange={onFullyRemoteChange}
-              onContinue={() => void onLocationContinue()}
-              onSkip={() => void onLocationSkip()}
-              onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}
-            />
-          )}
-          {screen === 5 && (
-            <ScreenOnboardingWorkArrangement
-              workArrangement={workArrangement}
-              onWorkArrangementChange={setWorkArrangement}
-              onContinue={() => void onWorkArrangementContinue()}
-              onSkip={() => void onWorkArrangementSkip()}
-              onBack={() => goTo(4)}
-            />
-          )}
-          {screen === 6 && (
-            <ScreenOnboardingRelocation
-              relocation={relocation}
-              onRelocationChange={setRelocation}
-              onContinue={() => void onRelocationContinue()}
-              onSkip={() => void onRelocationSkip()}
-              onBack={() => goTo(fullyRemote ? 4 : 5)}
-            />
-          )}
-          {screen === 7 && (
-            <ScreenOnboardingVisa
-              visaNeed={visaNeed}
-              onVisaNeedChange={setVisaNeed}
-              onContinue={() => void onVisaContinue()}
-              onSkip={() => void onVisaSkip()}
-              onBack={() => goTo(6)}
-            />
-          )}
-          {screen === 8 && (
-            <ScreenOnboardingSalary
-              targetSalary={targetSalary}
-              onTargetSalaryChange={setTargetSalary}
-              onContinue={() => void onSalaryContinue()}
-              onSkip={() => void onSalarySkip()}
-              onBack={() => goTo(7)}
-            />
-          )}
-          {screen === 9 && (
-            <ScreenOnboardingTimeline
-              jobTimeline={jobTimeline}
-              onJobTimelineChange={setJobTimeline}
-              onContinue={() => void onTimelineContinue()}
-              onSkip={() => void onTimelineSkip()}
-              onBack={() => goTo(8)}
-            />
-          )}
-          {screen === 10 && (
-            <ScreenOnboardingAvoidRoles
-              deprioritizedRoles={deprioritizedRoles}
-              onToggleAvoidRole={onToggleAvoidRole}
-              onContinue={() => void onAvoidContinue()}
-              onSkip={() => void onAvoidSkip()}
-              onBack={() => goTo(9)}
-            />
-          )}
-          {screen === 11 && (
-            <ScreenTargetCompanies
-              selectedCompanies={selectedCompanies}
-              targetRoles={selectedTitles}
-              onAddCompany={onAddTargetCompany}
-              onRemoveCompany={onRemoveTargetCompany}
-              onContinue={onCompaniesContinue}
-              onSkip={onCompaniesSkip}
-            />
-          )}
-          {screen === 12 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
       {process.env.NODE_ENV === "development" && screen !== 12 && <DemoNextButton onClick={demoAdvance} />}
