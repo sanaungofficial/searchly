@@ -1,8 +1,13 @@
 /** Kimchi marketing landing copy */
 
+export const LANDING_WAITLIST_URL = "https://mrqz.to/kimchi" as const;
+
+export const LANDING_JOIN_WAITLIST_LABEL = "Join Waitlist" as const;
+
 export const LANDING_NAV = [
   { label: "Pricing", href: "#pricing" },
   { label: "Features", href: "#features" },
+  { label: "Coaching", href: "/coaching" },
 ] as const;
 
 export const LANDING_HERO = {
@@ -67,7 +72,7 @@ export const LANDING_TOP_FEATURES = {
       body: "Book sessions with coaches who know your target companies.",
     },
   ],
-  cta: "Get started free",
+  cta: LANDING_JOIN_WAITLIST_LABEL,
 } as const;
 
 export const LANDING_STEPS = {
@@ -184,7 +189,7 @@ export const LANDING_PRICING = {
         "Basic search filters",
         "Real-time listing updates",
       ],
-      cta: "Get this plan",
+      cta: LANDING_JOIN_WAITLIST_LABEL,
       popular: false,
     },
     {
@@ -197,7 +202,7 @@ export const LANDING_PRICING = {
         "Priority match scoring",
         "Early access to new roles",
       ],
-      cta: "Get this plan",
+      cta: LANDING_JOIN_WAITLIST_LABEL,
       popular: true,
       badge: "Popular",
     },
@@ -211,7 +216,7 @@ export const LANDING_PRICING = {
         "Cover letter drafts",
         "Advanced pipeline analytics",
       ],
-      cta: "Get this plan",
+      cta: LANDING_JOIN_WAITLIST_LABEL,
       popular: false,
     },
   ],

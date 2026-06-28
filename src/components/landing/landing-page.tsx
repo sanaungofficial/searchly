@@ -11,6 +11,7 @@ import {
   LANDING_FINAL_CTA,
   LANDING_FOOTER,
   LANDING_HERO,
+  LANDING_JOIN_WAITLIST_LABEL,
   LANDING_NAV,
   LANDING_PRICING,
   LANDING_SKILL_SECTIONS,
@@ -18,6 +19,7 @@ import {
   LANDING_STEPS,
   LANDING_TESTIMONIALS,
   LANDING_TOP_FEATURES,
+  LANDING_WAITLIST_URL,
   LANDING_WHY,
 } from "@/lib/landing-content";
 import "./landing.css";
@@ -213,15 +215,26 @@ export function LandingPage() {
             <KimchiWordmark compact />
           </Link>
           <nav className="landing-nav__links" aria-label="Primary">
-            {LANDING_NAV.map((item) => (
-              <a key={item.href} href={item.href} className="landing-nav__link">
-                {item.label}
-              </a>
-            ))}
+            {LANDING_NAV.map((item) =>
+              item.href.startsWith("/") ? (
+                <Link key={item.href} href={item.href} className="landing-nav__link">
+                  {item.label}
+                </Link>
+              ) : (
+                <a key={item.href} href={item.href} className="landing-nav__link">
+                  {item.label}
+                </a>
+              ),
+            )}
           </nav>
-          <Link href="/signup" className="landing-btn landing-btn--primary landing-btn--bruddle">
-            Get started
-          </Link>
+          <a
+            href={LANDING_WAITLIST_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="landing-btn landing-btn--primary landing-btn--bruddle"
+          >
+            {LANDING_JOIN_WAITLIST_LABEL}
+          </a>
         </div>
       </header>
 
@@ -251,11 +264,16 @@ export function LandingPage() {
               </div>
             </div>
             <div className="landing-hero__actions">
-              <Link href="/signup" className="landing-btn landing-btn--gold landing-btn--bruddle">
-                Start free →
-              </Link>
+              <a
+                href={LANDING_WAITLIST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="landing-btn landing-btn--gold landing-btn--bruddle"
+              >
+                {LANDING_JOIN_WAITLIST_LABEL} →
+              </a>
               <Link href="/login" className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
-                Log in
+                Log In
               </Link>
             </div>
           </div>
@@ -319,9 +337,14 @@ export function LandingPage() {
             ))}
           </div>
           <div className="landing-center-cta">
-            <Link href="/signup" className="landing-btn landing-btn--primary landing-btn--bruddle">
+            <a
+              href={LANDING_WAITLIST_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="landing-btn landing-btn--primary landing-btn--bruddle"
+            >
               {LANDING_TOP_FEATURES.cta}
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -459,9 +482,14 @@ export function LandingPage() {
                     <li key={f}>{f}</li>
                   ))}
                 </ul>
-                <Link href="/signup" className="landing-btn landing-btn--primary landing-btn--block landing-btn--bruddle">
+                <a
+                  href={LANDING_WAITLIST_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="landing-btn landing-btn--primary landing-btn--block landing-btn--bruddle"
+                >
                   {plan.cta}
-                </Link>
+                </a>
               </div>
             ))}
           </div>
@@ -510,11 +538,16 @@ export function LandingPage() {
               ))}
             </ul>
             <div className="landing-hero__actions">
-              <Link href="/signup" className="landing-btn landing-btn--gold landing-btn--bruddle">
-                Start free →
-              </Link>
+              <a
+                href={LANDING_WAITLIST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="landing-btn landing-btn--gold landing-btn--bruddle"
+              >
+                {LANDING_JOIN_WAITLIST_LABEL} →
+              </a>
               <Link href="/login" className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
-                Log in
+                Log In
               </Link>
             </div>
           </div>
