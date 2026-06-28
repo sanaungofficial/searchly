@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { DiscoveryScoreCluster } from "@/components/scout/discovery-score-ui";
+import { useDiscoveryScore } from "@/hooks/use-discovery-score";
 import { useSubscription } from "@/hooks/useSubscription";
 import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
-import type { DiscoveryScoreInput, DiscoveryScoreResult } from "@/lib/discovery-score";
+import type { DiscoveryScoreInput } from "@/lib/discovery-score";
 import { tierPeerCopy } from "@/lib/discovery-score";
 
 type Props = {
@@ -86,35 +86,14 @@ export function DiscoveryScoreCard({
   const { isPro, isAdmin, loading: subLoading } = useSubscription();
   const hasAccess = isPro || isAdmin;
 
-  const [result, setResult] = useState<DiscoveryScoreResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const fetchedRef = useRef(false);
-
-  useEffect(() => {
-    if (!isLoggedIn || !hasAccess || subLoading) return;
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-
-    fetch(withClientScope("/api/discovery-score"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data && typeof data.score === "number") {
-          setResult(data as DiscoveryScoreResult);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [hasAccess, input, isLoggedIn, subLoading, withClientScope]);
-
-  useEffect(() => {
-    if (!isLoggedIn || (!hasAccess && !subLoading)) {
-      setLoading(false);
-    }
-  }, [hasAccess, isLoggedIn, subLoading]);
+  const { result, loading, refreshing, refresh } = useDiscoveryScore({
+    input,
+    withClientScope,
+    hasAccess,
+    isLoggedIn,
+    subLoading,
+    onSubscribe,
+  });
 
   const previewScore = 68;
   const score = result?.score ?? previewScore;
@@ -176,9 +155,32 @@ export function DiscoveryScoreCard({
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "0 0 4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Discovery Score
-              </p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: 0, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  Discovery Score
+                </p>
+                {isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={refresh}
+                    disabled={loading || refreshing || subLoading}
+                    style={{
+                      padding: "4px 10px",
+                      background: "transparent",
+                      color: color.forest,
+                      border: "1.5px solid rgba(26,58,47,0.2)",
+                      borderRadius: "var(--scout-radius)",
+                      fontFamily: fontSans,
+                      fontSize: T.label,
+                      fontWeight: 600,
+                      cursor: loading || refreshing || subLoading ? "not-allowed" : "pointer",
+                      opacity: loading || refreshing || subLoading ? 0.65 : 1,
+                    }}
+                  >
+                    {loading || refreshing ? "…" : "Refresh"}
+                  </button>
+                )}
+              </div>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 4px" }}>
                 {peerCopy}
               </p>

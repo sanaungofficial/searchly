@@ -29,6 +29,7 @@ import {
 import { postedWithinDaysFormValue } from "@/lib/job-posted-filter";
 import type { KanbanCard } from "./workspace-data";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useSubscription } from "@/hooks/useSubscription";
 import {
   filtersCacheKey,
   readRecommendedCache,
@@ -37,6 +38,11 @@ import {
   clearRecommendedCache,
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
+import {
+  readPipelineNetworkMatchCache,
+  writePipelineNetworkMatchCache,
+  clearPipelineNetworkMatchCache,
+} from "@/lib/pipeline-network-match-cache";
 import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { networkAgencyDisplayName } from "@/lib/network-job-display";
@@ -821,7 +827,9 @@ export function PipelineRecommendedSection({
   actingUserId?: string | null;
 }) {
   const isMobile = useIsMobile();
-  const { withClientScope, isAdminReviewing } = useWorkspace();
+  const { withClientScope, isAdminReviewing, openPricing } = useWorkspace();
+  const { isPro, isAdmin } = useSubscription();
+  const hasProAccess = isPro || isAdmin;
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadScopedSemanticQuery(),
@@ -845,7 +853,7 @@ export function PipelineRecommendedSection({
   const [activeFilterLabels, setActiveFilterLabels] = useState<string[]>([]);
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
-  const [networkJobs, setNetworkJobs] = useState<NetworkMatchedJob[]>([]);
+  const [networkJobs, setNetworkJobs] = useState<NetworkMatchedJob[]>(() => readPipelineNetworkMatchCache()?.jobs ?? []);
   const [networkSavingId, setNetworkSavingId] = useState<string | null>(null);
 
   const mountedRef = useRef(false);
@@ -1002,10 +1010,20 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     if (!onOpenNetworkJob) return;
+
+    const cached = readPipelineNetworkMatchCache();
+    if (cached) {
+      setNetworkJobs(cached.jobs);
+      return;
+    }
+
     fetch(withClientScope("/api/network-jobs/match?limit=50"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { jobs?: NetworkMatchedJob[] } | null) => {
-        if (data?.jobs) setNetworkJobs(data.jobs);
+        if (data?.jobs) {
+          setNetworkJobs(data.jobs);
+          writePipelineNetworkMatchCache({ jobs: data.jobs, fetchedAt: Date.now() });
+        }
       })
       .catch(() => {});
   }, [actingUserId, withClientScope, onOpenNetworkJob]);
@@ -1019,6 +1037,7 @@ export function PipelineRecommendedSection({
     setDefaultsLoaded(false);
     defaultFormRef.current = null;
     clearRecommendedCache();
+    clearPipelineNetworkMatchCache();
     setJobs([]);
     setNetworkJobs([]);
     setHasLoadedOnce(false);
@@ -1119,12 +1138,28 @@ export function PipelineRecommendedSection({
   };
 
   const handleRefresh = () => {
+    if (!hasProAccess) {
+      openPricing();
+      return;
+    }
     clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
+    clearPipelineNetworkMatchCache();
     void fetchRecommended(appliedForm, {
       forceRefresh: true,
       preferCache: false,
       background: false,
     });
+    if (onOpenNetworkJob) {
+      fetch(withClientScope("/api/network-jobs/match?limit=50"))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { jobs?: NetworkMatchedJob[] } | null) => {
+          if (data?.jobs) {
+            setNetworkJobs(data.jobs);
+            writePipelineNetworkMatchCache({ jobs: data.jobs, fetchedAt: Date.now() });
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   const savedKeys = useMemo(() => {

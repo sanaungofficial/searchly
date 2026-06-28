@@ -1,5 +1,7 @@
 import { clearCoachMatchCache } from "@/lib/coach-match-cache";
+import { clearDiscoveryScoreCache } from "@/lib/discovery-score-cache";
 import { clearNetworkJobsCache } from "@/lib/network-jobs-cache";
+import { clearPipelineNetworkMatchCache } from "@/lib/pipeline-network-match-cache";
 import { clearRecommendedCache } from "@/lib/recommended-jobs-cache";
 import { readClientUserIdFromBrowserSearch } from "@/lib/workspace-urls";
 
@@ -150,6 +152,8 @@ export function clearMatchAnalysisCache(): void {
 export function clearClientSessionCaches(): void {
   clearRecommendedCache();
   clearCoachMatchCache();
+  clearDiscoveryScoreCache();
   clearNetworkJobsCache();
+  clearPipelineNetworkMatchCache();
   clearMatchAnalysisCache();
 }
