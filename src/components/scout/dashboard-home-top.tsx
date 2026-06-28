@@ -26,19 +26,19 @@ import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal"
 import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-modal";
 import { DashboardGoalWizardModal } from "@/components/scout/dashboard-goal-wizard-modal";
 import { MatchingPrefPromptModal, type MatchingPrefProfile } from "@/components/scout/matching-pref-prompt-modal";
-
 import { SectionHeadingWithHelp, SectionHelpTip } from "@/components/scout/section-help-tip";
 import { DashboardGetStarted } from "@/components/scout/dashboard-get-started";
-import { SearchReadinessCard } from "@/components/scout/search-readiness-card";
-import { ProfileChecklistWidget } from "@/components/scout/profile-checklist-widget";
+import { DiscoveryScoreCard } from "@/components/scout/discovery-score-card";
 import {
+  recommendationTuningGaps,
+  recommendationTuningPct,
   isGoalsWizardDismissed,
   type MatchingTuningGapId,
   type RecommendationTuningInput,
 } from "@/lib/recommendation-tuning";
 import type { RelocationId, VisaNeedId, WorkArrangementId } from "@/lib/onboarding-preferences";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutFieldStyle, scoutInsetChipStyle } from "@/components/scout/scout-box";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { border, color, fontSans, fontDisplay, displayVariation, surface, type as T } from "@/lib/typography";
 
 type Props = {
   isMobile: boolean;
@@ -121,6 +121,11 @@ function tuningInputFromProfile(p: ProfileData): RecommendationTuningInput {
   };
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (parts[0]?.slice(0, 2) ?? "?").toUpperCase();
+}
 
 type BookedCoach = {
   bookingId: string;
@@ -171,6 +176,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const [syncSaving, setSyncSaving] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [interestOpen, setInterestOpen] = useState(false);
+  const [actionItemsOpen, setActionItemsOpen] = useState(true);
 
   const [allSessions, setAllSessions] = useState<LiveSessionView[]>([]);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
@@ -247,10 +253,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           const pastData = pastRes.ok ? await pastRes.json() : null;
           row = pastData?.bookings?.[0];
         }
-        if (!row) {
-          setBookedCoach(null);
-          return;
-        }
+        if (!row) { setBookedCoach(null); return; }
         setBookedCoach({
           bookingId: row.id,
           nylasBookingRef: row.nylasBookingRef ?? null,
@@ -269,8 +272,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       })
       .catch(() => setBookedCoach(null));
 
-    Promise.all([assignedPromise, bookingPromise])
-      .finally(() => setBookingLoading(false));
+    Promise.all([assignedPromise, bookingPromise]).finally(() => setBookingLoading(false));
   }, [showClientCoachUi, withClientScope]);
 
   useEffect(() => {
@@ -284,26 +286,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const tuningInput = useMemo(() => (profile ? tuningInputFromProfile(profile) : null), [profile]);
   const matchingPrefProfile = useMemo(
     () => (profile ? matchingPrefFromProfile(profile) : matchingPrefFromProfile({
-      name: "",
-      avatarUrl: null,
-      headline: null,
-      summary: null,
-      jobTimeline: null,
-      careerMotivation: null,
-      employmentStatus: null,
-      dashboardGoals: [],
-      targetRoles: [],
-      prioritizedRoles: [],
-      targetMarket: null,
-      priorities: [],
-      relocationOpenness: null,
-      workAuthorization: null,
-      targetSalary: null,
-      resumeUrl: null,
-      linkedinUrl: null,
-      parsedData: null,
-      email: null,
-      hasStrategy: false,
+      name: "", avatarUrl: null, headline: null, summary: null, jobTimeline: null,
+      careerMotivation: null, employmentStatus: null, dashboardGoals: [], targetRoles: [],
+      prioritizedRoles: [], targetMarket: null, priorities: [], relocationOpenness: null,
+      workAuthorization: null, targetSalary: null, resumeUrl: null, linkedinUrl: null,
+      parsedData: null, email: null, hasStrategy: false,
     })),
     [profile],
   );
@@ -314,18 +301,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const eventSessions = useMemo(() => {
     const live = allSessions.filter((s) => s.isLive);
-    const upcoming = allSessions.filter(
-      (s) => !s.isLive && s.status !== "ENDED" && s.status !== "CANCELLED",
-    );
+    const upcoming = allSessions.filter((s) => !s.isLive && s.status !== "ENDED" && s.status !== "CANCELLED");
     return [...live, ...upcoming].slice(0, 8);
   }, [allSessions]);
 
   const reloadSessions = useCallback(() => {
     return fetch(withClientScope("/api/live/sessions"))
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (Array.isArray(d?.sessions)) setAllSessions(d.sessions);
-      })
+      .then((d) => { if (Array.isArray(d?.sessions)) setAllSessions(d.sessions); })
       .catch(() => {});
   }, [withClientScope]);
 
@@ -342,7 +325,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       if (!res.ok) throw new Error(data.error ?? "Could not register");
       await reloadSessions();
     } catch {
-      // Registration errors are non-blocking on the dashboard carousel
+      // non-blocking
     } finally {
       setRegisterBusyId(null);
     }
@@ -356,9 +339,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dashboardGoals: next }),
       });
-      if (res.ok) {
-        setProfile((p) => (p ? { ...p, dashboardGoals: next } : p));
-      }
+      if (res.ok) setProfile((p) => (p ? { ...p, dashboardGoals: next } : p));
     } finally {
       setSaving(false);
     }
@@ -367,27 +348,19 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const saveGoalFromWizard = async (partial: Omit<DashboardGoal, "id" | "createdAt">) => {
     const option = findDashboardGoalOption(partial.value);
     if (!option || !profile || usedValues.has(option.value) || goals.length >= DASHBOARD_GOAL_MAX) return;
-
     const next: DashboardGoal = {
-      id: crypto.randomUUID(),
-      category: partial.category,
-      value: partial.value,
-      label: partial.label,
-      createdAt: new Date().toISOString(),
+      id: crypto.randomUUID(), category: partial.category, value: partial.value,
+      label: partial.label, createdAt: new Date().toISOString(),
       ...(partial.targetDate ? { targetDate: partial.targetDate } : {}),
     };
     await persistGoals([...goals, next]);
     setGoalModalOpen(false);
     setGoalWizardIntro(false);
-
     const sync = profileNeedsSyncForGoal(option.value, profile);
     if (sync) setPendingSync(sync);
   };
 
-  const closeGoalModal = () => {
-    setGoalModalOpen(false);
-    setGoalWizardIntro(false);
-  };
+  const closeGoalModal = () => { setGoalModalOpen(false); setGoalWizardIntro(false); };
 
   const saveMatchingPref = async (patch: Record<string, unknown>) => {
     const res = await fetch(withClientScope("/api/profile"), {
@@ -399,59 +372,37 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   const handleFixGap = (gapId: MatchingTuningGapId) => {
-    if (gapId === "primary_goal") {
-      setGoalWizardIntro(false);
-      setGoalModalOpen(true);
-      return;
-    }
-    if (gapId === "target_roles" || gapId === "resume") {
-      router.push(withClientReviewPath("/profile"));
-      return;
-    }
+    if (gapId === "primary_goal") { setGoalWizardIntro(false); setGoalModalOpen(true); return; }
+    if (gapId === "target_roles" || gapId === "resume") { router.push(withClientReviewPath("/profile")); return; }
     setActiveGapId(gapId);
   };
 
-  const removeGoal = (id: string) => {
-    persistGoals(goals.filter((g) => g.id !== id));
-  };
+  const removeGoal = (id: string) => persistGoals(goals.filter((g) => g.id !== id));
 
   const updateGoalTarget = async (id: string, targetDate: string | null) => {
-    const next = goals.map((g) =>
-      g.id === id ? { ...g, targetDate: targetDate?.trim().slice(0, 7) || null } : g,
-    );
+    const next = goals.map((g) => g.id === id ? { ...g, targetDate: targetDate?.trim().slice(0, 7) || null } : g);
     await persistGoals(next);
     setEditingTargetId(null);
     setEditTargetMonth("");
   };
 
-  const openGoalModal = () => {
-    setGoalWizardIntro(false);
-    setGoalModalOpen(true);
-  };
-
+  const openGoalModal = () => { setGoalWizardIntro(false); setGoalModalOpen(true); };
   const openCoachProfile = (slug: string | null, coachId: string) => {
     if (slug) router.push(`/coach/${slug}`);
     else router.push("/coaching");
   };
 
   const handleScheduleCall = () => {
-    if (SALES_TEAM_FORM_URL) {
-      window.open(SALES_TEAM_FORM_URL, "_blank", "noopener,noreferrer");
-      return;
-    }
+    if (SALES_TEAM_FORM_URL) { window.open(SALES_TEAM_FORM_URL, "_blank", "noopener,noreferrer"); return; }
     setScheduleOpen(true);
   };
 
   const handleRecommendation = () => {
-    if (goals.length === 0) {
-      router.push("/coaching");
-      return;
-    }
+    if (goals.length === 0) { router.push("/coaching"); return; }
     router.push(recommendationPathForGoals(goals));
   };
 
-  const recommendationLabel =
-    goals.length > 0 ? recommendationLabelForGoals(goals) : "Show me roles to explore";
+  const recommendationLabel = goals.length > 0 ? recommendationLabelForGoals(goals) : "Show me roles to explore";
 
   const confirmProfileSync = async () => {
     if (!pendingSync) return;
@@ -462,58 +413,282 @@ export function DashboardHomeTop({ isMobile }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [pendingSync.field]: pendingSync.suggestedValue }),
       });
-      if (res.ok && profile) {
-        setProfile({ ...profile, [pendingSync.field]: pendingSync.suggestedValue });
-      }
+      if (res.ok && profile) setProfile({ ...profile, [pendingSync.field]: pendingSync.suggestedValue });
     } finally {
       setSyncSaving(false);
       setPendingSync(null);
     }
   };
 
-  const scrollEvents = (dir: -1 | 1) => {
-    eventsScrollRef.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
+  const scrollEvents = (dir: -1 | 1) => eventsScrollRef.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
+
+  const linkBtnStyle: React.CSSProperties = {
+    background: "none", border: "none", padding: 0, fontFamily: fontSans,
+    fontSize: T.caption, color: color.forest, cursor: "pointer",
+    textDecoration: "underline", textUnderlineOffset: 3,
   };
 
+  // ── Action items (gaps) ───────────────────────────────────────────────────
+  const gaps = tuningInput ? recommendationTuningGaps(tuningInput) : [];
+  const pct = tuningInput ? recommendationTuningPct(tuningInput) : 0;
+  const barColor = pct >= 75 ? color.forest : pct >= 50 ? "#C4A86A" : "#C4574A";
 
-  const navigateToProfileTab = useCallback(
-    (tab: string) => {
-      router.push(withClientReviewPath(`/profile?tab=${tab}`));
-    },
-    [router, withClientReviewPath],
+  const actionItemsAccordion = showClientCoachUi && pct < 100 && (
+    <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
+      <button
+        type="button"
+        onClick={() => setActionItemsOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          gap: 12,
+          marginBottom: actionItemsOpen ? 12 : 0,
+        }}
+      >
+        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
+          Your action items
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: barColor }}>
+            {pct}% done
+          </span>
+          <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+            {actionItemsOpen ? "▲" : "▼"}
+          </span>
+        </div>
+      </button>
+
+      {actionItemsOpen && (
+        <>
+          {/* Progress bar */}
+          <div style={{ height: 5, borderRadius: 3, background: surface.inset, border: border.line, overflow: "hidden", marginBottom: 12 }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
+          </div>
+
+          {/* Gap items */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {gaps.slice(0, 5).map((gap) => (
+              <button
+                key={gap.id}
+                type="button"
+                onClick={() => handleFixGap(gap.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: border.line,
+                  borderRadius: "var(--scout-radius)",
+                  background: surface.inset,
+                  cursor: "pointer",
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  color: color.ink,
+                  textAlign: "left",
+                }}
+              >
+                <span>{gap.actionLabel}</span>
+                <span style={{ color: color.forest, fontWeight: 600, flexShrink: 0 }}>Add →</span>
+              </button>
+            ))}
+            {gaps.length > 5 && (
+              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: 0 }}>
+                +{gaps.length - 5} more in Profile → Preferences
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </ScoutBox>
   );
 
-  const readinessScoreCard = showClientCoachUi && profile && !loading && (
-    <SearchReadinessCard
-      profile={{
-        ...profile,
-        hasStrategy: profile.hasStrategy,
+  // ── Three CTA cards ───────────────────────────────────────────────────────
+  const ctaCards = showClientCoachUi && (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Update profile */}
+      <ScoutBox
+        padding="14px 16px"
+        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
+        onClick={() => router.push(withClientReviewPath("/profile"))}
+      >
+        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(26,58,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          👤
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>Update your profile</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.4 }}>Improve your Discovery Score</p>
+        </div>
+        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
+      </ScoutBox>
+
+      {/* Discover opportunities */}
+      <ScoutBox
+        padding="14px 16px"
+        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
+        onClick={handleRecommendation}
+      >
+        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(196,168,106,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          🔍
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>Discover opportunities</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.4 }}>Browse roles matched to you</p>
+        </div>
+        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
+      </ScoutBox>
+
+      {/* Schedule a call */}
+      <ScoutBox
+        padding="14px 16px"
+        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
+        onClick={handleScheduleCall}
+      >
+        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(74,139,106,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          📞
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>Schedule a call</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.4 }}>Talk to our placement team</p>
+        </div>
+        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
+      </ScoutBox>
+    </div>
+  );
+
+  // ── Discovery Score ───────────────────────────────────────────────────────
+  const discoveryScoreCard = showClientCoachUi && profile && !loading && tuningInput && (
+    <DiscoveryScoreCard
+      input={{
+        name: profile.name,
+        headline: profile.headline,
+        targetRoles: profile.targetRoles,
+        resumeUrl: profile.resumeUrl,
+        linkedinUrl: profile.linkedinUrl,
+        experience: (profile.parsedData?.workExperience as unknown[] | null) ?? null,
+        skills: (profile.parsedData?.skills as string[] | null) ?? null,
+        targetSalary: profile.targetSalary,
+        location: profile.parsedData?.location ?? profile.targetMarket ?? null,
+        employmentStatus: profile.employmentStatus,
+        summary: profile.summary,
       }}
+      avatarUrl={profile.avatarUrl}
       isMobile={isMobile}
-      onNavigateToTab={navigateToProfileTab}
+      withClientScope={withClientScope}
     />
   );
 
+  // ── Goals card ────────────────────────────────────────────────────────────
+  const goalsCard = (
+    <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 }}>
+        <SectionHeadingWithHelp
+          title="Your goals"
+          help="What you're working toward right now — landing a role, prepping for interviews, leveling up, and so on."
+          trailing={
+            canAdd ? (
+              <button
+                type="button"
+                onClick={openGoalModal}
+                aria-label="Add goal"
+                style={{
+                  width: 28, height: 28, border: border.line, borderRadius: "var(--scout-radius)",
+                  background: surface.inset, cursor: "pointer", fontFamily: fontSans,
+                  fontSize: 18, lineHeight: 1, color: color.forest,
+                }}
+              >
+                +
+              </button>
+            ) : undefined
+          }
+        />
+      </div>
+
+      {loading ? (
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>Loading…</p>
+      ) : goals.length === 0 ? (
+        <div>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
+            What are you trying to achieve? You can add up to {DASHBOARD_GOAL_MAX} goals.
+          </p>
+          {canAdd && (
+            <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42 }}>
+              Add a goal
+            </ScoutPrimaryBtn>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: canAdd ? 14 : 0 }}>
+          {goals.map((goal) => {
+            const targetLabel = formatGoalTargetDate(goal.targetDate);
+            const isEditingTarget = editingTargetId === goal.id;
+            return (
+              <div key={goal.id} style={{ borderBottom: border.line, paddingBottom: 12 }}>
+                {targetLabel && (
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>{targetLabel}</p>
+                )}
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px", lineHeight: 1.4 }}>
+                  {goal.label}
+                </p>
+                {isEditingTarget && (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                    <input
+                      type="month"
+                      value={editTargetMonth}
+                      onChange={(e) => setEditTargetMonth(e.target.value)}
+                      style={{ ...scoutFieldStyle, flex: 1, minWidth: 140, padding: "8px 10px", fontSize: isMobile ? 16 : T.bodySm }}
+                    />
+                    <ScoutSecondaryBtn onClick={() => updateGoalTarget(goal.id, editTargetMonth || null)} disabled={saving} style={{ minHeight: 36 }}>
+                      Save
+                    </ScoutSecondaryBtn>
+                    <button type="button" onClick={() => { setEditingTargetId(null); setEditTargetMonth(""); }}
+                      style={{ background: "none", border: "none", fontFamily: fontSans, fontSize: T.caption, color: color.muted, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span style={scoutInsetChipStyle}>{dashboardGoalCategoryLabel(goal.category)}</span>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button type="button" onClick={() => { setEditingTargetId(goal.id); setEditTargetMonth(goal.targetDate ?? ""); }} disabled={saving}
+                      style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, color: color.forest, cursor: saving ? "default" : "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => removeGoal(goal.id)} disabled={saving}
+                      style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, cursor: saving ? "default" : "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {canAdd && goals.length > 0 && (
+        <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42, marginTop: 14 }}>
+          Add another goal
+        </ScoutPrimaryBtn>
+      )}
+    </ScoutBox>
+  );
+
+  // ── Coaches section ───────────────────────────────────────────────────────
   const coachSection = showClientCoachUi && !bookingLoading && (
     <>
       {!bookedCoach && assignedCoaches.length === 0 && (
-        <ScoutBox
-          padding={isMobile ? "16px 18px" : "18px 20px"}
-          style={{
-            borderStyle: "dashed",
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-          }}
-        >
+        <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ borderStyle: "dashed", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
-              My coaches
-            </p>
-            <SectionHelpTip
-              text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here — with a link to book time."
-              label="About My coaches"
-            />
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>My coaches</p>
+            <SectionHelpTip text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here." label="About My coaches" />
           </div>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0 }}>
             No coach assigned yet. When your team adds one, they'll appear here.
@@ -528,54 +703,24 @@ export function DashboardHomeTop({ isMobile }: Props) {
         <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <SectionHeadingWithHelp
             title="My coaches"
-            help="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here — with a link to book time."
+            help="Your Kimchi coach works with you one-on-one."
             trailing={
-              <button
-                type="button"
-                onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.forest,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
+              <button type="button" onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
+                style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                 View all →
               </button>
             }
           />
           {assignedCoaches.map((coach) => (
-            <div
-              key={coach.coachProfileId}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                paddingBottom: assignedCoaches.length > 1 ? 12 : 0,
-                borderBottom: assignedCoaches.length > 1 ? border.line : undefined,
-              }}
-            >
+            <div key={coach.coachProfileId} style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: assignedCoaches.length > 1 ? 12 : 0, borderBottom: assignedCoaches.length > 1 ? border.line : undefined }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={44} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
-                    {coach.displayName}
-                  </p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>
-                    {coach.headline?.slice(0, 80) ?? "Book your intro call to get started."}
-                  </p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{coach.displayName}</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>{coach.headline?.slice(0, 80) ?? "Book your intro call to get started."}</p>
                 </div>
               </div>
-              <ScoutPrimaryBtn
-                onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)}
-                style={{ minHeight: 38, width: "100%" }}
-              >
+              <ScoutPrimaryBtn onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)} style={{ minHeight: 38, width: "100%" }}>
                 {coach.hasNylasBooking ? "Book →" : "View →"}
               </ScoutPrimaryBtn>
             </div>
@@ -585,67 +730,30 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
       {bookedCoach && (
         <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <SectionHeadingWithHelp
-            title="My coaches"
-            help="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here — with a link to book time."
-          />
+          <SectionHeadingWithHelp title="My coaches" help="Your Kimchi coach works with you one-on-one." />
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={44} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
                 {new Date(bookedCoach.startAt) >= new Date() ? "Upcoming session" : "Recent session"}
               </p>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
-                {bookedCoach.coach.displayName}
-              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{bookedCoach.coach.displayName}</p>
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-                {new Date(bookedCoach.startAt) >= new Date()
-                  ? formatBookingWhen(bookedCoach.startAt)
-                  : `Last · ${formatBookingWhen(bookedCoach.startAt)}`}
+                {new Date(bookedCoach.startAt) >= new Date() ? formatBookingWhen(bookedCoach.startAt) : `Last · ${formatBookingWhen(bookedCoach.startAt)}`}
               </p>
             </div>
           </div>
-          <ScoutSecondaryBtn
-            onClick={() => openCoachProfile(bookedCoach.coach.slug, bookedCoach.coach.id)}
-            style={{ minHeight: 38, width: "100%" }}
-          >
+          <ScoutSecondaryBtn onClick={() => openCoachProfile(bookedCoach.coach.slug, bookedCoach.coach.id)} style={{ minHeight: 38, width: "100%" }}>
             View coach →
           </ScoutSecondaryBtn>
           {bookedCoach.nylasBookingRef && new Date(bookedCoach.startAt) >= new Date() && (
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => router.push(`/coaching/reschedule/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.forest,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
+              <button type="button" onClick={() => router.push(`/coaching/reschedule/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
+                style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                 Reschedule
               </button>
-              <button
-                type="button"
-                onClick={() => router.push(`/coaching/cancel/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  color: color.muted,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
+              <button type="button" onClick={() => router.push(`/coaching/cancel/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
+                style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
                 Cancel
               </button>
             </div>
@@ -655,454 +763,99 @@ export function DashboardHomeTop({ isMobile }: Props) {
     </>
   );
 
-  const nudgeSection = showClientCoachUi && (
-    <ScoutBox
-      padding={isMobile ? "16px 18px" : "18px 20px"}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        background: "rgba(74,139,106,0.04)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>
-          ⚡
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <SectionHeadingWithHelp
-            title="Not sure where to start?"
-            help="Totally normal. You can book a quick call with our team, or jump straight to jobs we've picked for you based on your profile."
-          />
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "6px 0 0" }}>
-            No wrong answer — pick whatever feels easier right now.
-          </p>
+  // ── Events carousel ───────────────────────────────────────────────────────
+  const eventsSection = (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+        <SectionHeadingWithHelp title="Free live trainings" help="Live group sessions with coaches and industry folks — always free." />
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 14, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => router.push("/live")} style={linkBtnStyle}>Browse more</button>
+          {sessionsLoaded && eventSessions.length > 0 && (
+            <button type="button" onClick={() => setInterestOpen(true)} style={{ ...linkBtnStyle, color: color.muted }}>Suggest a topic →</button>
+          )}
+          {!isMobile && eventSessions.length > 2 && (
+            <>
+              <button type="button" onClick={() => scrollEvents(-1)} aria-label="Previous" style={{ width: 28, height: 28, border: border.line, borderRadius: "var(--scout-radius)", background: surface.card, cursor: "pointer", fontFamily: fontSans }}>←</button>
+              <button type="button" onClick={() => scrollEvents(1)} aria-label="Next" style={{ width: 28, height: 28, border: border.line, borderRadius: "var(--scout-radius)", background: surface.card, cursor: "pointer", fontFamily: fontSans }}>→</button>
+            </>
+          )}
         </div>
       </div>
-      <ScoutSecondaryBtn
-        onClick={handleScheduleCall}
-        data-offer="discovery"
-        data-trigger="dashboard_schedule"
-        style={{ minHeight: 40, width: "100%" }}
-      >
-        Schedule a call
-      </ScoutSecondaryBtn>
-      <ScoutPrimaryBtn onClick={handleRecommendation} style={{ minHeight: 40, width: "100%" }}>
-        {recommendationLabel}
-      </ScoutPrimaryBtn>
-    </ScoutBox>
-  );
 
-  const goalsCard = (
-      <ScoutBox
-        padding={isMobile ? "16px 18px" : "18px 20px"}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 }}>
-          <SectionHeadingWithHelp
-            title="Your goals"
-            help="What you're working toward right now — landing a role, prepping for interviews, leveling up, and so on. This helps us point you to the right coaches and next steps."
-            trailing={
-              canAdd ? (
-                <button
-                  type="button"
-                  onClick={openGoalModal}
-                  aria-label="Add goal"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    border: border.line,
-                    borderRadius: "var(--scout-radius)",
-                    background: surface.inset,
-                    cursor: "pointer",
-                    fontFamily: fontSans,
-                    fontSize: 18,
-                    lineHeight: 1,
-                    color: color.forest,
-                  }}
-                >
-                  +
-                </button>
-              ) : undefined
-            }
-          />
-        </div>
-
-        {loading ? (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>Loading…</p>
-        ) : goals.length === 0 ? (
-          <div>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
-              What are you trying to achieve? You can add up to {DASHBOARD_GOAL_MAX} goals.
-            </p>
-            {canAdd && (
-              <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42 }}>
-                Add a goal
-              </ScoutPrimaryBtn>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: canAdd ? 14 : 0 }}>
-            {goals.map((goal) => {
-              const targetLabel = formatGoalTargetDate(goal.targetDate);
-              const isEditingTarget = editingTargetId === goal.id;
-              return (
-              <div key={goal.id} style={{ borderBottom: border.line, paddingBottom: 12 }}>
-                {targetLabel && (
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
-                    {targetLabel}
-                  </p>
-                )}
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px", lineHeight: 1.4 }}>
-                  {goal.label}
-                </p>
-                {isEditingTarget ? (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                    <input
-                      type="month"
-                      value={editTargetMonth}
-                      onChange={(e) => setEditTargetMonth(e.target.value)}
-                      style={{
-                        ...scoutFieldStyle,
-                        flex: 1,
-                        minWidth: 140,
-                        padding: "8px 10px",
-                        fontSize: isMobile ? 16 : T.bodySm,
-                      }}
-                    />
-                    <ScoutSecondaryBtn
-                      onClick={() => updateGoalTarget(goal.id, editTargetMonth || null)}
-                      disabled={saving}
-                      style={{ minHeight: 36 }}
-                    >
-                      Save
-                    </ScoutSecondaryBtn>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingTargetId(null);
-                        setEditTargetMonth("");
-                      }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        color: color.muted,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : null}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span style={scoutInsetChipStyle}>
-                    {dashboardGoalCategoryLabel(goal.category)}
-                  </span>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingTargetId(goal.id);
-                        setEditTargetMonth(goal.targetDate ?? "");
-                      }}
-                      disabled={saving}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        color: color.forest,
-                        cursor: saving ? "default" : "pointer",
-                        textDecoration: "underline",
-                        textUnderlineOffset: 2,
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeGoal(goal.id)}
-                      disabled={saving}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        color: color.muted,
-                        cursor: saving ? "default" : "pointer",
-                        textDecoration: "underline",
-                        textUnderlineOffset: 2,
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-            })}
-          </div>
-        )}
-
-        {canAdd && goals.length > 0 && (
-          <ScoutPrimaryBtn
-            onClick={openGoalModal}
-            style={{ width: "100%", minHeight: 42, marginTop: 14 }}
-          >
-            Add another goal
-          </ScoutPrimaryBtn>
-        )}
-      </ScoutBox>
-  );
-
-  const leftColumn = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {coachSection}
-      {goalsCard}
-      {nudgeSection}
-    </div>
-  );
-
-  const linkBtnStyle: React.CSSProperties = {
-    background: "none",
-    border: "none",
-    padding: 0,
-    fontFamily: fontSans,
-    fontSize: T.caption,
-    color: color.forest,
-    cursor: "pointer",
-    textDecoration: "underline",
-    textUnderlineOffset: 3,
-  };
-
-  const rightColumn = (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        minWidth: 0,
-      }}
-    >
-      {!showClientCoachUi && showExpertDashboard && (
-        <ExpertDashboardOverview isMobile={isMobile} />
-      )}
-
-      {/* Free events carousel */}
-      <div style={{ minWidth: 0 }}>
+      {!sessionsLoaded ? null : eventSessions.length === 0 ? (
+        <ScoutBox padding="24px 20px" style={{ textAlign: "center" }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.6, margin: "0 0 14px" }}>
+            Nothing scheduled yet — tell us what topics you&apos;d like to see.
+          </p>
+          <ScoutPrimaryBtn onClick={() => setInterestOpen(true)} style={{ minHeight: 42 }}>Register interest</ScoutPrimaryBtn>
+        </ScoutBox>
+      ) : (
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 12,
-            flexWrap: "wrap",
-          }}
+          ref={eventsScrollRef}
+          style={{ display: "flex", gap: 14, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", scrollSnapType: "x mandatory", margin: "0 -4px", padding: "0 4px 4px" }}
         >
-          <SectionHeadingWithHelp
-            title="Free live trainings"
-            help="Live group sessions with coaches and industry folks — always free. Good for learning tactics, hearing real stories, and getting unstuck."
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 14, flexWrap: "wrap" }}>
-            <button type="button" onClick={() => router.push("/live")} style={linkBtnStyle}>
-              Browse more
-            </button>
-            {sessionsLoaded && eventSessions.length > 0 && (
-              <button type="button" onClick={() => setInterestOpen(true)} style={{ ...linkBtnStyle, color: color.muted }}>
-                Suggest a topic →
-              </button>
-            )}
-            {!isMobile && eventSessions.length > 2 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => scrollEvents(-1)}
-                  aria-label="Previous events"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    border: border.line,
-                    borderRadius: "var(--scout-radius)",
-                    background: surface.card,
-                    cursor: "pointer",
-                    fontFamily: fontSans,
-                  }}
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollEvents(1)}
-                  aria-label="Next events"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    border: border.line,
-                    borderRadius: "var(--scout-radius)",
-                    background: surface.card,
-                    cursor: "pointer",
-                    fontFamily: fontSans,
-                  }}
-                >
-                  →
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {!sessionsLoaded ? null : eventSessions.length === 0 ? (
-          <ScoutBox padding="24px 20px" style={{ textAlign: "center" }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.6, margin: "0 0 14px" }}>
-              Nothing scheduled yet — tell us what topics you&apos;d like to see and we&apos;ll plan around it.
-            </p>
-            <ScoutPrimaryBtn onClick={() => setInterestOpen(true)} style={{ minHeight: 42 }}>
-              Register interest
-            </ScoutPrimaryBtn>
-          </ScoutBox>
-        ) : (
-          <div
-            ref={eventsScrollRef}
-            style={{
-              display: "flex",
-              gap: 14,
-              overflowX: "auto",
-              overflowY: "hidden",
-              WebkitOverflowScrolling: "touch",
-              scrollSnapType: "x mandatory",
-              paddingBottom: 4,
-              margin: "0 -4px",
-              padding: "0 4px 4px",
-            }}
-          >
-            {eventSessions.map((session) => {
-              const routeId = liveSessionRouteId(session);
-              const isBusy = registerBusyId === session.id;
-              return (
-              <ScoutBox
-                key={session.id}
-                padding={0}
-                style={{
-                  flex: "0 0 auto",
-                  width: isMobile ? "min(280px, 85vw)" : 280,
-                  scrollSnapAlign: "start",
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <div
-                  style={{
-                    textAlign: "left",
-                    padding: 0,
-                    background: session.bgColor,
-                    color: session.accentColor,
-                    minHeight: 120,
-                    width: "100%",
-                  }}
-                >
+          {eventSessions.map((session) => {
+            const routeId = liveSessionRouteId(session);
+            const isBusy = registerBusyId === session.id;
+            return (
+              <ScoutBox key={session.id} padding={0} style={{ flex: "0 0 auto", width: isMobile ? "min(280px, 85vw)" : 280, scrollSnapAlign: "start", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div style={{ textAlign: "left", padding: 0, background: session.bgColor, color: session.accentColor, minHeight: 120, width: "100%" }}>
                   <div style={{ padding: "14px 16px" }}>
                     {session.isLive && (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "2px 8px",
-                          background: session.accentColor,
-                          color: session.bgColor,
-                          fontFamily: fontSans,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Live
-                      </span>
+                      <span style={{ display: "inline-block", padding: "2px 8px", background: session.accentColor, color: session.bgColor, fontFamily: fontSans, fontSize: 10, fontWeight: 700, textTransform: "uppercase", marginBottom: 8 }}>Live</span>
                     )}
-                    <p
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize: 17,
-                        fontWeight: 500,
-                        fontStyle: "italic",
-                        color: "#fff",
-                        margin: "0 0 8px",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {session.title}
-                    </p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.label, opacity: 0.85, margin: 0 }}>
-                      {session.date} · {session.time.split("–")[0]?.trim()}
-                    </p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.label, opacity: 0.7, margin: "4px 0 0" }}>
-                      {session.registered} registered
-                    </p>
+                    <p style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 500, fontStyle: "italic", color: "#fff", margin: "0 0 8px", lineHeight: 1.25 }}>{session.title}</p>
+                    <p style={{ fontFamily: fontSans, fontSize: T.label, opacity: 0.85, margin: 0 }}>{session.date} · {session.time.split("–")[0]?.trim()}</p>
+                    <p style={{ fontFamily: fontSans, fontSize: T.label, opacity: 0.7, margin: "4px 0 0" }}>{session.registered} registered</p>
                   </div>
                 </div>
                 <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "50%",
-                        background: session.bgColor,
-                        color: session.accentColor,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: fontSans,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                    >
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: session.bgColor, color: session.accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontSans, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                       {session.hostInitials}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {session.host}
-                      </p>
+                      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.host}</p>
                       {session.hostRating != null && (
-                        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "2px 0 0" }}>
-                          ★ {session.hostRating.toFixed(1)} ({session.hostReviews})
-                        </p>
+                        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "2px 0 0" }}>★ {session.hostRating.toFixed(1)} ({session.hostReviews})</p>
                       )}
                     </div>
                   </div>
                   <ScoutPrimaryBtn
                     onClick={() => {
-                      if (session.isLive) {
-                        router.push(`/live/${routeId}`);
-                        return;
-                      }
-                      if (session.isRegistered) {
-                        router.push(`/live/${routeId}`);
-                        return;
-                      }
+                      if (session.isLive || session.isRegistered) { router.push(`/live/${routeId}`); return; }
                       void registerForSession(session);
                     }}
                     disabled={isBusy}
                     style={{ minHeight: 38, width: "100%", fontSize: T.caption }}
                   >
-                    {session.isLive
-                      ? "Join now →"
-                      : isBusy
-                        ? "Saving…"
-                        : session.isRegistered
-                          ? "Registered ✓"
-                          : "Register →"}
+                    {session.isLive ? "Join now →" : isBusy ? "Saving…" : session.isRegistered ? "Registered ✓" : "Register →"}
                   </ScoutPrimaryBtn>
                 </div>
               </ScoutBox>
             );
-            })}
-          </div>
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Welcome header ────────────────────────────────────────────────────────
+  const welcomeHeader = showClientCoachUi && profile && (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: isMobile ? 20 : 24 }}>
+      <div style={{ width: 44, height: 44, borderRadius: "50%", background: color.forest, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontSans, fontSize: 16, fontWeight: 700, flexShrink: 0, overflow: "hidden" }}>
+        {profile.avatarUrl ? (
+          <img src={profile.avatarUrl} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : initials(profile.name)}
+      </div>
+      <div>
+        <p style={{ fontFamily: fontDisplay, fontSize: isMobile ? 22 : 26, fontWeight: 500, fontVariationSettings: displayVariation, color: color.ink, margin: 0, lineHeight: 1.1 }}>
+          Welcome, {profile.name.split(" ")[0]}
+        </p>
+        {profile.headline && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
+            {profile.headline.slice(0, 80)}
+          </p>
         )}
       </div>
     </div>
@@ -1110,13 +863,33 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   return (
     <>
-      {/* Search Readiness Score — full width hero */}
-      {readinessScoreCard && (
-        <div style={{ marginBottom: isMobile ? 20 : 28 }}>
-          {readinessScoreCard}
+      {/* Welcome header */}
+      {welcomeHeader}
+
+      {/* Two-column row: action items + CTA cards */}
+      {showClientCoachUi && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.2fr) minmax(0, 1fr)",
+            gap: isMobile ? 16 : 20,
+            marginBottom: isMobile ? 20 : 24,
+            alignItems: "start",
+          }}
+        >
+          {actionItemsAccordion || <div />}
+          {ctaCards}
         </div>
       )}
 
+      {/* Discovery Score — full width */}
+      {discoveryScoreCard && (
+        <div style={{ marginBottom: isMobile ? 20 : 24 }}>
+          {discoveryScoreCard}
+        </div>
+      )}
+
+      {/* Goals (bigger, more prominent) */}
       <div
         style={{
           display: "grid",
@@ -1126,53 +899,33 @@ export function DashboardHomeTop({ isMobile }: Props) {
           alignItems: "start",
         }}
       >
-        {leftColumn}
-        {rightColumn}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {goalsCard}
+          {coachSection}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {!showClientCoachUi && showExpertDashboard && <ExpertDashboardOverview isMobile={isMobile} />}
+          {eventsSection}
+        </div>
       </div>
 
+      {/* Job search metrics */}
       {showClientCoachUi && <DashboardGetStarted isMobile={isMobile} />}
 
-      {pendingSync && (
-        <ProfileSyncPromptModal
-          sync={pendingSync}
-          onConfirm={confirmProfileSync}
-          onSkip={() => setPendingSync(null)}
-          saving={syncSaving}
-        />
-      )}
+      {/* Modals */}
+      {pendingSync && <ProfileSyncPromptModal sync={pendingSync} onConfirm={confirmProfileSync} onSkip={() => setPendingSync(null)} saving={syncSaving} />}
       {scheduleOpen && <GrowthDiscoveryModal trigger="dashboard_schedule" onClose={() => setScheduleOpen(false)} />}
       {interestOpen && <EventInterestModal onClose={() => setInterestOpen(false)} />}
-      <DashboardGoalWizardModal
-        open={goalModalOpen}
-        showIntro={goalWizardIntro}
-        onClose={closeGoalModal}
-        onSave={saveGoalFromWizard}
-        availableOptions={availableOptions}
-        saving={saving}
-      />
+      <DashboardGoalWizardModal open={goalModalOpen} showIntro={goalWizardIntro} onClose={closeGoalModal} onSave={saveGoalFromWizard} availableOptions={availableOptions} saving={saving} />
       <MatchingPrefPromptModal
         open={activeGapId !== null}
         gapId={activeGapId}
         profile={matchingPrefProfile}
         onClose={() => setActiveGapId(null)}
         onSave={saveMatchingPref}
-        onOpenGoalWizard={() => {
-          setActiveGapId(null);
-          setGoalWizardIntro(false);
-          setGoalModalOpen(true);
-        }}
+        onOpenGoalWizard={() => { setActiveGapId(null); setGoalWizardIntro(false); setGoalModalOpen(true); }}
       />
-
-      {/* Floating profile completion checklist */}
-      {showClientCoachUi && profile && !loading && (
-        <ProfileChecklistWidget
-          profile={{
-            ...profile,
-            hasStrategy: profile.hasStrategy,
-          }}
-          onNavigateToTab={navigateToProfileTab}
-        />
-      )}
     </>
   );
 }

@@ -431,44 +431,32 @@ function RecommendedResultsList({
                       {row.companyName}
                       {row.location ? ` · ${row.location}` : ""}
                     </p>
-                    {!isNetwork && (
-                      <div style={{ marginBottom: 8 }}>
+                    <div style={{ marginBottom: 8 }}>
+                      {isNetwork && networkJob?.sharedAt ? (
+                        <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
+                          Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
+                        </span>
+                      ) : (
                         <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
-                      </div>
-                    )}
+                      )}
+                    </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {isNetwork ? (
+                      {isNetwork && (
                         <span
                           style={{
-                            ...scoutInsetChipStyle,
                             display: "inline-block",
-                            padding: "2px 8px",
-                            fontSize: T.label,
+                            padding: "3px 10px",
+                            fontSize: T.bodySm,
                             fontWeight: 700,
-                            letterSpacing: "0.06em",
+                            letterSpacing: "0.04em",
                             textTransform: "uppercase",
-                            color: "#6B5A2A",
-                            background: "rgba(196,168,106,0.15)",
-                            border: "1px solid rgba(196,168,106,0.35)",
+                            color: "#7A4F00",
+                            background: "rgba(196,140,40,0.18)",
+                            border: "1.5px solid rgba(196,140,40,0.5)",
+                            borderRadius: "var(--scout-radius)",
                           }}
                         >
                           {NETWORK_JOB_CLIENT_BADGE}
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            ...scoutInsetChipStyle,
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            fontSize: T.label,
-                            fontWeight: 600,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            color: score.accent,
-                            background: score.bgSubtle,
-                          }}
-                        >
-                          Recommended
                         </span>
                       )}
                       {row.isTrackedCompany && (

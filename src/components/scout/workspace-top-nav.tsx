@@ -13,7 +13,7 @@ import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isE
 import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
-import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
+import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
 
 export const TOP_NAV_HEIGHT = 64;
 export const TOP_NAV_HEIGHT_MOBILE = 56;
@@ -43,11 +43,6 @@ function buildNavLinks(isAdmin: boolean): NavLink[] {
     label: "Opportunities",
     path: "/opportunities/pipeline",
     match: matchOpportunitiesNavPath,
-    children: OPPORTUNITIES_NAV.map(({ label, path, match }) => ({
-      label,
-      path,
-      match,
-    })),
   });
   links.push({
     id: "inbox",
