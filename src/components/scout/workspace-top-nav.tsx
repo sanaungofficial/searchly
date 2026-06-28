@@ -1160,7 +1160,6 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                 height: 36,
                 padding: 0,
                 border: "var(--scout-border)",
-                borderColor: "rgba(17,17,17,0.12)",
                 borderRadius: "50%",
                 cursor: "pointer",
                 overflow: "hidden",
