@@ -247,8 +247,8 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
             data-trigger="credits_bar_exhausted"
             style={{
               padding: "8px 14px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
+              background: "var(--scout-cta)",
+              color: "var(--scout-cta-foreground)",
               border: "none",
               borderRadius: "var(--scout-radius)",
               fontFamily: "var(--font-ui)",

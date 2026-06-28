@@ -187,8 +187,8 @@ export function ScoutPrimaryBtn({
       style={{
         ...btnBase,
         padding: "8px 16px",
-        background: disabled ? "rgba(26,58,47,0.35)" : "var(--scout-forest)",
-        color: "var(--scout-gold)",
+        background: disabled ? "var(--scout-cta-muted)" : "var(--scout-cta)",
+        color: "var(--scout-cta-foreground)",
         border: "var(--scout-border)",
         opacity: disabled ? 0.7 : 1,
         ...style,
@@ -257,8 +257,8 @@ export function ScoutSecondaryBtn({
       style={{
         ...btnBase,
         padding: "8px 16px",
-        background: active ? "var(--scout-forest)" : surface.card,
-        color: active ? "var(--scout-gold)" : "var(--scout-forest)",
+        background: active ? "var(--scout-cta)" : surface.card,
+        color: active ? "var(--scout-cta-foreground)" : "var(--scout-forest)",
         border: "var(--scout-border)",
         ...style,
       }}

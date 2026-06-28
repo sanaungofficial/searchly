@@ -12,6 +12,9 @@ export const displayVariation = '"opsz" 72, "WONK" 1' as const;
 export const color = {
   ink: "#1A1A1A",
   forest: "#1A3A2F",
+  /** Primary CTA fill — `--scout-cta` (purple); forest remains brand/nav */
+  cta: "var(--scout-cta)",
+  ctaForeground: "var(--scout-cta-foreground)",
   stone: "#52493F",
   /** Body secondary — bumped from #6B6258 for AA on cream (~5.2:1) */
   muted: "#5C534A",

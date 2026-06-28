@@ -90,8 +90,8 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
             display: "block",
             width: "100%",
             padding: "12px 0",
-            background: "#1A3A2F",
-            color: "#E8D5A3",
+            background: "var(--scout-cta)",
+            color: "var(--scout-cta-foreground)",
             borderRadius: "var(--scout-radius)",
             fontFamily: "var(--font-ui)",
             fontSize: 14,
@@ -209,8 +209,8 @@ export function GrowthMatchOffer({
           data-trigger="low_match"
           style={{
             padding: "8px 16px",
-            background: "#1A3A2F",
-            color: "#E8D5A3",
+            background: "var(--scout-cta)",
+            color: "var(--scout-cta-foreground)",
             border: "none",
             borderRadius: "var(--scout-radius)",
             fontFamily: "var(--font-ui)",

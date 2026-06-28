@@ -155,15 +155,15 @@ function KimchiComposerStyles() {
         flex-shrink: 0;
         border: none;
         border-radius: var(--scout-radius);
-        background: #1A3A2F;
-        color: #E8D5A3;
+        background: var(--scout-cta);
+        color: var(--scout-cta-foreground);
         font-size: 16px;
         cursor: pointer;
       }
 
       .kimchi-composer-row__send:disabled {
-        background: rgba(26, 58, 47, 0.08);
-        color: rgba(26, 58, 47, 0.35);
+        background: var(--scout-cta-subtle);
+        color: rgba(124, 58, 237, 0.35);
         cursor: default;
       }
     `}</style>

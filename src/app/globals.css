@@ -63,6 +63,12 @@
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
   --scout-gold: #E8D5A3;
+  /* Primary action buttons — purple accent (forest stays for nav/sidebar/brand) */
+  --scout-cta: #7C3AED;
+  --scout-cta-hover: #6D28D9;
+  --scout-cta-muted: rgba(124, 58, 237, 0.35);
+  --scout-cta-subtle: rgba(124, 58, 237, 0.08);
+  --scout-cta-foreground: #FFFFFF;
   --scout-stone: #52493F;
   --scout-muted: #5C534A;
   --scout-muted-light: #8A8178;

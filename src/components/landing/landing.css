@@ -2,6 +2,8 @@
 
 .landing {
   --landing-forest: #1a3a2f;
+  --landing-cta: var(--scout-cta);
+  --landing-cta-foreground: var(--scout-cta-foreground);
   --landing-cream: #faf4f0;
   --landing-gold: #e8d5a3;
   --landing-ink: #161616;
@@ -161,8 +163,8 @@
   opacity: 1;
 }
 .landing-btn--primary {
-  background: var(--landing-forest);
-  color: var(--landing-gold);
+  background: var(--landing-cta);
+  color: var(--landing-cta-foreground);
 }
 .landing-btn--gold {
   background: var(--landing-gold);

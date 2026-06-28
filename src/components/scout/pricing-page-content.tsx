@@ -39,7 +39,7 @@ export function PricingPageContent() {
               style={{
                 fontSize: 14,
                 color: "#F2EDE3",
-                background: "#1C3A2F",
+                background: "var(--scout-cta)",
                 borderRadius: "var(--scout-radius)",
                 padding: "9px 20px",
                 textDecoration: "none",
@@ -60,8 +60,8 @@ export function PricingPageContent() {
                 href="/signup?next=/dashboard?pricing=1"
                 style={{
                   fontSize: 14,
-                  color: "#F2EDE3",
-                  background: "#1C3A2F",
+                  color: "var(--scout-cta-foreground)",
+                  background: "var(--scout-cta)",
                   borderRadius: "var(--scout-radius)",
                   padding: "9px 20px",
                   textDecoration: "none",
