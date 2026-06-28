@@ -113,8 +113,8 @@ export function VoiceAgentProvider({ children }: { children: React.ReactNode }) 
     toggleSession,
     setSelectedPreset,
     setPageHint,
-    setOnComplete: setOnCompleteRef,
-    setOnNavigate: setOnNavigateRef,
+    setOnComplete: (handler) => setOnCompleteRef(() => handler),
+    setOnNavigate: (handler) => setOnNavigateRef(() => handler),
     setChatHistory,
   };
 
