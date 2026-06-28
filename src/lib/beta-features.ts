@@ -43,9 +43,9 @@ export function isProductionEnv(): boolean {
 /** Page-level access for Live / Coaching / Network routes. */
 export function canAccessBetaFeature(feature: BetaFeatureId, _isAdmin: boolean): boolean {
   if (feature === "live") return true;
+  if (feature === "coaching") return true;
   if (feature === "network") return _isAdmin;
   if (!isProductionEnv()) return _isAdmin;
-  if (feature === "coaching") return true;
   return _isAdmin;
 }
 

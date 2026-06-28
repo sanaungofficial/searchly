@@ -220,6 +220,10 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
 
   const toggleFollow = async () => {
     if (!coach) return;
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
     const res = await fetch(`/api/coaches/${slug}/follow`, { method: coach.isFollowing ? "DELETE" : "POST" });
     if (res.ok) {
       const data = await res.json();
@@ -229,6 +233,10 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
 
   const toggleMyCoach = async () => {
     if (!coach) return;
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
     const isAssigned = coach.isMyCoach ?? false;
     if (!isAssigned && coach.isInternal && !isAdmin) return;
     if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
