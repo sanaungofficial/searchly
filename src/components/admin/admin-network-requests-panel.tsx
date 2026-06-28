@@ -120,7 +120,7 @@ export function AdminNetworkRequestsPanel() {
           {items.map((item) => {
             const st = STATUS_STYLE[item.status] ?? STATUS_STYLE.PENDING;
             return (
-              <div key={item.id} style={{ border: border.line, borderRadius: "var(--scout-radius)", padding: "14px 16px", background: surface.inset }}>
+              <div key={item.id} style={{ border: "var(--scout-border)", borderRadius: "var(--scout-radius)", padding: "14px 16px", background: surface.inset }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
                   <div>
                     <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 700, color: color.ink, margin: "0 0 4px" }}>{item.jobTitle}</p>
@@ -134,7 +134,7 @@ export function AdminNetworkRequestsPanel() {
                     <span style={{ fontFamily: fontMono, fontSize: T.label, padding: "2px 8px", background: st.bg, color: st.color, borderRadius: 999 }}>
                       {item.statusLabel}
                     </span>
-                    <span style={{ fontFamily: fontMono, fontSize: T.label, padding: "2px 8px", border: border.line, color: color.stone }}>
+                    <span style={{ fontFamily: fontMono, fontSize: T.label, padding: "2px 8px", border: "var(--scout-border)", color: color.stone }}>
                       {item.requestTypeLabel}
                     </span>
                   </div>
@@ -152,7 +152,7 @@ export function AdminNetworkRequestsPanel() {
                   onChange={(e) => setDraftNotes((d) => ({ ...d, [item.id]: e.target.value }))}
                   placeholder="Internal admin notes…"
                   rows={2}
-                  style={{ width: "100%", boxSizing: "border-box", marginBottom: 10, padding: "8px 10px", border: border.line, borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.caption, background: surface.card }}
+                  style={{ width: "100%", boxSizing: "border-box", marginBottom: 10, padding: "8px 10px", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.caption, background: surface.card }}
                 />
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {item.status === "PENDING" && (

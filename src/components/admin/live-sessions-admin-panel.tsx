@@ -65,7 +65,7 @@ type RegistrationRow = {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   fontFamily: fontSans,
   fontSize: T.bodySm,
   background: surface.card,
@@ -287,7 +287,7 @@ export function LiveSessionsAdminPanel() {
 
   const renderSession = (session: AdminLiveSession) => (
     <ScoutBox key={session.id} padding={0} style={{ overflow: "hidden" }}>
-      <div style={{ padding: "16px 18px", borderBottom: border.line }}>
+      <div style={{ padding: "16px 18px", borderBottom: "var(--scout-border)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 220 }}>
             <p style={{ fontFamily: fontMono, fontSize: 11, color: color.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -336,7 +336,7 @@ export function LiveSessionsAdminPanel() {
         </div>
 
         {session.activePeers.length > 0 && (
-          <div style={{ padding: "10px 12px", background: surface.inset, border: border.line }}>
+          <div style={{ padding: "10px 12px", background: surface.inset, border: "var(--scout-border)" }}>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, margin: "0 0 8px" }}>Who&apos;s in the room</p>
             <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.caption, lineHeight: 1.6 }}>
               {session.activePeers.map((p) => (
@@ -430,7 +430,7 @@ export function LiveSessionsAdminPanel() {
         </div>
 
         {editingId === session.id && editForm && (
-          <div style={{ borderTop: border.line, paddingTop: 12, display: "grid", gap: 10 }}>
+          <div style={{ borderTop: "var(--scout-border)", paddingTop: 12, display: "grid", gap: 10 }}>
             <label style={{ display: "grid", gap: 4 }}>
               <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Title</span>
               <input style={inputStyle} value={editForm.title} onChange={(e) => setEditForm((f) => f && ({ ...f, title: e.target.value }))} />
@@ -456,7 +456,7 @@ export function LiveSessionsAdminPanel() {
         )}
 
         {expandedId === session.id && analytics && (
-          <div style={{ borderTop: border.line, paddingTop: 12 }}>
+          <div style={{ borderTop: "var(--scout-border)", paddingTop: 12 }}>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, margin: "0 0 10px" }}>
               Session analytics
             </p>
@@ -474,16 +474,16 @@ export function LiveSessionsAdminPanel() {
         )}
 
         {expandedId === session.id && (
-          <div style={{ borderTop: border.line, paddingTop: 12 }}>
+          <div style={{ borderTop: "var(--scout-border)", paddingTop: 12 }}>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, margin: "0 0 8px" }}>
               Registrations ({registrations.length})
             </p>
             {registrations.length === 0 ? (
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>No one registered yet.</p>
             ) : (
-              <div style={{ maxHeight: 200, overflow: "auto", border: border.line }}>
+              <div style={{ maxHeight: 200, overflow: "auto", border: "var(--scout-border)" }}>
                 {registrations.map((r) => (
-                  <div key={r.id} style={{ padding: "8px 12px", borderBottom: border.line, fontFamily: fontSans, fontSize: T.caption }}>
+                  <div key={r.id} style={{ padding: "8px 12px", borderBottom: "var(--scout-border)", fontFamily: fontSans, fontSize: T.caption }}>
                     <strong>{r.name ?? "—"}</strong> · {r.email}
                     <span style={{ color: color.muted, marginLeft: 8 }}>
                       {r.joinedAt ? "Joined" : "Registered"}

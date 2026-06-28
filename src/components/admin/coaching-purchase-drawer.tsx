@@ -66,7 +66,7 @@ export function CoachingPurchaseDrawer({
           style={{
             padding: isMobile ? "12px 16px" : "14px 28px",
             background: surface.card,
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             display: "flex",
             alignItems: "center",
             gap: 12,
@@ -126,7 +126,7 @@ export function CoachingPurchaseDrawer({
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "8px 0",
-                  borderBottom: border.line,
+                  borderBottom: "var(--scout-border)",
                   fontFamily: fontSans,
                   fontSize: 14,
                 }}

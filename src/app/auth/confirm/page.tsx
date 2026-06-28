@@ -95,6 +95,7 @@ function AuthConfirmContent() {
 
   return (
     <div
+      className="bruddle"
       style={{
         minHeight: "100vh",
         display: "flex",

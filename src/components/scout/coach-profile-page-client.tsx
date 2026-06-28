@@ -16,9 +16,9 @@ import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachProfileDetail } from "@/lib/coach-types";
-import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
-const line = border.line;
+const line = "var(--scout-border)";
 const cardBg = surface.card;
 
 function ReviewFormModal({
@@ -282,7 +282,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
   }
 
   return (
-    <div style={{ minHeight: "100%", background: cardBg }}>
+    <div className="bruddle" style={{ minHeight: "100%", background: cardBg }}>
       <div
         style={{
           padding: isMobile ? "12px 16px" : "16px 32px",

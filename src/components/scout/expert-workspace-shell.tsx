@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { EXPERT_WORKSPACE_NAV, expertWorkspaceNavId, type ExpertWorkspaceNavId } from "@/lib/staff-portal";
 import { WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
-import { border, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
 
 function ExpertPortalIcon() {
   return (
@@ -35,7 +35,7 @@ function ExpertLayoutSidebar({ activeId }: { activeId: ExpertWorkspaceNavId | nu
       <div
         style={{
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           overflow: "hidden",
           boxShadow: "var(--scout-shadow-card)",
@@ -59,15 +59,7 @@ function ExpertLayoutSidebar({ activeId }: { activeId: ExpertWorkspaceNavId | nu
           >
             <ExpertPortalIcon />
           </div>
-          <h2
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 18,
-              fontWeight: 600,
-              color: color.ink,
-              margin: "0 0 4px",
-            }}
-          >
+          <h2 style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 4px" }}>
             Expert Portal
           </h2>
           <p
@@ -87,7 +79,7 @@ function ExpertLayoutSidebar({ activeId }: { activeId: ExpertWorkspaceNavId | nu
       <nav
         style={{
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           padding: 6,
           boxShadow: "var(--scout-shadow-card)",
@@ -144,7 +136,7 @@ function MobileTabBar({ activeId }: { activeId: ExpertWorkspaceNavId | null }) {
             style={{
               flexShrink: 0,
               padding: "8px 14px",
-              border: border.line,
+              border: "var(--scout-border)",
               borderRadius: "calc(var(--scout-radius) - 2px)",
               background: isActive ? surface.inset : surface.card,
               color: isActive ? color.ink : color.muted,
@@ -172,6 +164,7 @@ export function ExpertWorkspaceShell({ children }: Props) {
 
   return (
     <div
+      className="bruddle"
       style={{
         height: "100%",
         minHeight: 0,

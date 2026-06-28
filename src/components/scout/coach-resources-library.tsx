@@ -121,7 +121,7 @@ export function CoachResourcesLibrary() {
           marginBottom: 20,
           padding: 16,
           borderRadius: "var(--scout-radius)",
-          border: border.line,
+          border: "var(--scout-border)",
           background: "rgba(26,58,47,0.03)",
         }}
       >
@@ -150,7 +150,7 @@ export function CoachResourcesLibrary() {
                 width: "100%",
                 marginTop: 6,
                 padding: "8px 10px",
-                border: border.line,
+                border: "var(--scout-border)",
                 fontFamily: fontSans,
                 fontSize: 13,
                 boxSizing: "border-box",
@@ -167,7 +167,7 @@ export function CoachResourcesLibrary() {
                 width: "100%",
                 marginTop: 6,
                 padding: "8px 10px",
-                border: border.line,
+                border: "var(--scout-border)",
                 fontFamily: fontSans,
                 fontSize: 13,
                 boxSizing: "border-box",
@@ -204,7 +204,7 @@ export function CoachResourcesLibrary() {
                 justifyContent: "space-between",
                 gap: 12,
                 padding: "12px 0",
-                borderBottom: border.line,
+                borderBottom: "var(--scout-border)",
               }}
             >
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -228,7 +228,7 @@ export function CoachResourcesLibrary() {
                     color: color.forest,
                     textDecoration: "none",
                     padding: "6px 10px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                   }}
                 >
                   Open
@@ -270,7 +270,7 @@ export function CoachResourcesLibrary() {
         </ul>
       )}
 
-      <div style={{ marginTop: 16, paddingTop: 16, borderTop: border.line }}>
+      <div style={{ marginTop: 16, paddingTop: 16, borderTop: "var(--scout-border)" }}>
         <ScoutSecondaryBtn type="button" onClick={() => void load()}>
           Refresh
         </ScoutSecondaryBtn>

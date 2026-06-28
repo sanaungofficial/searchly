@@ -90,7 +90,7 @@ function AdminCoachesInner() {
               onClick={() => openCoach(coach.id)}
               style={{
                 textAlign: "left",
-                border: border.line,
+                border: "var(--scout-border)",
                 borderRadius: "var(--scout-radius)",
                 background: surface.card,
                 boxShadow: "var(--scout-shadow-card)",

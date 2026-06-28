@@ -42,7 +42,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: 120,
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   fontFamily: fontSans,
   fontSize: T.bodySm,
   background: surface.card,

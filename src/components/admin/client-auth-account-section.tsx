@@ -42,7 +42,7 @@ export function ClientAuthAccountSection({ client, onUpdated }: Props) {
     width: "100%",
     fontSize: 14,
     background: surface.card,
-    border: border.line,
+    border: "var(--scout-border)",
     borderRadius: "var(--scout-radius)",
     padding: "9px 12px",
     outline: "none",

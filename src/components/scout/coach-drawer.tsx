@@ -17,12 +17,12 @@ import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem, CoachProfileDetail } from "@/lib/coach-types";
-import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 const DRAWER_BACKDROP_Z = 200;
 const DRAWER_Z = 201;
-const line = border.line;
+const line = "var(--scout-border)";
 const cardBg = surface.card;
 
 type Props = {

@@ -108,7 +108,7 @@ function Toggle({
 
 function FaqItem({ icon, title, body }: { icon: string; title: string; body: string }) {
   return (
-    <div style={{ display: "flex", gap: 12, padding: "14px 0", borderBottom: border.line }}>
+    <div style={{ display: "flex", gap: 12, padding: "14px 0", borderBottom: "var(--scout-border)" }}>
       <span style={{ fontSize: 18, lineHeight: 1.2 }}>{icon}</span>
       <div>
         <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>{title}</p>
@@ -286,7 +286,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
       style={{
         padding: isMobile ? "12px 16px" : embedded ? "0 0 14px" : "14px 28px",
         background: embedded ? "transparent" : surface.card,
-        borderBottom: embedded ? "none" : border.line,
+        borderBottom: embedded ? "none" : "var(--scout-border)",
         display: "flex",
         alignItems: "center",
         gap: 12,
@@ -330,7 +330,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
             <p style={{ fontFamily: fontSans, color: color.muted }}>Loading pricing…</p>
           )}
           {error && (
-            <div style={{ marginBottom: 16, padding: "12px 14px", border: border.line, background: "rgba(220,38,38,0.06)", color: "#b45309", fontFamily: fontSans, fontSize: 14 }}>
+            <div style={{ marginBottom: 16, padding: "12px 14px", border: "var(--scout-border)", background: "rgba(220,38,38,0.06)", color: "#b45309", fontFamily: fontSans, fontSize: 14 }}>
               {error}
             </div>
           )}
@@ -374,7 +374,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                               type="number"
                               value={hourlyDraft}
                               onChange={(e) => setHourlyDraft(e.target.value)}
-                              style={{ width: 100, fontSize: 22, fontWeight: 600, padding: "4px 8px", border: border.line, fontFamily: fontSans }}
+                              style={{ width: 100, fontSize: 22, fontWeight: 600, padding: "4px 8px", border: "var(--scout-border)", fontFamily: fontSans }}
                               autoFocus
                             />
                             <span style={{ fontFamily: fontSans, fontSize: 16, color: color.muted }}>per hour</span>
@@ -419,7 +419,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                           style={{
                             padding: "10px 14px",
                             background: tier.bg,
-                            border: active ? `2px solid ${color.forest}` : border.line,
+                            border: active ? `2px solid ${color.forest}` : "var(--scout-border)",
                             minWidth: 120,
                           }}
                         >
@@ -445,7 +445,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                     width: "100%",
                     textAlign: "left",
                     background: surface.inset,
-                    border: border.line,
+                    border: "var(--scout-border)",
                     padding: "12px 14px",
                     cursor: "pointer",
                     fontFamily: fontSans,
@@ -475,7 +475,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: fontSans }}>
                           <thead>
-                            <tr style={{ borderBottom: border.line }}>
+                            <tr style={{ borderBottom: "var(--scout-border)" }}>
                               {["Scenario", "Client pays", "Platform", "Stripe", "You keep"].map((h) => (
                                 <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", color: color.muted, fontWeight: 400 }}>
                                   {h}
@@ -524,7 +524,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                         placeholder="Min hours"
                         value={newDiscountHours}
                         onChange={(e) => setNewDiscountHours(e.target.value)}
-                        style={{ width: 100, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                        style={{ width: 100, padding: "8px 10px", border: "var(--scout-border)", fontFamily: fontSans }}
                       />
                       <span style={{ fontFamily: fontSans, fontSize: 14 }}>+ hours =</span>
                       <input
@@ -532,7 +532,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                         placeholder="% off"
                         value={newDiscountPercent}
                         onChange={(e) => setNewDiscountPercent(e.target.value)}
-                        style={{ width: 80, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                        style={{ width: 80, padding: "8px 10px", border: "var(--scout-border)", fontFamily: fontSans }}
                       />
                       <span style={{ fontFamily: fontSans, fontSize: 14 }}>% discount</span>
                       <ScoutPrimaryBtn onClick={addBulkDiscount} disabled={saving} style={{ minHeight: 36 }}>
@@ -585,7 +585,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                         onBlur={() =>
                           updateField({ trialSessionDurationMinutes: data.trialSessionDurationMinutes ?? 30 })
                         }
-                        style={{ display: "block", marginTop: 6, width: 120, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                        style={{ display: "block", marginTop: 6, width: 120, padding: "8px 10px", border: "var(--scout-border)", fontFamily: fontSans }}
                       />
                     </label>
                   </Card>
@@ -599,7 +599,7 @@ export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = fal
                         value={data.introDurationMinutes}
                         onChange={(e) => setData((d) => d && ({ ...d, introDurationMinutes: Number(e.target.value) }))}
                         onBlur={() => updateField({ introDurationMinutes: data.introDurationMinutes })}
-                        style={{ display: "block", marginTop: 6, width: 120, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                        style={{ display: "block", marginTop: 6, width: 120, padding: "8px 10px", border: "var(--scout-border)", fontFamily: fontSans }}
                       />
                     </label>
                   </Card>
@@ -749,7 +749,7 @@ function BulkDiscountRowEditor({
             const n = Math.round(Number(draft));
             if (Number.isFinite(n) && n >= 0 && n !== row.discountPercent) onSave(row, n);
           }}
-          style={{ width: 48, padding: "2px 6px", border: border.line, fontFamily: fontSans, fontSize: 14 }}
+          style={{ width: 48, padding: "2px 6px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: 14 }}
         />
         % discount
       </span>
@@ -845,7 +845,7 @@ function PackagesSection({
             justifyContent: "space-between",
             marginTop: 16,
             padding: "14px 16px",
-            border: border.line,
+            border: "var(--scout-border)",
             background: surface.inset,
             textDecoration: "none",
             color: color.forest,
@@ -886,7 +886,7 @@ function PackageGroup({
       <p style={{ margin: "0 0 8px", fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
         {title}
       </p>
-      <div style={{ border: border.line, background: surface.card }}>
+      <div style={{ border: "var(--scout-border)", background: surface.card }}>
         {packages.length === 0 ? (
           <p style={{ margin: 0, padding: "16px 18px", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
             {emptyMessage ?? "No packages in this group."}
@@ -940,7 +940,7 @@ function PackageRow({
         alignItems: "center",
         gap: 12,
         padding: "14px 16px",
-        borderBottom: isLast ? "none" : border.line,
+        borderBottom: isLast ? "none" : "var(--scout-border)",
         flexWrap: "wrap",
       }}
     >
@@ -949,7 +949,7 @@ function PackageRow({
           width: 56,
           height: 40,
           background: "rgba(26,58,47,0.06)",
-          border: border.line,
+          border: "var(--scout-border)",
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -985,7 +985,7 @@ function PackageRow({
           onChange={(e) => onSetOffering(pkg, e.target.value === "offering")}
           style={{
             padding: "8px 10px",
-            border: border.line,
+            border: "var(--scout-border)",
             fontFamily: fontSans,
             fontSize: 13,
             background: "#fff",
@@ -1004,7 +1004,7 @@ function PackageRow({
             }}
             style={{
               padding: "8px 10px",
-              border: border.line,
+              border: "var(--scout-border)",
               background: "#fff",
               cursor: "pointer",
               fontFamily: fontSans,
@@ -1019,7 +1019,7 @@ function PackageRow({
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Package actions"
-            style={{ padding: "8px 10px", border: border.line, background: "#fff", cursor: "pointer", fontSize: 16 }}
+            style={{ padding: "8px 10px", border: "var(--scout-border)", background: "#fff", cursor: "pointer", fontSize: 16 }}
           >
             ⋮
           </button>
@@ -1031,7 +1031,7 @@ function PackageRow({
                 top: "100%",
                 marginTop: 4,
                 background: "#fff",
-                border: border.line,
+                border: "var(--scout-border)",
                 boxShadow: "2px 2px 0 rgba(0,0,0,0.06)",
                 zIndex: 10,
                 minWidth: 120,
@@ -1103,7 +1103,7 @@ function PackageForm({
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "9px 12px",
-    border: border.line,
+    border: "var(--scout-border)",
     fontFamily: fontSans,
     fontSize: 14,
     boxSizing: "border-box",
@@ -1185,7 +1185,7 @@ function FirstStepCard({
       onClick={onSelect}
       style={{
         textAlign: "left",
-        border: active ? `2px solid ${color.forest}` : border.line,
+        border: active ? `2px solid ${color.forest}` : "var(--scout-border)",
         background: active ? "rgba(45,122,80,0.06)" : surface.card,
         padding: "16px 18px",
         cursor: "pointer",

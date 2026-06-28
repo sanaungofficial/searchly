@@ -52,7 +52,7 @@ export function AdminLiveOverviewWidget() {
             fontSize: T.caption,
             fontWeight: 600,
             textDecoration: "none",
-            border: border.lineStrong,
+            border: "var(--scout-border)",
           }}
         >
           Manage →

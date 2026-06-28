@@ -166,7 +166,7 @@ export default function PromptsPage() {
         <ScoutBox padding={0} style={{ width: 220, flexShrink: 0, overflow: "hidden" }}>
           {categories.map((cat) => (
             <div key={cat}>
-              <div style={{ padding: "8px 14px", fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: fontMono, background: surface.inset, borderBottom: border.line }}>
+              <div style={{ padding: "8px 14px", fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: fontMono, background: surface.inset, borderBottom: "var(--scout-border)" }}>
                 {cat}
               </div>
               {sidebarItems
@@ -182,7 +182,7 @@ export default function PromptsPage() {
                       textAlign: "left",
                       padding: "9px 14px",
                       border: "none",
-                      borderBottom: border.line,
+                      borderBottom: "var(--scout-border)",
                       background: selected === item.key ? surface.inset : surface.card,
                       cursor: "pointer",
                       fontFamily: fontSans,
@@ -255,7 +255,7 @@ export default function PromptsPage() {
                 {current.variables.length > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {current.variables.map((v) => (
-                      <span key={v} style={{ fontSize: T.label, fontFamily: fontMono, background: surface.inset, color: color.stone, padding: "2px 7px", border: border.line }}>
+                      <span key={v} style={{ fontSize: T.label, fontFamily: fontMono, background: surface.inset, color: color.stone, padding: "2px 7px", border: "var(--scout-border)" }}>
                         {`{{${v}}}`}
                       </span>
                     ))}
@@ -265,7 +265,7 @@ export default function PromptsPage() {
               <textarea
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); setSaveStatus("idle"); }}
-                style={{ width: "100%", minHeight: 400, fontFamily: fontMono, fontSize: T.caption, lineHeight: 1.6, padding: "12px 14px", border: border.line, borderRadius: "var(--scout-radius)", background: surface.inset, color: color.ink, resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", minHeight: 400, fontFamily: fontMono, fontSize: T.caption, lineHeight: 1.6, padding: "12px 14px", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", background: surface.inset, color: color.ink, resize: "vertical", outline: "none", boxSizing: "border-box" }}
               />
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
                 <ScoutPrimaryBtn onClick={handleSave} disabled={saving}>

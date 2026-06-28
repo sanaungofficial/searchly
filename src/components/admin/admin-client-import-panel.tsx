@@ -115,7 +115,7 @@ function ImportReviewModal({
           maxHeight: "88vh",
           overflow: "auto",
           padding: 24,
-          border: border.lineStrong,
+          border: "var(--scout-border)",
         }}
       >
         <h3 style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 600, margin: "0 0 8px", color: color.forest }}>
@@ -133,7 +133,7 @@ function ImportReviewModal({
         </p>
 
         {preview.warnings.length > 0 && (
-          <div style={{ marginBottom: 16, padding: 12, background: surface.inset, border: border.line }}>
+          <div style={{ marginBottom: 16, padding: 12, background: surface.inset, border: "var(--scout-border)" }}>
             {preview.warnings.map((w) => (
               <p key={w} style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 4px" }}>
                 {w}
