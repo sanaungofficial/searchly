@@ -381,7 +381,7 @@ export function ScreenWelcome({
             title="Start from scratch"
             description="We'll walk you through it — type your answers or talk to Kimchi on the next step."
             selected={false}
-            onClick={() => setPath("scratch")}
+            onClick={onStartFromScratch}
           />
         </div>
       )}
@@ -830,6 +830,14 @@ interface ReadBackProps {
   onConfirm: (data: ReadBackData | null) => void;
   onRefine: () => void;
   onSkip: () => void;
+  /** When provided, replaces the "Try a different resume" refine button with a back button */
+  onBack?: () => void;
+  /** Override the confirm button label */
+  confirmLabel?: string;
+  /** Override the hero title */
+  title?: string;
+  /** Override the hero body */
+  body?: string;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -928,7 +936,7 @@ function fitColor(fit: string): string {
   return "#8A7A6A";
 }
 
-export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: ReadBackProps) {
+export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBack, confirmLabel, title, body }: ReadBackProps) {
   const loading = status === "loading";
   const pending = status === "pending";
   const skipped = status === "skipped";
@@ -937,8 +945,8 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <OnboardingEyebrowIntro
         eyebrow="Your read"
-        title="Here's what stood out."
-        body="Based on what you shared — does this sound right?"
+        title={title ?? "Here's what stood out."}
+        body={body ?? "Based on what you shared — does this sound right?"}
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s", minHeight: loading || pending ? 280 : undefined }}>
@@ -1151,29 +1159,53 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              That&apos;s right →
+              {confirmLabel ?? "That's right →"}
             </button>
-            <button
-              className="onboarding-cta"
-              onClick={onRefine}
-              style={{
-                padding: "14px 24px",
-                background: ONBOARDING_FIELD_BG,
-                color: ONBOARDING_TEXT,
-                border: ONBOARDING_FIELD_BORDER,
-                borderRadius: "var(--scout-radius)",
-                fontFamily: "var(--font-ui)",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "background 0.15s",
-                flex: 1,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
-            >
-              Try a different resume
-            </button>
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                style={{
+                  padding: "14px 24px",
+                  background: ONBOARDING_FIELD_BG,
+                  color: ONBOARDING_TEXT,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "background 0.15s",
+                  flex: 1,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+              >
+                ← Go back
+              </button>
+            ) : (
+              <button
+                className="onboarding-cta"
+                onClick={onRefine}
+                style={{
+                  padding: "14px 24px",
+                  background: ONBOARDING_FIELD_BG,
+                  color: ONBOARDING_TEXT,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "background 0.15s",
+                  flex: 1,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+              >
+                Try a different resume
+              </button>
+            )}
           </div>
           <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
             Skip for now
@@ -3402,6 +3434,7 @@ export type CareerIntentId = typeof CAREER_INTENT_OPTIONS[number]["id"];
 
 export function ScreenCareerIntent({ onSelect }: { onSelect: (id: CareerIntentId) => void }) {
   const [selected, setSelected] = useState<CareerIntentId | null>(null);
+  const [hoveredId, setHoveredId] = useState<CareerIntentId | null>(null);
 
   const handleSelect = (id: CareerIntentId) => {
     setSelected(id);
@@ -3415,42 +3448,57 @@ export function ScreenCareerIntent({ onSelect }: { onSelect: (id: CareerIntentId
         body="Pick the one that fits best — it helps us point you in the right direction."
       />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {CAREER_INTENT_OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => handleSelect(opt.id)}
-            style={{
-              ...ONBOARDING_CARD,
-              width: "100%",
-              textAlign: "left",
-              cursor: "pointer",
-              border: selected === opt.id ? "2px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-              background: selected === opt.id ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
-              padding: "18px 20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              transition: "border-color 0.15s, background 0.15s",
-            }}
-          >
-            <span
+        {CAREER_INTENT_OPTIONS.map((opt) => {
+          const isSelected = selected === opt.id;
+          const isHovered = hoveredId === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => handleSelect(opt.id)}
+              onMouseEnter={() => setHoveredId(opt.id)}
+              onMouseLeave={() => setHoveredId(null)}
               style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 15,
-                fontWeight: 500,
-                color: ONBOARDING_TEXT,
-                lineHeight: 1.45,
+                ...ONBOARDING_CARD,
+                width: "100%",
+                textAlign: "left",
+                cursor: "pointer",
+                border: isSelected ? "2px solid #1A3A2F" : isHovered ? "1.5px solid rgba(26,58,47,0.45)" : ONBOARDING_FIELD_BORDER,
+                background: isSelected
+                  ? "rgba(26,58,47,0.06)"
+                  : isHovered
+                  ? "rgba(26,58,47,0.03)"
+                  : ONBOARDING_FIELD_BG,
+                padding: "18px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                transition: "border-color 0.15s, background 0.15s",
+                transform: isHovered && !isSelected ? "translateY(-1px)" : "none",
+                boxShadow: isHovered && !isSelected ? "0 2px 8px rgba(26,58,47,0.08)" : "none",
               }}
             >
-              {opt.label}
-            </span>
-            {selected === opt.id && (
-              <span style={{ color: "#1A3A2F", fontSize: 18, flexShrink: 0 }}>✓</span>
-            )}
-          </button>
-        ))}
+              <span
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 15,
+                  fontWeight: isSelected || isHovered ? 600 : 500,
+                  color: isSelected ? "#1A3A2F" : ONBOARDING_TEXT,
+                  lineHeight: 1.45,
+                  transition: "font-weight 0.1s, color 0.15s",
+                }}
+              >
+                {opt.label}
+              </span>
+              {isSelected ? (
+                <span style={{ color: "#1A3A2F", fontSize: 18, flexShrink: 0 }}>✓</span>
+              ) : isHovered ? (
+                <span style={{ color: "rgba(26,58,47,0.4)", fontSize: 16, flexShrink: 0 }}>→</span>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
