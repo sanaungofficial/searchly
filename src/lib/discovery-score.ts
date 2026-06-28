@@ -15,7 +15,7 @@ export type DiscoveryBreakdownDimension = {
   description: string;
 };
 
-/** Dimension metadata for hover breakdowns and foundation metric tooltips. */
+/** Dimension metadata for hero score hover breakdown. */
 export const DISCOVERY_BREAKDOWN_DIMENSIONS: DiscoveryBreakdownDimension[] = [
   {
     id: "resumeStrength",
