@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth";
+import { getActingUser } from "@/lib/acting-user";
 import { kimchiGenerateText } from "@/lib/llm";
 import {
   buildDiscoveryPrompt,
@@ -10,8 +10,8 @@ import {
 } from "@/lib/discovery-score";
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession();
-  if (!session?.user?.id) {
+  const { dbUser } = await getActingUser(req);
+  if (!dbUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       tier: "analyze",
       system: DISCOVERY_SCORE_SYSTEM,
       prompt,
-      userId: session.user.id,
+      userId: dbUser.id,
       tags: ["discovery-score"],
     });
 
