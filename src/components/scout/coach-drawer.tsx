@@ -15,6 +15,7 @@ import {
 } from "@/components/scout/coach-booking-modal";
 import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem, CoachProfileDetail } from "@/lib/coach-types";
 import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
@@ -161,6 +162,7 @@ function ReviewFormModal({
 
 export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange, onMyCoachChange }: Props) {
   const isMobile = useIsMobile();
+  const requireAuth = useRequireAuthRedirect();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
   const isAdmin = userRole === "ADMIN";
   const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
@@ -217,7 +219,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
 
   const openBooking = (type: CoachBookingSessionType) => {
     if (!authChecked || !user) {
-      window.location.href = "/login";
+      requireAuth("login");
       return;
     }
     if (!isPro && type === "session") {
@@ -230,7 +232,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
 
   async function buyPackage(packageId: string) {
     if (!authChecked || !user) {
-      window.location.href = "/login";
+      requireAuth("login");
       return;
     }
     if (!coach) return;
