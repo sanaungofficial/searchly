@@ -12,7 +12,6 @@ import {
   LANDING_FOOTER,
   LANDING_HERO,
   LANDING_JOIN_WAITLIST_LABEL,
-  LANDING_NAV,
   LANDING_PRICING,
   LANDING_SKILL_SECTIONS,
   LANDING_STATS,
@@ -22,6 +21,8 @@ import {
   LANDING_WAITLIST_URL,
   LANDING_WHY,
 } from "@/lib/landing-content";
+import { MarketingTopNav } from "@/components/landing/marketing-top-nav";
+import { useAppEntryHref } from "@/hooks/use-app-entry-href";
 import "./landing.css";
 
 function KimchiWordmark({ compact = false }: { compact?: boolean }) {
@@ -185,6 +186,8 @@ function SectionIntro({
 }
 
 export function LandingPage() {
+  const loginHref = useAppEntryHref("/login");
+  const signupHref = useAppEntryHref("/signup");
   const [faqOpen, setFaqOpen] = useState(0);
   const [testimonial, setTestimonial] = useState(0);
   const t = LANDING_TESTIMONIALS.items[testimonial]!;
@@ -209,34 +212,7 @@ export function LandingPage() {
 
   return (
     <div className="landing bruddle">
-      <header className="landing-nav">
-        <div className="landing-nav__inner">
-          <Link href="/" className="landing-nav__logo">
-            <KimchiWordmark compact />
-          </Link>
-          <nav className="landing-nav__links" aria-label="Primary">
-            {LANDING_NAV.map((item) =>
-              item.href.startsWith("/") ? (
-                <Link key={item.href} href={item.href} className="landing-nav__link">
-                  {item.label}
-                </Link>
-              ) : (
-                <a key={item.href} href={item.href} className="landing-nav__link">
-                  {item.label}
-                </a>
-              ),
-            )}
-          </nav>
-          <a
-            href={LANDING_WAITLIST_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="landing-btn landing-btn--primary landing-btn--bruddle"
-          >
-            {LANDING_JOIN_WAITLIST_LABEL}
-          </a>
-        </div>
-      </header>
+      <MarketingTopNav />
 
       <section className="landing-hero">
         <div className="landing-hero__grid-bg" aria-hidden />
@@ -272,7 +248,7 @@ export function LandingPage() {
               >
                 {LANDING_JOIN_WAITLIST_LABEL} →
               </a>
-              <Link href="/login" className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
+              <Link href={loginHref} className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
                 Log In
               </Link>
             </div>
@@ -306,7 +282,7 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
-            <Link href="/signup" className="landing-link-cta">
+            <Link href={signupHref} className="landing-link-cta">
               {LANDING_ANALYTICS.cta} →
             </Link>
           </div>
@@ -399,7 +375,7 @@ export function LandingPage() {
               ) : null}
               <h3 className="landing-h3">{section.heading}</h3>
               <p className="landing-body landing-muted">{section.body}</p>
-              <Link href="/signup" className="landing-link-cta">
+              <Link href={signupHref} className="landing-link-cta">
                 {section.cta} →
               </Link>
             </div>
@@ -546,7 +522,7 @@ export function LandingPage() {
               >
                 {LANDING_JOIN_WAITLIST_LABEL} →
               </a>
-              <Link href="/login" className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
+              <Link href={loginHref} className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
                 Log In
               </Link>
             </div>
