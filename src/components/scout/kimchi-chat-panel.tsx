@@ -1619,11 +1619,16 @@ function KimchiChatPanelStyles() {
         flex-direction: column;
         gap: 2px;
         min-width: 0;
+        flex: 1;
+        overflow: hidden;
       }
       .kimchi-chat-panel__voice-label {
         font-family: ${sans};
         font-size: 13px;
         color: var(--scout-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .kimchi-chat-panel__voice-hint {
         font-family: ${sans};
