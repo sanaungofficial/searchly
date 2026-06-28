@@ -1,11 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import {
+  DiscoveryScoreCluster,
+  FoundationMetricWhyPopover,
+} from "@/components/scout/discovery-score-ui";
 import { useSubscription } from "@/hooks/useSubscription";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import type { DiscoveryScoreInput, DiscoveryScoreResult } from "@/lib/discovery-score";
-import { tierLabel, tierPeerCopy } from "@/lib/discovery-score";
+import {
+  discoveryDimensionById,
+  tierPeerCopy,
+} from "@/lib/discovery-score";
 import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
 
 type ProfileInput = {
@@ -40,6 +48,9 @@ type Props = {
   isMobile: boolean;
   withClientScope: (path: string) => string;
   onSubscribe: () => void;
+  /** When false, show login preview shell instead of Pro gate. */
+  isLoggedIn?: boolean;
+  loginHref?: string;
 };
 
 function Initials({ name }: { name: string }) {
@@ -71,6 +82,8 @@ type FoundationMetric = {
   display: string;
   highImpact: boolean;
   detail: string;
+  hoverTitle?: string;
+  hoverBody?: string;
 };
 
 function buildFoundationMetrics(
@@ -81,6 +94,12 @@ function buildFoundationMetrics(
   const quality = result ? profileQualityScore(result.breakdown) : null;
   const rating = profile.linkedInAnalysisScore;
   const availability = availabilityScore(profile);
+  const breakdown = result?.breakdown;
+
+  const resumeDim = breakdown ? discoveryDimensionById("resumeStrength") : null;
+  const positioningDim = breakdown ? discoveryDimensionById("positioningClarity") : null;
+  const marketDim = breakdown ? discoveryDimensionById("marketReadiness") : null;
+  const signalsDim = breakdown ? discoveryDimensionById("competitiveSignals") : null;
 
   return [
     {
@@ -90,6 +109,11 @@ function buildFoundationMetrics(
       display: quality != null ? `${quality}%` : "—",
       highImpact: quality == null || quality < 60,
       detail: "Resume strength and positioning clarity",
+      hoverTitle: resumeDim && positioningDim ? "Profile quality breakdown" : "Profile quality",
+      hoverBody:
+        resumeDim && positioningDim && breakdown
+          ? `${resumeDim.label}: ${breakdown.resumeStrength}/${resumeDim.max} — ${resumeDim.description} ${positioningDim.label}: ${breakdown.positioningClarity}/${positioningDim.max} — ${positioningDim.description}`
+          : "Resume strength and positioning clarity across your Kimchi profile.",
     },
     {
       id: "completion",
@@ -98,6 +122,8 @@ function buildFoundationMetrics(
       display: `${completion}%`,
       highImpact: completion < 70,
       detail: "Fields filled across your Kimchi profile",
+      hoverTitle: "Profile completion",
+      hoverBody: "Weighted checklist — name, contact, resume, experience, skills, and job-search preferences.",
     },
     {
       id: "rating",
@@ -106,6 +132,13 @@ function buildFoundationMetrics(
       display: rating != null ? `${rating}%` : "—",
       highImpact: rating == null || rating < 60,
       detail: rating != null ? "From your LinkedIn analysis" : "Build your LinkedIn preview to score",
+      hoverTitle: signalsDim && breakdown ? signalsDim.label : "LinkedIn quality",
+      hoverBody:
+        signalsDim && breakdown
+          ? `${signalsDim.description} Competitive signals score: ${breakdown.competitiveSignals}/${signalsDim.max}.`
+          : rating != null
+            ? "From your LinkedIn analysis in Profile → LinkedIn."
+            : "Build your LinkedIn preview to unlock this score.",
     },
     {
       id: "availability",
@@ -114,8 +147,72 @@ function buildFoundationMetrics(
       display: `${availability}%`,
       highImpact: availability < 60,
       detail: "Timeline, status, and salary expectations",
+      hoverTitle: marketDim && breakdown ? marketDim.label : "Availability",
+      hoverBody:
+        marketDim && breakdown
+          ? `${marketDim.description} Market readiness score: ${breakdown.marketReadiness}/${marketDim.max}.`
+          : "Employment status, job timeline, and salary expectations recruiters look for.",
     },
   ];
+}
+
+function LoginGateOverlay({ loginHref }: { loginHref: string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        background: "rgba(250, 247, 240, 0.55)",
+        backdropFilter: "blur(2px)",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 380,
+          width: "100%",
+          textAlign: "center",
+          background: "#1A3A2F",
+          border: "1px solid rgba(232,213,163,0.25)",
+          borderRadius: "var(--scout-radius)",
+          padding: "36px 28px",
+          boxShadow: "var(--scout-shadow-card)",
+        }}
+      >
+        <p
+          style={{
+            fontFamily: fontDisplay,
+            fontSize: 26,
+            fontWeight: 600,
+            fontStyle: "italic",
+            color: "#E8D5A3",
+            margin: "0 0 10px",
+            lineHeight: 1.2,
+          }}
+        >
+          Log in to see your score
+        </p>
+        <p
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.body,
+            color: "rgba(232,213,163,0.78)",
+            lineHeight: 1.65,
+            margin: "0 0 24px",
+          }}
+        >
+          Hey — you gotta log in to see your score. Create an account to see your personal high score and how you rank against peers.
+        </p>
+        <Link href={loginHref} style={{ textDecoration: "none", display: "block" }}>
+          <ScoutPrimaryBtn style={{ width: "100%", minHeight: 44 }}>Log in</ScoutPrimaryBtn>
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 function SubscribeGateOverlay({ onSubscribe }: { onSubscribe: () => void }) {
@@ -160,7 +257,7 @@ function SubscribeGateOverlay({ onSubscribe }: { onSubscribe: () => void }) {
             lineHeight: 1.2,
           }}
         >
-          Get access
+          Subscribe to see your score
         </p>
         <p
           style={{
@@ -171,7 +268,7 @@ function SubscribeGateOverlay({ onSubscribe }: { onSubscribe: () => void }) {
             margin: "0 0 24px",
           }}
         >
-          See how you rank against peers in similar roles. Subscribe to Kimchi Pro to unlock your full Discovery Score.
+          You need Kimchi Pro to see your personal high score — how you rank against professionals targeting similar roles.
         </p>
         <ScoutPrimaryBtn onClick={onSubscribe} style={{ width: "100%", minHeight: 44 }}>
           View Pro plans ✦
@@ -181,7 +278,14 @@ function SubscribeGateOverlay({ onSubscribe }: { onSubscribe: () => void }) {
   );
 }
 
-export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope, onSubscribe }: Props) {
+export function ProfileDiscoveryScorePanel({
+  profile,
+  isMobile,
+  withClientScope,
+  onSubscribe,
+  isLoggedIn = true,
+  loginHref = "/login?next=/profile/discovery-score",
+}: Props) {
   const { isPro, isAdmin, loading: subLoading } = useSubscription();
   const hasAccess = isPro || isAdmin;
 
@@ -219,7 +323,7 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
   );
 
   useEffect(() => {
-    if (!hasAccess || subLoading) return;
+    if (!isLoggedIn || !hasAccess || subLoading) return;
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
@@ -236,33 +340,24 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [hasAccess, subLoading, withClientScope, discoveryInput]);
+  }, [hasAccess, isLoggedIn, subLoading, withClientScope, discoveryInput]);
 
   useEffect(() => {
-    if (!hasAccess && !subLoading) {
+    if (!isLoggedIn || (!hasAccess && !subLoading)) {
       setLoading(false);
     }
-  }, [hasAccess, subLoading]);
+  }, [hasAccess, isLoggedIn, subLoading]);
 
-  const score = result?.score ?? 72;
+  const previewScore = 72;
+  const score = result?.score ?? previewScore;
   const tier = result?.tier ?? "strong";
-  const label = tierLabel(tier);
   const primaryRole = profile.targetRoles[0] ?? profile.headline ?? "similar roles";
   const peerCopy = tierPeerCopy(tier, primaryRole);
 
-  const scoreColor =
-    tier === "top"
-      ? color.forest
-      : tier === "strong"
-        ? "#2D6A4F"
-        : tier === "building"
-          ? color.gold
-          : color.muted;
-
   const foundationMetrics = buildFoundationMetrics(profile, result);
-  // Blur until Pro/admin is confirmed — never flash ungated content while /api/subscription loads
-  const showBlur = !hasAccess || subLoading;
-  const showOverlay = !subLoading && !hasAccess;
+  const showBlur = !isLoggedIn || !hasAccess || subLoading;
+  const showLoginOverlay = isLoggedIn === false;
+  const showSubscribeOverlay = isLoggedIn && !subLoading && !hasAccess;
 
   return (
     <div style={{ position: "relative", paddingBottom: 40 }}>
@@ -273,7 +368,6 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
           userSelect: showBlur ? "none" : "auto",
         }}
       >
-        {/* Hero score card */}
         <ScoutBox
           padding={isMobile ? "22px 18px" : "28px 32px"}
           style={{
@@ -295,37 +389,24 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
                 height: isMobile ? 80 : 96,
                 borderRadius: "50%",
                 flexShrink: 0,
-                padding: 4,
-                background: `conic-gradient(${scoreColor} ${(score / 100) * 360}deg, rgba(17,17,17,0.08) 0deg)`,
+                border: "3px solid rgba(26,58,47,0.12)",
+                overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                background: surface.card,
+                fontFamily: fontSans,
+                fontSize: isMobile ? 22 : 26,
+                fontWeight: 700,
+                color: color.forest,
               }}
             >
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "50%",
-                  background: surface.card,
-                  border: "3px solid white",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: fontSans,
-                  fontSize: isMobile ? 22 : 26,
-                  fontWeight: 700,
-                  color: color.forest,
-                }}
-              >
-                {profile.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatarUrl} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <Initials name={profile.name} />
-                )}
-              </div>
+              {profile.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatarUrl} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <Initials name={profile.name} />
+              )}
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -342,38 +423,6 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
               >
                 Discovery Score
               </p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                {loading && hasAccess ? (
-                  <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? 40 : 52, fontWeight: 400, color: color.ink, lineHeight: 1 }}>
-                    —
-                  </span>
-                ) : (
-                  <>
-                    <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? 40 : 52, fontWeight: 400, color: scoreColor, lineHeight: 1 }}>
-                      {score}
-                    </span>
-                    <span style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, fontWeight: 600 }}>pts</span>
-                    <span
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: T.btnSm,
-                        fontWeight: 700,
-                        color: scoreColor,
-                        background:
-                          tier === "top"
-                            ? "rgba(26,58,47,0.08)"
-                            : tier === "strong"
-                              ? "rgba(45,106,79,0.08)"
-                              : "rgba(196,168,106,0.12)",
-                        padding: "4px 12px",
-                        borderRadius: "var(--scout-radius)",
-                      }}
-                    >
-                      {label}
-                    </span>
-                  </>
-                )}
-              </div>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
                 {peerCopy}
               </p>
@@ -384,10 +433,28 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
                     : "Your competitive ranking against professionals with similar backgrounds.")}
               </p>
             </div>
+
+            {loading && hasAccess && isLoggedIn ? (
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: "var(--scout-radius)",
+                  background: surface.inset,
+                  flexShrink: 0,
+                }}
+                aria-hidden
+              />
+            ) : (
+              <DiscoveryScoreCluster
+                result={result}
+                score={score}
+                align={isMobile ? "left" : "right"}
+              />
+            )}
           </div>
         </ScoutBox>
 
-        {/* Build your foundation */}
         <div style={{ marginBottom: 8 }}>
           <h2 style={{ ...bruddleHeadingStyle("h4"), margin: "0 0 16px" }}>Build your foundation</h2>
           <div
@@ -398,55 +465,60 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
             }}
           >
             {foundationMetrics.map((metric) => (
-              <ScoutBox key={metric.id} padding={isMobile ? "16px 18px" : "18px 20px"}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>
-                    {metric.label}
-                  </p>
-                  {metric.highImpact && (
-                    <span
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: "#b45309",
-                        background: "rgba(196,168,106,0.18)",
-                        padding: "3px 8px",
-                        borderRadius: "var(--scout-radius)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      High impact
-                    </span>
-                  )}
-                </div>
-                <p style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: 400, color: color.forest, margin: "0 0 8px", lineHeight: 1 }}>
-                  {metric.display}
-                </p>
-                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
-                  {metric.detail}
-                </p>
-                {metric.value != null && (
-                  <div style={{ height: 4, borderRadius: "var(--scout-radius)", background: surface.inset, overflow: "hidden" }}>
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${Math.min(100, metric.value)}%`,
-                        background: metric.highImpact ? color.gold : color.forest,
-                        transition: "width 0.5s ease",
-                      }}
-                    />
+              <FoundationMetricWhyPopover
+                key={metric.id}
+                title={metric.hoverTitle ?? metric.label}
+                body={metric.hoverBody ?? metric.detail}
+              >
+                <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>
+                      {metric.label}
+                    </p>
+                    {metric.highImpact && (
+                      <span
+                        style={{
+                          fontFamily: fontSans,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "#b45309",
+                          background: "rgba(196,168,106,0.18)",
+                          padding: "3px 8px",
+                          borderRadius: "var(--scout-radius)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        High impact
+                      </span>
+                    )}
                   </div>
-                )}
-              </ScoutBox>
+                  <p style={{ fontFamily: fontDisplay, fontSize: 28, fontWeight: 400, color: color.forest, margin: "0 0 8px", lineHeight: 1 }}>
+                    {metric.display}
+                  </p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
+                    {metric.detail}
+                  </p>
+                  {metric.value != null && (
+                    <div style={{ height: 4, borderRadius: "var(--scout-radius)", background: surface.inset, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${Math.min(100, metric.value)}%`,
+                          background: metric.highImpact ? color.gold : color.forest,
+                          transition: "width 0.5s ease",
+                        }}
+                      />
+                    </div>
+                  )}
+                </ScoutBox>
+              </FoundationMetricWhyPopover>
             ))}
           </div>
         </div>
 
-        {/* Top improvement */}
-        {result?.topImprovement && hasAccess && !loading && (
+        {result?.topImprovement && hasAccess && !loading && isLoggedIn && (
           <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={{ marginTop: 20 }}>
             <p
               style={{
@@ -468,7 +540,8 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope,
         )}
       </div>
 
-      {showOverlay && <SubscribeGateOverlay onSubscribe={onSubscribe} />}
+      {showLoginOverlay && <LoginGateOverlay loginHref={loginHref} />}
+      {showSubscribeOverlay && <SubscribeGateOverlay onSubscribe={onSubscribe} />}
     </div>
   );
 }

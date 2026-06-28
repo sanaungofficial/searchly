@@ -11,7 +11,8 @@ export type ScoreExplainerVariant =
   | "profile-completeness"
   | "upskill-recommendations"
   | "upskill-progress"
-  | "linkedin-quality";
+  | "linkedin-quality"
+  | "discovery-score";
 
 export type ScoreExplainerContent = {
   title: string;
@@ -257,5 +258,28 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
     ],
     scaleNote: "Excellent ≥ 90 · Good ≥ 80 · Fair ≥ 70 · Needs work below 60",
+  },
+  "discovery-score": {
+    title: "Discovery Score",
+    subtitle: "Your competitive ranking against professionals targeting similar roles.",
+    bullets: [
+      {
+        title: "What we evaluate",
+        body: "Resume strength, positioning clarity, market readiness, and competitive signals recruiters would notice.",
+      },
+      {
+        title: "How it's calculated",
+        body: "Each dimension scores 0–25 (100 total). We compare your profile story, completeness, and market signals to peers in your target roles.",
+      },
+      {
+        title: "Hover for your breakdown",
+        body: "Hover the score badge to see your personal dimension scores and what moved the needle.",
+      },
+      {
+        title: "When to refresh",
+        body: "Update your profile, resume, or LinkedIn — then revisit Discovery Score for an updated ranking.",
+      },
+    ],
+    scaleNote: "Top 5% ≥ 80 · Strong ≥ 55 · Building ≥ 25 · Getting started below 25",
   },
 };
