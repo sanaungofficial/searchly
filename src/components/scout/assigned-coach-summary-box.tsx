@@ -133,26 +133,6 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
           <SectionHeadingWithHelp
             title="My coaches"
             help="Your Kimchi coach works with you one-on-one."
-            trailing={
-              <button
-                type="button"
-                onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.forest,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                View all →
-              </button>
-            }
           />
           {assignedCoaches.map((coach) => (
             <div

@@ -83,7 +83,7 @@ function FeaturedCarousel({
   if (!coaches.length) return null;
 
   return (
-    <div style={{ marginTop: 8, marginBottom: 8 }}>
+    <div style={{ marginTop: 0, marginBottom: 20 }}>
       <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 14px", color: color.ink }}>
         Get started with an expert
       </p>
@@ -148,6 +148,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const { userRole, isImpersonating, user, authChecked } = useWorkspace();
   const isAdmin = userRole === "ADMIN";
   const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
+  const canAdminAssignCoach = isImpersonating || isAdmin;
   const [allCoaches, setAllCoaches] = useState<CoachListItem[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [localMyCoachIds, setLocalMyCoachIds] = useState<Set<string>>(new Set());
@@ -340,7 +341,8 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
       return;
     }
     const isAssigned = myCoachIds.has(coach.id);
-    if (!isAssigned && coach.isInternal) return;
+    if (!isAssigned && coach.isInternal && !canAdminAssignCoach) return;
+    if (!isAssigned && coach.requiresAssignment && !canAdminAssignCoach) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -360,6 +362,8 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
   return (
     <div>
+      <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} isPro={isPro} onSubscribe={onSubscribe} onOpenCoach={onOpenCoach} />
+
       <ScoutBox padding={isMobile ? 18 : 22} style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 16, marginBottom: 16 }}>
           <div>
@@ -477,6 +481,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
                 onOpenCoach={onOpenCoach}
                 isMyCoach={myCoachIds.has(c.id)}
                 canSelfAssignCoach={canSelfAssignCoach}
+                canAdminAssignCoach={canAdminAssignCoach}
                 onToggleMyCoach={toggleMyCoach}
                 companyLookup={companyLookup}
               />
@@ -484,8 +489,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
           </div>
         )}
       </div>
-
-      <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} isPro={isPro} onSubscribe={onSubscribe} onOpenCoach={onOpenCoach} />
 
       <CoachFiltersDrawer
         open={showAllFilters}

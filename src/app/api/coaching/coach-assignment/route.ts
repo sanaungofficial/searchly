@@ -5,11 +5,17 @@ import {
   getAssignedCoachesForUser,
   removeCoachAssignment,
 } from "@/lib/coach-client-assignment";
-import { getClientCoachingUser } from "@/lib/coach-api";
+import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 
+function canAssignRestrictedCoach(acting: Awaited<ReturnType<typeof getActingUser>>): boolean {
+  if (acting.realDbUser?.role !== UserRole.ADMIN) return false;
+  if (acting.isImpersonating || acting.isAdminReviewing) return true;
+  return acting.dbUser?.role === UserRole.ADMIN;
+}
+
 export async function GET(request: NextRequest) {
-  const me = await getClientCoachingUser(request);
+  const { dbUser: me } = await getActingUser(request);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const coaches = await getAssignedCoachesForUser(me.id);
@@ -20,11 +26,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const me = await getClientCoachingUser(req);
+  const acting = await getActingUser(req);
+  const me = acting.dbUser;
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (me.role !== UserRole.USER && me.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Only client accounts can save coaches here." }, { status: 403 });
   }
+
+  const adminAssigning = canAssignRestrictedCoach(acting);
 
   const body = await req.json().catch(() => ({}));
   const coachProfileId = String(body.coachProfileId ?? "").trim();
@@ -39,13 +48,13 @@ export async function POST(req: NextRequest) {
   if (!coach || coach.status !== "ACTIVE") {
     return NextResponse.json({ error: "Coach not found" }, { status: 404 });
   }
-  if (coach.isInternal && me.role !== UserRole.ADMIN) {
+  if (coach.isInternal && !adminAssigning) {
     return NextResponse.json(
       { error: "Kimchi coaches are assigned by your team. Contact support if you need a change." },
       { status: 400 },
     );
   }
-  if (coach.requiresAssignment && me.role !== UserRole.ADMIN) {
+  if (coach.requiresAssignment && !adminAssigning) {
     return NextResponse.json(
       { error: "This coach requires assignment by an admin." },
       { status: 400 },
@@ -55,8 +64,8 @@ export async function POST(req: NextRequest) {
   await assignCoachToClient({
     userId: me.id,
     coachProfileId,
-    assignedByUserId: me.id,
-    notes: "Added from coaching directory",
+    assignedByUserId: adminAssigning && acting.realDbUser ? acting.realDbUser.id : me.id,
+    notes: adminAssigning ? "Assigned by admin" : "Added from coaching directory",
   });
 
   const coaches = await getAssignedCoachesForUser(me.id);
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const me = await getClientCoachingUser(req);
+  const { dbUser: me } = await getActingUser(req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (me.role !== UserRole.USER && me.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Only client accounts can remove coaches here." }, { status: 403 });
