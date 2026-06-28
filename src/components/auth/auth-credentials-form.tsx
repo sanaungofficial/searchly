@@ -231,6 +231,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
             background: loading ? "var(--scout-cta-muted)" : "var(--scout-cta)",
             color: "var(--scout-cta-foreground)",
             border: "var(--scout-border)",
+            boxShadow: "var(--scout-shadow-bruddle)",
             fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",
             transition: "opacity 0.15s",

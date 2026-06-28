@@ -107,8 +107,9 @@ const PRIMARY_CTA: React.CSSProperties = {
   padding: "14px 30px",
   background: "var(--scout-cta)",
   color: "var(--scout-cta-foreground)",
-  border: "none",
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
+  boxShadow: "var(--scout-shadow-bruddle)",
   fontFamily: "var(--font-ui)",
   fontSize: 14,
   fontWeight: 500,
@@ -1446,17 +1447,9 @@ export function ScreenTargetJobs({
           <button
             onClick={onFinish}
             style={{
+              ...PRIMARY_CTA,
               padding: "15px 32px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              borderRadius: "var(--scout-radius)",
-              fontFamily: "var(--font-ui)",
               fontSize: 15,
-              fontWeight: 500,
-              cursor: "pointer",
-              letterSpacing: "0.2px",
-              transition: "opacity 0.15s",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}

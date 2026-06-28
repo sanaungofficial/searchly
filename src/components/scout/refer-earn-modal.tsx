@@ -221,7 +221,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 placeholder="https://www.linkedin.com/feed/update/..."
                 style={{ flex: 1, padding: "10px 14px", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)", fontSize: 14 }}
               />
-              <button type="button" onClick={submitLinkedIn} disabled={submitting || !postUrl.trim()} style={{ padding: "10px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: "var(--scout-radius)", fontWeight: 600, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+              <button type="button" onClick={submitLinkedIn} disabled={submitting || !postUrl.trim()} style={{ padding: "10px 16px", background: "var(--scout-cta)", color: "var(--scout-cta-foreground)", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", boxShadow: "var(--scout-shadow-bruddle)", fontWeight: 600, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
                 Submit
               </button>
             </div>

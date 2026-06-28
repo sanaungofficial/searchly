@@ -63,12 +63,20 @@
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
   --scout-gold: #E8D5A3;
-  /* Primary action buttons — purple accent (forest stays for nav/sidebar/brand) */
-  --scout-cta: #7C3AED;
-  --scout-cta-hover: #6D28D9;
-  --scout-cta-muted: rgba(124, 58, 237, 0.35);
-  --scout-cta-subtle: rgba(124, 58, 237, 0.08);
-  --scout-cta-foreground: #FFFFFF;
+  /* Bruddle primary CTA — purple fill + ink text (forest stays for nav/sidebar/brand) */
+  --bruddle-purple: #AE7AFF;
+  --bruddle-cream: #FAE8A4;
+  --bruddle-green: #98E9AB;
+  --bruddle-red: #E99898;
+  --bruddle-gray: #5F646D;
+  --bruddle-ink: #161616;
+  --bruddle-surface: #FAF4F0;
+  --scout-cta: var(--bruddle-purple);
+  --scout-cta-hover: #9966F0;
+  --scout-cta-muted: rgba(174, 122, 255, 0.35);
+  --scout-cta-subtle: rgba(174, 122, 255, 0.08);
+  --scout-cta-foreground: var(--bruddle-ink);
+  --scout-shadow-bruddle: 3px 3px 0 #000000;
   --scout-stone: #52493F;
   --scout-muted: #5C534A;
   --scout-muted-light: #8A8178;
@@ -485,18 +493,19 @@
 .bruddle {
   --scout-radius: 0px;
   --radius: 0px;
-  --scout-page: #FAF4F0;
+  --scout-page: var(--bruddle-surface);
   --scout-surface: #FFFFFF;
   --scout-inset: #F0ECE8;
   --scout-shadow-card: none;
   --scout-shadow-card-strong: none;
+  --scout-ink: var(--bruddle-ink);
   --font-ui: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
   --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --type-body: 16px;
   --type-body-sm: 14px;
   --type-caption: 14px;
   --type-label: 12px;
-  --scout-border: 1.5px solid #161616;
+  --scout-border: 1.5px solid var(--bruddle-ink);
   font-family: var(--font-ui);
   font-size: var(--type-body);
 }
