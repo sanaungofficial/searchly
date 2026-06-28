@@ -123,6 +123,7 @@ export default function OnboardingPage() {
 
   const [intentDone, setIntentDone] = useState(false);
   const [showOneLiner, setShowOneLiner] = useState(false);
+  const [showFinalSummary, setShowFinalSummary] = useState(false);
   const [onelinerAnalyzing, setOnelinerAnalyzing] = useState(false);
   const [careerMotivation, setCareerMotivation] = useState("");
 
@@ -282,8 +283,9 @@ export default function OnboardingPage() {
   const onWelcomeContinue = useCallback(() => {
     if (!resumeFilename || resumeError) return;
     if (liInput.trim()) void saveLinkedIn(liInput);
-    goTo(1);
-  }, [resumeFilename, resumeError, liInput, goTo]);
+    startBackgroundReadback();
+    goTo(2);
+  }, [resumeFilename, resumeError, liInput, goTo, startBackgroundReadback]);
 
   const onLinkedInOnly = useCallback(() => {
     setReadbackStatus("skipped");
@@ -316,7 +318,6 @@ export default function OnboardingPage() {
 
   const onOneLinerSubmit = useCallback(async (text: string) => {
     setOnelinerAnalyzing(true);
-    let nextScreen: Screen = 2;
     try {
       const res = await fetch("/api/onboarding/analyze-oneliner", {
         method: "POST",
@@ -328,7 +329,6 @@ export default function OnboardingPage() {
         setReadbackData(data);
         setReadbackStatus("ready");
         applyReadbackRoles(data);
-        nextScreen = 1;
       } else {
         setReadbackStatus("skipped");
       }
@@ -337,7 +337,7 @@ export default function OnboardingPage() {
     } finally {
       setOnelinerAnalyzing(false);
       setShowOneLiner(false);
-      goTo(nextScreen);
+      goTo(2);
     }
   }, [applyReadbackRoles, goTo]);
 
@@ -347,15 +347,11 @@ export default function OnboardingPage() {
     if (screen !== 1) return;
     if (!hasResumeTrack) {
       setReadbackStatus((s) => (s === "idle" ? "skipped" : s));
-      return;
     }
-    if (readbackStatus === "idle") {
-      startBackgroundReadback();
-    }
-  }, [screen, hasResumeTrack, readbackStatus, startBackgroundReadback]);
+  }, [screen, hasResumeTrack]);
 
   useEffect(() => {
-    if (screen !== 1 || readbackStatus !== "pending" || readbackData) return;
+    if (readbackStatus !== "pending" || readbackData) return;
 
     const poll = () => {
       void fetch("/api/ai/readback", { cache: "no-store" })
@@ -373,7 +369,7 @@ export default function OnboardingPage() {
 
     const id = window.setInterval(poll, 5000);
     return () => window.clearInterval(id);
-  }, [screen, readbackStatus, readbackData, applyReadbackRoles]);
+  }, [readbackStatus, readbackData, applyReadbackRoles]);
 
   const onAddTargetRole = useCallback((title: string) => {
     setSelectedTitles((prev) => {
@@ -627,12 +623,22 @@ export default function OnboardingPage() {
   ]);
 
   const onCompaniesContinue = useCallback(() => {
-    void runFinishSetup();
-  }, [runFinishSetup]);
+    setShowFinalSummary(true);
+  }, []);
 
   const onCompaniesSkip = useCallback(() => {
+    setShowFinalSummary(true);
+  }, []);
+
+  const onFinalSummaryConfirm = useCallback((data: ReadBackData | null) => {
+    applyReadbackRoles(data);
     void runFinishSetup();
-  }, [runFinishSetup]);
+  }, [applyReadbackRoles, runFinishSetup]);
+
+  const onFinalSummaryBack = useCallback(() => {
+    setShowFinalSummary(false);
+    goTo(11);
+  }, [goTo]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -640,11 +646,12 @@ export default function OnboardingPage() {
       window.setTimeout(() => {
         setResumeUploaded(true);
         startBackgroundReadback();
+        goTo(2);
       }, 1300);
     } else if (screen < 11) {
       goTo((screen + 1) as Screen);
     } else if (screen === 11) {
-      void runFinishSetup();
+      setShowFinalSummary(true);
     }
   };
 
@@ -659,9 +666,7 @@ export default function OnboardingPage() {
   }
 
   const headerScreen = (screen === 12 ? 11 : screen) as Screen;
-  const showProcessingBanner =
-    (screen === 0 && (resumeUploading || readbackStatus === "loading")) ||
-    (screen === 1 && readbackStatus === "loading");
+  const showProcessingBanner = screen === 0 && (resumeUploading || readbackStatus === "loading");
 
   return (
     <div style={{ background: "var(--scout-page)" }}>
@@ -687,14 +692,28 @@ export default function OnboardingPage() {
               loading={onelinerAnalyzing}
             />
           )}
+          {/* Final summary overlay */}
+          {intentDone && !showOneLiner && showFinalSummary && (
+            <ScreenReadBack
+              data={readbackData}
+              status={readbackStatus === "idle" ? "skipped" : readbackStatus}
+              onConfirm={onFinalSummaryConfirm}
+              onRefine={onReadBackRefine}
+              onSkip={() => void runFinishSetup()}
+              onBack={onFinalSummaryBack}
+              confirmLabel="Looks good, let's go →"
+              title="Here's your full profile."
+              body="We'll use this to run your search. Everything looks right?"
+            />
+          )}
           {/* Main onboarding screens */}
-          {intentDone && !showOneLiner && showProcessingBanner && (
+          {intentDone && !showOneLiner && !showFinalSummary && showProcessingBanner && (
             <OnboardingProcessingBanner
               resumeUploading={resumeUploading}
               readbackLoading={readbackStatus === "loading"}
             />
           )}
-          {intentDone && !showOneLiner && screen === 0 && (
+          {intentDone && !showOneLiner && !showFinalSummary && screen === 0 && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
@@ -714,7 +733,7 @@ export default function OnboardingPage() {
               onFileChange={onFileChange}
             />
           )}
-          {intentDone && !showOneLiner && (
+          {intentDone && !showOneLiner && !showFinalSummary && (
             <>
               {screen === 1 && (
                 <ScreenReadBack
