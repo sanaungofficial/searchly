@@ -349,10 +349,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const barColor = pct >= 75 ? color.forest : pct >= 50 ? "#C4A86A" : "#C4574A";
 
   const actionItemsAccordion = showClientCoachUi && (
-    <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"}>
+    <ScoutBox
+      padding={isMobile ? "16px 18px" : "18px 20px"}
+      style={{ height: isMobile ? undefined : "100%", display: "flex", flexDirection: "column" }}
+    >
       <button
         type="button"
         onClick={() => setActionItemsOpen((v) => !v)}
+        aria-expanded={actionItemsOpen}
         style={{
           display: "flex",
           alignItems: "center",
@@ -363,7 +367,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           padding: 0,
           cursor: "pointer",
           gap: 12,
-          marginBottom: actionItemsOpen ? 12 : 0,
+          flexShrink: 0,
         }}
       >
         <span style={{ ...bruddleHeadingStyle("h5") }}>
@@ -379,14 +383,20 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       </button>
 
-      {actionItemsOpen && (
-        <>
-          {/* Progress bar */}
+      <div style={{ flex: isMobile ? undefined : 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            overflow: "hidden",
+            maxHeight: actionItemsOpen ? 2000 : 0,
+            opacity: actionItemsOpen ? 1 : 0,
+            transition: "max-height 0.35s ease, opacity 0.25s ease",
+            marginTop: actionItemsOpen ? 12 : 0,
+          }}
+        >
           <div style={{ height: 5, borderRadius: "var(--scout-radius)", background: surface.inset, border: "var(--scout-border)", overflow: "hidden", marginBottom: 12 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
           </div>
 
-          {/* All items — completed stay visible with strikethrough */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {actionItems.map((item) => (
               <button
@@ -437,18 +447,35 @@ export function DashboardHomeTop({ isMobile }: Props) {
               </button>
             ))}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </ScoutBox>
   );
 
-  // ── Three CTA cards ───────────────────────────────────────────────────────
+  const ctaCardStyle: React.CSSProperties = {
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    height: "100%",
+    minHeight: isMobile ? undefined : 72,
+  };
+
+  // ── Quick action cards (Contra-style 2+1 grid) ─────────────────────────────
   const ctaCards = showClientCoachUi && (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Update profile */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+        gridTemplateRows: isMobile ? undefined : "1fr auto",
+        gap: 10,
+        height: isMobile ? undefined : "100%",
+        minHeight: 0,
+      }}
+    >
       <ScoutBox
         padding="14px 16px"
-        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
+        style={ctaCardStyle}
         onClick={() => router.push(withClientReviewPath("/profile"))}
       >
         <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(26,58,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
@@ -461,26 +488,9 @@ export function DashboardHomeTop({ isMobile }: Props) {
         <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
       </ScoutBox>
 
-      {/* Discover opportunities */}
       <ScoutBox
         padding="14px 16px"
-        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
-        onClick={handleRecommendation}
-      >
-        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(196,168,106,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-          🔍
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Discover opportunities</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Browse roles matched to you</p>
-        </div>
-        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
-      </ScoutBox>
-
-      {/* Schedule a call */}
-      <ScoutBox
-        padding="14px 16px"
-        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
+        style={ctaCardStyle}
         onClick={handleScheduleCall}
       >
         <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(74,139,106,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
@@ -489,6 +499,21 @@ export function DashboardHomeTop({ isMobile }: Props) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Schedule a call</p>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Talk to our placement team</p>
+        </div>
+        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
+      </ScoutBox>
+
+      <ScoutBox
+        padding="14px 16px"
+        style={{ ...ctaCardStyle, gridColumn: isMobile ? undefined : "1 / -1" }}
+        onClick={handleRecommendation}
+      >
+        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(196,168,106,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          🔍
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Discover opportunities</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Browse roles matched to you</p>
         </div>
         <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
       </ScoutBox>
@@ -719,7 +744,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.2fr) minmax(0, 1fr)",
             gap: isMobile ? 16 : 20,
             marginBottom: isMobile ? 20 : 24,
-            alignItems: "start",
+            alignItems: isMobile ? "start" : "stretch",
           }}
         >
           {actionItemsAccordion || <div />}
