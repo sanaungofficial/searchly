@@ -343,6 +343,34 @@ export function DashboardHomeTop({ isMobile }: Props) {
     textDecoration: "underline", textUnderlineOffset: 3,
   };
 
+  const actionItemsMinHeight = isMobile ? undefined : 440;
+  const pillBtnStyle: React.CSSProperties = {
+    borderRadius: 999,
+    padding: "8px 18px",
+    minHeight: 36,
+    fontSize: T.btnSm,
+    alignSelf: "flex-start",
+  };
+  const quickCardStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    minHeight: isMobile ? undefined : 168,
+    gap: 14,
+  };
+  const quickIconWrap: React.CSSProperties = {
+    width: 48,
+    height: 48,
+    borderRadius: "var(--scout-radius)",
+    background: surface.inset,
+    border: "var(--scout-border)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 22,
+    flexShrink: 0,
+  };
+
   // ── Action items (gaps) ───────────────────────────────────────────────────
   const actionItems = tuningInput ? recommendationTuningItems(tuningInput) : [];
   const pct = tuningInput ? recommendationTuningPct(tuningInput) : 0;
@@ -351,7 +379,12 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const actionItemsAccordion = showClientCoachUi && (
     <ScoutBox
       padding={isMobile ? "16px 18px" : "18px 20px"}
-      style={{ height: isMobile ? undefined : "100%", display: "flex", flexDirection: "column" }}
+      style={{
+        minHeight: actionItemsMinHeight,
+        height: isMobile ? undefined : "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
       <button
         type="button"
@@ -383,83 +416,75 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       </button>
 
-      <div style={{ flex: isMobile ? undefined : 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <div
-          style={{
-            overflow: "hidden",
-            maxHeight: actionItemsOpen ? 2000 : 0,
-            opacity: actionItemsOpen ? 1 : 0,
-            transition: "max-height 0.35s ease, opacity 0.25s ease",
-            marginTop: actionItemsOpen ? 12 : 0,
-          }}
-        >
-          <div style={{ height: 5, borderRadius: "var(--scout-radius)", background: surface.inset, border: "var(--scout-border)", overflow: "hidden", marginBottom: 12 }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
-          </div>
+      <div
+        style={{
+          overflow: "hidden",
+          flexShrink: 0,
+          maxHeight: actionItemsOpen ? 2000 : 0,
+          opacity: actionItemsOpen ? 1 : 0,
+          transition: "max-height 0.35s ease, opacity 0.25s ease",
+          marginTop: actionItemsOpen ? 12 : 0,
+        }}
+      >
+        <div style={{ height: 5, borderRadius: "var(--scout-radius)", background: surface.inset, border: "var(--scout-border)", overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
+        </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {actionItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => !item.complete && handleFixGap(item.id)}
-                disabled={item.complete}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {actionItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => !item.complete && handleFixGap(item.id)}
+              disabled={item.complete}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                width: "100%",
+                padding: "10px 4px",
+                border: "none",
+                borderRadius: "var(--scout-radius)",
+                background: "transparent",
+                cursor: item.complete ? "default" : "pointer",
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                color: item.complete ? color.muted : color.ink,
+                textAlign: "left",
+                textDecoration: item.complete ? "line-through" : "none",
+                opacity: item.complete ? 0.65 : 1,
+              }}
+            >
+              <span
                 style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: item.complete ? "none" : "2px solid rgba(17,17,17,0.2)",
+                  background: item.complete ? color.forest : "transparent",
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
-                  width: "100%",
-                  padding: "10px 4px",
-                  border: "none",
-                  borderRadius: "var(--scout-radius)",
-                  background: "transparent",
-                  cursor: item.complete ? "default" : "pointer",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  color: item.complete ? color.muted : color.ink,
-                  textAlign: "left",
-                  textDecoration: item.complete ? "line-through" : "none",
-                  opacity: item.complete ? 0.65 : 1,
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  color: "#E8D5A3",
+                  fontSize: 12,
+                  fontWeight: 700,
                 }}
               >
-                <span
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    border: item.complete ? "none" : "2px solid rgba(17,17,17,0.2)",
-                    background: item.complete ? color.forest : "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    color: "#E8D5A3",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
-                  {item.complete && "✓"}
-                </span>
-                <span style={{ flex: 1 }}>{item.actionLabel}</span>
-                {!item.complete && (
-                  <span style={{ color: color.forest, fontWeight: 600, flexShrink: 0 }}>→</span>
-                )}
-              </button>
-            ))}
-          </div>
+                {item.complete && "✓"}
+              </span>
+              <span style={{ flex: 1 }}>{item.actionLabel}</span>
+              {!item.complete && (
+                <span style={{ color: color.forest, fontWeight: 600, flexShrink: 0 }}>→</span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
+
+      {!isMobile && <div aria-hidden style={{ flex: 1, minHeight: 0 }} />}
     </ScoutBox>
   );
-
-  const ctaCardStyle: React.CSSProperties = {
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-    height: "100%",
-    minHeight: isMobile ? undefined : 72,
-  };
 
   // ── Quick action cards (Contra-style 2+1 grid) ─────────────────────────────
   const ctaCards = showClientCoachUi && (
@@ -468,54 +493,87 @@ export function DashboardHomeTop({ isMobile }: Props) {
         display: "grid",
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
         gridTemplateRows: isMobile ? undefined : "1fr auto",
-        gap: 10,
+        gap: isMobile ? 14 : 16,
         height: isMobile ? undefined : "100%",
-        minHeight: 0,
+        minHeight: actionItemsMinHeight,
+        alignItems: "stretch",
       }}
     >
-      <ScoutBox
-        padding="14px 16px"
-        style={ctaCardStyle}
-        onClick={() => router.push(withClientReviewPath("/profile"))}
-      >
-        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(26,58,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-          👤
-        </div>
+      <ScoutBox padding={isMobile ? "18px 16px" : "20px 18px"} style={quickCardStyle}>
+        <div style={quickIconWrap}>👤</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Update your profile</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Improve your Discovery Score</p>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 6px" }}>Update your profile</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+            Improve your Discovery Score
+          </p>
         </div>
-        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
+        <ScoutSecondaryBtn
+          onClick={() => router.push(withClientReviewPath("/profile"))}
+          style={pillBtnStyle}
+        >
+          Update profile
+        </ScoutSecondaryBtn>
+      </ScoutBox>
+
+      <ScoutBox padding={isMobile ? "18px 16px" : "20px 18px"} style={quickCardStyle}>
+        <div style={quickIconWrap}>📞</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 6px" }}>Schedule a call</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+            Talk to our placement team
+          </p>
+        </div>
+        <ScoutSecondaryBtn onClick={handleScheduleCall} style={pillBtnStyle}>
+          Schedule call
+        </ScoutSecondaryBtn>
       </ScoutBox>
 
       <ScoutBox
-        padding="14px 16px"
-        style={ctaCardStyle}
-        onClick={handleScheduleCall}
+        stack
+        padding={isMobile ? "20px 18px" : "22px 20px"}
+        style={{
+          gridColumn: isMobile ? undefined : "1 / -1",
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: isMobile ? "stretch" : "center",
+          gap: isMobile ? 16 : 20,
+          position: "relative",
+          overflow: "hidden",
+        }}
       >
-        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(74,139,106,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-          📞
+        <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
+          <span style={{ ...scoutInsetChipStyle, display: "inline-block", marginBottom: 10 }}>
+            For you
+          </span>
+          <p style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 8px" }}>Discover opportunities</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55, maxWidth: 420 }}>
+            {recommendationLabel} — browse roles matched to your goals and profile.
+          </p>
+          <ScoutPrimaryBtn onClick={handleRecommendation} style={{ ...pillBtnStyle, alignSelf: "flex-start" }}>
+            {recommendationLabel}
+          </ScoutPrimaryBtn>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Schedule a call</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Talk to our placement team</p>
-        </div>
-        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
-      </ScoutBox>
-
-      <ScoutBox
-        padding="14px 16px"
-        style={{ ...ctaCardStyle, gridColumn: isMobile ? undefined : "1 / -1" }}
-        onClick={handleRecommendation}
-      >
-        <div style={{ width: 36, height: 36, borderRadius: "var(--scout-radius)", background: "rgba(196,168,106,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-          🔍
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Discover opportunities</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Browse roles matched to you</p>
-        </div>
-        <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
+        {!isMobile && (
+          <div
+            aria-hidden
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: "50%",
+              background: "rgba(196,168,106,0.18)",
+              border: "var(--scout-border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 36,
+              flexShrink: 0,
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
+            🔍
+          </div>
+        )}
       </ScoutBox>
     </div>
   );
