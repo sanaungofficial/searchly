@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Cormorant_Garamond, Fraunces, Source_Sans_3, DM_Mono, Roboto_Flex } from "next/font/google";
+import { Playfair_Display, Cormorant_Garamond, Fraunces, Source_Sans_3, DM_Mono, Roboto_Flex, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PartneroScript } from "@/components/partnero-script";
@@ -47,6 +47,12 @@ const robotoFlex = Roboto_Flex({
   display: "swap",
 });
 
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Kimchi — by Second Ladder",
   description: "Kimchi reads your resume, understands your story, and prepares every application. An editorial onboarding experience.",
@@ -62,7 +68,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${cormorant.variable} ${playfair.variable} ${robotoFlex.variable}`}
+      className={`${fraunces.variable} ${cormorant.variable} ${playfair.variable} ${robotoFlex.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
       <body

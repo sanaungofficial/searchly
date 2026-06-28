@@ -1,4 +1,4 @@
-/** Kimchi typography — Source Sans 3 UI + Fraunces display */
+/** Kimchi typography — Roboto Flex UI + Newsreader headings inside `.bruddle` */
 
 import type { CSSProperties } from "react";
 
@@ -42,6 +42,26 @@ export function displayTitleStyle(size: number, overrides?: CSSProperties): CSSP
   };
 }
 
+/** Bruddle heading scale — Newsreader Regular via `--font-display` inside `.bruddle` */
+export type BruddleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+
+export function bruddleHeadingStyle(
+  level: BruddleHeadingLevel,
+  overrides?: CSSProperties,
+): CSSProperties {
+  const size = type[level];
+  return {
+    fontFamily: fontDisplay,
+    fontSize: size,
+    fontWeight: 400,
+    color: color.ink,
+    margin: 0,
+    lineHeight: size >= 36 ? 1.1 : size >= 24 ? 1.15 : 1.2,
+    letterSpacing: "-0.01em",
+    ...overrides,
+  };
+}
+
 /** Citebound-style surfaces — cream page, white cards */
 export const surface = {
   page: "var(--scout-page)",
@@ -67,15 +87,28 @@ export const shadow = {
   cardStrong: "var(--scout-shadow-card-strong)",
 } as const;
 
-/** Mobile-first type scale (px) — nothing below 12 for readable content */
+/**
+ * Bruddle-aligned type scale (px).
+ * Headings: Newsreader. UI/body: Roboto Flex.
+ */
 export const type = {
-  displayLg: 28,
-  displaySm: 22,
-  heading: 18,
-  body: 15,
+  h1: 48,
+  h2: 36,
+  h3: 30,
+  h4: 24,
+  h5: 20,
+  h6: 18,
+  body: 16,
   bodySm: 14,
-  caption: 13,
+  caption: 14,
   label: 12,
+  btnLg: 16,
+  btnMd: 14,
+  btnSm: 12,
+  /** Legacy aliases */
+  displayLg: 30,
+  displaySm: 24,
+  heading: 18,
   stat: 40,
 } as const;
 

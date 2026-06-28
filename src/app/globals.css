@@ -472,6 +472,12 @@
   --scout-shadow-card: none;
   --scout-shadow-card-strong: none;
   --font-ui: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
-  --font-display: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
+  --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --type-body: 16px;
+  --type-body-sm: 14px;
+  --type-caption: 14px;
+  --type-label: 12px;
   --scout-border: 1.5px solid #161616;
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
 }
