@@ -22,6 +22,7 @@ import {
   LANDING_WHY,
 } from "@/lib/landing-content";
 import { MarketingTopNav } from "@/components/landing/marketing-top-nav";
+import { useAppEntryHref } from "@/hooks/use-app-entry-href";
 import "./landing.css";
 
 function KimchiWordmark({ compact = false }: { compact?: boolean }) {
@@ -185,6 +186,8 @@ function SectionIntro({
 }
 
 export function LandingPage() {
+  const loginHref = useAppEntryHref("/login");
+  const signupHref = useAppEntryHref("/signup");
   const [faqOpen, setFaqOpen] = useState(0);
   const [testimonial, setTestimonial] = useState(0);
   const t = LANDING_TESTIMONIALS.items[testimonial]!;
@@ -245,7 +248,7 @@ export function LandingPage() {
               >
                 {LANDING_JOIN_WAITLIST_LABEL} →
               </a>
-              <Link href="/login" className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
+              <Link href={loginHref} className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
                 Log In
               </Link>
             </div>
@@ -279,7 +282,7 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
-            <Link href="/signup" className="landing-link-cta">
+            <Link href={signupHref} className="landing-link-cta">
               {LANDING_ANALYTICS.cta} →
             </Link>
           </div>
@@ -372,7 +375,7 @@ export function LandingPage() {
               ) : null}
               <h3 className="landing-h3">{section.heading}</h3>
               <p className="landing-body landing-muted">{section.body}</p>
-              <Link href="/signup" className="landing-link-cta">
+              <Link href={signupHref} className="landing-link-cta">
                 {section.cta} →
               </Link>
             </div>
@@ -519,7 +522,7 @@ export function LandingPage() {
               >
                 {LANDING_JOIN_WAITLIST_LABEL} →
               </a>
-              <Link href="/login" className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
+              <Link href={loginHref} className="landing-btn landing-btn--ghost landing-btn--bruddle landing-btn--ghost-on-dark">
                 Log In
               </Link>
             </div>

@@ -11,6 +11,7 @@ import {
   LANDING_NAV,
   LANDING_WAITLIST_URL,
 } from "@/lib/landing-content";
+import { useAppEntryHref } from "@/hooks/use-app-entry-href";
 
 export const MARKETING_TOP_NAV_HEIGHT = 64;
 export const MARKETING_TOP_NAV_HEIGHT_MOBILE = 56;
@@ -139,6 +140,7 @@ function MobileDrawerLink({
 
 export function MarketingTopNav() {
   const pathname = usePathname();
+  const loginHref = useAppEntryHref("/login");
   const isMobileHook = useIsMobile();
   const isMobile = isMobileHook;
   const navHeight = isMobile ? MARKETING_TOP_NAV_HEIGHT_MOBILE : MARKETING_TOP_NAV_HEIGHT;
@@ -291,7 +293,7 @@ export function MarketingTopNav() {
               marginLeft: isMobile ? "auto" : undefined,
             }}
           >
-            <Link href="/login" style={outlineBtnStyle(isMobile)}>
+            <Link href={loginHref} style={outlineBtnStyle(isMobile)}>
               Log In
             </Link>
             <a
@@ -411,7 +413,7 @@ export function MarketingTopNav() {
                 marginTop: 12,
               }}
             >
-              <Link href="/login" onClick={closeMobileMenu} style={{ ...outlineBtnStyle(true), width: "100%", boxSizing: "border-box" }}>
+              <Link href={loginHref} onClick={closeMobileMenu} style={{ ...outlineBtnStyle(true), width: "100%", boxSizing: "border-box" }}>
                 Log In
               </Link>
               <a
