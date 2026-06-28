@@ -85,7 +85,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   fontSize: 14,
   background: "#fff",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   padding: "10px 12px",
   outline: "none",
@@ -144,7 +144,7 @@ function ConnectCalendarCard({ returnPath, emailSync }: { returnPath: string; em
     <div
       style={{
         background: "rgba(26,58,47,0.04)",
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: 8,
         padding: "20px 24px",
       }}
@@ -164,7 +164,7 @@ function ConnectCalendarCard({ returnPath, emailSync }: { returnPath: string; em
             gap: 8,
             padding: "10px 18px",
             background: "#fff",
-            border: border.line,
+            border: "var(--scout-border)",
             fontFamily: fontSans,
             fontSize: 14,
             fontWeight: 600,
@@ -183,7 +183,7 @@ function ConnectCalendarCard({ returnPath, emailSync }: { returnPath: string; em
             gap: 8,
             padding: "10px 18px",
             background: "#fff",
-            border: border.line,
+            border: "var(--scout-border)",
             fontFamily: fontSans,
             fontSize: 14,
             fontWeight: 600,
@@ -434,7 +434,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
             color: color.forest,
             textDecoration: "none",
             padding: "10px 16px",
-            border: border.line,
+            border: "var(--scout-border)",
             background: "#fff",
             flexShrink: 0,
           }}
@@ -507,7 +507,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
                       display: "inline-flex",
                       padding: "10px 18px",
                       background: "#fff",
-                      border: border.line,
+                      border: "var(--scout-border)",
                       fontFamily: fontSans,
                       fontSize: 14,
                       fontWeight: 600,
@@ -722,7 +722,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
                     gap: 16,
                     alignItems: "center",
                     padding: "10px 0",
-                    borderBottom: border.line,
+                    borderBottom: "var(--scout-border)",
                   }}
                 >
                   <Toggle checked={row.enabled} onChange={(enabled) => updateDay(day, { enabled })} />
@@ -896,7 +896,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
               {blackoutDates.length === 0 ? (
                 <div
                   style={{
-                    border: `1px dashed ${border.line}`,
+                    border: "1px dashed rgba(22,22,22,0.35)",
                     padding: "20px",
                     textAlign: "center",
                     fontFamily: fontSans,
@@ -917,7 +917,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
                         justifyContent: "space-between",
                         alignItems: "center",
                         padding: "8px 12px",
-                        border: border.line,
+                        border: "var(--scout-border)",
                         background: "#fff",
                       }}
                     >
@@ -952,7 +952,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
                   onClick={addBlackoutDate}
                   style={{
                     padding: "10px 14px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                     background: "#fff",
                     fontFamily: fontSans,
                     fontSize: 13,
@@ -980,7 +980,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
             padding: "12px 24px",
             background: color.forest,
             color: color.gold,
-            border: border.lineStrong,
+            border: "var(--scout-border)",
             fontFamily: fontSans,
             fontSize: 14,
             fontWeight: 600,

@@ -43,7 +43,7 @@ function CollapsibleCard({
     <div
       style={{
         background: surface.card,
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: radius.box,
         boxShadow: shadow.card,
         overflow: "hidden",
@@ -74,7 +74,7 @@ function CollapsibleCard({
         <Chevron open={open} />
       </button>
       {open && (
-        <div style={{ padding: "0 16px 16px", borderTop: border.line }}>
+        <div style={{ padding: "0 16px 16px", borderTop: "var(--scout-border)" }}>
           {children}
         </div>
       )}
@@ -100,7 +100,7 @@ function SessionHistoryRow({ booking }: { booking: HubBooking }) {
         justifyContent: "space-between",
         gap: 12,
         padding: "10px 0",
-        borderBottom: border.line,
+        borderBottom: "var(--scout-border)",
         fontFamily: fontSans,
         fontSize: 13,
       }}
@@ -239,7 +239,7 @@ export function ExpertInboxClientPanel({
                     style={{
                       fontSize: 12,
                       padding: "4px 8px",
-                      border: border.line,
+                      border: "var(--scout-border)",
                       borderRadius: radius.box,
                       background: surface.inset,
                     }}

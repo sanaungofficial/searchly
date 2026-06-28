@@ -253,7 +253,7 @@ export function AdminJobMatchEmailPanel() {
                   flex: "1 1 220px",
                   minWidth: 200,
                   padding: "10px 12px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
                   background: surface.card,
@@ -299,7 +299,7 @@ export function AdminJobMatchEmailPanel() {
               width: "min(640px, 94vw)",
               maxHeight: "90vh",
               background: "#FFFDF9",
-              border: border.lineStrong,
+              border: "var(--scout-border)",
               zIndex: 2001,
               display: "flex",
               flexDirection: "column",
@@ -309,7 +309,7 @@ export function AdminJobMatchEmailPanel() {
             <div
               style={{
                 padding: "16px 20px",
-                borderBottom: border.line,
+                borderBottom: "var(--scout-border)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -329,7 +329,7 @@ export function AdminJobMatchEmailPanel() {
                 onClick={() => setPreviewOpen(false)}
                 style={{
                   padding: "8px 14px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   background: "transparent",
                   fontFamily: fontSans,
                   fontSize: T.bodySm,

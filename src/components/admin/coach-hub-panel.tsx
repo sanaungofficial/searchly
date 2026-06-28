@@ -181,7 +181,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
         <div
           style={{
             padding: "12px 16px",
-            border: border.line,
+            border: "var(--scout-border)",
             background: nylasNotice.type === "success" ? "rgba(45,122,80,0.08)" : "rgba(220,38,38,0.06)",
             fontFamily: fontSans,
             fontSize: 14,
@@ -228,7 +228,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
             )}
           </div>
           {mode === "admin" && coachId && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: border.line }}>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "var(--scout-border)" }}>
               <p style={{ margin: "0 0 8px", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
                 Calendar (Nylas)
               </p>
@@ -262,7 +262,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     fontSize: 13,
                     fontWeight: 600,
                     textDecoration: "none",
-                    border: border.lineStrong,
+                    border: "var(--scout-border)",
                   }}
                 >
                   {coach.calendarConnected ? "Reconnect Google Calendar" : "Connect Google Calendar"}
@@ -279,7 +279,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     fontSize: 13,
                     fontWeight: 600,
                     textDecoration: "none",
-                    border: border.line,
+                    border: "var(--scout-border)",
                   }}
                 >
                   {coach.calendarConnected ? "Reconnect Outlook" : "Connect Outlook"}
@@ -292,7 +292,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     style={{
                       padding: "10px 14px",
                       background: surface.card,
-                      border: border.line,
+                      border: "var(--scout-border)",
                       fontFamily: fontSans,
                       fontSize: 13,
                       fontWeight: 600,
@@ -309,7 +309,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                       display: "block",
                       marginTop: 12,
                       paddingTop: 12,
-                      borderTop: border.line,
+                      borderTop: "var(--scout-border)",
                       fontFamily: fontSans,
                       fontSize: 13,
                       fontWeight: 600,
@@ -371,7 +371,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     onClick={() => setSelectedClient(active ? null : client)}
                     style={{
                       textAlign: "left",
-                      border: active ? `1px solid ${color.forest}` : border.line,
+                      border: active ? `1px solid ${color.forest}` : "var(--scout-border)",
                       background: active ? "rgba(45,122,80,0.06)" : "#fff",
                       padding: "12px 14px",
                       cursor: "pointer",
@@ -410,7 +410,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}>
               {communications.map((c) => (
-                <div key={c.id} style={{ borderBottom: border.line, paddingBottom: 10 }}>
+                <div key={c.id} style={{ borderBottom: "var(--scout-border)", paddingBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
                     <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>{c.subject}</p>
                     <span style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, whiteSpace: "nowrap" }}>

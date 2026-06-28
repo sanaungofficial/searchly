@@ -61,9 +61,16 @@ export const WorkspaceScroll = forwardRef<HTMLDivElement, { children: ReactNode;
 );
 
 /** Centered sub-page shell (admin, expert profile, staff dashboard routes). */
-export function WorkspaceSubpageShell({ children }: { children: ReactNode }) {
+export function WorkspaceSubpageShell({
+  children,
+  bruddle = false,
+}: {
+  children: ReactNode;
+  bruddle?: boolean;
+}) {
   return (
     <div
+      className={bruddle ? "bruddle" : undefined}
       style={{
         height: "100%",
         minHeight: 0,

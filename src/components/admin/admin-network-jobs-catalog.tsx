@@ -86,7 +86,7 @@ function CatalogJobCard({
             <span
               style={{
                 padding: "2px 8px",
-                border: border.line,
+                border: "var(--scout-border)",
                 fontFamily: fontMono,
                 fontSize: T.label,
                 fontWeight: 700,
@@ -99,7 +99,7 @@ function CatalogJobCard({
               <span
                 style={{
                   padding: "2px 8px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   fontFamily: fontSans,
                   fontSize: T.label,
                   fontWeight: 600,
@@ -313,7 +313,7 @@ export function AdminNetworkJobsCatalog() {
             flexWrap: "wrap",
             gap: 8,
             marginBottom: 16,
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             paddingBottom: 12,
           }}
         >
@@ -327,7 +327,7 @@ export function AdminNetworkJobsCatalog() {
               }}
               style={{
                 padding: "8px 14px",
-                border: source === tab.id ? border.lineStrong : border.line,
+                border: source === tab.id ? "var(--scout-border)" : "var(--scout-border)",
                 background: source === tab.id ? "rgba(26,58,47,0.08)" : surface.card,
                 fontFamily: fontSans,
                 fontSize: T.caption,
@@ -365,7 +365,7 @@ export function AdminNetworkJobsCatalog() {
               style={{
                 width: "100%",
                 padding: "8px 10px",
-                border: border.line,
+                border: "var(--scout-border)",
                 fontFamily: fontSans,
                 fontSize: T.bodySm,
                 background: surface.card,

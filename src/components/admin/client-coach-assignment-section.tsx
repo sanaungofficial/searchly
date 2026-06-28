@@ -113,7 +113,7 @@ export function ClientCoachAssignmentSection({
 
   return (
     <ScoutBox padding={0} style={{ marginBottom: 20, overflow: "hidden" }}>
-      <div style={{ padding: "14px 20px", borderBottom: border.line }}>
+      <div style={{ padding: "14px 20px", borderBottom: "var(--scout-border)" }}>
         <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, margin: 0 }}>
           Assigned coaches
         </p>
@@ -136,7 +136,7 @@ export function ClientCoachAssignmentSection({
                   alignItems: "center",
                   gap: 12,
                   padding: "12px 14px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   background: "rgba(26,58,47,0.02)",
                 }}
               >
@@ -183,7 +183,7 @@ export function ClientCoachAssignmentSection({
                 width: "100%",
                 marginTop: 6,
                 padding: "10px 12px",
-                border: border.line,
+                border: "var(--scout-border)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 background: surface.card,
@@ -206,7 +206,7 @@ export function ClientCoachAssignmentSection({
                     alignItems: "center",
                     gap: 10,
                     padding: "8px 10px",
-                    border: coachId === c.id ? `2px solid ${color.forest}` : border.line,
+                    border: coachId === c.id ? `2px solid ${color.forest}` : "var(--scout-border)",
                     background: coachId === c.id ? "rgba(26,58,47,0.06)" : surface.card,
                     cursor: "pointer",
                     textAlign: "left",
@@ -235,7 +235,7 @@ export function ClientCoachAssignmentSection({
                 width: "100%",
                 marginTop: 6,
                 padding: "10px 12px",
-                border: border.line,
+                border: "var(--scout-border)",
                 fontFamily: fontSans,
                 fontSize: 14,
               }}
