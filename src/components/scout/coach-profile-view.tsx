@@ -7,13 +7,13 @@ import { CoachExperienceCompanies } from "@/components/scout/coach-experience-co
 import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "@/components/scout/scout-box";
 import { formatCoachNextAvailable } from "@/components/scout/coach-booking-modal";
 import { bioSnippet } from "@/lib/coach-directory";
 import type { CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
-import { bruddleHeadingStyle, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontMono, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 const line = "var(--scout-border)";
 const cardBg = surface.card;
@@ -91,6 +91,7 @@ function EventCard({ session, variant }: { session: LiveSessionView; variant: "u
         gap: 14,
         padding: 14,
         border: line,
+        borderRadius: radius.px,
         background: surface.inset,
         textDecoration: "none",
         color: color.ink,
@@ -155,6 +156,7 @@ function OfferingRow({
         gap: 12,
         padding: 14,
         border: line,
+        borderRadius: radius.px,
         background: surface.inset,
         ...style,
       }}
@@ -201,9 +203,10 @@ function GoldBookBtn({ children, onClick, style }: { children: ReactNode; onClic
         width: "100%",
         minHeight: 44,
         padding: "12px 16px",
-        background: "#E8D5A3",
-        color: "#1A1A1A",
-        border: "2px solid #1A1A1A",
+        background: color.gold,
+        color: color.ink,
+        border: line,
+        borderRadius: radius.px,
         fontFamily: fontSans,
         fontSize: 14,
         fontWeight: 700,
@@ -232,9 +235,9 @@ function AiToolCard({
   onClick: () => void;
 }) {
   return (
-    <div style={{ background: cardBg, border: line, borderRadius: "var(--scout-radius)", padding: "18px 20px", marginBottom: 12 }}>
+    <div style={{ background: cardBg, border: line, borderRadius: radius.px, padding: "18px 20px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-        <p style={displayTitleStyle(16)}>{title}</p>
+        <p style={bruddleHeadingStyle("h6")}>{title}</p>
         {creditCost ? (
           <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: color.muted }}>
             {creditCost} credit{creditCost !== 1 ? "s" : ""}
@@ -306,7 +309,7 @@ export function CoachProfileView({
 
   const bookingSidebar = (
     <ScoutBox padding={20}>
-      <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, margin: "0 0 14px", textAlign: "center" }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, margin: "0 0 14px", textAlign: "center" }}>
         Book a session
       </p>
       <OfferingRow
@@ -443,7 +446,7 @@ export function CoachProfileView({
           <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 88 : 120} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
-              <h1 style={displayTitleStyle(isMobile ? 24 : 32, { margin: 0, lineHeight: 1.15 })}>{coach.displayName}</h1>
+              <h1 style={bruddleHeadingStyle(isMobile ? "h4" : "h3", { lineHeight: 1.15 })}>{coach.displayName}</h1>
               {coach.isProfessionalCoach && (
                 <span style={{ fontFamily: fontSans, fontSize: 12, color: color.forest, fontWeight: 600 }}>✓ Verified</span>
               )}
@@ -451,7 +454,7 @@ export function CoachProfileView({
             </div>
             <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
             {coach.headline && (
-              <p style={{ fontFamily: fontSans, fontSize: 15, color: color.stone, lineHeight: 1.5, margin: "10px 0 0" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.stone, lineHeight: 1.5, margin: "10px 0 0" }}>
                 {coach.headline}
               </p>
             )}
@@ -461,13 +464,9 @@ export function CoachProfileView({
                   <span
                     key={pill}
                     style={{
-                      padding: "5px 12px",
-                      borderRadius: 999,
-                      background: "rgba(26,58,47,0.06)",
-                      fontFamily: fontSans,
-                      fontSize: 12,
-                      fontWeight: 600,
+                      ...scoutInsetChipStyle,
                       color: color.forest,
+                      fontWeight: 600,
                     }}
                   >
                     {pill}
@@ -501,7 +500,7 @@ export function CoachProfileView({
 
           {introText && (
             <Section title={`Message from ${coach.displayName.split(" ")[0]}`}>
-              <p style={{ fontFamily: fontSans, fontSize: 15, lineHeight: 1.7, color: color.stone, margin: 0 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.body, lineHeight: 1.7, color: color.stone, margin: 0 }}>
                 {introText}{introText.length < (coach.bio?.length ?? 0) ? "…" : ""}
               </p>
             </Section>
@@ -511,7 +510,7 @@ export function CoachProfileView({
 
           {aboutText && (
             <Section title="About">
-              <p style={{ fontFamily: fontSans, fontSize: 14, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
                 {aboutExpanded ? aboutText : `${aboutText.slice(0, 600)}${aboutText.length > 600 ? "…" : ""}`}
               </p>
               {aboutText.length > 600 && (
@@ -537,7 +536,7 @@ export function CoachProfileView({
 
           {matchReasons.length > 0 && (
             <Section title="Why clients work with them">
-              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.65 }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
                 {matchReasons.slice(0, 5).map((r) => (
                   <li key={r} style={{ marginBottom: 6 }}>{r}</li>
                 ))}
@@ -547,7 +546,7 @@ export function CoachProfileView({
 
           {(coach.clientWins?.length ?? 0) > 0 && (
             <Section title="Client results">
-              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.65 }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
                 {coach.clientWins!.map((win) => (
                   <li key={win} style={{ marginBottom: 8 }}>{win}</li>
                 ))}
@@ -576,7 +575,7 @@ export function CoachProfileView({
 
           {coach.whyCoach && (
             <Section title="Coaching philosophy">
-              <p style={{ fontFamily: fontSans, fontSize: 14, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
                 {coach.whyCoach}
               </p>
             </Section>
@@ -593,8 +592,9 @@ export function CoachProfileView({
                     style={{
                       padding: "8px 14px",
                       border: line,
+                      borderRadius: radius.px,
                       fontFamily: fontSans,
-                      fontSize: 13,
+                      fontSize: T.bodySm,
                       color: color.stone,
                       background: surface.inset,
                     }}
@@ -636,6 +636,7 @@ export function CoachProfileView({
                           gap: 12,
                           padding: "12px 14px",
                           border: line,
+                          borderRadius: radius.px,
                           background: surface.inset,
                           textDecoration: "none",
                           color: "inherit",
@@ -683,7 +684,7 @@ export function CoachProfileView({
                 {coach.specialties.map((s) => (
                   <span
                     key={s}
-                    style={{ padding: "6px 12px", background: "rgba(26,58,47,0.06)", fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    style={{ ...scoutInsetChipStyle, color: color.forest, fontSize: T.bodySm }}
                   >
                     {s}
                   </span>
@@ -710,7 +711,7 @@ export function CoachProfileView({
           >
             {bookingSidebar}
             <div style={{ marginTop: 20 }}>
-              <p style={displayTitleStyle(15, { margin: "0 0 14px" })}>Before your session</p>
+              <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 14px" }}>Before your session</p>
               <CreditsStatusBar />
               <AiToolCard
                 creditCost={1}

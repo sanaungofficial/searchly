@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { color, fontSans, border, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { InboxMailView } from "./inbox/inbox-mail-view";
 import type { ComposeState, InboxStatus } from "./inbox/inbox-types";
@@ -131,57 +131,43 @@ export function JobSearchEmailDashboard() {
   }
 
   return (
-    <ScoutBox
-      padding={0}
-      style={{
-        flex: 1,
-        minHeight: isMobile ? 520 : "min(78vh, 880px)",
-        maxHeight: isMobile ? undefined : "calc(100vh - 132px)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: surface.card,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: isMobile ? "12px 14px" : "14px 16px",
-          borderBottom: "var(--scout-border)",
-          background: surface.card,
-        }}
-      >
-        <div>
-          <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 20, fontWeight: 600, color: color.forest }}>
-            Inbox & CRM
-          </h2>
-          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-            {connected ? (
-              <>
-                {status.email}
-                {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
-                {" · "}
-                Mail, contacts, and pipeline links in one place
-              </>
-            ) : (
-              <>
-                CRM contacts available now
-                {isAdminReviewing ? " — connect this client’s inbox when ready" : " — connect mail to read and send email"}
-              </>
-            )}
-          </p>
-        </div>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <header style={{ marginBottom: isMobile ? 16 : 20, flexShrink: 0 }}>
+        <h1 style={bruddleHeadingStyle("h5")}>Inbox</h1>
+        <p style={{ margin: "6px 0 0", fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.5 }}>
+          {connected ? (
+            <>
+              {status.email}
+              {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
+              {" · "}Mail, contacts, and pipeline links
+            </>
+          ) : (
+            <>
+              CRM contacts available now
+              {isAdminReviewing ? " — connect this client’s inbox when ready" : " — connect mail to read and send email"}
+            </>
+          )}
+        </p>
         {connected && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
             <ScoutSecondaryBtn onClick={handleRefresh}>Refresh</ScoutSecondaryBtn>
           </div>
         )}
-      </div>
+      </header>
+
+      <ScoutBox
+        padding={0}
+        style={{
+          flex: 1,
+          minHeight: isMobile ? 520 : "min(72vh, 840px)",
+          maxHeight: isMobile ? undefined : "calc(100vh - 180px)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          background: surface.card,
+        }}
+      >
 
       {!connected && (
         <div
@@ -237,5 +223,6 @@ export function JobSearchEmailDashboard() {
         />
       </div>
     </ScoutBox>
+    </div>
   );
 }
