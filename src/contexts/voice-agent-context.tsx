@@ -3,6 +3,7 @@
 import { createContext, useContext, useCallback, useState } from "react";
 import {
   useVoiceAgentSession,
+  type VoiceChatHistoryEntry,
   type VoiceTranscriptLine,
 } from "@/hooks/use-voice-agent-session";
 import type { VoiceOrbState } from "@/components/voice/voice-orb";
@@ -34,6 +35,7 @@ interface VoiceAgentContextValue {
   setPageHint: (hint: AssistantPageHint | undefined) => void;
   setOnComplete: (handler: VoiceSessionResultHandler | undefined) => void;
   setOnNavigate: (handler: ((route: string, label?: string) => void) | undefined) => void;
+  setChatHistory: (history: VoiceChatHistoryEntry[] | undefined) => void;
 }
 
 const VoiceAgentContext = createContext<VoiceAgentContextValue | null>(null);
@@ -51,6 +53,7 @@ export function useVoiceAgentOptional(): VoiceAgentContextValue | null {
 export function VoiceAgentProvider({ children }: { children: React.ReactNode }) {
   const [pageHint, setPageHint] = useState<AssistantPageHint | undefined>();
   const [selectedPreset, setSelectedPreset] = useState<VoicePresetId>("general");
+  const [chatHistory, setChatHistory] = useState<VoiceChatHistoryEntry[] | undefined>();
   const [onCompleteRef, setOnCompleteRef] = useState<VoiceSessionResultHandler | undefined>();
   const [onNavigateRef, setOnNavigateRef] = useState<
     ((route: string, label?: string) => void) | undefined
@@ -88,6 +91,7 @@ export function VoiceAgentProvider({ children }: { children: React.ReactNode }) 
     context: "workspace",
     voicePresetId: selectedPreset,
     pageHint,
+    chatHistory,
     onComplete,
     onNavigate,
   });
@@ -111,6 +115,7 @@ export function VoiceAgentProvider({ children }: { children: React.ReactNode }) 
     setPageHint,
     setOnComplete: setOnCompleteRef,
     setOnNavigate: setOnNavigateRef,
+    setChatHistory,
   };
 
   return <VoiceAgentContext.Provider value={value}>{children}</VoiceAgentContext.Provider>;
