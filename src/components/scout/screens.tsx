@@ -27,7 +27,6 @@ import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { LocationAutocompleteInput } from "./location-autocomplete-input";
 import {
-  ONBOARDING_AVOID_ROLE_SUGGESTIONS,
   ONBOARDING_RELOCATION_OPTIONS,
   ONBOARDING_VISA_OPTIONS,
   ONBOARDING_WORK_ARRANGEMENTS,
@@ -1539,10 +1538,74 @@ const JOB_TIMELINES = [
 interface TargetRolesProps {
   selectedTitles: string[];
   suggestedTitles?: string[];
+  suggestionLabel?: string;
+  prioritizedCategories?: string[];
+  suggestedCategories?: string[];
+  onAddCategory?: (category: string) => void;
+  onRemoveCategory?: (category: string) => void;
   onAddTitle: (title: string) => void;
   onRemoveTitle: (title: string) => void;
   onContinue: () => void;
   onSkip: () => void;
+}
+
+function SuggestedForYouChips({
+  label = "Suggested for you",
+  items,
+  exclude,
+  onPick,
+}: {
+  label?: string;
+  items: string[];
+  exclude: string[];
+  onPick: (item: string) => void;
+}) {
+  const excludeLower = new Set(exclude.map((item) => item.toLowerCase()));
+  const visible = items.filter((item) => !excludeLower.has(item.toLowerCase())).slice(0, 6);
+  if (!visible.length) return null;
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <p
+        style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 12,
+          fontWeight: 600,
+          color: ONBOARDING_TEXT_SECONDARY,
+          letterSpacing: "0.4px",
+          textTransform: "uppercase",
+          marginBottom: 8,
+          marginTop: 0,
+        }}
+      >
+        {label}
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {visible.map((item) => (
+          <button
+            key={item}
+            type="button"
+            className="onboarding-chip"
+            onClick={() => onPick(item)}
+            style={{
+              padding: "8px 14px",
+              background: ONBOARDING_FIELD_BG,
+              border: ONBOARDING_FIELD_BORDER,
+              borderRadius: "var(--scout-radius)",
+              fontFamily: "var(--font-ui)",
+              fontSize: 13,
+              fontWeight: 500,
+              color: ONBOARDING_TEXT,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function TargetRoleChip({
@@ -1595,12 +1658,14 @@ function TargetRoleChip({
 function TargetRoleAutocomplete({
   selectedTitles,
   suggestedTitles,
+  suggestionLabel = "Suggested from your resume",
   onAddTitle,
   onRemoveTitle,
   onDropdownOpenChange,
 }: {
   selectedTitles: string[];
   suggestedTitles: string[];
+  suggestionLabel?: string;
   onAddTitle: (title: string) => void;
   onRemoveTitle: (title: string) => void;
   onDropdownOpenChange?: (open: boolean) => void;
@@ -1677,7 +1742,7 @@ function TargetRoleAutocomplete({
               marginTop: 0,
             }}
           >
-            Suggested from your resume
+            {suggestionLabel}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {readbackSuggestions.slice(0, 4).map((title) => (
@@ -1854,6 +1919,11 @@ function TargetRoleAutocomplete({
 export function ScreenTargetRoles({
   selectedTitles,
   suggestedTitles = [],
+  suggestionLabel = "Suggested for you",
+  prioritizedCategories = [],
+  suggestedCategories = [],
+  onAddCategory,
+  onRemoveCategory,
   onAddTitle,
   onRemoveTitle,
   onContinue,
@@ -1861,12 +1931,30 @@ export function ScreenTargetRoles({
 }: TargetRolesProps) {
   const canContinue = selectedTitles.length > 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!categoriesOpen || allCategories.length) return;
+    void fetch("/api/jobs/categories")
+      .then((res) => (res.ok ? res.json() : { categories: [] }))
+      .then((data: { categories?: string[] }) => setAllCategories(data.categories ?? []))
+      .catch(() => {});
+  }, [categoriesOpen, allCategories.length]);
+
+  const categoryPool = [...new Set([...allCategories, ...suggestedCategories])];
+  const filteredCategories = categoryPool.filter(
+    (cat) =>
+      !prioritizedCategories.some((s) => s.toLowerCase() === cat.toLowerCase()) &&
+      (!categoryQuery.trim() || cat.toLowerCase().includes(categoryQuery.trim().toLowerCase())),
+  );
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
         title="What roles are you targeting?"
-        body="These are based on your background — add or remove as you like."
+        body="We suggested a few based on your one-liner — add or remove as you like."
       />
 
       <div
@@ -1881,10 +1969,128 @@ export function ScreenTargetRoles({
         <TargetRoleAutocomplete
           selectedTitles={selectedTitles}
           suggestedTitles={suggestedTitles}
+          suggestionLabel={suggestionLabel}
           onAddTitle={onAddTitle}
           onRemoveTitle={onRemoveTitle}
           onDropdownOpenChange={setDropdownOpen}
         />
+
+        {(suggestedCategories.length > 0 || prioritizedCategories.length > 0) && onAddCategory && onRemoveCategory && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: ONBOARDING_FIELD_BORDER }}>
+            <p
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: ONBOARDING_LABEL_COLOR,
+                letterSpacing: "0.6px",
+                textTransform: "uppercase",
+                marginBottom: 10,
+                marginTop: 0,
+              }}
+            >
+              Job categories
+            </p>
+            {prioritizedCategories.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                {prioritizedCategories.map((cat) => (
+                  <span
+                    key={cat}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      background: "rgba(26,58,47,0.08)",
+                      border: "1.5px solid rgba(26,58,47,0.25)",
+                      borderRadius: "var(--scout-radius)",
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "#1A3A2F",
+                    }}
+                  >
+                    {cat}
+                    <button
+                      type="button"
+                      onClick={() => onRemoveCategory(cat)}
+                      aria-label={`Remove ${cat}`}
+                      style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#1A3A2F" }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <SuggestedForYouChips
+              items={suggestedCategories}
+              exclude={prioritizedCategories}
+              onPick={onAddCategory}
+            />
+            {!categoriesOpen ? (
+              <button
+                type="button"
+                onClick={() => setCategoriesOpen(true)}
+                style={{
+                  padding: "8px 14px",
+                  background: "transparent",
+                  color: "#1A3A2F",
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                + Add category
+              </button>
+            ) : (
+              <div>
+                <input
+                  autoFocus
+                  value={categoryQuery}
+                  onChange={(e) => setCategoryQuery(e.target.value)}
+                  placeholder="Filter categories…"
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    border: ONBOARDING_FIELD_BORDER,
+                    borderRadius: "var(--scout-radius)",
+                    background: ONBOARDING_FIELD_BG,
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 15,
+                    marginBottom: 8,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {filteredCategories.slice(0, 8).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        onAddCategory(cat);
+                        setCategoryQuery("");
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        background: ONBOARDING_FIELD_BG,
+                        border: ONBOARDING_FIELD_BORDER,
+                        borderRadius: "var(--scout-radius)",
+                        fontFamily: "var(--font-ui)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {!canContinue && (
           <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 16 }}>
@@ -2811,144 +3017,155 @@ export function ScreenOnboardingTimeline({
   );
 }
 
-function AvoidRoleAutocomplete({
-  deprioritizedRoles,
-  onAddRole,
-  onRemoveRole,
-}: {
-  deprioritizedRoles: string[];
-  onAddRole: (role: string) => void;
-  onRemoveRole: (role: string) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<string[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [highlight, setHighlight] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    const q = query.trim();
-    if (q.length < 2) { setOptions([]); setSearching(false); return; }
-    setSearching(true);
-    timerRef.current = setTimeout(() => {
-      void fetch(`/api/onboarding/search-roles?q=${encodeURIComponent(q)}`)
-        .then((res) => (res.ok ? res.json() : { titles: [] }))
-        .then((data: { titles: string[] }) => {
-          setOptions((data.titles ?? []).filter((t) => !deprioritizedRoles.includes(t)));
-          setSearching(false);
-          setOpen(true);
-        })
-        .catch(() => setSearching(false));
-    }, 300);
-  }, [query, deprioritizedRoles]);
-
-  useEffect(() => { setHighlight(0); }, [options]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  const pick = (title: string) => {
-    if (!deprioritizedRoles.includes(title)) onAddRole(title);
-    setQuery(""); setOptions([]); setOpen(false);
-    inputRef.current?.focus();
-  };
-
-  return (
-    <div ref={containerRef}>
-      {deprioritizedRoles.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-          {deprioritizedRoles.map((role) => (
-            <span key={role} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(196,87,74,0.1)", border: "1.5px solid rgba(196,87,74,0.5)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#C4574A" }}>
-              {role}
-              <button type="button" onClick={() => onRemoveRole(role)} aria-label={`Remove ${role}`} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 16, lineHeight: 1, color: "#C4574A" }}>×</button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div style={{ position: "relative" }}>
-        <label htmlFor="avoid-role-input" style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 10 }}>
-          Search roles to avoid
-        </label>
-        <input
-          id="avoid-role-input"
-          ref={inputRef}
-          type="text"
-          value={query}
-          placeholder="e.g. Sales, Customer Success…"
-          autoComplete="off"
-          onFocus={() => { if (options.length > 0) setOpen(true); }}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((i) => Math.min(i + 1, options.length - 1)); }
-            else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((i) => Math.max(i - 1, 0)); }
-            else if (e.key === "Enter") { e.preventDefault(); if (options[highlight]) pick(options[highlight]); }
-            else if (e.key === "Escape") setOpen(false);
-          }}
-          style={{ width: "100%", minHeight: 48, padding: "12px 14px", border: ONBOARDING_FIELD_BORDER, borderRadius: "var(--scout-radius)", background: ONBOARDING_FIELD_BG, fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 500, color: ONBOARDING_TEXT, boxSizing: "border-box", outline: "none" }}
-        />
-        {searching && (
-          <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY }}>Searching…</span>
-        )}
-        {open && options.length > 0 && (
-          <ul role="listbox" style={{ position: "absolute", zIndex: 20, top: "calc(100% + 6px)", left: 0, right: 0, margin: 0, padding: 6, listStyle: "none", background: "#FFFFFF", border: "1px solid rgba(26,58,47,0.16)", borderRadius: "var(--scout-radius)", boxShadow: "0 8px 24px rgba(26,58,47,0.12)", maxHeight: 240, overflowY: "auto" }}>
-            {options.map((title, index) => (
-              <li key={title} role="option" aria-selected={index === highlight}>
-                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(title)} onMouseEnter={() => setHighlight(index)} style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderRadius: "var(--scout-radius)", background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, cursor: "pointer" }}>
-                  {title}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {!query && deprioritizedRoles.length === 0 && (
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
-          Start typing to search roles — leave blank if you&apos;re open to everything.
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function ScreenOnboardingAvoidRoles({
-  deprioritizedRoles,
-  onAddAvoidRole,
-  onRemoveAvoidRole,
+  deprioritizedCategories,
+  suggestedCategories = [],
+  onAddAvoidCategory,
+  onRemoveAvoidCategory,
   onContinue,
   onSkip,
   onBack,
 }: {
-  deprioritizedRoles: string[];
-  onAddAvoidRole: (role: string) => void;
-  onRemoveAvoidRole: (role: string) => void;
+  deprioritizedCategories: string[];
+  suggestedCategories?: string[];
+  onAddAvoidCategory: (category: string) => void;
+  onRemoveAvoidCategory: (category: string) => void;
   onContinue: () => void;
   onSkip: () => void;
   onBack: () => void;
 }) {
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!categoriesOpen || allCategories.length) return;
+    void fetch("/api/jobs/categories")
+      .then((res) => (res.ok ? res.json() : { categories: [] }))
+      .then((data: { categories?: string[] }) => setAllCategories(data.categories ?? []))
+      .catch(() => {});
+  }, [categoriesOpen, allCategories.length]);
+
+  const categoryPool = [...new Set([...allCategories, ...suggestedCategories])];
+  const filteredCategories = categoryPool.filter(
+    (cat) =>
+      !deprioritizedCategories.some((s) => s.toLowerCase() === cat.toLowerCase()) &&
+      (!categoryQuery.trim() || cat.toLowerCase().includes(categoryQuery.trim().toLowerCase())),
+  );
+
   return (
     <ScreenOnboardingQuestion
-      title="Any roles or paths to avoid?"
-      body="We'll still show some matches, but sort these titles lower when they appear."
+      title="Any job categories to avoid?"
+      body="We'll still show some matches, but sort these lower when they appear."
       onContinue={onContinue}
       onSkip={onSkip}
       onBack={onBack}
       skipLabel="None — continue"
     >
-      <AvoidRoleAutocomplete
-        deprioritizedRoles={deprioritizedRoles}
-        onAddRole={onAddAvoidRole}
-        onRemoveRole={onRemoveAvoidRole}
+      <SuggestedForYouChips
+        label="Suggested for you"
+        items={suggestedCategories}
+        exclude={deprioritizedCategories}
+        onPick={onAddAvoidCategory}
       />
+      {deprioritizedCategories.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {deprioritizedCategories.map((cat) => (
+            <span
+              key={cat}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 12px",
+                background: "rgba(196,87,74,0.1)",
+                border: "1.5px solid rgba(196,87,74,0.5)",
+                borderRadius: "var(--scout-radius)",
+                fontFamily: "var(--font-ui)",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#C4574A",
+              }}
+            >
+              {cat}
+              <button
+                type="button"
+                onClick={() => onRemoveAvoidCategory(cat)}
+                aria-label={`Remove ${cat}`}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 16, lineHeight: 1, color: "#C4574A" }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {!categoriesOpen ? (
+        <button
+          type="button"
+          onClick={() => setCategoriesOpen(true)}
+          style={{
+            padding: "8px 14px",
+            background: "transparent",
+            color: "#1A3A2F",
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: "var(--scout-radius)",
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          + Add category to avoid
+        </button>
+      ) : (
+        <div>
+          <input
+            autoFocus
+            value={categoryQuery}
+            onChange={(e) => setCategoryQuery(e.target.value)}
+            placeholder="Filter categories…"
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              border: ONBOARDING_FIELD_BORDER,
+              borderRadius: "var(--scout-radius)",
+              background: ONBOARDING_FIELD_BG,
+              fontFamily: "var(--font-ui)",
+              fontSize: 15,
+              marginBottom: 8,
+              boxSizing: "border-box",
+            }}
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {filteredCategories.slice(0, 8).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => {
+                  onAddAvoidCategory(cat);
+                  setCategoryQuery("");
+                }}
+                style={{
+                  padding: "8px 12px",
+                  background: ONBOARDING_FIELD_BG,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {deprioritizedCategories.length === 0 && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+          Leave blank if you&apos;re open to everything.
+        </p>
+      )}
     </ScreenOnboardingQuestion>
   );
 }
@@ -2957,12 +3174,14 @@ export function ScreenOnboardingAvoidRoles({
    ────────────────────────────────────────────────────────────── */
 
 export interface FinalSummaryProfile {
+  headline?: string;
   targetRoles: string[];
+  prioritizedCategories?: string[];
   targetMarket: string;
   workArrangement: WorkArrangementId;
   targetSalary: string;
   jobTimeline: string;
-  deprioritizedRoles: string[];
+  deprioritizedCategories: string[];
   visaNeed: VisaNeedId;
 }
 
@@ -3014,6 +3233,13 @@ export function ScreenFinalSummary({
           Your search setup
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {profile.headline && (
+            <div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>One-liner</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT, margin: 0, lineHeight: 1.6 }}>{profile.headline}</p>
+            </div>
+          )}
+
           {profile.targetRoles.length > 0 && (
             <div>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>Targeting</p>
@@ -3021,6 +3247,19 @@ export function ScreenFinalSummary({
                 {profile.targetRoles.map((r) => (
                   <span key={r} style={{ padding: "6px 12px", background: "rgba(26,58,47,0.08)", border: "1.5px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
                     {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(profile.prioritizedCategories?.length ?? 0) > 0 && (
+            <div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>Categories</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {profile.prioritizedCategories!.map((c) => (
+                  <span key={c} style={{ padding: "6px 12px", background: "rgba(26,58,47,0.08)", border: "1.5px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
+                    {c}
                   </span>
                 ))}
               </div>
@@ -3072,13 +3311,13 @@ export function ScreenFinalSummary({
             )}
           </div>
 
-          {profile.deprioritizedRoles.length > 0 && (
+          {profile.deprioritizedCategories.length > 0 && (
             <div>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: ONBOARDING_TEXT_SECONDARY, marginBottom: 6, marginTop: 0 }}>Deprioritizing</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                {profile.deprioritizedRoles.map((r) => (
-                  <span key={r} style={{ padding: "6px 12px", background: "rgba(196,87,74,0.08)", border: "1.5px solid rgba(196,87,74,0.3)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#C4574A" }}>
-                    {r}
+                {profile.deprioritizedCategories.map((c) => (
+                  <span key={c} style={{ padding: "6px 12px", background: "rgba(196,87,74,0.08)", border: "1.5px solid rgba(196,87,74,0.3)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#C4574A" }}>
+                    {c}
                   </span>
                 ))}
               </div>
@@ -3807,27 +4046,33 @@ export function ScreenCareerIntent({ onSelect }: { onSelect: (id: CareerIntentId
    Pre-screen: One-liner — "Describe what you do"
    ────────────────────────────────────────────────────────────── */
 export function ScreenOneLiner({
+  initialValue = "",
   onContinue,
   onBack,
   loading = false,
 }: {
+  initialValue?: string;
   onContinue: (text: string) => void;
   onBack: () => void;
   loading?: boolean;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
 
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <OnboardingHeroIntro
-        title="Describe what you do, in your own words."
-        body="One sentence is enough. We'll use it to point you in the right direction."
+        title="What's your professional one-liner?"
+        body="One sentence — your profile pitch. We'll use it to suggest roles, categories, and preferences."
       />
       <div style={ONBOARDING_CARD}>
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="e.g. Operations manager at a healthcare startup, 6 years in consulting before that"
+          placeholder="e.g. Strategy & Digital Transformation | Growth Systems Builder | MBA"
           rows={3}
           disabled={loading}
           style={{
