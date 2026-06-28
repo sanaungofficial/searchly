@@ -123,7 +123,7 @@ export function KimchiAssistant() {
               aria-hidden
             />
             <div
-              className="kimchi-drawer"
+              className="kimchi-drawer bruddle"
               style={{
                 width: DRAWER_WIDTH,
                 transform: visible ? "translateX(0)" : "translateX(100%)",
@@ -201,10 +201,11 @@ function KimchiAssistantStyles() {
         top: 0;
         bottom: 0;
         z-index: 201;
-        background: #FAFAF8;
+        background: var(--scout-page);
         display: flex;
         flex-direction: column;
-        box-shadow: -12px 0 48px rgba(26, 58, 47, 0.12);
+        border-left: var(--scout-border);
+        box-shadow: -4px 4px 0 #161616;
         transition: transform 0.28s cubic-bezier(0.32, 0, 0.16, 1);
         overflow: hidden;
       }
@@ -227,8 +228,8 @@ function KimchiAssistantStyles() {
         justify-content: space-between;
         gap: 10px;
         padding: 14px 18px;
-        background: #FFFFFF;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        background: var(--scout-surface);
+        border-bottom: var(--scout-border);
         flex-shrink: 0;
       }
       .kimchi-drawer__topbar-left {
@@ -254,10 +255,10 @@ function KimchiAssistantStyles() {
         color: rgba(26, 58, 47, 0.45);
       }
       .kimchi-drawer__name {
-        font-family: ${sans};
+        font-family: var(--font-display);
         font-size: 15px;
-        font-weight: 600;
-        color: #1A1A1A;
+        font-weight: 400;
+        color: #161616;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -272,10 +273,10 @@ function KimchiAssistantStyles() {
       .kimchi-drawer__close {
         width: 34px;
         height: 34px;
-        border: 1px solid rgba(26, 58, 47, 0.1);
-        border-radius: 10px;
-        background: #fff;
-        color: rgba(26, 58, 47, 0.55);
+        border: var(--scout-border);
+        border-radius: 0;
+        background: var(--scout-surface);
+        color: rgba(22, 22, 22, 0.55);
         font-size: 20px;
         cursor: pointer;
       }

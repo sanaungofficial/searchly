@@ -1313,7 +1313,7 @@ function KimchiChatPanelStyles() {
         min-height: 0;
         display: flex;
         flex-direction: column;
-        background: #FAFAF8;
+        background: var(--scout-page);
         position: relative;
       }
       .kimchi-chat-panel__thread {
@@ -1364,7 +1364,8 @@ function KimchiChatPanelStyles() {
         flex-shrink: 0;
         width: 32px;
         height: 32px;
-        border-radius: 50%;
+        border-radius: 0;
+        border: var(--scout-border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1386,7 +1387,7 @@ function KimchiChatPanelStyles() {
         width: 100%;
         margin-bottom: 0;
         padding: 14px 16px;
-        border-radius: 14px;
+        border-radius: 0;
         font-family: ${sans};
         font-size: 15px;
         line-height: 1.6;
@@ -1395,14 +1396,13 @@ function KimchiChatPanelStyles() {
         background: #1A3A2F;
         color: #F5F0E6;
         white-space: pre-wrap;
-        border-bottom-right-radius: 4px;
+        border: var(--scout-border);
       }
       .kimchi-chat-bubble--assistant {
         background: #FFFFFF;
-        color: #1A1A1A;
-        border: 1px solid rgba(26, 58, 47, 0.08);
-        box-shadow: 0 1px 3px rgba(17, 17, 17, 0.04);
-        border-bottom-left-radius: 4px;
+        color: #161616;
+        border: var(--scout-border);
+        box-shadow: none;
       }
       .kimchi-message-actions {
         max-width: 100%;
@@ -1419,9 +1419,9 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-empty-state__heading {
         margin: 8px 0 0;
-        font-family: ${sans};
+        font-family: var(--font-display);
         font-size: 22px;
-        font-weight: 700;
+        font-weight: 400;
         color: #1A3A2F;
         letter-spacing: -0.01em;
       }
@@ -1450,8 +1450,8 @@ function KimchiChatPanelStyles() {
         align-items: center;
         gap: 4px;
         padding: 6px 14px;
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: 999px;
+        border: var(--scout-border);
+        border-radius: 0;
         background: #fff;
         font-family: ${sans};
         font-size: 12px;
@@ -1463,7 +1463,6 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-suggest-trigger:hover:not(:disabled) {
         background: rgba(26, 58, 47, 0.04);
-        border-color: rgba(26, 58, 47, 0.22);
         color: #1A3A2F;
       }
       .kimchi-ai-suggest-btn {
@@ -1513,8 +1512,8 @@ function KimchiChatPanelStyles() {
         margin-bottom: 14px;
         padding: 14px;
         background: rgba(26, 58, 47, 0.04);
-        border: 1px solid rgba(26, 58, 47, 0.1);
-        border-radius: var(--scout-radius);
+        border: var(--scout-border);
+        border-radius: 0;
       }
       .kimchi-voice-block__eyebrow {
         margin: 0 0 6px;
@@ -1562,8 +1561,8 @@ function KimchiChatPanelStyles() {
         padding: 10px 12px;
         background: #1A3A2F;
         color: #E8D5A3;
-        border: none;
-        border-radius: var(--scout-radius);
+        border: var(--scout-border);
+        border-radius: 0;
         font-family: ${sans};
         cursor: pointer;
         text-align: left;
@@ -1582,8 +1581,8 @@ function KimchiChatPanelStyles() {
         margin-left: auto;
         padding: 7px 12px;
         background: rgba(26, 58, 47, 0.08);
-        border: 1px solid rgba(26, 58, 47, 0.18);
-        border-radius: 999px;
+        border: var(--scout-border);
+        border-radius: 0;
         font-family: ${sans};
         font-size: 12px;
         font-weight: 600;
@@ -1608,7 +1607,7 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-chat-panel__voice-bar {
         padding: 10px 18px;
-        border-top: 1px solid rgba(0,0,0,0.06);
+        border-top: var(--scout-border);
         display: flex;
         align-items: center;
         gap: 10px;
@@ -1654,8 +1653,8 @@ function KimchiChatPanelStyles() {
         text-align: left;
         padding: 10px 12px;
         background: #fff;
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: var(--scout-radius);
+        border: var(--scout-border);
+        border-radius: 0;
         cursor: pointer;
       }
       .kimchi-preset-menu__item:hover {
@@ -1696,19 +1695,19 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-chat-panel__composer {
         padding: 12px 20px 4px;
-        background: #FAFAF8;
+        background: var(--scout-page);
         flex-shrink: 0;
       }
       .kimchi-composer-box {
-        border: 1.5px solid rgba(26, 58, 47, 0.12);
-        border-radius: 20px;
+        border: var(--scout-border);
+        border-radius: 0;
         background: #FFFFFF;
         overflow: hidden;
-        box-shadow: 0 2px 12px rgba(17, 17, 17, 0.05);
+        box-shadow: none;
         transition: border-color 0.15s ease;
       }
       .kimchi-composer-box:focus-within {
-        border-color: rgba(26, 58, 47, 0.28);
+        border-color: #161616;
       }
       .kimchi-composer-box__input-wrap {
         display: flex;
@@ -1742,8 +1741,8 @@ function KimchiChatPanelStyles() {
       .kimchi-composer-box__mic {
         width: 34px;
         height: 34px;
-        border: none;
-        border-radius: 50%;
+        border: var(--scout-border);
+        border-radius: 0;
         background: transparent;
         color: rgba(26, 58, 47, 0.45);
         display: flex;
@@ -1780,8 +1779,8 @@ function KimchiChatPanelStyles() {
         gap: 5px;
         height: 32px;
         padding: 0 12px;
-        border: 1px solid rgba(26, 58, 47, 0.15);
-        border-radius: 999px;
+        border: var(--scout-border);
+        border-radius: 0;
         background: rgba(26, 58, 47, 0.04);
         color: rgba(26, 58, 47, 0.6);
         font-family: ${sans};
@@ -1794,14 +1793,13 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-composer-box__voice-pill:hover {
         background: rgba(26, 58, 47, 0.08);
-        border-color: rgba(26, 58, 47, 0.25);
         color: #1A3A2F;
       }
       .kimchi-composer-box__send {
         width: 34px;
         height: 34px;
-        border: none;
-        border-radius: 50%;
+        border: var(--scout-border);
+        border-radius: 0;
         background: #1A3A2F;
         color: #E8D5A3;
         display: flex;
