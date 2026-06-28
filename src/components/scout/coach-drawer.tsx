@@ -13,12 +13,12 @@ import {
   CoachBookingModal,
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
-import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { ScoutPrimaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem, CoachProfileDetail } from "@/lib/coach-types";
-import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 const DRAWER_BACKDROP_Z = 200;
@@ -94,13 +94,17 @@ function ReviewFormModal({
       onClick={onClose}
     >
       <div
+        className="bruddle"
         style={{
-          background: "#fff",
+          background: surface.card,
+          border: line,
+          borderRadius: radius.px,
+          boxShadow: "4px 4px 0 #161616",
           maxWidth: 520,
           width: "100%",
           maxHeight: "90vh",
           overflowY: "auto",
-          padding: 28,
+          padding: 24,
           position: "relative",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -109,37 +113,37 @@ function ReviewFormModal({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 22, cursor: "pointer" }}
+          style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 22, cursor: "pointer", color: color.mutedLight }}
         >
           ×
         </button>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, margin: "0 0 8px" }}>Review {coach.displayName}</h2>
+        <h2 style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 16px" }}>Review {coach.displayName}</h2>
         <form onSubmit={submit}>
-          <label style={{ display: "block", marginBottom: 12, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 12, fontFamily: fontSans, fontSize: T.bodySm }}>
             What did you get coached on?
             <input
               value={coachedFor}
               onChange={(e) => setCoachedFor(e.target.value)}
-              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "var(--scout-border)", boxSizing: "border-box" }}
+              style={{ ...scoutFieldStyle, display: "block", marginTop: 6 }}
             />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Knowledge: {knowledge}
-            <input type="range" min={1} max={5} step={1} value={knowledge} onChange={(e) => setKnowledge(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={knowledge} onChange={(e) => setKnowledge(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Value: {value}
-            <input type="range" min={1} max={5} step={1} value={value} onChange={(e) => setValue(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={value} onChange={(e) => setValue(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Responsiveness: {responsiveness}
-            <input type="range" min={1} max={5} step={1} value={responsiveness} onChange={(e) => setResponsiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={responsiveness} onChange={(e) => setResponsiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Supportiveness: {supportiveness}
-            <input type="range" min={1} max={5} step={1} value={supportiveness} onChange={(e) => setSupportiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={supportiveness} onChange={(e) => setSupportiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 16, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 16, fontFamily: fontSans, fontSize: T.bodySm }}>
             Your review
             <textarea
               value={message}
@@ -147,7 +151,7 @@ function ReviewFormModal({
               rows={5}
               required
               minLength={20}
-              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "var(--scout-border)", boxSizing: "border-box", resize: "vertical" }}
+              style={{ ...scoutFieldStyle, display: "block", marginTop: 6, resize: "vertical" }}
             />
           </label>
           {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
@@ -333,6 +337,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <div
+        className="bruddle"
         style={{
           position: "fixed",
           top: isMobile ? 0 : 8,
@@ -341,10 +346,11 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
           left: isMobile ? 0 : undefined,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
-          background: surface.page,
+          background: surface.card,
+          border: isMobile ? "none" : line,
           overflow: "hidden",
           zIndex: DRAWER_Z,
-          boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
+          boxShadow: isMobile ? "none" : "-4px 4px 0 #161616",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",
           display: "flex",
@@ -371,10 +377,10 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
             ×
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ ...displayTitleStyle(18), margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ ...bruddleHeadingStyle("h6"), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {displayName}
             </p>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "2px 0 0" }}>Coach profile</p>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "2px 0 0" }}>Coach profile</p>
           </div>
         </div>
 

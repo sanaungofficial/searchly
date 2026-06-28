@@ -38,35 +38,35 @@ export function inboxRowStyle(state: InboxRowVisualState): {
 } {
   if (state.expanded) {
     return {
-      background: "#FFFFFF",
-      boxShadow: "inset 3px 0 0 #1C3A2F",
+      background: "var(--scout-surface)",
+      boxShadow: "inset 3px 0 0 #1A3A2F",
       transition: "background 0.14s ease, box-shadow 0.14s ease",
     };
   }
   if (state.hovered) {
     return {
       background: "rgba(26, 58, 47, 0.06)",
-      boxShadow: "inset 3px 0 0 rgba(26, 58, 47, 0.18)",
+      boxShadow: "inset 3px 0 0 rgba(26, 58, 47, 0.35)",
       transition: "background 0.14s ease, box-shadow 0.14s ease",
     };
   }
   if (state.isLastOpened) {
     return {
-      background: "rgba(59, 130, 246, 0.07)",
-      boxShadow: "inset 3px 0 0 rgba(59, 130, 246, 0.55)",
+      background: "rgba(26, 58, 47, 0.05)",
+      boxShadow: "inset 3px 0 0 rgba(26, 58, 47, 0.55)",
       transition: "background 0.14s ease, box-shadow 0.14s ease",
     };
   }
   if (state.isFocusUnread) {
     return {
-      background: "rgba(42, 107, 74, 0.07)",
-      boxShadow: "inset 3px 0 0 rgba(42, 107, 74, 0.4)",
+      background: "rgba(26, 58, 47, 0.07)",
+      boxShadow: "inset 3px 0 0 rgba(26, 58, 47, 0.4)",
       transition: "background 0.14s ease, box-shadow 0.14s ease",
     };
   }
   if (state.unread) {
     return {
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "var(--scout-surface)",
       boxShadow: "inset 3px 0 0 transparent",
       transition: "background 0.14s ease, box-shadow 0.14s ease",
     };

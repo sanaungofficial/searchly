@@ -128,7 +128,7 @@ function initials(name: string): string {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath } =
+  const { userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath, openPricing } =
     useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
   const showClientCoachUi = showSeekerDashboard;
@@ -502,6 +502,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       avatarUrl={profile.avatarUrl}
       isMobile={isMobile}
       withClientScope={withClientScope}
+      onSubscribe={openPricing}
     />
   );
 

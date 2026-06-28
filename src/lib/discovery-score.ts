@@ -5,6 +5,59 @@ export type DiscoveryScoreBreakdown = {
   competitiveSignals: number;
 };
 
+export type DiscoveryBreakdownDimensionId = keyof DiscoveryScoreBreakdown;
+
+export type DiscoveryBreakdownDimension = {
+  id: DiscoveryBreakdownDimensionId;
+  label: string;
+  shortLabel: string;
+  max: number;
+  description: string;
+};
+
+/** Dimension metadata for hero score hover breakdown. */
+export const DISCOVERY_BREAKDOWN_DIMENSIONS: DiscoveryBreakdownDimension[] = [
+  {
+    id: "resumeStrength",
+    label: "Resume strength",
+    shortLabel: "Resume",
+    max: 25,
+    description: "Quantified impact, clear progression, and relevant experience for your target roles.",
+  },
+  {
+    id: "positioningClarity",
+    label: "Positioning clarity",
+    shortLabel: "Positioning",
+    max: 25,
+    description: "Target roles, skills, headline, and experience tell a coherent story.",
+  },
+  {
+    id: "marketReadiness",
+    label: "Market readiness",
+    shortLabel: "Market fit",
+    max: 25,
+    description: "Salary expectations, location preference, employment status, and role demand.",
+  },
+  {
+    id: "competitiveSignals",
+    label: "Competitive signals",
+    shortLabel: "Signals",
+    max: 25,
+    description: "LinkedIn presence, headline quality, and recruiter-visible differentiators.",
+  },
+];
+
+export function discoveryDimensionById(id: DiscoveryBreakdownDimensionId): DiscoveryBreakdownDimension {
+  return DISCOVERY_BREAKDOWN_DIMENSIONS.find((d) => d.id === id)!;
+}
+
+export function discoveryBreakdownRows(breakdown: DiscoveryScoreBreakdown) {
+  return DISCOVERY_BREAKDOWN_DIMENSIONS.map((dim) => ({
+    ...dim,
+    value: breakdown[dim.id],
+  }));
+}
+
 export type DiscoveryScoreResult = {
   score: number;
   breakdown: DiscoveryScoreBreakdown;

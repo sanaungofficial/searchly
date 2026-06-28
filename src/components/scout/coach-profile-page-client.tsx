@@ -12,12 +12,12 @@ import {
   CoachBookingModal,
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
-import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { ScoutPrimaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachProfileDetail } from "@/lib/coach-types";
-import { bruddleHeadingStyle, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 const line = "var(--scout-border)";
 const cardBg = surface.card;
@@ -80,44 +80,47 @@ function ReviewFormModal({
       onClick={onClose}
     >
       <div
+        className="bruddle"
         style={{
-          background: "#fff",
+          background: surface.card,
+          border: line,
+          borderRadius: radius.px,
+          boxShadow: "4px 4px 0 #161616",
           maxWidth: 520,
           width: "100%",
           maxHeight: "90vh",
           overflowY: "auto",
           padding: 24,
-          border: line,
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={displayTitleStyle(20, { margin: "0 0 16px" })}>Review {coach.displayName}</h2>
+        <h2 style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 16px" }}>Review {coach.displayName}</h2>
         <form onSubmit={submit}>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             What did you get coached for?
             <input
               value={coachedFor}
               onChange={(e) => setCoachedFor(e.target.value)}
-              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: line, boxSizing: "border-box" }}
+              style={{ ...scoutFieldStyle, display: "block", marginTop: 6 }}
             />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Knowledge: {knowledge}
-            <input type="range" min={1} max={5} step={1} value={knowledge} onChange={(e) => setKnowledge(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={knowledge} onChange={(e) => setKnowledge(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Value: {value}
-            <input type="range" min={1} max={5} step={1} value={value} onChange={(e) => setValue(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={value} onChange={(e) => setValue(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Responsiveness: {responsiveness}
-            <input type="range" min={1} max={5} step={1} value={responsiveness} onChange={(e) => setResponsiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={responsiveness} onChange={(e) => setResponsiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: T.bodySm }}>
             Supportiveness: {supportiveness}
-            <input type="range" min={1} max={5} step={1} value={supportiveness} onChange={(e) => setSupportiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4 }} />
+            <input type="range" min={1} max={5} step={1} value={supportiveness} onChange={(e) => setSupportiveness(Number(e.target.value))} style={{ display: "block", width: "100%", marginTop: 4, accentColor: color.forest }} />
           </label>
-          <label style={{ display: "block", marginBottom: 16, fontFamily: fontSans, fontSize: 14 }}>
+          <label style={{ display: "block", marginBottom: 16, fontFamily: fontSans, fontSize: T.bodySm }}>
             Your review
             <textarea
               value={message}
@@ -125,7 +128,7 @@ function ReviewFormModal({
               rows={5}
               required
               minLength={20}
-              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: line, boxSizing: "border-box", resize: "vertical" }}
+              style={{ ...scoutFieldStyle, display: "block", marginTop: 6, resize: "vertical" }}
             />
           </label>
           {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}

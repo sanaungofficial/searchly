@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { ScoutSecondaryBtn } from "../scout-box";
-import { color, fontSans, border, surface, type as T } from "@/lib/typography";
+import { ScoutSecondaryBtn, scoutFieldStyle } from "../scout-box";
+import { color, fontSans, radius, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { InboxLeadsPanel } from "./inbox-leads-panel";
@@ -400,33 +400,14 @@ export function InboxMailView({
             style={{
               flex: 1,
               minWidth: 0,
+              ...scoutFieldStyle,
               padding: "8px 12px",
-              border: "var(--scout-border)",
-              borderRadius: 8,
-              fontFamily: fontSans,
-              fontSize: T.bodySm,
-              background: surface.card,
             }}
           />
           {!isMobile && activeTab === "primary" && (
-            <button
-              type="button"
-              onClick={() => setMeetingsCollapsed((v) => !v)}
-              style={{
-                padding: "7px 11px",
-                borderRadius: 8,
-                border: "var(--scout-border)",
-                background: meetingsCollapsed ? surface.card : "rgba(42,107,74,0.08)",
-                fontFamily: fontSans,
-                fontSize: 11,
-                fontWeight: 600,
-                color: color.forest,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
+            <ScoutSecondaryBtn onClick={() => setMeetingsCollapsed((v) => !v)} style={{ whiteSpace: "nowrap", fontSize: T.bodySm }}>
               {meetingsCollapsed ? "Meetings" : "Hide meetings"}
-            </button>
+            </ScoutSecondaryBtn>
           )}
         </div>
       )}
@@ -554,6 +535,7 @@ export function InboxMailView({
             style={{ position: "fixed", inset: 0, background: "rgba(26,24,20,0.45)", zIndex: 1000 }}
           />
           <div
+            className="bruddle"
             style={{
               position: "fixed",
               top: "50%",
@@ -564,71 +546,43 @@ export function InboxMailView({
               overflow: "auto",
               background: surface.card,
               border: "var(--scout-border)",
-              borderRadius: 12,
+              borderRadius: radius.px,
               zIndex: 1001,
-              boxShadow: "8px 8px 0 rgba(17,17,17,0.08)",
+              boxShadow: "4px 4px 0 #161616",
             }}
           >
-            <div style={{ padding: "16px 20px", borderBottom: "var(--scout-border)", display: "flex", justifyContent: "space-between" }}>
-              <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600 }}>New message</p>
-              <button type="button" onClick={() => onComposeChange({ ...compose, open: false })} style={{ border: "none", background: "none", cursor: "pointer" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "var(--scout-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink }}>New message</p>
+              <button type="button" onClick={() => onComposeChange({ ...compose, open: false })} style={{ border: "none", background: "none", cursor: "pointer", color: color.mutedLight, fontSize: 20 }}>
                 ✕
               </button>
             </div>
             <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-              <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+              <label style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                 To
                 <input
                   type="email"
                   value={compose.to}
                   onChange={(e) => onComposeChange({ ...compose, to: e.target.value })}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    marginTop: 4,
-                    padding: "10px 12px",
-                    border: "var(--scout-border)",
-                    borderRadius: 8,
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                  }}
+                  style={{ ...scoutFieldStyle, display: "block", marginTop: 4 }}
                 />
               </label>
-              <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+              <label style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                 Subject
                 <input
                   type="text"
                   value={compose.subject}
                   onChange={(e) => onComposeChange({ ...compose, subject: e.target.value })}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    marginTop: 4,
-                    padding: "10px 12px",
-                    border: "var(--scout-border)",
-                    borderRadius: 8,
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                  }}
+                  style={{ ...scoutFieldStyle, display: "block", marginTop: 4 }}
                 />
               </label>
-              <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+              <label style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                 Message
                 <textarea
                   value={compose.body}
                   onChange={(e) => onComposeChange({ ...compose, body: e.target.value })}
                   rows={12}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    marginTop: 4,
-                    padding: "10px 12px",
-                    border: "var(--scout-border)",
-                    borderRadius: 8,
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                    resize: "vertical",
-                  }}
+                  style={{ ...scoutFieldStyle, display: "block", marginTop: 4, resize: "vertical" }}
                 />
               </label>
             </div>
