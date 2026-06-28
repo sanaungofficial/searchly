@@ -224,8 +224,7 @@ export function CoachingDirectoryCard({
       <ScoutBox
         padding={isMobile ? "14px 16px" : "16px 20px"}
         style={{
-          border: coach.featured ? "var(--scout-border)" : "var(--scout-border)",
-          borderTop: showTopBorder ? `2px solid ${color.forest}` : undefined,
+          ...(showTopBorder ? { borderTop: `2px solid ${color.forest}` } : {}),
           transition: "box-shadow 0.15s ease",
         }}
       >
