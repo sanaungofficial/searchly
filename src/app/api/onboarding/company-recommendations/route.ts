@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildRecommendationSignals,
   computeCompanyRecommendations,
+  hasRecommendationSignals,
   type CompanyRecommendation,
 } from "@/lib/company-recommendations";
 import type { ReadbackPayload } from "@/lib/readback-display";
@@ -83,7 +84,10 @@ export async function POST(req: NextRequest) {
     });
 
     const recommendations = computeCompanyRecommendations(signals).map(stripRecommendation);
-    return NextResponse.json({ recommendations });
+    return NextResponse.json({
+      recommendations,
+      personalized: hasRecommendationSignals(signals),
+    });
   } catch (err) {
     console.error("[onboarding/company-recommendations POST]", err);
     return NextResponse.json({ error: "Couldn't load suggestions." }, { status: 500 });
