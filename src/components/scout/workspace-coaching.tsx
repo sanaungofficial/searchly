@@ -194,6 +194,7 @@ function CoachingContent() {
   const [myCoachIds, setMyCoachIds] = useState<Set<string>>(new Set());
   const { openPricing, user, authChecked } = useWorkspace();
   const requireAuth = useRequireAuthRedirect();
+  const isLoggedIn = authChecked && Boolean(user);
 
   const coachParam = searchParams.get("coach");
 
@@ -277,7 +278,7 @@ function CoachingContent() {
                 alignItems: "flex-start",
               }}
             >
-              {!isMobile && (
+              {!isMobile && isLoggedIn && (
                 <CoachingLayoutSidebar
                   tabs={SIDEBAR_TABS}
                   activePage={page}
@@ -285,12 +286,12 @@ function CoachingContent() {
                 />
               )}
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {isMobile && (
+              <div style={{ flex: 1, minWidth: 0, width: isLoggedIn ? undefined : "100%" }}>
+                {isMobile && isLoggedIn && (
                   <MobileTabBar tabs={SIDEBAR_TABS} active={page} onChange={navigate} />
                 )}
 
-                {page === "directory" && (
+                {(!isLoggedIn || page === "directory") && (
                   <CoachingDirectory
                     isMobile={isMobile}
                     isPro={isPro}
@@ -301,11 +302,11 @@ function CoachingContent() {
                   />
                 )}
 
-                {page === "my-coaches" && (
+                {isLoggedIn && page === "my-coaches" && (
                   <ProfileCoachPanel isMobile={isMobile} embedded />
                 )}
 
-                {page === "sessions" && (
+                {isLoggedIn && page === "sessions" && (
                   <PlaceholderTab
                     icon={<CalendarSvg />}
                     title="Your sessions"
@@ -313,7 +314,7 @@ function CoachingContent() {
                   />
                 )}
 
-                {page === "notes" && (
+                {isLoggedIn && page === "notes" && (
                   <PlaceholderTab
                     icon={<NotesSvg />}
                     title="Session notes"
@@ -321,7 +322,7 @@ function CoachingContent() {
                   />
                 )}
 
-                {page === "resources" && (
+                {isLoggedIn && page === "resources" && (
                   <PlaceholderTab
                     icon={<FolderSvg />}
                     title="Shared resources"
@@ -334,7 +335,7 @@ function CoachingContent() {
         </WorkspaceScroll>
       </div>
 
-      {drawerCoach && page === "directory" && (
+      {drawerCoach && (!isLoggedIn || page === "directory") && (
         <CoachDrawer
           slug={drawerCoach.slug ?? drawerCoach.id}
           preview={drawerCoach}
