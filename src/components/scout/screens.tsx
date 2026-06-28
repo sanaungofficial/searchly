@@ -254,6 +254,7 @@ interface WelcomeProps {
   isDragging: boolean;
   liInput: string;
   linkedinImportAvailable?: boolean | null;
+  linkedinImporting?: boolean;
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onContinue: () => void;
@@ -334,6 +335,7 @@ export function ScreenWelcome({
   isDragging,
   liInput,
   linkedinImportAvailable = null,
+  linkedinImporting = false,
   onLIChange,
   onLIKey,
   onContinue,
@@ -610,6 +612,11 @@ export function ScreenWelcome({
               ? "If your profile is pretty empty, no worries — we'll help you add the rest as you go."
               : "You can still finish onboarding and build your profile from scratch or upload a resume later."}
           </p>
+          {linkedinImporting && (
+            <div style={{ marginTop: 16 }}>
+              <KimchiProcessLoader preset="linkedInImport" variant="inline" />
+            </div>
+          )}
         </div>
       )}
 
@@ -644,11 +651,25 @@ export function ScreenWelcome({
             type="button"
             className="onboarding-cta"
             onClick={onLinkedInOnly}
-            style={{ ...PRIMARY_CTA, width: "100%" }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            disabled={linkedinImporting}
+            style={{
+              ...PRIMARY_CTA,
+              width: "100%",
+              opacity: linkedinImporting ? 0.6 : 1,
+              cursor: linkedinImporting ? "not-allowed" : "pointer",
+            }}
+            onMouseEnter={(e) => {
+              if (!linkedinImporting) e.currentTarget.style.opacity = "0.86";
+            }}
+            onMouseLeave={(e) => {
+              if (!linkedinImporting) e.currentTarget.style.opacity = "1";
+            }}
           >
-            {linkedinScrapeReady ? "Continue with LinkedIn →" : "Save & continue →"}
+            {linkedinImporting
+              ? "Importing LinkedIn…"
+              : linkedinScrapeReady
+                ? "Continue with LinkedIn →"
+                : "Save & continue →"}
           </button>
         </OnboardingActions>
       )}
@@ -4236,11 +4257,13 @@ export function ScreenCareerIntent({ onSelect }: { onSelect: (id: CareerIntentId
    ────────────────────────────────────────────────────────────── */
 export function ScreenOneLiner({
   initialValue = "",
+  importBanner = null,
   onContinue,
   onBack,
   loading = false,
 }: {
   initialValue?: string;
+  importBanner?: { type: "success" | "error" | "info"; message: string } | null;
   onContinue: (text: string) => void;
   onBack: () => void;
   loading?: boolean;
@@ -4251,12 +4274,33 @@ export function ScreenOneLiner({
     setValue(initialValue);
   }, [initialValue]);
 
+  const bannerStyles =
+    importBanner?.type === "success"
+      ? { border: "1px solid rgba(26,58,47,0.2)", background: "rgba(26,58,47,0.06)", color: "#1A3A2F" }
+      : importBanner?.type === "error"
+        ? { border: "1px solid rgba(192,57,43,0.25)", background: "rgba(192,57,43,0.06)", color: "#C0392B" }
+        : { border: "1px solid rgba(26,58,47,0.16)", background: "rgba(26,58,47,0.05)", color: ONBOARDING_TEXT_SECONDARY };
+
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <OnboardingHeroIntro
         title="What's your professional one-liner?"
         body="One sentence — your profile pitch. We'll use it to suggest roles, categories, and preferences."
       />
+      {importBanner && (
+        <div
+          style={{
+            ...ONBOARDING_CARD,
+            marginBottom: 16,
+            padding: "12px 14px",
+            ...bannerStyles,
+          }}
+        >
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, margin: 0, lineHeight: 1.55 }}>
+            {importBanner.message}
+          </p>
+        </div>
+      )}
       <div style={ONBOARDING_CARD}>
         <textarea
           value={value}
