@@ -375,90 +375,115 @@ function CircularMatchScore({ score }: { score: number }) {
 function WhyMatchPanel({ reasons, matchedSkills }: { reasons: string[]; matchedSkills: string[] }) {
   return (
     <div style={{ padding: "4px 0" }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.ink, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 10px" }}>
-        Why This Job Is A Match
-      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M7.5 1L9 6H14.5L10 9.5L11.5 14.5L7.5 11.5L3.5 14.5L5 9.5L0.5 6H6L7.5 1Z" fill="#44E8A4" stroke="#44E8A4" strokeWidth="0.5" strokeLinejoin="round"/>
+        </svg>
+        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
+          Why This Job Is A Match
+        </span>
+      </div>
       {reasons.length > 0 && (
-        <ul style={{ margin: "0 0 10px", paddingLeft: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: matchedSkills.length > 0 ? 14 : 0 }}>
           {reasons.map((r, i) => (
-            <li key={i} style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, marginBottom: 4 }}>
-              {r}
-            </li>
+            <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+              <span style={{ color: "#44E8A4", fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>✓</span>
+              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.45 }}>{r}</span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
       {matchedSkills.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {matchedSkills.map((skill) => (
-            <span
-              key={skill}
-              style={{
-                display: "inline-block",
-                padding: "2px 8px",
-                fontSize: T.label,
-                fontWeight: 600,
-                color: "#44E8A4",
-                background: "rgba(68,232,164,0.12)",
-                border: "1px solid rgba(68,232,164,0.35)",
-                borderRadius: "var(--scout-radius)",
-              }}
-            >
-              {skill}
-            </span>
-          ))}
+        <div>
+          <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 7px" }}>
+            Matched Skills
+          </p>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {matchedSkills.map((skill) => (
+              <span key={skill} style={{ display: "inline-block", padding: "3px 10px", fontSize: T.label, fontWeight: 600, color: "#44E8A4", background: "rgba(68,232,164,0.12)", border: "1px solid rgba(68,232,164,0.35)", borderRadius: 4 }}>
+                {skill}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function MetadataChips({
+function IconBriefcase() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="4" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M4.5 4V3a2 2 0 0 1 4 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="1" y1="7.5" x2="12" y2="7.5" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  );
+}
+
+function IconBarChart() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="7" width="2.5" height="5" rx="0.5" fill="currentColor"/>
+      <rect x="5" y="4" width="2.5" height="8" rx="0.5" fill="currentColor"/>
+      <rect x="9" y="1" width="2.5" height="11" rx="0.5" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function IconHome() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M1.5 6L6.5 1.5L11.5 6V12H8.5V9H4.5V12H1.5V6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="1" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2"/>
+      <line x1="4" y1="1" x2="4" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="9" y1="1" x2="9" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function IconDollar() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M6.5 3V10M4.5 8.5C4.5 8.5 5 9.5 6.5 9.5C8 9.5 8.5 8.5 8.5 7.5C8.5 6 6.5 6 6.5 6C6.5 6 4.5 6 4.5 4.5C4.5 3.5 5 3 6.5 3C8 3 8.5 4 8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function MetadataGrid({
   row,
-  isNetwork,
-  networkJob,
+  isNetwork: _isNetwork,
+  networkJob: _networkJob,
 }: {
   row: UnifiedListing;
   isNetwork: boolean;
   networkJob?: NetworkMatchedJob;
 }) {
-  if (isNetwork && networkJob?.sharedAt) {
-    return (
-      <div style={{ marginBottom: 8 }}>
-        <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
-          Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
-        </span>
-      </div>
-    );
-  }
   const c = row.cached;
-  const days = c.datePosted ? daysSincePosted(c.datePosted) : null;
-  const postedText =
-    days === null || days === undefined
-      ? null
-      : days === 0
-        ? "Today"
-        : days === 1
-          ? "1 day ago"
-          : `${days} days ago`;
-  const items: string[] = [];
-  if (postedText) items.push(postedText);
-  if (c.jobType) items.push(c.jobType);
-  if (c.seniority) items.push(c.seniority);
-  if (c.locationType) items.push(c.locationType);
-  else if (c.remote) items.push("Remote");
-  if (c.salary) items.push(c.salary);
-  if (c.experienceLevel) items.push(c.experienceLevel);
+  const items: { icon: JSX.Element; label: string }[] = [];
+  if (c.locationType) items.push({ icon: <IconHome />, label: c.locationType });
+  else if (c.remote) items.push({ icon: <IconHome />, label: "Remote" });
+  if (c.jobType) items.push({ icon: <IconBriefcase />, label: c.jobType });
+  if (c.seniority) items.push({ icon: <IconBarChart />, label: c.seniority });
+  if (c.salary) items.push({ icon: <IconDollar />, label: c.salary });
+  if (c.experienceLevel) items.push({ icon: <IconCalendar />, label: c.experienceLevel });
   if (!items.length) return null;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
-      {items.map((item, i) => (
-        <span
-          key={i}
-          style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, whiteSpace: "nowrap" }}
-        >
-          {i > 0 ? " · " : ""}
-          {item}
-        </span>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 18px", marginTop: 10 }}>
+      {items.map(({ icon, label }, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: color.muted }}>
+          <span style={{ display: "flex", flexShrink: 0, opacity: 0.65 }}>{icon}</span>
+          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>{label}</span>
+        </div>
       ))}
     </div>
   );
