@@ -96,7 +96,7 @@ export function profileTargetCompaniesUrl(companyId?: string | null): string {
 }
 
 export function networkJobUrl(jobId: string): string {
-  return `/opportunities/network/jobs/${encodeURIComponent(jobId)}`;
+  return `/opportunities/pipeline/network/${encodeURIComponent(jobId)}`;
 }
 
 export function opportunitiesTabUrl(tab: OppTab): string {
@@ -155,14 +155,10 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
   }
 
   const section = segments[1];
-  if (section === "network") {
-    if (segments[2] === "jobs" && segments[3]) {
-      return { tab: "network", networkJobId: decodeURIComponent(segments[3]) };
-    }
-    return { tab: "network" };
-  }
-
   if (section === "pipeline") {
+    if (segments[2] === "network" && segments[3]) {
+      return { tab: "pipeline", networkJobId: decodeURIComponent(segments[3]) };
+    }
     if (segments[2] === "jobs" && segments[3]) {
       const tool = segments[4];
       return {

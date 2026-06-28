@@ -395,7 +395,7 @@ export function WorkspaceOpportunities() {
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
-    go("/opportunities/network");
+    go("/opportunities/pipeline");
   };
 
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
@@ -456,7 +456,7 @@ export function WorkspaceOpportunities() {
       if (created) {
         go(pipelineJobUrl(created.id));
       } else {
-        go("/opportunities/network");
+        go("/opportunities/pipeline");
       }
     } finally {
       setAddingNetworkJob(false);
@@ -466,10 +466,6 @@ export function WorkspaceOpportunities() {
   const existingNetworkPipelineCard = networkProspectJob
     ? findPipelineCardByUrl(kanbanCards, networkProspectJob.topEchelonUrl)
     : null;
-
-  const oppTabs: [OppTab, string][] = [
-    ["pipeline", "Roles"],
-  ];
 
   const oppActionBtn: React.CSSProperties = {
     padding: "8px 16px",
@@ -506,63 +502,32 @@ export function WorkspaceOpportunities() {
               display: "flex",
               flexWrap: "wrap",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               gap: 16,
               marginBottom: 20,
             }}
           >
-            <div style={{ display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-              {oppTabs.map(([id, label]) => {
-                const active = tab === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setTab(id)}
-                    style={{
-                      padding: isMobile ? "10px 14px" : "10px 18px",
-                      border: "none",
-                      borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
-                      background: "transparent",
-                      color: active ? color.forest : color.muted,
-                      fontFamily: fontSans,
-                      fontSize: T.bodySm,
-                      fontWeight: active ? 600 : 500,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <DataSourcesPopover compact />
-              {tab !== "network" && (
-                  <button
-                    type="button"
-                    onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
-                    style={oppActionBtn}
-                  >
-                    <PlusIcon /> Add job
-                  </button>
-                )}
-                {tab === "pipeline" && (
-                  <button
-                    type="button"
-                    onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
-                    style={{
-                      ...oppActionBtn,
-                      background: showCsvPanel ? color.forest : surface.card,
-                      color: showCsvPanel ? color.gold : color.forest,
-                    }}
-                  >
-                    <UploadIcon /> Upload CSV
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+                style={oppActionBtn}
+              >
+                <PlusIcon /> Add job
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
+                style={{
+                  ...oppActionBtn,
+                  background: showCsvPanel ? color.forest : surface.card,
+                  color: showCsvPanel ? color.gold : color.forest,
+                }}
+              >
+                <UploadIcon /> Upload CSV
+              </button>
+            </div>
           </div>
 
           {showAddPanel && tab === "pipeline" && (
