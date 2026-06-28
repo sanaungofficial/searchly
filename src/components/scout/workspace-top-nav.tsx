@@ -206,6 +206,7 @@ function UtilityPortalDropdown({
     >
       <button
         type="button"
+        className={`workspace-nav-portal-btn${active ? " is-active" : ""}${dropdownOpen ? " is-open" : ""}`}
         onClick={() => {
           if (isMobile) onToggle();
           else onNavigate(defaultPath);
@@ -326,6 +327,7 @@ function MobileDrawerLink({
   return (
     <button
       type="button"
+      className={`workspace-nav-drawer-link${active ? " is-active" : ""}`}
       onClick={onClick}
       style={{
         display: "block",
@@ -829,6 +831,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 10, flexShrink: 0 }}>
             <Link
               href="/login"
+              className="workspace-nav-outline-btn"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -848,6 +851,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
             </Link>
             <Link
               href="/signup"
+              className="workspace-nav-primary-btn workspace-nav-primary-btn--forest"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -981,6 +985,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                   >
                     <button
                       type="button"
+                      className={`workspace-nav-link${active ? " is-active" : ""}${dropdownOpen ? " is-open" : ""}`}
                       onClick={() => {
                         if (isMobile) {
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
@@ -1060,6 +1065,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                 <button
                   key={id}
                   type="button"
+                  className={`workspace-nav-link${active ? " is-active" : ""}`}
                   onClick={() => {
                     if (id === "dashboard") navigateToSeekerDashboard();
                     else authGateOrNavigate(path);
@@ -1093,6 +1099,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               <>
                 <Link
                   href={buildAuthUrl("login", pathname)}
+                  className="workspace-nav-outline-btn"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1112,6 +1119,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                 </Link>
                 <Link
                   href={buildAuthUrl("signup", pathname)}
+                  className="workspace-nav-primary-btn workspace-nav-primary-btn--forest"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1295,6 +1303,62 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         }
         .workspace-top-nav-desktop-portals {
           display: flex;
+        }
+        .workspace-nav-link {
+          cursor: pointer;
+          transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+        }
+        .workspace-nav-link:not(.is-active):hover {
+          color: var(--scout-forest) !important;
+          border-bottom-color: rgba(26, 58, 47, 0.4) !important;
+          font-weight: 600;
+        }
+        .workspace-nav-link.is-active:hover {
+          background: rgba(26, 58, 47, 0.05);
+        }
+        .workspace-nav-link.is-open:not(.is-active) {
+          color: var(--scout-forest) !important;
+        }
+        .workspace-nav-outline-btn {
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .workspace-nav-outline-btn:hover {
+          background: rgba(26, 58, 47, 0.06) !important;
+          border-color: rgba(26, 58, 47, 0.22) !important;
+        }
+        .workspace-nav-primary-btn {
+          cursor: pointer;
+          transition: background 0.15s ease, filter 0.15s ease;
+        }
+        .workspace-nav-primary-btn--forest:hover {
+          background: #224a3d !important;
+        }
+        .workspace-nav-drawer-link {
+          cursor: pointer;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .workspace-nav-drawer-link:not(.is-active):hover {
+          background: rgba(26, 58, 47, 0.06);
+          color: var(--scout-forest);
+        }
+        .workspace-nav-drawer-link.is-active:hover {
+          background: rgba(26, 58, 47, 0.1);
+        }
+        .workspace-nav-portal-btn {
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .workspace-nav-portal-btn:not(.is-active):hover,
+        .workspace-nav-portal-btn.is-open:not(.is-active) {
+          background: rgba(26, 58, 47, 0.06) !important;
+          color: var(--scout-forest) !important;
+        }
+        .workspace-nav-portal-btn.is-active:hover {
+          background: rgba(26, 58, 47, 0.09) !important;
+        }
+        .workspace-top-nav-burger:hover {
+          background: rgba(26, 58, 47, 0.06) !important;
         }
         @media (max-width: 767px) {
           .workspace-top-nav-burger {
