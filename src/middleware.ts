@@ -30,10 +30,12 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const host = request.headers.get("host") ?? "";
+  const onAppHost = host.includes("app.kimchi.so");
 
-  // Passcode gate — production only (VERCEL_ENV=production). Dev/preview bypass.
+  // Passcode gate — production app host only (VERCEL_ENV=production). Marketing site + dev bypass.
   // Auth callback/confirm must bypass passcode so email/OAuth links work on first click.
-  if (process.env.VERCEL_ENV === "production") {
+  if (process.env.VERCEL_ENV === "production" && onAppHost) {
     const bypassPasscode =
       pathname.startsWith("/passcode") ||
       pathname.startsWith("/api/") ||
@@ -66,10 +68,10 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Redirect unauthenticated users to landing page
+  // Redirect unauthenticated users — marketing site to login; app host keeps landing redirect
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = onAppHost ? "/login" : "/";
     return NextResponse.redirect(url);
   }
 
