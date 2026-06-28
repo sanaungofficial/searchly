@@ -20,6 +20,7 @@ type LocationAutocompleteInputProps = {
   textColor?: string;
   textSecondary?: string;
   labelColor?: string;
+  onDropdownOpenChange?: (open: boolean) => void;
 };
 
 export function LocationAutocompleteInput({
@@ -32,6 +33,7 @@ export function LocationAutocompleteInput({
   textColor = "#1A3A2F",
   textSecondary = "rgba(26,58,47,0.55)",
   labelColor = "rgba(26,58,47,0.55)",
+  onDropdownOpenChange,
 }: LocationAutocompleteInputProps) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -156,6 +158,10 @@ export function LocationAutocompleteInput({
   }, [onChange]);
 
   const showDropdown = open && suggestions.length > 0;
+
+  useEffect(() => {
+    onDropdownOpenChange?.(showDropdown);
+  }, [showDropdown, onDropdownOpenChange]);
 
   return (
     <div ref={containerRef}>

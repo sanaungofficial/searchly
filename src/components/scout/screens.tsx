@@ -2484,6 +2484,7 @@ export function ScreenOnboardingQuestion({
   onBack,
   continueDisabled,
   skipLabel,
+  contentElevated,
 }: {
   title: string;
   body?: string;
@@ -2493,11 +2494,21 @@ export function ScreenOnboardingQuestion({
   onBack?: () => void;
   continueDisabled?: boolean;
   skipLabel?: string;
+  contentElevated?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro title={title} body={body ?? ""} />
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>{children}</div>
+      <div
+        className="anim-fade-up"
+        style={{
+          ...ONBOARDING_CARD,
+          animationDelay: "0.2s",
+          ...(contentElevated ? { position: "relative", zIndex: 30 } : {}),
+        }}
+      >
+        {children}
+      </div>
       <AboutYouActions
         onContinue={onContinue}
         onSkip={onSkip}
@@ -2569,6 +2580,8 @@ export function ScreenOnboardingLocation({
   onContinue: () => void;
   onBack: () => void;
 }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   return (
     <ScreenOnboardingQuestion
       title="Where are you based?"
@@ -2576,6 +2589,7 @@ export function ScreenOnboardingLocation({
       onContinue={onContinue}
       onBack={onBack}
       continueDisabled={!targetMarket.trim()}
+      contentElevated={dropdownOpen}
     >
       <LocationAutocompleteInput
         value={targetMarket}
@@ -2587,6 +2601,7 @@ export function ScreenOnboardingLocation({
         textColor={ONBOARDING_TEXT}
         textSecondary={ONBOARDING_TEXT_SECONDARY}
         labelColor={ONBOARDING_LABEL_COLOR}
+        onDropdownOpenChange={setDropdownOpen}
       />
     </ScreenOnboardingQuestion>
   );
