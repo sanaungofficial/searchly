@@ -4,7 +4,7 @@ export function normalizeHost(host: string): string {
   return host.replace(/^www\./, "").split(":")[0]?.toLowerCase() ?? "";
 }
 
-/** App lives here today; passcode + auth redirect behavior applies. */
+/** App subdomain — workspace routes; `/` serves the marketing landing like kimchi.so. */
 export function isAppHost(host: string): boolean {
   const h = normalizeHost(host);
   return h === "app.kimchi.so";
