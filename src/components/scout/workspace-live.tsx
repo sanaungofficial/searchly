@@ -142,7 +142,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
       return <p style={{ fontFamily: fontSans, color: color.muted }}>Loading sessions…</p>;
     }
     return (
-      <WorkspacePageShell isMobile={isMobile} label="Live with Second Ladder" mobileBarTitle="Live" title="Real sessions, real coaches.">
+      <WorkspacePageShell bruddle isMobile={isMobile} label="Live with Second Ladder" mobileBarTitle="Live" title="Real sessions, real coaches.">
         <p style={{ fontFamily: fontSans, color: color.muted }}>Loading sessions…</p>
       </WorkspacePageShell>
     );
@@ -216,10 +216,12 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
           {filters.map(([id, label]) => {
             const active = filter === id;
-            const bg = id === "live" && active ? "#C4574A" : active ? "#1A3A2F" : "rgba(0,0,0,0.05)";
-            const chipColor = id === "live" && active ? "#FFFFFF" : active ? "#E8D5A3" : "#52493F";
+            const bg =
+              id === "live" && active ? "#C4574A" : active ? "#161616" : "transparent";
+            const chipColor =
+              id === "live" && active ? "#FFFFFF" : active ? "#FFFFFF" : "#161616";
             return (
-              <button key={id} onClick={() => setFilter(id)} style={{ padding: "6px 14px", background: bg, color: chipColor, border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+              <button key={id} onClick={() => setFilter(id)} style={{ padding: "6px 14px", background: bg, color: chipColor, border: "1.5px solid #161616", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {label}
               </button>
             );
@@ -252,7 +254,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
                   <ScoutPrimaryBtn
                     onClick={cta.onClick}
                     disabled={cta.busy}
-                    style={{ padding: "6px 14px", background: s.isLive ? "#C4574A" : color.forest, color: s.isLive ? "#FFFFFF" : color.gold, minHeight: isMobile ? 40 : undefined, fontSize: T.bodySm }}
+                    style={{ padding: "6px 14px", background: s.isLive ? "#C4574A" : undefined, color: s.isLive ? "#FFFFFF" : undefined, minHeight: isMobile ? 40 : undefined, fontSize: T.bodySm }}
                   >
                     {cta.label}
                   </ScoutPrimaryBtn>
@@ -271,6 +273,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <WorkspacePageShell
+      bruddle
       isMobile={isMobile}
       label="Live with Second Ladder"
       mobileBarTitle="Live"

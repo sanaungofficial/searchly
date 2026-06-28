@@ -11,7 +11,7 @@ export function BetaComingSoon({ feature }: { feature: BetaFeatureId }) {
   const meta = BETA_FEATURES[feature];
 
   return (
-    <WorkspacePageShell isMobile={isMobile} label={meta.label} title={meta.title}>
+    <WorkspacePageShell bruddle isMobile={isMobile} label={meta.label} title={meta.title}>
       <ScoutBox padding={isMobile ? "18px 16px" : "20px 22px"} style={{ marginBottom: 16 }}>
         <div
           style={{

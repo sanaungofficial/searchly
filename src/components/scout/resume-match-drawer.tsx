@@ -11,6 +11,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { scoutPrimaryCtaStyle } from "./scout-box";
 import {
   BigScoreGauge,
   IndustryTag,
@@ -473,6 +474,7 @@ export function ResumeMatchDrawer({
 
       {/* Drawer */}
       <div
+        className="bruddle"
         style={{
           position: "fixed",
           right: 0,
@@ -480,10 +482,11 @@ export function ResumeMatchDrawer({
           bottom: 0,
           width: "min(960px, 85vw)",
           background: "#FFFFFF",
+          borderLeft: "var(--scout-border)",
           zIndex: 201,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
+          boxShadow: "-4px 4px 0 #161616",
           transform: visible ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(0.32, 0, 0.16, 1)",
         }}
@@ -1762,9 +1765,7 @@ export function ResumeMatchDrawer({
               style={{
                 width: "100%",
                 padding: "15px",
-                background: "#1A3A2F",
-                color: "#E8D5A3",
-                border: "none",
+                ...scoutPrimaryCtaStyle,
                 borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
@@ -1814,11 +1815,11 @@ export function ResumeMatchDrawer({
               style={{
                 flex: 1,
                 padding: "14px",
-                background:
-                  selectedSections.size > 0 ? "#1A3A2F" : "rgba(0,0,0,0.05)",
-                color:
-                  selectedSections.size > 0 ? "#E8D5A3" : "var(--scout-muted)",
-                border: "none",
+                ...(selectedSections.size > 0 ? scoutPrimaryCtaStyle : {
+                  background: "rgba(0,0,0,0.05)",
+                  color: "var(--scout-muted)",
+                  border: "none",
+                }),
                 borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
@@ -1870,9 +1871,11 @@ export function ResumeMatchDrawer({
               style={{
                 flex: 1,
                 padding: "14px",
-                background: committing ? "rgba(26,58,47,0.35)" : "#1A3A2F",
-                color: "#E8D5A3",
-                border: "none",
+                ...(committing ? {
+                  background: "var(--scout-cta-muted)",
+                  color: "var(--scout-cta-foreground)",
+                  border: "var(--scout-border)",
+                } : scoutPrimaryCtaStyle),
                 borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,

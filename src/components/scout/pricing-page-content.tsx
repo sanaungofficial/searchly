@@ -19,14 +19,14 @@ export function PricingPageContent() {
   }, []);
 
   return (
-    <div style={{ background: "var(--scout-page)", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
+    <div className="bruddle" style={{ background: "var(--scout-page)", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
       <nav
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           padding: "20px 48px",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          borderBottom: "var(--scout-border)",
         }}
       >
         <Link href={isLoggedIn ? "/dashboard" : "/"} style={{ textDecoration: "none" }}>
@@ -38,8 +38,10 @@ export function PricingPageContent() {
               href="/dashboard?pricing=1"
               style={{
                 fontSize: 14,
-                color: "#F2EDE3",
+                color: "var(--scout-cta-foreground)",
                 background: "var(--scout-cta)",
+                border: "var(--scout-border)",
+                boxShadow: "var(--scout-shadow-bruddle)",
                 borderRadius: "var(--scout-radius)",
                 padding: "9px 20px",
                 textDecoration: "none",
@@ -62,6 +64,8 @@ export function PricingPageContent() {
                   fontSize: 14,
                   color: "var(--scout-cta-foreground)",
                   background: "var(--scout-cta)",
+                  border: "var(--scout-border)",
+                  boxShadow: "var(--scout-shadow-bruddle)",
                   borderRadius: "var(--scout-radius)",
                   padding: "9px 20px",
                   textDecoration: "none",
@@ -79,7 +83,7 @@ export function PricingPageContent() {
         <PricingPanel />
       </section>
 
-      <footer style={{ borderTop: "1px solid #E5DDD0", padding: "24px 48px", textAlign: "center" }}>
+      <footer style={{ borderTop: "var(--scout-border)", padding: "24px 48px", textAlign: "center" }}>
         <span style={{ fontSize: 13, color: "var(--scout-muted)" }}>Questions? Reply to any email from us.</span>
       </footer>
     </div>

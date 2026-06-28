@@ -1024,7 +1024,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBa
                   gap: 7,
                   marginBottom: 28,
                   paddingBottom: 28,
-                  borderBottom: "1px solid #EEE9E2",
+                  borderBottom: "1px solid rgba(17,17,17,0.14)",
                 }}
               >
                 {data.strengths.map((s) => (
