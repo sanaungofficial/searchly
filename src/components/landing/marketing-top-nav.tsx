@@ -61,6 +61,7 @@ function outlineBtnStyle(isMobile: boolean): CSSProperties {
     background: surface.page,
     border: "var(--scout-border)",
     whiteSpace: "nowrap",
+    cursor: "pointer",
   };
 }
 
@@ -80,6 +81,7 @@ function primaryBtnStyle(isMobile: boolean): CSSProperties {
     border: "var(--scout-border)",
     boxShadow: "var(--scout-shadow-bruddle)",
     whiteSpace: "nowrap",
+    cursor: "pointer",
   };
 }
 
@@ -87,15 +89,19 @@ function MobileDrawerLink({
   label,
   href,
   external,
+  active,
   onClick,
 }: {
   label: string;
   href: string;
   external?: boolean;
+  active?: boolean;
   onClick: () => void;
 }) {
+  const linkClass = `marketing-nav-drawer-link${active ? " is-active" : ""}`;
   const inner = (
     <span
+      className="marketing-nav-drawer-link__inner"
       style={{
         display: "block",
         width: "calc(100% - 24px)",
@@ -104,12 +110,12 @@ function MobileDrawerLink({
         padding: "10px 12px",
         border: "none",
         borderRadius: "var(--scout-radius)",
-        background: "transparent",
-        borderLeft: "3px solid transparent",
-        color: color.stone,
+        background: active ? "rgba(26,58,47,0.08)" : "transparent",
+        borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
+        color: active ? color.forest : color.stone,
         fontFamily: fontSans,
         fontSize: T.bodySm,
-        fontWeight: 500,
+        fontWeight: active ? 600 : 500,
       }}
     >
       {label}
@@ -118,7 +124,7 @@ function MobileDrawerLink({
 
   if (external) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} style={{ textDecoration: "none" }}>
+      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={linkClass} style={{ textDecoration: "none" }}>
         {inner}
       </a>
     );
@@ -126,14 +132,14 @@ function MobileDrawerLink({
 
   if (href.startsWith("/")) {
     return (
-      <Link href={href} onClick={onClick} style={{ textDecoration: "none" }}>
+      <Link href={href} onClick={onClick} className={linkClass} style={{ textDecoration: "none" }}>
         {inner}
       </Link>
     );
   }
 
   return (
-    <a href={href} onClick={onClick} style={{ textDecoration: "none" }}>
+    <a href={href} onClick={onClick} className={linkClass} style={{ textDecoration: "none" }}>
       {inner}
     </a>
   );
@@ -264,12 +270,15 @@ export function MarketingTopNav() {
               minWidth: 0,
             }}
           >
-            {LANDING_NAV.map((item) =>
-              item.href.startsWith("/") ? (
+            {LANDING_NAV.map((item) => {
+              const active = item.href.startsWith("/") && isRouteActive(item.href);
+              const linkClass = `marketing-nav-link${active ? " is-active" : ""}`;
+              return item.href.startsWith("/") ? (
                 <Link
                   key={item.href}
                   href={item.href}
-                  style={navLinkStyle(isRouteActive(item.href), navHeight, isMobile)}
+                  className={linkClass}
+                  style={navLinkStyle(active, navHeight, isMobile)}
                 >
                   {item.label}
                 </Link>
@@ -277,12 +286,13 @@ export function MarketingTopNav() {
                 <a
                   key={item.href}
                   href={item.href}
+                  className={linkClass}
                   style={navLinkStyle(false, navHeight, isMobile)}
                 >
                   {item.label}
                 </a>
-              ),
-            )}
+              );
+            })}
           </nav>
 
           <div
@@ -294,13 +304,14 @@ export function MarketingTopNav() {
               marginLeft: isMobile ? "auto" : undefined,
             }}
           >
-            <Link href={loginHref} style={outlineBtnStyle(isMobile)}>
+            <Link href={loginHref} className="marketing-nav-outline-btn" style={outlineBtnStyle(isMobile)}>
               Log In
             </Link>
             <a
               href={LANDING_WAITLIST_URL}
               target="_blank"
               rel="noopener noreferrer"
+              className="marketing-nav-primary-btn"
               style={primaryBtnStyle(isMobile)}
             >
               {LANDING_JOIN_WAITLIST_LABEL}
@@ -399,6 +410,7 @@ export function MarketingTopNav() {
                   label={item.label}
                   href={item.href}
                   external={item.href === LANDING_WAITLIST_URL}
+                  active={item.href.startsWith("/") && isRouteActive(item.href)}
                   onClick={closeMobileMenu}
                 />
               ))}
@@ -414,7 +426,7 @@ export function MarketingTopNav() {
                 marginTop: 12,
               }}
             >
-              <Link href={loginHref} onClick={closeMobileMenu} style={{ ...outlineBtnStyle(true), width: "100%", boxSizing: "border-box" }}>
+              <Link href={loginHref} onClick={closeMobileMenu} className="marketing-nav-outline-btn" style={{ ...outlineBtnStyle(true), width: "100%", boxSizing: "border-box" }}>
                 Log In
               </Link>
               <a
@@ -422,6 +434,7 @@ export function MarketingTopNav() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={closeMobileMenu}
+                className="marketing-nav-primary-btn"
                 style={{ ...primaryBtnStyle(true), width: "100%", boxSizing: "border-box" }}
               >
                 {LANDING_JOIN_WAITLIST_LABEL}
@@ -437,6 +450,48 @@ export function MarketingTopNav() {
         }
         .marketing-top-nav-desktop-links {
           display: flex;
+        }
+        .marketing-nav-link {
+          cursor: pointer;
+          transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+        }
+        .marketing-nav-link:not(.is-active):hover {
+          color: var(--scout-forest) !important;
+          border-bottom-color: rgba(26, 58, 47, 0.4) !important;
+          font-weight: 600;
+        }
+        .marketing-nav-link.is-active:hover {
+          background: rgba(26, 58, 47, 0.05);
+        }
+        .marketing-nav-outline-btn {
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .marketing-nav-outline-btn:hover {
+          background: rgba(26, 58, 47, 0.06) !important;
+          border-color: rgba(26, 58, 47, 0.22) !important;
+        }
+        .marketing-nav-primary-btn {
+          cursor: pointer;
+          transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+        .marketing-nav-primary-btn:hover {
+          background: var(--scout-cta-hover) !important;
+          transform: translate(-1px, -1px);
+          box-shadow: 4px 4px 0 #000000 !important;
+        }
+        .marketing-nav-drawer-link {
+          cursor: pointer;
+        }
+        .marketing-nav-drawer-link:not(.is-active):hover .marketing-nav-drawer-link__inner {
+          background: rgba(26, 58, 47, 0.06);
+          color: var(--scout-forest);
+        }
+        .marketing-nav-drawer-link.is-active:hover .marketing-nav-drawer-link__inner {
+          background: rgba(26, 58, 47, 0.1);
+        }
+        .marketing-top-nav-burger:hover {
+          background: rgba(26, 58, 47, 0.06) !important;
         }
         @media (max-width: 767px) {
           .marketing-top-nav-burger {

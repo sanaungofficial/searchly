@@ -47,6 +47,7 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
+import type { OnelinerAnalysisResponse } from "@/lib/onboarding-oneliner-suggestions";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -106,6 +107,24 @@ function saveTargetRoles(roles: string[]): Promise<void> {
   }).then(() => {});
 }
 
+function saveHeadline(headline: string): Promise<void> {
+  if (!headline.trim()) return Promise.resolve();
+  return fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ headline: headline.trim() }),
+  }).then(() => {});
+}
+
+function savePrioritizedCategories(categories: string[]): Promise<void> {
+  if (!categories.length) return Promise.resolve();
+  return fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prioritizedCategories: categories }),
+  }).then(() => {});
+}
+
 function buildInitialSetupSteps(linkedinImportAvailable: boolean): SetupStep[] {
   return [
     { id: "profile", label: "Saving your answers", status: "pending" },
@@ -139,7 +158,12 @@ export default function OnboardingPage() {
   const [showOneLiner, setShowOneLiner] = useState(false);
   const [showFinalSummary, setShowFinalSummary] = useState(false);
   const [onelinerAnalyzing, setOnelinerAnalyzing] = useState(false);
+  const [profileOneLiner, setProfileOneLiner] = useState("");
   const [careerMotivation, setCareerMotivation] = useState("");
+  const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
+  const [suggestedPrioritizedCategories, setSuggestedPrioritizedCategories] = useState<string[]>([]);
+  const [suggestedDeprioritizedCategories, setSuggestedDeprioritizedCategories] = useState<string[]>([]);
+  const [onelinerLocationHint, setOnelinerLocationHint] = useState<string | null>(null);
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -313,14 +337,14 @@ export default function OnboardingPage() {
     if (!resumeFilename || resumeError) return;
     if (liInput.trim()) void saveLinkedIn(liInput);
     startBackgroundReadback();
-    goTo(2);
-  }, [resumeFilename, resumeError, liInput, goTo, startBackgroundReadback]);
+    setShowOneLiner(true);
+  }, [resumeFilename, resumeError, liInput, startBackgroundReadback]);
 
   const onLinkedInOnly = useCallback(() => {
     setReadbackStatus("skipped");
     if (liInput.trim()) void saveLinkedIn(liInput);
-    goTo(2);
-  }, [liInput, goTo]);
+    setShowOneLiner(true);
+  }, [liInput]);
 
   const onLIKey = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -345,30 +369,70 @@ export default function OnboardingPage() {
     setShowOneLiner(true);
   }, []);
 
-  const onOneLinerSubmit = useCallback(async (text: string) => {
-    setOnelinerAnalyzing(true);
-    try {
-      const res = await fetch("/api/onboarding/analyze-oneliner", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oneliner: text }),
+  const applyOnelinerAnalysis = useCallback(
+    (data: OnelinerAnalysisResponse) => {
+      const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 8);
+      setReadbackData({
+        picture: data.picture,
+        strengths: data.strengths,
+        targetRoles: data.targetRoles.map((r) => ({
+          role: r.role,
+          fit: r.match || "Suggested from your one-liner.",
+        })),
+        honestNote: "",
       });
-      const data: ReadBackData | null = res.ok ? await res.json() : null;
-      if (data?.picture && Array.isArray(data.strengths)) {
-        setReadbackData(data);
-        setReadbackStatus("ready");
-        applyReadbackRoles(data);
-      } else {
-        setReadbackStatus("skipped");
+      setReadbackStatus("ready");
+      setReadbackRoleSuggestions(roles);
+      setSuggestedPrioritizedCategories(data.prioritizedCategories);
+      setSuggestedDeprioritizedCategories(data.deprioritizedCategories);
+      if (data.prioritizedCategories.length) {
+        setPrioritizedCategories((prev) => (prev.length ? prev : data.prioritizedCategories.slice(0, 5)));
       }
-    } catch {
-      setReadbackStatus("skipped");
-    } finally {
-      setOnelinerAnalyzing(false);
-      setShowOneLiner(false);
-      goTo(2);
-    }
-  }, [applyReadbackRoles, goTo]);
+      if (data.deprioritizedCategories.length) {
+        setDeprioritizedCategories((prev) =>
+          prev.length ? prev : data.deprioritizedCategories.slice(0, 5),
+        );
+      }
+      if (data.targetMarket) {
+        setOnelinerLocationHint(data.targetMarket);
+        setTargetMarket((prev) => prev.trim() || data.targetMarket || prev);
+      }
+      if (data.workArrangement) {
+        setWorkArrangement((prev) => prev || data.workArrangement || prev);
+        if (data.workArrangement === "remote_only") setFullyRemote(true);
+      }
+      setSelectedTitles((prev) => (prev.length ? prev : roles.slice(0, 3)));
+    },
+    [],
+  );
+
+  const onOneLinerSubmit = useCallback(
+    async (text: string) => {
+      setProfileOneLiner(text);
+      setOnelinerAnalyzing(true);
+      try {
+        await saveHeadline(text);
+        const res = await fetch("/api/onboarding/analyze-oneliner", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oneliner: text }),
+        });
+        const data: OnelinerAnalysisResponse | null = res.ok ? await res.json() : null;
+        if (data?.picture && Array.isArray(data.strengths)) {
+          applyOnelinerAnalysis(data);
+        } else {
+          setReadbackStatus("skipped");
+        }
+      } catch {
+        setReadbackStatus("skipped");
+      } finally {
+        setOnelinerAnalyzing(false);
+        setShowOneLiner(false);
+        goTo(2);
+      }
+    },
+    [applyOnelinerAnalysis, goTo],
+  );
 
   const hasResumeTrack = !!(resumeFilename || resumeUploaded || resumeUploading);
 
@@ -402,9 +466,19 @@ export default function OnboardingPage() {
 
   const onAddTargetRole = useCallback((title: string) => {
     setSelectedTitles((prev) => {
-      if (prev.includes(title) || prev.length >= 3) return prev;
+      if (prev.includes(title) || prev.length >= 10) return prev;
       return [...prev, title];
     });
+  }, []);
+
+  const onAddPrioritizedCategory = useCallback((category: string) => {
+    setPrioritizedCategories((prev) =>
+      prev.some((c) => c.toLowerCase() === category.toLowerCase()) ? prev : [...prev, category].slice(0, 10),
+    );
+  }, []);
+
+  const onRemovePrioritizedCategory = useCallback((category: string) => {
+    setPrioritizedCategories((prev) => prev.filter((c) => c !== category));
   }, []);
 
   const onRemoveTargetRole = useCallback((title: string) => {
@@ -430,6 +504,7 @@ export default function OnboardingPage() {
 
   const onRolesContinue = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
+    await savePrioritizedCategories(prioritizedCategories);
     if (selectedTitles.length === 1) {
       await savePrioritizedRoles([selectedTitles[0]!]);
       goTo(4);
@@ -439,12 +514,13 @@ export default function OnboardingPage() {
     } else {
       goTo(4);
     }
-  }, [selectedTitles, goTo]);
+  }, [selectedTitles, prioritizedCategories, goTo]);
 
   const onRolesSkip = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
+    await savePrioritizedCategories(prioritizedCategories);
     goTo(4);
-  }, [selectedTitles, goTo]);
+  }, [selectedTitles, prioritizedCategories, goTo]);
 
   const onPriorityContinue = useCallback(async () => {
     if (priorityRole) await savePrioritizedRoles([priorityRole]);
@@ -549,7 +625,8 @@ export default function OnboardingPage() {
   }, []);
 
   const runFinishSetup = useCallback(async () => {
-    setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
+    const importAvailable = linkedinImportAvailable === true;
+    setSetupSteps(buildInitialSetupSteps(importAvailable).map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
     goTo(12);
 
     let primaryAssetId: string | undefined;
@@ -559,12 +636,21 @@ export default function OnboardingPage() {
       setStepStatus("profile", "active");
       await saveMatchingPreferences(matchingState);
       await saveTargetRoles(selectedTitles);
+      await savePrioritizedCategories(prioritizedCategories);
+      if (profileOneLiner.trim()) await saveHeadline(profileOneLiner);
       if (liInput.trim()) await saveLinkedIn(liInput);
       setStepStatus("profile", "done");
 
       if (liInput.trim()) {
         setStepStatus("linkedin", "active");
-        setStepStatus("linkedin", await importLinkedInProfile(liInput));
+        const importResult = await importLinkedInProfile(liInput, importAvailable);
+        if (importResult === "done") {
+          setStepStatus("linkedin", "done");
+        } else if (importResult === "failed") {
+          setStepStatus("linkedin", "failed");
+        } else {
+          setStepStatus("linkedin", "skipped");
+        }
       } else {
         setStepStatus("linkedin", "skipped");
       }
@@ -644,6 +730,8 @@ export default function OnboardingPage() {
     goTo,
     liInput,
     selectedTitles,
+    prioritizedCategories,
+    profileOneLiner,
     selectedCompanies,
     setStepStatus,
     router,
@@ -668,12 +756,17 @@ export default function OnboardingPage() {
   }, [goTo]);
 
   const demoAdvance = () => {
+    if (!intentDone) return;
+    if (showOneLiner) {
+      void onOneLinerSubmit("Strategy & Digital Transformation | Growth Systems Builder | MBA");
+      return;
+    }
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
       window.setTimeout(() => {
         setResumeUploaded(true);
         startBackgroundReadback();
-        goTo(2);
+        setShowOneLiner(true);
       }, 1300);
     } else if (screen < 11) {
       goTo((screen + 1) as Screen);
@@ -714,6 +807,7 @@ export default function OnboardingPage() {
           {/* Pre-flow: start-from-scratch one-liner */}
           {intentDone && showOneLiner && (
             <ScreenOneLiner
+              initialValue={profileOneLiner}
               onContinue={(text) => void onOneLinerSubmit(text)}
               onBack={() => setShowOneLiner(false)}
               loading={onelinerAnalyzing}
@@ -730,6 +824,8 @@ export default function OnboardingPage() {
                 targetSalary,
                 jobTimeline,
                 deprioritizedCategories,
+                prioritizedCategories,
+                headline: profileOneLiner,
                 visaNeed,
               } satisfies FinalSummaryProfile}
               onConfirm={onFinalSummaryConfirm}
@@ -779,6 +875,11 @@ export default function OnboardingPage() {
                 <ScreenTargetRoles
                   selectedTitles={selectedTitles}
                   suggestedTitles={readbackRoleSuggestions}
+                  suggestionLabel="Suggested for you"
+                  prioritizedCategories={prioritizedCategories}
+                  suggestedCategories={suggestedPrioritizedCategories}
+                  onAddCategory={onAddPrioritizedCategory}
+                  onRemoveCategory={onRemovePrioritizedCategory}
                   onAddTitle={onAddTargetRole}
                   onRemoveTitle={onRemoveTargetRole}
                   onContinue={onRolesContinue}
@@ -798,7 +899,7 @@ export default function OnboardingPage() {
               {screen === 4 && (
                 <ScreenOnboardingLocation
                   targetMarket={targetMarket}
-                  locationHint={locationHint}
+                  locationHint={locationHint ?? onelinerLocationHint}
                   onTargetMarketChange={setTargetMarket}
                   onContinue={() => void onLocationContinue()}
                   onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}
@@ -852,6 +953,7 @@ export default function OnboardingPage() {
               {screen === 10 && (
                 <ScreenOnboardingAvoidRoles
                   deprioritizedCategories={deprioritizedCategories}
+                  suggestedCategories={suggestedDeprioritizedCategories}
                   onAddAvoidCategory={onAddAvoidCategory}
                   onRemoveAvoidCategory={onRemoveAvoidCategory}
                   onContinue={() => void onAvoidContinue()}
