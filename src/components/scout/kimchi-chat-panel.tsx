@@ -248,11 +248,26 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setPageHint: setVoicePageHint,
     setOnComplete: setVoiceOnComplete,
     setOnNavigate: setVoiceOnNavigate,
+    setChatHistory: setVoiceChatHistory,
   } = voiceAgent;
 
   useEffect(() => {
     setVoicePageHint(pageHint);
   }, [pageHint, setVoicePageHint]);
+
+  useEffect(() => {
+    const history = messages.flatMap((m) => {
+      if (m.kind === "text" && (m.role === "user" || m.role === "assistant") && m.content.trim()) {
+        return [{ role: m.role as "user" | "assistant", content: m.content }];
+      }
+      if (m.kind === "voice") {
+        const vm = m as VoiceMessage;
+        if (vm.summary) return [{ role: "assistant" as const, content: "[Voice chat - " + vm.presetTitle + "]: " + vm.summary }];
+      }
+      return [];
+    });
+    setVoiceChatHistory(history.length ? history : undefined);
+  }, [messages, setVoiceChatHistory]);
 
   useEffect(() => {
     setVoiceOnComplete((result: VoiceAgentSessionResult) => {
@@ -637,9 +652,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setCanAskAiSuggestions(false);
     setNextStepsVisible(false);
 
-    const textThread = messages.filter(
-      (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
-    );
+    const textThread = messages.flatMap((m): Array<{ kind: "text"; role: "user" | "assistant"; content: string }> => {
+      if (m.kind === "text" && (m.role === "user" || m.role === "assistant")) return [{ kind: "text", role: m.role, content: m.content }];
+      if (m.kind === "voice" && (m as VoiceMessage).summary) return [{ kind: "text", role: "assistant" as const, content: "[Voice chat - " + (m as VoiceMessage).presetTitle + "]: " + (m as VoiceMessage).summary }];
+      return [];
+    });
     const nextMessages = [...textThread, { role: "user" as const, content: trimmed }];
 
     const userMsg: StoredThreadMessage = { kind: "text", role: "user", content: trimmed };
@@ -722,9 +739,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setNextStepsVisible(false);
     setSuggestionsVisible(false);
 
-    const textThread = messages.filter(
-      (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
-    );
+    const textThread = messages.flatMap((m): Array<{ kind: "text"; role: "user" | "assistant"; content: string }> => {
+      if (m.kind === "text" && (m.role === "user" || m.role === "assistant")) return [{ kind: "text", role: m.role, content: m.content }];
+      if (m.kind === "voice" && (m as VoiceMessage).summary) return [{ kind: "text", role: "assistant" as const, content: "[Voice chat - " + (m as VoiceMessage).presetTitle + "]: " + (m as VoiceMessage).summary }];
+      return [];
+    });
     const nextMessages = [...textThread, { role: "user" as const, content: trimmed }];
 
     const userMsg: StoredThreadMessage = { kind: "text", role: "user", content: trimmed };
