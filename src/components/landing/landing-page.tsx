@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 import {
   LANDING_ANALYTICS,
   LANDING_COMPANIES_LABEL,
@@ -21,11 +22,13 @@ import {
 } from "@/lib/landing-content";
 import "./landing.css";
 
-function UpwizeLogo() {
+function KimchiWordmark({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="landing-logo">
-      <span className="landing-logo__mark" aria-hidden />
-      upwize
+    <span className={`landing-wordmark${compact ? " landing-wordmark--compact" : ""}`}>
+      <span className="landing-wordmark__title">Kimchi</span>
+      {!compact && (
+        <KimchiBySecondLadder fontSize={11} color="var(--landing-muted)" marginTop={2} />
+      )}
     </span>
   );
 }
@@ -119,7 +122,7 @@ export function LandingPage() {
       <header className="landing-nav">
         <div className="landing-nav__inner">
           <Link href="/" className="landing-nav__logo">
-            <UpwizeLogo />
+            <KimchiWordmark compact />
           </Link>
           <nav className="landing-nav__links" aria-label="Primary">
             {LANDING_NAV.map((item) => (
@@ -128,8 +131,8 @@ export function LandingPage() {
               </a>
             ))}
           </nav>
-          <Link href="/signup" className="landing-btn landing-btn--light">
-            Get the App Now
+          <Link href="/signup" className="landing-btn landing-btn--primary">
+            Get started
           </Link>
         </div>
       </header>
@@ -411,7 +414,7 @@ export function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-container landing-footer__grid">
           <div>
-            <UpwizeLogo />
+            <KimchiWordmark />
             <p className="landing-body-sm landing-muted landing-footer__contact">
               Address: {LANDING_FOOTER.address}
               <br />
