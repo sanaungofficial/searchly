@@ -654,24 +654,9 @@ function KimchiDoNextStyles() {
         transition: background 0.12s ease, transform 0.1s ease;
         box-shadow: none;
       }
-      .kimchi-do-next__pill:nth-child(3n+1) {
-        background: #f3ecff;
-        border-color: #c4a8e8;
-        color: #4a2d7a;
-      }
-      .kimchi-do-next__pill:nth-child(3n+2) {
-        background: #e8f4ff;
-        border-color: #9ec5ef;
-        color: #1a4a6e;
-      }
-      .kimchi-do-next__pill:nth-child(3n) {
-        background: #fff8e6;
-        border-color: #e8c96a;
-        color: #6b4f00;
-      }
       .kimchi-do-next__pill:hover {
         background: rgba(26, 58, 47, 0.05);
-        border-color: rgba(26, 58, 47, 0.22);
+        color: #161616;
       }
       .kimchi-do-next__pill:active {
         transform: scale(0.97);

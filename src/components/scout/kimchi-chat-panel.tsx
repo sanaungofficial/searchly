@@ -1364,7 +1364,7 @@ function KimchiChatPanelStyles() {
         flex-shrink: 0;
         width: 32px;
         height: 32px;
-        border-radius: 0;
+        border-radius: 5px;
         border: var(--scout-border);
         display: flex;
         align-items: center;
@@ -1380,8 +1380,8 @@ function KimchiChatPanelStyles() {
         font-size: 14px;
       }
       .kimchi-msg-avatar--user {
-        background: #3b82c4;
-        color: #fff;
+        background: #1A3A2F;
+        color: #E8D5A3;
       }
       .kimchi-chat-bubble {
         width: 100%;
