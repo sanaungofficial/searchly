@@ -184,6 +184,7 @@ export function CoachingDirectoryCard({
   onOpenCoach,
   isMyCoach = false,
   canSelfAssignCoach = false,
+  canAdminAssignCoach = false,
   onToggleMyCoach,
   companyLookup = {},
 }: {
@@ -196,6 +197,7 @@ export function CoachingDirectoryCard({
   onOpenCoach: (coach: CoachListItem) => void;
   isMyCoach?: boolean;
   canSelfAssignCoach?: boolean;
+  canAdminAssignCoach?: boolean;
   onToggleMyCoach?: (coach: CoachListItem) => void;
   companyLookup?: Record<string, CoachCompanyLookupItem>;
 }) {
@@ -340,7 +342,7 @@ export function CoachingDirectoryCard({
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 {canSelfAssignCoach && onToggleMyCoach && (
-                  isMyCoach || (!coach.isInternal && !coach.requiresAssignment) ? (
+                  isMyCoach || (!coach.isInternal && !coach.requiresAssignment) || canAdminAssignCoach ? (
                     <ScoutSecondaryBtn
                       onClick={() => onToggleMyCoach(coach)}
                       style={{
@@ -352,7 +354,11 @@ export function CoachingDirectoryCard({
                           : {}),
                       }}
                     >
-                      {isMyCoach ? "Remove from my coaches" : "Add as my coach"}
+                      {isMyCoach
+                        ? "Remove from my coaches"
+                        : canAdminAssignCoach && (coach.isInternal || coach.requiresAssignment)
+                          ? "Assign coach"
+                          : "Add as my coach"}
                     </ScoutSecondaryBtn>
                   ) : (
                     <span
