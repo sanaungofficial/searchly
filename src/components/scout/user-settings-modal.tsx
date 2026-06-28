@@ -432,7 +432,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         <img
                           src={avatarUrl}
                           alt=""
-                          style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", display: "block", border: "2px solid #EEE9E2" }}
+                          style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", display: "block", border: "var(--scout-border)" }}
                         />
                       ) : (
                         <div
@@ -440,14 +440,14 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                             width: 64,
                             height: 64,
                             borderRadius: "50%",
-                            background: "#1A3A2F",
+                            background: color.forest,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            border: "2px solid #EEE9E2",
+                            border: "var(--scout-border)",
                           }}
                         >
-                          <span style={{ fontSize: 20, fontWeight: 600, color: "#E8D5A3" }}>
+                          <span style={{ fontFamily: fontSans, fontSize: 20, fontWeight: 600, color: color.gold }}>
                             {initials(user.name, user.email)}
                           </span>
                         </div>
@@ -485,33 +485,18 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           e.target.value = "";
                         }}
                       />
-                      <button
+                      <ScoutSecondaryBtn
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "var(--scout-radius)",
-                          border: "1px solid #D5CFC8",
-                          background: "transparent",
-                          color: "#52493F",
-                          fontSize: 14,
-                          fontWeight: 500,
-                          cursor: uploading ? "not-allowed" : "pointer",
-                          opacity: uploading ? 0.6 : 1,
-                          transition: "background 0.15s",
-                          marginBottom: 6,
-                          display: "block",
-                        }}
-                        onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = "var(--scout-cream)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                        style={{ marginBottom: 6, display: "block" }}
                       >
                         {uploading ? "Uploading…" : "Upload photo"}
-                      </button>
-                      <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                      </ScoutSecondaryBtn>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
                         JPG, PNG, WebP or GIF · Max 5 MB
                       </p>
                       {uploadError && (
-                        <p style={{ fontSize: 14, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
                       )}
                     </div>
                   </div>
@@ -523,14 +508,16 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 <div
                   style={{
                     padding: "12px 16px",
-                    background: "var(--scout-cream)",
-                    borderRadius: "var(--scout-radius)",
-                    fontSize: 14,
-                    color: "#8A7F72",
+                    background: surface.page,
+                    border: "var(--scout-border)",
+                    borderRadius: 0,
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    color: color.mutedLight,
                     lineHeight: 1.5,
                   }}
                 >
-                  To update your profile details, go to the <strong style={{ color: "#52493F" }}>Profile</strong> section in the main workspace.
+                  To update your profile details, go to the <strong style={{ color: color.stone }}>Profile</strong> section in the main workspace.
                 </div>
               </div>
             )}
@@ -556,12 +543,12 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   enabled={pipelineEmailEnabled}
                   onToggle={togglePipelineEmail}
                 />
-                <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>Password</p>
-                  <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px" }}>
+                <div style={{ borderTop: "var(--scout-border)", paddingTop: 20 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>Password</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: "0 0 12px" }}>
                     You signed in with {user.email.includes("google") ? "Google" : "email"}. Password changes are managed through your email provider.
                   </p>
-                  <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
                     To reset your password, sign out and use the &quot;Forgot password&quot; link on the login page.
                   </p>
                 </div>
@@ -572,26 +559,28 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {/* Current plan */}
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.mutedLight, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
                     Current Plan
                   </p>
                   <div
                     style={{
                       padding: "16px",
-                      border: "1px solid #EEE9E2",
-                      borderRadius: "var(--scout-radius)",
+                      border: "var(--scout-border)",
+                      borderRadius: 0,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
+                      background: surface.card,
                     }}
                   >
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span
                           style={{
-                            fontSize: 13,
+                            fontFamily: fontSans,
+                            fontSize: T.bodySm,
                             fontWeight: 700,
-                            color: isPro ? "#1A3A2F" : "#52493F",
+                            color: isPro ? color.forest : color.stone,
                             letterSpacing: "0.3px",
                           }}
                         >
@@ -600,12 +589,14 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         {(isPro || isAdmin) && (
                           <span
                             style={{
-                              fontSize: 13,
+                              fontFamily: fontSans,
+                              fontSize: T.label,
                               fontWeight: 600,
-                              color: "#FFFFFF",
-                              background: isAdmin ? "#6B4A8A" : "#1A3A2F",
+                              color: surface.card,
+                              background: isAdmin ? "#6B4A8A" : color.forest,
                               padding: "2px 8px",
-                              borderRadius: "var(--scout-radius)",
+                              border: "var(--scout-border)",
+                              borderRadius: 0,
                               letterSpacing: "0.4px",
                             }}
                           >
@@ -614,64 +605,34 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         )}
                       </div>
                       {isPro && !isAdmin && periodEndFormatted && (
-                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
                           Renews {periodEndFormatted}
                         </p>
                       )}
                       {isAdmin && (
-                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
                           Unlimited access · all features enabled
                         </p>
                       )}
                       {!isPro && !isAdmin && !unlimitedAi && (
-                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
                           15 AI credits per month on Free
                         </p>
                       )}
                       {!isPro && !isAdmin && unlimitedAi && (
-                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
                           Unlimited AI access enabled
                         </p>
                       )}
                     </div>
                     {isAdmin ? null : isPro ? (
-                      <button
-                        onClick={openPortal}
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "var(--scout-radius)",
-                          border: "1px solid #D5CFC8",
-                          background: "transparent",
-                          color: "#52493F",
-                          fontSize: 14,
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          transition: "background 0.15s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--scout-cream)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                      >
+                      <ScoutSecondaryBtn onClick={openPortal}>
                         Manage Billing
-                      </button>
+                      </ScoutSecondaryBtn>
                     ) : unlimitedAi ? null : (
-                      <button
-                        onClick={startCheckout}
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "var(--scout-radius)",
-                          border: "none",
-                          background: "#1A3A2F",
-                          color: "#E8D5A3",
-                          fontSize: 14,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          transition: "opacity 0.15s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                      >
+                      <ScoutPrimaryBtn onClick={startCheckout}>
                         Upgrade Now
-                      </button>
+                      </ScoutPrimaryBtn>
                     )}
                   </div>
                 </div>
@@ -681,49 +642,49 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   <div
                     style={{
                       padding: "14px 16px",
-                      background: "#FDFCFA",
-                      border: "1px solid #EEE9E2",
-                      borderRadius: "var(--scout-radius)",
+                      background: surface.page,
+                      border: "var(--scout-border)",
+                      borderRadius: 0,
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>
                         {isAdmin ? "Your AI access" : "AI credits this month"}
                       </p>
-                      <span style={{ fontSize: 14, color: isAdmin ? "#6B4A8A" : credits.remaining <= 0 ? "#C4574A" : "#8A7F72" }}>
+                      <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: isAdmin ? "#6B4A8A" : credits.remaining <= 0 ? "#C4574A" : color.mutedLight }}>
                         {isAdmin ? `${credits.used} / unlimited` : `${credits.remaining} left · ${credits.used}/${credits.limit} used`}
                       </span>
                     </div>
                     {!isAdmin && (
-                    <div style={{ height: 6, background: "#EEE9E2", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ height: 6, background: surface.inset, border: "var(--scout-border)", borderRadius: 0, overflow: "hidden", boxSizing: "border-box" }}>
                       <div
                         style={{
                           height: "100%",
                           width: `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
-                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#1A3A2F",
-                          borderRadius: 4,
+                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : color.forest,
+                          borderRadius: 0,
                           transition: "width 0.3s ease",
                         }}
                       />
                     </div>
                     )}
                     {isAdmin && (
-                      <p style={{ fontSize: 13, color: "#8A7F72", margin: "8px 0 0", lineHeight: 1.5 }}>
+                      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "8px 0 0", lineHeight: 1.5 }}>
                         1 credit per AI action · Resets monthly
                       </p>
                     )}
                     {!isAdmin && credits.remaining <= 0 && (
-                      <p style={{ fontSize: 14, color: "#C4574A", margin: "8px 0 0" }}>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A", margin: "8px 0 0" }}>
                         Out of credits — Pro removes the monthly cap.
                       </p>
                     )}
                     {!isAdmin && credits.remaining > 0 && credits.remaining <= 3 && (
-                      <p style={{ fontSize: 14, color: "#7A6020", margin: "8px 0 0", lineHeight: 1.5 }}>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#7A6020", margin: "8px 0 0", lineHeight: 1.5 }}>
                         Running low — {credits.remaining} credit{credits.remaining !== 1 ? "s" : ""} left. Each AI action uses 1 credit.
                       </p>
                     )}
                     {!isAdmin && credits.remaining > 3 && (
-                      <p style={{ fontSize: 13, color: "#8A7F72", margin: "8px 0 0", lineHeight: 1.5 }}>
+                      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "8px 0 0", lineHeight: 1.5 }}>
                         1 credit per match, tailor, cover letter, or Scout message. Resets monthly.
                       </p>
                     )}
@@ -739,18 +700,21 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   style={{
                     display: "block",
                     width: "100%",
-                    background: "rgba(74,139,106,0.08)",
-                    border: "1px solid rgba(74,139,106,0.22)",
-                    borderRadius: "var(--scout-radius)",
+                    background: surface.page,
+                    border: "var(--scout-border)",
+                    borderRadius: 0,
                     padding: "14px 16px",
                     cursor: "pointer",
                     textAlign: "left",
+                    transition: "background 0.15s",
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = surface.page; }}
                 >
-                  <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "#1A3A2F" }}>
+                  <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
                     Refer & Earn
                   </p>
-                  <p style={{ margin: 0, fontSize: 13, color: "#8A7F72", lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, lineHeight: 1.5 }}>
                     Invite a friend or share on LinkedIn for bonus AI credits.
                   </p>
                 </button>
@@ -760,12 +724,12 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   <div
                     style={{
                       padding: "14px 16px",
-                      background: "rgba(26,58,47,0.04)",
-                      border: "1px solid rgba(26,58,47,0.1)",
-                      borderRadius: "var(--scout-radius)",
+                      background: surface.page,
+                      border: "var(--scout-border)",
+                      borderRadius: 0,
                     }}
                   >
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3A2F", margin: "0 0 10px" }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 10px" }}>
                       Pro includes:
                     </p>
                     {[
@@ -776,10 +740,10 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       "Unlimited company watchlist and alerts",
                     ].map((feat) => (
                       <div key={feat} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1A3A2F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color.forest} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
-                        <span style={{ fontSize: 14, color: "#52493F" }}>{feat}</span>
+                        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone }}>{feat}</span>
                       </div>
                     ))}
                   </div>
@@ -789,33 +753,21 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 <div
                   style={{
                     padding: "14px 16px",
-                    background: "var(--scout-cream)",
-                    border: "1px dashed #D5CFC8",
-                    borderRadius: "var(--scout-radius)",
+                    background: surface.page,
+                    border: "var(--scout-border)",
+                    borderRadius: 0,
                     textAlign: "center",
                   }}
                 >
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#52493F", margin: "0 0 4px" }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.stone, margin: "0 0 4px" }}>
                     Not seeing your updated subscription?
                   </p>
-                  <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 10px", lineHeight: 1.5 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: "0 0 10px", lineHeight: 1.5 }}>
                     If you just upgraded, refresh the page to sync your plan status.
                   </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "var(--scout-radius)",
-                      border: "1px solid #D5CFC8",
-                      background: "white",
-                      color: "#52493F",
-                      fontSize: 14,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                  >
+                  <ScoutSecondaryBtn onClick={() => window.location.reload()}>
                     Refresh Status
-                  </button>
+                  </ScoutSecondaryBtn>
                 </div>
               </div>
             )}
@@ -831,10 +783,10 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.mutedLight, margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
         {label}
       </p>
-      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", border: "1px solid #EEE9E2" }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: 0, padding: "10px 12px", background: surface.inset, borderRadius: 0, border: "var(--scout-border)" }}>
         {value}
       </p>
     </div>
