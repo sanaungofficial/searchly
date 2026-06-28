@@ -68,7 +68,7 @@ function ActivityFeedItem({
     color: stageColor,
     background: surface.inset,
     padding: "4px 10px",
-    border: border.line,
+    border: "var(--scout-border)",
     borderRadius: "var(--scout-radius)",
     fontWeight: 600,
     textTransform: "uppercase",
@@ -86,7 +86,7 @@ function ActivityFeedItem({
           textAlign: "left",
           padding: "14px 16px",
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           boxShadow: "var(--scout-shadow-card)",
           cursor: "pointer",
@@ -132,7 +132,7 @@ function ActivityFeedItem({
         width: "100%",
         padding: "14px 18px",
         background: surface.card,
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: "var(--scout-radius)",
         boxShadow: "var(--scout-shadow-card)",
         cursor: "pointer",
@@ -204,7 +204,7 @@ export function DashboardGetStarted({ isMobile }: Props) {
   return (
     <div
       style={{
-        borderTop: border.line,
+        borderTop: "var(--scout-border)",
         paddingTop: isMobile ? 24 : 32,
         paddingBottom: isMobile ? 24 : 32,
         marginTop: isMobile ? 8 : 0,
