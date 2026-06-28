@@ -289,7 +289,7 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.caption,
