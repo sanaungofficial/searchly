@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPublicCoachingPath, requiresAuthCoachingPath, sanitizeReturnPath } from "@/lib/auth-return-url";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -59,15 +60,25 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/live") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/passcode") ||
+    isPublicCoachingPath(pathname) ||
     pathname.startsWith("/api/") // API routes handle their own auth and must return JSON, not HTML redirects
   ) {
     return supabaseResponse;
   }
 
-  // Redirect unauthenticated users — marketing site to login; app host keeps landing redirect
+  // Redirect unauthenticated users — login with return path when entering the app
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = onAppHost ? "/login" : "/";
+    const returnPath = sanitizeReturnPath(`${pathname}${request.nextUrl.search}`);
+    const sendToLogin = onAppHost || requiresAuthCoachingPath(pathname);
+    if (sendToLogin) {
+      url.pathname = "/login";
+      url.search = "";
+      if (returnPath) url.searchParams.set("next", returnPath);
+    } else {
+      url.pathname = "/";
+      url.search = "";
+    }
     return NextResponse.redirect(url);
   }
 

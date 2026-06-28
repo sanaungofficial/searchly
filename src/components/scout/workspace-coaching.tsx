@@ -11,6 +11,7 @@ import { CoachingLayoutSidebar } from "@/components/scout/coaching-layout-sideba
 import type { CoachingTab } from "@/components/scout/coaching-layout-sidebar";
 import { WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { color, surface, border, fontSans, fontDisplay, type as T } from "@/lib/typography";
 import type { CoachListItem } from "@/lib/coach-types";
@@ -191,7 +192,8 @@ function CoachingContent() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
   const [myCoachIds, setMyCoachIds] = useState<Set<string>>(new Set());
-  const { openPricing } = useWorkspace();
+  const { openPricing, user, authChecked } = useWorkspace();
+  const requireAuth = useRequireAuthRedirect();
 
   const coachParam = searchParams.get("coach");
 
@@ -216,6 +218,10 @@ function CoachingContent() {
 
   const navigate = useCallback(
     (tab: CoachingTab) => {
+      if (tab !== "directory" && (!authChecked || !user)) {
+        requireAuth("login");
+        return;
+      }
       setPage(tab);
       if (tab === "my-coaches") {
         router.push("/coaching/my-coaches");
@@ -226,7 +232,7 @@ function CoachingContent() {
       const qs = params.toString();
       router.push(qs ? `/coaching?${qs}` : "/coaching");
     },
-    [router, searchParams],
+    [router, searchParams, authChecked, user, requireAuth],
   );
 
   const openCoach = useCallback(

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { BellIcon } from "./workspace-icons";
@@ -12,6 +13,7 @@ import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isExpertPortalPath } from "@/lib/staff-portal";
 import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
+import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
 
@@ -752,6 +754,108 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const showExpertSection = isStaffPortal && !isImpersonating && !isAdminReviewing;
   const showAdminSection = showAdminUi || isAdminReviewing;
+  const isLoggedOut = !user;
+
+  if (isLoggedOut) {
+    const homeHref = pathname.startsWith("/coaching") ? "/coaching" : "/";
+
+    return (
+      <header
+        style={{
+          height: navHeight,
+          flexShrink: 0,
+          background: surface.page,
+          borderBottom: "var(--scout-border)",
+          boxSizing: "border-box",
+          position: "relative",
+          zIndex: 100,
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: isMobile ? 12 : 24,
+            padding: `0 ${horizontalPad}px`,
+            maxWidth: 1440,
+            margin: "0 auto",
+            boxSizing: "border-box",
+          }}
+        >
+          <Link
+            href={homeHref}
+            style={{
+              textDecoration: "none",
+              color: "inherit",
+              display: "inline-flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fontDisplay,
+                fontSize: isMobile ? 20 : 22,
+                fontWeight: 500,
+                color: color.forest,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.1,
+              }}
+            >
+              Kimchi
+            </span>
+            {!isMobile && (
+              <KimchiBySecondLadder fontSize={11} color={color.muted} marginTop={2} />
+            )}
+          </Link>
+
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 10, flexShrink: 0 }}>
+            <Link
+              href="/login"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 36,
+                padding: isMobile ? "6px 12px" : "8px 14px",
+                fontFamily: fontSans,
+                fontSize: isMobile ? T.caption : T.bodySm,
+                fontWeight: 500,
+                color: color.forest,
+                textDecoration: "none",
+                background: surface.page,
+                border: "var(--scout-border)",
+              }}
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 36,
+                padding: isMobile ? "6px 14px" : "8px 16px",
+                fontFamily: fontSans,
+                fontSize: isMobile ? T.caption : T.bodySm,
+                fontWeight: 600,
+                color: color.gold,
+                textDecoration: "none",
+                background: color.forest,
+                border: "var(--scout-border)",
+              }}
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <>

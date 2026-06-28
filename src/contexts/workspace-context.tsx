@@ -22,6 +22,7 @@ import {
   type AdminReviewMeta,
 } from "@/lib/client-session";
 import { parseAdminClientProfilePath, readClientUserIdFromBrowserSearch, withClientUserId, withClientReviewPagePath } from "@/lib/workspace-urls";
+import { isPublicCoachingPath } from "@/lib/auth-return-url";
 
 const KIMCHI_CHAT_PINNED_KEY = "kimchi_chat_pinned";
 
@@ -312,7 +313,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
       if (!authUser) {
         setAuthChecked(true);
-        router.push("/login");
+        if (!isPublicCoachingPath(pathname)) {
+          router.push("/login");
+        }
         return;
       }
       let headline: string | null = null;
@@ -410,7 +413,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       });
       setAuthChecked(true);
     });
-  }, [router]);
+  }, [router, pathname]);
 
   const updateAvatarUrl = useCallback((url: string) => {
     setUser((prev) => prev ? { ...prev, avatarUrl: url } : prev);
