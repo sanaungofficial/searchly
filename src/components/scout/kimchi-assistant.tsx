@@ -274,7 +274,7 @@ function KimchiAssistantStyles() {
         width: 34px;
         height: 34px;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: var(--scout-surface);
         color: rgba(22, 22, 22, 0.55);
         font-size: 20px;

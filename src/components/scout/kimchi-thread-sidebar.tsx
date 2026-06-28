@@ -113,7 +113,7 @@ function KimchiThreadSidebarStyles() {
         height: 30px;
         padding: 0;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: var(--scout-page);
         color: #1A3A2F;
         font-family: ${sans};
@@ -145,7 +145,7 @@ function KimchiThreadSidebarStyles() {
         padding: 10px 10px;
         margin-bottom: 4px;
         border: 1px solid transparent;
-        border-radius: 0;
+        border-radius: 5px;
         background: transparent;
         cursor: pointer;
         transition: background 0.12s ease, border-color 0.12s ease;

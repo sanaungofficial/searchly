@@ -1387,7 +1387,7 @@ function KimchiChatPanelStyles() {
         width: 100%;
         margin-bottom: 0;
         padding: 14px 16px;
-        border-radius: 0;
+        border-radius: 5px;
         font-family: ${sans};
         font-size: 15px;
         line-height: 1.6;
@@ -1448,14 +1448,16 @@ function KimchiChatPanelStyles() {
       .kimchi-suggest-trigger {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 6px 14px;
+        gap: 5px;
+        height: 28px;
+        padding: 0 12px;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: #fff;
         font-family: ${sans};
         font-size: 12px;
         font-weight: 600;
+        line-height: 1;
         color: rgba(26, 58, 47, 0.72);
         cursor: pointer;
         white-space: nowrap;
@@ -1513,7 +1515,7 @@ function KimchiChatPanelStyles() {
         padding: 14px;
         background: rgba(26, 58, 47, 0.04);
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
       }
       .kimchi-voice-block__eyebrow {
         margin: 0 0 6px;
@@ -1562,7 +1564,7 @@ function KimchiChatPanelStyles() {
         background: #1A3A2F;
         color: #E8D5A3;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         font-family: ${sans};
         cursor: pointer;
         text-align: left;
@@ -1582,7 +1584,7 @@ function KimchiChatPanelStyles() {
         padding: 7px 12px;
         background: rgba(26, 58, 47, 0.08);
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         font-family: ${sans};
         font-size: 12px;
         font-weight: 600;
@@ -1654,7 +1656,7 @@ function KimchiChatPanelStyles() {
         padding: 10px 12px;
         background: #fff;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         cursor: pointer;
       }
       .kimchi-preset-menu__item:hover {
@@ -1700,7 +1702,7 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-composer-box {
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: #FFFFFF;
         overflow: hidden;
         box-shadow: none;
@@ -1742,7 +1744,7 @@ function KimchiChatPanelStyles() {
         width: 34px;
         height: 34px;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: transparent;
         color: rgba(26, 58, 47, 0.45);
         display: flex;
@@ -1780,7 +1782,7 @@ function KimchiChatPanelStyles() {
         height: 32px;
         padding: 0 12px;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: rgba(26, 58, 47, 0.04);
         color: rgba(26, 58, 47, 0.6);
         font-family: ${sans};
@@ -1799,7 +1801,7 @@ function KimchiChatPanelStyles() {
         width: 34px;
         height: 34px;
         border: var(--scout-border);
-        border-radius: 0;
+        border-radius: 5px;
         background: #1A3A2F;
         color: #E8D5A3;
         display: flex;
