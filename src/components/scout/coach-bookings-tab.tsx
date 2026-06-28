@@ -58,7 +58,7 @@ export function CoachBookingsTab({ embedded = false }: { embedded?: boolean }) {
               color: color.forest,
               textDecoration: "none",
               padding: "10px 16px",
-              border: border.line,
+              border: "var(--scout-border)",
               background: "#fff",
               flexShrink: 0,
             }}
@@ -78,7 +78,7 @@ export function CoachBookingsTab({ embedded = false }: { embedded?: boolean }) {
               color: color.forest,
               textDecoration: "none",
               padding: "10px 16px",
-              border: border.line,
+              border: "var(--scout-border)",
               background: "#fff",
             }}
           >

@@ -27,7 +27,7 @@ const STATUS_LABEL: Record<LiveSessionStatus, string> = {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: border.line,
+  border: "var(--scout-border)",
   fontFamily: fontSans,
   fontSize: 14,
   boxSizing: "border-box",
@@ -313,7 +313,7 @@ export function ExpertWebinarsView() {
                   onClick={() => setForm({ ...form, format: f })}
                   style={{
                     padding: "8px 14px",
-                    border: form.format === f ? `2px solid ${color.forest}` : border.line,
+                    border: form.format === f ? `2px solid ${color.forest}` : "var(--scout-border)",
                     background: form.format === f ? "rgba(26,58,47,0.06)" : "#fff",
                     fontFamily: fontSans,
                     fontSize: 13,

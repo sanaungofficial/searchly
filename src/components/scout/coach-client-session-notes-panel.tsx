@@ -19,7 +19,7 @@ const textareaStyle: React.CSSProperties = {
   minHeight: 88,
   marginTop: 6,
   padding: "10px 12px",
-  border: border.line,
+  border: "var(--scout-border)",
   fontFamily: fontSans,
   fontSize: 13,
   boxSizing: "border-box",
@@ -154,7 +154,7 @@ export function CoachClientSessionNotesPanel({
               width: "100%",
               marginTop: 6,
               padding: "8px 10px",
-              border: border.line,
+              border: "var(--scout-border)",
               fontFamily: fontSans,
               fontSize: 13,
               background: surface.card,
@@ -207,7 +207,7 @@ export function CoachClientSessionNotesPanel({
               key={note.id}
               style={{
                 padding: "12px 14px",
-                border: border.line,
+                border: "var(--scout-border)",
                 background: surface.inset,
               }}
             >

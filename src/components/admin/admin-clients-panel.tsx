@@ -151,7 +151,7 @@ function CreateClientModal({
     width: "100%",
     fontSize: 14,
     background: surface.card,
-    border: border.line,
+    border: "var(--scout-border)",
     borderRadius: "var(--scout-radius)",
     padding: "9px 12px",
     outline: "none",
@@ -179,7 +179,7 @@ function CreateClientModal({
         <div
           style={{
             background: surface.card,
-            border: border.lineStrong,
+            border: "var(--scout-border)",
             borderRadius: "var(--scout-radius)",
             width: "100%",
             maxWidth: 480,
@@ -311,7 +311,7 @@ function CreateClientModal({
                 style={{
                   padding: "10px 16px",
                   background: surface.inset,
-                  border: border.line,
+                  border: "var(--scout-border)",
                   borderRadius: "var(--scout-radius)",
                   fontSize: 14,
                   fontFamily: fontSans,
@@ -489,7 +489,7 @@ export function AdminClientsPanel({
       {listHeader}
 
       {createNotice && (
-        <div style={{ background: "rgba(26,58,47,0.06)", border: border.line, padding: "12px 16px", marginBottom: 20, fontSize: T.bodySm, color: color.stone, lineHeight: 1.5 }}>
+        <div style={{ background: "rgba(26,58,47,0.06)", border: "var(--scout-border)", padding: "12px 16px", marginBottom: 20, fontSize: T.bodySm, color: color.stone, lineHeight: 1.5 }}>
           {createNotice}
         </div>
       )}
@@ -520,7 +520,7 @@ export function AdminClientsPanel({
             width: "100%",
             fontSize: 14,
             background: surface.card,
-            border: border.line,
+            border: "var(--scout-border)",
             borderRadius: "var(--scout-radius)",
             padding: "9px 14px",
             outline: "none",
@@ -622,7 +622,7 @@ export function AdminClientsPanel({
                         padding: "8px 14px",
                         background: "transparent",
                         color: color.forest,
-                        border: border.line,
+                        border: "var(--scout-border)",
                         borderRadius: "var(--scout-radius)",
                         fontSize: 13,
                         fontWeight: 600,

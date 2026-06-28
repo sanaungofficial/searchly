@@ -120,12 +120,12 @@ function PurchasesInner() {
           placeholder="Search client, coach, package…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          style={{ flex: "1 1 220px", minWidth: 200, padding: "9px 12px", border: border.line, fontFamily: fontSans, fontSize: 14 }}
+          style={{ flex: "1 1 220px", minWidth: 200, padding: "9px 12px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: 14 }}
         />
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          style={{ padding: "9px 12px", border: border.line, fontFamily: fontSans, fontSize: 14, background: "#fff" }}
+          style={{ padding: "9px 12px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: 14, background: "#fff" }}
         >
           <option value="">All statuses</option>
           <option value="PAID">Paid</option>
@@ -138,7 +138,7 @@ function PurchasesInner() {
         <select
           value={salesAssisted}
           onChange={(e) => setSalesAssisted(e.target.value)}
-          style={{ padding: "9px 12px", border: border.line, fontFamily: fontSans, fontSize: 14, background: "#fff" }}
+          style={{ padding: "9px 12px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: 14, background: "#fff" }}
         >
           <option value="">All lead sources</option>
           <option value="true">Sales assisted</option>
@@ -165,7 +165,7 @@ function PurchasesInner() {
               gridTemplateColumns: "120px 1fr 1fr 1.2fr 80px 100px 100px 100px 90px",
               gap: 12,
               padding: "12px 16px",
-              borderBottom: border.line,
+              borderBottom: "var(--scout-border)",
               fontFamily: fontMono,
               fontSize: 10,
               textTransform: "uppercase",
@@ -196,7 +196,7 @@ function PurchasesInner() {
                   gridTemplateColumns: "120px 1fr 1fr 1.2fr 80px 100px 100px 100px 90px",
                   gap: 12,
                   padding: "14px 16px",
-                  borderBottom: border.line,
+                  borderBottom: "var(--scout-border)",
                   background: selectedId === p.id ? "rgba(45,122,80,0.04)" : "transparent",
                   border: "none",
                   borderBottomWidth: 1,

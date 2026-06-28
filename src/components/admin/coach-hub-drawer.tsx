@@ -97,7 +97,7 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
           style={{
             padding: isMobile ? "12px 16px 0" : "14px 28px 0",
             background: surface.card,
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             flexShrink: 0,
           }}
         >

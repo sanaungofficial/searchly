@@ -86,7 +86,7 @@ export function CoachInboxPanel({ coachId }: Props) {
               key={m.id}
               style={{
                 background: surfaceCard(),
-                border: border.line,
+                border: "var(--scout-border)",
                 padding: "14px 16px",
               }}
             >

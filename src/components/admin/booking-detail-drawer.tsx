@@ -113,7 +113,7 @@ export function BookingDetailDrawer({ bookingId, onClose, onOpenGuestHub, onOpen
           style={{
             padding: isMobile ? "12px 16px" : "14px 20px",
             background: surface.card,
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -203,7 +203,7 @@ export function BookingDetailDrawer({ bookingId, onClose, onOpenGuestHub, onOpen
                   </p>
                   <ScoutBox padding={0}>
                     {communications.map((c) => (
-                      <div key={c.id} style={{ padding: "12px 14px", borderBottom: border.line }}>
+                      <div key={c.id} style={{ padding: "12px 14px", borderBottom: "var(--scout-border)" }}>
                         <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>{c.subject}</p>
                         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: 0 }}>
                           {c.type} · {new Date(c.createdAt).toLocaleString()}

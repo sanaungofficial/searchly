@@ -91,7 +91,7 @@ export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
           style={{
             padding: isMobile ? "12px 16px" : "14px 28px",
             background: surface.card,
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -151,7 +151,7 @@ export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
                             <button
                               type="button"
                               onClick={() => onOpenCoachHub(c.coachProfileId)}
-                              style={{ background: "none", border: border.line, padding: "8px 12px", fontFamily: fontSans, fontSize: 13, cursor: "pointer", color: color.forest }}
+                              style={{ background: "none", border: "var(--scout-border)", padding: "8px 12px", fontFamily: fontSans, fontSize: 13, cursor: "pointer", color: color.forest }}
                             >
                               Expert hub
                             </button>
@@ -184,7 +184,7 @@ export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
                   </p>
                   <ScoutBox padding={0}>
                     {data.communications.map((c) => (
-                      <div key={c.id} style={{ padding: "12px 14px", borderBottom: border.line }}>
+                      <div key={c.id} style={{ padding: "12px 14px", borderBottom: "var(--scout-border)" }}>
                         <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>{c.subject}</p>
                         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: 0 }}>
                           {c.coachName ?? "Coach"} · {c.type} · {new Date(c.createdAt).toLocaleString()}

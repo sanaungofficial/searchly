@@ -81,7 +81,7 @@ export default function AdminBookingsPage() {
               gridTemplateColumns: "1.2fr 1fr 1fr 1fr 100px",
               gap: 12,
               padding: "12px 16px",
-              borderBottom: border.line,
+              borderBottom: "var(--scout-border)",
               fontFamily: fontMono,
               fontSize: 11,
               textTransform: "uppercase",
@@ -111,7 +111,7 @@ export default function AdminBookingsPage() {
                   width: "100%",
                   background: "transparent",
                   border: "none",
-                  borderBottom: border.line,
+                  borderBottom: "var(--scout-border)",
                   cursor: "pointer",
                   textAlign: "left",
                 }}
