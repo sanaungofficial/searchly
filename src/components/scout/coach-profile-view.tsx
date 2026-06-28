@@ -387,7 +387,7 @@ export function CoachProfileView({
       <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
         {coach.isFollowing ? "Following ✓" : "+ Follow"}
       </ScoutSecondaryBtn>
-      {coach.requiresAssignment && !coach.isMyCoach && (
+      {coach.requiresAssignment && !coach.isMyCoach && !isAdmin && (
         <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: "8px 0", lineHeight: 1.45 }}>
           This coach is available through Second Ladder. Contact your team to get assigned.
         </p>
@@ -402,7 +402,11 @@ export function CoachProfileView({
             ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest, fontWeight: 600 } : {}),
           }}
         >
-          {coach.isMyCoach ? "Remove from my coaches" : "Add as my coach"}
+          {coach.isMyCoach
+            ? "Remove from my coaches"
+            : isAdmin && (coach.isInternal || coach.requiresAssignment)
+              ? "Assign coach"
+              : "Add as my coach"}
         </ScoutSecondaryBtn>
       )}
       <button

@@ -88,8 +88,8 @@ function KimchiThreadSidebarStyles() {
         display: flex;
         flex-direction: column;
         min-height: 0;
-        background: #FFFFFF;
-        border-left: 1px solid rgba(26, 58, 47, 0.08);
+        background: var(--scout-surface);
+        border-left: var(--scout-border);
       }
       .kimchi-thread-sidebar__head {
         display: flex;
@@ -97,7 +97,7 @@ function KimchiThreadSidebarStyles() {
         justify-content: space-between;
         gap: 8px;
         padding: 12px 14px;
-        border-bottom: 1px solid rgba(26, 58, 47, 0.06);
+        border-bottom: var(--scout-border);
         flex-shrink: 0;
       }
       .kimchi-thread-sidebar__label {
@@ -112,9 +112,9 @@ function KimchiThreadSidebarStyles() {
         width: 30px;
         height: 30px;
         padding: 0;
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: 8px;
-        background: #FAFAF8;
+        border: var(--scout-border);
+        border-radius: 5px;
+        background: var(--scout-page);
         color: #1A3A2F;
         font-family: ${sans};
         font-size: 18px;
@@ -122,8 +122,7 @@ function KimchiThreadSidebarStyles() {
         cursor: pointer;
       }
       .kimchi-thread-sidebar__new:hover {
-        background: rgba(232, 145, 58, 0.12);
-        border-color: rgba(232, 145, 58, 0.35);
+        background: rgba(232, 213, 163, 0.35);
       }
       .kimchi-thread-sidebar__list {
         flex: 1;
@@ -146,17 +145,18 @@ function KimchiThreadSidebarStyles() {
         padding: 10px 10px;
         margin-bottom: 4px;
         border: 1px solid transparent;
-        border-radius: 10px;
+        border-radius: 5px;
         background: transparent;
         cursor: pointer;
         transition: background 0.12s ease, border-color 0.12s ease;
       }
       .kimchi-thread-sidebar__item:hover {
         background: rgba(26, 58, 47, 0.04);
+        border-color: rgba(22, 22, 22, 0.12);
       }
       .kimchi-thread-sidebar__item--active {
-        background: rgba(232, 145, 58, 0.1);
-        border-color: rgba(232, 145, 58, 0.28);
+        background: rgba(232, 213, 163, 0.35);
+        border: var(--scout-border);
       }
       .kimchi-thread-sidebar__item-title {
         display: block;

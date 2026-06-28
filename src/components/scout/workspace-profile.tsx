@@ -67,6 +67,7 @@ interface AISuggestion {
 import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
+import { ProfileDiscoveryScorePanel } from "./profile-discovery-score-panel";
 import { CareerStrategyPanel } from "./career-strategy-panel";
 import { UserAssetsList } from "./user-assets-list";
 import { LibraryDocumentUploadModal } from "./library-document-upload-modal";
@@ -2870,7 +2871,7 @@ function ReadbackCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type PageTab = "dreamrole" | "targetcompanies" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
+type PageTab = "dreamrole" | "targetcompanies" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy" | "discoveryscore";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
@@ -3467,6 +3468,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
+    { id: "discoveryscore", label: isMobile ? "Score" : "Discovery Score" },
     { id: "dreamrole", label: isMobile ? "Roles" : "Role ranking" },
     { id: "targetcompanies", label: isMobile ? "Cos." : "Target Companies" },
     { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
@@ -3491,6 +3493,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const SIDEBAR_TABS: { id: ProfileSidebarTab; label: string }[] = [
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
+    { id: "discoveryscore", label: "Discovery Score" },
     { id: "dreamrole", label: "Role ranking" },
     { id: "targetcompanies", label: "Target Companies" },
     { id: "strategy", label: "Career Strategy" },
@@ -3890,6 +3893,36 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
 
             {page === "linkedin" && (
               <ProfileLinkedInEditor isMobile={isMobile} coachView={showAdminUi || !!clientId} clientUserId={clientId} />
+            )}
+
+            {page === "discoveryscore" && profile && (
+              <ProfileDiscoveryScorePanel
+                profile={{
+                  name: profile.name,
+                  headline: profile.headline,
+                  targetRoles: profile.targetRoles,
+                  resumeUrl: profile.resumeUrl,
+                  linkedinUrl: profile.linkedinUrl,
+                  experience: (profile.parsedData?.workExperience as unknown[] | null) ?? null,
+                  skills: (profile.parsedData?.skills as string[] | null) ?? null,
+                  targetSalary: profile.targetSalary,
+                  location: profile.parsedData?.location ?? profile.targetMarket ?? null,
+                  employmentStatus: profile.employmentStatus,
+                  summary: profile.summary,
+                  jobTimeline: profile.jobTimeline,
+                  linkedInAnalysisScore: profile.linkedInAnalysisScore ?? null,
+                  avatarUrl: clientId ? profile.avatarUrl : user?.avatarUrl ?? profile.avatarUrl,
+                  email: profile.email,
+                  parsedData: profile.parsedData,
+                  priorities: profile.priorities,
+                }}
+                isMobile={isMobile}
+                withClientScope={withClientScope}
+                onSubscribe={openPricing}
+              />
+            )}
+            {page === "discoveryscore" && !profile && !loading && (
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn&apos;t load profile — refresh the page.</p>
             )}
           </div>
         </div>

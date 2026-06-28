@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { bruddleHeadingStyle } from "@/lib/typography";
 import { AuthCredentialsForm } from "@/components/auth/auth-credentials-form";
 import { AuthPageBenefits } from "@/components/auth/auth-page-benefits";
 import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
 
   return (
@@ -68,5 +69,13 @@ export default function SignupPage() {
         <AuthPageBenefits />
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupContent />
+    </Suspense>
   );
 }

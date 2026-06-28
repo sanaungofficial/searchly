@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPublicCoachingPath, requiresAuthCoachingPath, sanitizeReturnPath } from "@/lib/auth-return-url";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -30,17 +31,15 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const host = request.headers.get("host") ?? "";
+  const onAppHost = host.includes("app.kimchi.so");
 
-  // Passcode gate — production only (VERCEL_ENV=production). Dev/preview bypass.
-  // Auth callback/confirm must bypass passcode so email/OAuth links work on first click.
+  // Passcode gate — production only, login/signup pages (any host). Marketing / and app routes bypass.
   if (process.env.VERCEL_ENV === "production") {
-    const bypassPasscode =
-      pathname.startsWith("/passcode") ||
-      pathname.startsWith("/api/") ||
-      pathname.startsWith("/auth/callback") ||
-      pathname.startsWith("/auth/confirm");
+    const gatePasscode =
+      pathname.startsWith("/login") || pathname.startsWith("/signup");
 
-    if (!bypassPasscode) {
+    if (gatePasscode) {
       const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
       if (!passcodeValid) {
         const url = request.nextUrl.clone();
@@ -61,15 +60,25 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/live") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/passcode") ||
+    isPublicCoachingPath(pathname) ||
     pathname.startsWith("/api/") // API routes handle their own auth and must return JSON, not HTML redirects
   ) {
     return supabaseResponse;
   }
 
-  // Redirect unauthenticated users to landing page
+  // Redirect unauthenticated users — login with return path when entering the app
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const returnPath = sanitizeReturnPath(`${pathname}${request.nextUrl.search}`);
+    const sendToLogin = onAppHost || requiresAuthCoachingPath(pathname);
+    if (sendToLogin) {
+      url.pathname = "/login";
+      url.search = "";
+      if (returnPath) url.searchParams.set("next", returnPath);
+    } else {
+      url.pathname = "/";
+      url.search = "";
+    }
     return NextResponse.redirect(url);
   }
 

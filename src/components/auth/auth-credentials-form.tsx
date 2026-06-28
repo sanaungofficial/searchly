@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { bruddleHeadingStyle } from "@/lib/typography";
+import { sanitizeReturnPath } from "@/lib/auth-return-url";
 import { createClient } from "@/utils/supabase/client";
 import { friendlyAuthMessage } from "@/lib/auth-errors";
 
@@ -27,17 +28,23 @@ function friendlyAuthError(message: string, mode: AuthMode) {
   return friendlyAuthMessage(message) || (mode === "login" ? "Could not sign in." : "Could not create account.");
 }
 
-async function completeSession(router: ReturnType<typeof useRouter>) {
+async function completeSession(router: ReturnType<typeof useRouter>, next: string | null) {
   const res = await fetch("/api/auth/sync-user", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ next }),
   });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error ?? "Could not finish signing in.");
   }
   router.push(data.redirectTo ?? "/dashboard");
+}
+
+function authCallbackUrl(next: string | null): string {
+  const base = `${window.location.origin}/auth/callback`;
+  if (!next) return base;
+  return `${base}?next=${encodeURIComponent(next)}`;
 }
 
 export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
@@ -47,7 +54,9 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  const next = sanitizeReturnPath(searchParams.get("next"));
 
   const isSignup = mode === "signup";
 
@@ -55,7 +64,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
     setError(null);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: authCallbackUrl(next) },
     });
     if (oauthError) setError(oauthError.message);
   };
@@ -64,7 +73,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
     setError(null);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "linkedin_oidc",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: authCallbackUrl(next) },
     });
     if (oauthError) setError(oauthError.message);
   };
@@ -88,7 +97,9 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
           email: trimmedEmail,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?type=email`,
+            emailRedirectTo: returnNext
+              ? `${window.location.origin}/auth/callback?type=email&next=${encodeURIComponent(returnNext)}`
+              : `${window.location.origin}/auth/callback?type=email`,
             data: { name: trimmedEmail.split("@")[0] },
           },
         });
@@ -99,7 +110,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
         }
 
         if (data.session) {
-          await completeSession(router);
+          await completeSession(router, next);
           return;
         }
 
@@ -117,7 +128,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      await completeSession(router);
+      await completeSession(router, next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {

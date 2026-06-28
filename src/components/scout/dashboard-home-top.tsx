@@ -15,11 +15,10 @@ import {
   recommendationPathForGoals,
   SALES_TEAM_FORM_URL,
 } from "@/lib/dashboard-goals";
-import { formatBookingWhen } from "@/lib/coach-user-booking";
 import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
-import { CoachAvatar } from "@/components/scout/coach-avatar";
+import { AssignedCoachSummaryBox } from "@/components/scout/assigned-coach-summary-box";
 import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-overview";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
@@ -127,32 +126,6 @@ function initials(name: string): string {
   return (parts[0]?.slice(0, 2) ?? "?").toUpperCase();
 }
 
-type BookedCoach = {
-  bookingId: string;
-  nylasBookingRef: string | null;
-  startAt: string;
-  endAt: string;
-  status: string;
-  title: string | null;
-  coach: {
-    id: string;
-    slug: string | null;
-    displayName: string;
-    photoUrl: string | null;
-    headline: string | null;
-  };
-};
-
-type AssignedCoach = {
-  coachProfileId: string;
-  displayName: string;
-  slug: string | null;
-  photoUrl: string | null;
-  headline: string | null;
-  isInternal: boolean;
-  hasNylasBooking: boolean;
-};
-
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
   const { userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath } =
@@ -169,9 +142,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const goalWizardAutoOpenedRef = useRef(false);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [editTargetMonth, setEditTargetMonth] = useState("");
-  const [bookedCoach, setBookedCoach] = useState<BookedCoach | null>(null);
-  const [assignedCoaches, setAssignedCoaches] = useState<AssignedCoach[]>([]);
-  const [bookingLoading, setBookingLoading] = useState(true);
   const [pendingSync, setPendingSync] = useState<ReturnType<typeof profileNeedsSyncForGoal>>(null);
   const [syncSaving, setSyncSaving] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -229,51 +199,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
       .catch(() => {})
       .finally(() => setSessionsLoaded(true));
   }, [withClientScope]);
-
-  useEffect(() => {
-    if (!showClientCoachUi) {
-      setBookedCoach(null);
-      setAssignedCoaches([]);
-      setBookingLoading(false);
-      return;
-    }
-
-    setBookingLoading(true);
-    const assignedPromise = fetch(withClientScope("/api/coaching/assigned-coaches"))
-      .then((r) => (r.ok ? r.json() : { coaches: [] }))
-      .then((d) => setAssignedCoaches(d.coaches ?? []))
-      .catch(() => setAssignedCoaches([]));
-
-    const bookingPromise = fetch(withClientScope("/api/bookings/me?upcoming=true&limit=1"))
-      .then((r) => (r.ok ? r.json() : null))
-      .then(async (d) => {
-        let row = d?.bookings?.[0];
-        if (!row) {
-          const pastRes = await fetch(withClientScope("/api/bookings/me?upcoming=false&limit=1"));
-          const pastData = pastRes.ok ? await pastRes.json() : null;
-          row = pastData?.bookings?.[0];
-        }
-        if (!row) { setBookedCoach(null); return; }
-        setBookedCoach({
-          bookingId: row.id,
-          nylasBookingRef: row.nylasBookingRef ?? null,
-          startAt: row.startAt,
-          endAt: row.endAt,
-          status: row.status,
-          title: row.title ?? null,
-          coach: {
-            id: row.coachProfileId,
-            slug: row.coachSlug ?? null,
-            displayName: row.coachName,
-            photoUrl: row.coachPhotoUrl ?? null,
-            headline: null,
-          },
-        });
-      })
-      .catch(() => setBookedCoach(null));
-
-    Promise.all([assignedPromise, bookingPromise]).finally(() => setBookingLoading(false));
-  }, [showClientCoachUi, withClientScope]);
 
   useEffect(() => {
     if (!showClientCoachUi || loading || !profile || goalWizardAutoOpenedRef.current) return;
@@ -387,11 +312,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   const openGoalModal = () => { setGoalWizardIntro(false); setGoalModalOpen(true); };
-  const openCoachProfile = (slug: string | null, coachId: string) => {
-    if (slug) router.push(`/coach/${slug}`);
-    else router.push("/coaching");
-  };
-
   const handleScheduleCall = () => {
     if (SALES_TEAM_FORM_URL) { window.open(SALES_TEAM_FORM_URL, "_blank", "noopener,noreferrer"); return; }
     setScheduleOpen(true);
@@ -681,87 +601,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
     </ScoutBox>
   );
 
-  // ── Coaches section ───────────────────────────────────────────────────────
-  const coachSection = showClientCoachUi && !bookingLoading && (
-    <>
-      {!bookedCoach && assignedCoaches.length === 0 && (
-        <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ borderStyle: "dashed", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <p style={{ ...bruddleHeadingStyle("h5"), margin: 0 }}>My coaches</p>
-            <SectionHelpTip text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here." label="About My coaches" />
-          </div>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0 }}>
-            No coach assigned yet. When your team adds one, they'll appear here.
-          </p>
-          <ScoutSecondaryBtn onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))} style={{ minHeight: 40, width: "100%" }}>
-            View coaches
-          </ScoutSecondaryBtn>
-        </ScoutBox>
-      )}
-
-      {assignedCoaches.length > 0 && (
-        <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <SectionHeadingWithHelp
-            title="My coaches"
-            help="Your Kimchi coach works with you one-on-one."
-            trailing={
-              <button type="button" onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
-                style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                View all →
-              </button>
-            }
-          />
-          {assignedCoaches.map((coach) => (
-            <div key={coach.coachProfileId} style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: assignedCoaches.length > 1 ? 12 : 0, borderBottom: assignedCoaches.length > 1 ? "var(--scout-border)" : undefined }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={44} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{coach.displayName}</p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.45 }}>{coach.headline?.slice(0, 80) ?? "Book your intro call to get started."}</p>
-                </div>
-              </div>
-              <ScoutPrimaryBtn onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)} style={{ minHeight: 38, width: "100%" }}>
-                {coach.hasNylasBooking ? "Book →" : "View →"}
-              </ScoutPrimaryBtn>
-            </div>
-          ))}
-        </ScoutBox>
-      )}
-
-      {bookedCoach && (
-        <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <SectionHeadingWithHelp title="My coaches" help="Your Kimchi coach works with you one-on-one." />
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={44} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
-                {new Date(bookedCoach.startAt) >= new Date() ? "Upcoming session" : "Recent session"}
-              </p>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{bookedCoach.coach.displayName}</p>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-                {new Date(bookedCoach.startAt) >= new Date() ? formatBookingWhen(bookedCoach.startAt) : `Last · ${formatBookingWhen(bookedCoach.startAt)}`}
-              </p>
-            </div>
-          </div>
-          <ScoutSecondaryBtn onClick={() => openCoachProfile(bookedCoach.coach.slug, bookedCoach.coach.id)} style={{ minHeight: 38, width: "100%" }}>
-            View coach →
-          </ScoutSecondaryBtn>
-          {bookedCoach.nylasBookingRef && new Date(bookedCoach.startAt) >= new Date() && (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => router.push(`/coaching/reschedule/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
-                style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                Reschedule
-              </button>
-              <button type="button" onClick={() => router.push(`/coaching/cancel/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
-                style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                Cancel
-              </button>
-            </div>
-          )}
-        </ScoutBox>
-      )}
-    </>
-  );
 
   // ── Events carousel ───────────────────────────────────────────────────────
   const eventsSection = (
@@ -901,7 +740,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {goalsCard}
-          {coachSection}
+          <AssignedCoachSummaryBox isMobile={isMobile} enabled={showClientCoachUi} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

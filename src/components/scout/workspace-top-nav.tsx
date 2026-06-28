@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { BellIcon } from "./workspace-icons";
@@ -12,8 +13,10 @@ import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isExpertPortalPath } from "@/lib/staff-portal";
 import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
+import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
+import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
 
 export const TOP_NAV_HEIGHT = 64;
 export const TOP_NAV_HEIGHT_MOBILE = 56;
@@ -596,6 +599,16 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   const navLinks = buildNavLinks(showAdminUi);
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
+  const isLoggedOut = !user;
+  const showGuestWorkspaceNav = isLoggedOut && isPublicCoachingPath(pathname);
+
+  const authGateOrNavigate = (path: string) => {
+    if (showGuestWorkspaceNav && !isPublicCoachingPath(path)) {
+      window.location.href = buildAuthUrl("login", path);
+      return;
+    }
+    router.push(withClientReviewPath(path));
+  };
 
   const expertPortalActive =
     isStaffPortal &&
@@ -622,6 +635,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   }));
 
   const navigateToSeekerDashboard = () => {
+    if (showGuestWorkspaceNav) {
+      window.location.href = buildAuthUrl("login", "/dashboard");
+      return;
+    }
     if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
     router.push(withClientReviewPath("/dashboard"));
   };
@@ -655,7 +672,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   };
 
   useEffect(() => {
-    if (!authChecked || isAdminReviewing) return;
+    if (!authChecked || isAdminReviewing || showGuestWorkspaceNav) return;
     fetch(withClientScope("/api/profile"))
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -664,7 +681,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         }
       })
       .catch(() => {});
-  }, [authChecked, isAdminReviewing, withClientScope]);
+  }, [authChecked, isAdminReviewing, withClientScope, showGuestWorkspaceNav]);
 
   useEffect(() => {
     setNavDropdownOpen(null);
@@ -734,7 +751,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     if (link.id === "dashboard") {
       navigateToSeekerDashboard();
     } else {
-      router.push(withClientReviewPath(childPath ?? link.path));
+      authGateOrNavigate(childPath ?? link.path);
     }
     setNavDropdownOpen(null);
     closeMobileMenu();
@@ -752,6 +769,107 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const showExpertSection = isStaffPortal && !isImpersonating && !isAdminReviewing;
   const showAdminSection = showAdminUi || isAdminReviewing;
+
+  if (isLoggedOut && !showGuestWorkspaceNav) {
+    const homeHref = pathname.startsWith("/coaching") ? "/coaching" : "/";
+
+    return (
+      <header
+        style={{
+          height: navHeight,
+          flexShrink: 0,
+          background: surface.page,
+          borderBottom: "var(--scout-border)",
+          boxSizing: "border-box",
+          position: "relative",
+          zIndex: 100,
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: isMobile ? 12 : 24,
+            padding: `0 ${horizontalPad}px`,
+            maxWidth: 1440,
+            margin: "0 auto",
+            boxSizing: "border-box",
+          }}
+        >
+          <Link
+            href={homeHref}
+            style={{
+              textDecoration: "none",
+              color: "inherit",
+              display: "inline-flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fontDisplay,
+                fontSize: isMobile ? 20 : 22,
+                fontWeight: 500,
+                color: color.forest,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.1,
+              }}
+            >
+              Kimchi
+            </span>
+            {!isMobile && (
+              <KimchiBySecondLadder fontSize={11} color={color.muted} marginTop={2} />
+            )}
+          </Link>
+
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 10, flexShrink: 0 }}>
+            <Link
+              href="/login"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 36,
+                padding: isMobile ? "6px 12px" : "8px 14px",
+                fontFamily: fontSans,
+                fontSize: isMobile ? T.caption : T.bodySm,
+                fontWeight: 500,
+                color: color.forest,
+                textDecoration: "none",
+                background: surface.page,
+                border: "var(--scout-border)",
+              }}
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 36,
+                padding: isMobile ? "6px 14px" : "8px 16px",
+                fontFamily: fontSans,
+                fontSize: isMobile ? T.caption : T.bodySm,
+                fontWeight: 600,
+                color: color.gold,
+                textDecoration: "none",
+                background: color.forest,
+                border: "var(--scout-border)",
+              }}
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <>
@@ -807,7 +925,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           {/* Logo */}
           <button
             type="button"
-            onClick={() => router.push(withClientReviewPath("/dashboard"))}
+            onClick={() => {
+              if (showGuestWorkspaceNav) router.push("/coaching");
+              else navigateToSeekerDashboard();
+            }}
             style={{
               background: "none",
               border: "none",
@@ -864,7 +985,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                         if (isMobile) {
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
                         } else {
-                          router.push(withClientReviewPath(path));
+                          authGateOrNavigate(path);
                         }
                       }}
                       aria-expanded={dropdownOpen}
@@ -923,7 +1044,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                               label={childLabel}
                               active={childActive}
                               onClick={() => {
-                                router.push(withClientReviewPath(childPath));
+                                authGateOrNavigate(childPath);
                                 setNavDropdownOpen(null);
                               }}
                             />
@@ -941,7 +1062,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                   type="button"
                   onClick={() => {
                     if (id === "dashboard") navigateToSeekerDashboard();
-                    else router.push(withClientReviewPath(path));
+                    else authGateOrNavigate(path);
                   }}
                   style={{
                     background: "none",
@@ -968,6 +1089,49 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
           {/* Right actions — expert/admin portals + account utilities */}
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0, marginLeft: "auto" }}>
+            {showGuestWorkspaceNav ? (
+              <>
+                <Link
+                  href={buildAuthUrl("login", pathname)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 36,
+                    padding: isMobile ? "6px 12px" : "8px 14px",
+                    fontFamily: fontSans,
+                    fontSize: isMobile ? T.caption : T.bodySm,
+                    fontWeight: 500,
+                    color: color.forest,
+                    textDecoration: "none",
+                    background: surface.card,
+                    border: "var(--scout-border)",
+                  }}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href={buildAuthUrl("signup", pathname)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 36,
+                    padding: isMobile ? "6px 14px" : "8px 16px",
+                    fontFamily: fontSans,
+                    fontSize: isMobile ? T.caption : T.bodySm,
+                    fontWeight: 600,
+                    color: color.gold,
+                    textDecoration: "none",
+                    background: color.forest,
+                    border: "var(--scout-border)",
+                  }}
+                >
+                  Get started
+                </Link>
+              </>
+            ) : (
+              <>
             <div
               className="workspace-top-nav-desktop-portals"
               style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}
@@ -1056,7 +1220,6 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                 height: 36,
                 padding: 0,
                 border: "var(--scout-border)",
-                borderColor: "rgba(17,17,17,0.12)",
                 borderRadius: "50%",
                 cursor: "pointer",
                 overflow: "hidden",
@@ -1102,6 +1265,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                 />
               )}
             </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -1156,7 +1321,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         />
       )}
 
-      {notifOpen && (
+      {notifOpen && !showGuestWorkspaceNav && (
         <>
           <div
             onClick={onToggleNotif}

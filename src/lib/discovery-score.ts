@@ -43,6 +43,20 @@ export function tierLabel(tier: DiscoveryScoreResult["tier"]): string {
   }
 }
 
+export function tierPeerCopy(tier: DiscoveryScoreResult["tier"], targetRole?: string | null): string {
+  const role = targetRole?.trim() || "your field";
+  switch (tier) {
+    case "top":
+      return `Top 5% of professionals targeting ${role}`;
+    case "strong":
+      return `Top 25% of professionals targeting ${role}`;
+    case "building":
+      return `Building among peers targeting ${role}`;
+    case "low":
+      return `Getting started — room to grow in ${role}`;
+  }
+}
+
 export function buildDiscoveryPrompt(input: DiscoveryScoreInput): string {
   const roles = input.targetRoles.length > 0
     ? input.targetRoles.join(", ")

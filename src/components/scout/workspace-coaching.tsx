@@ -11,6 +11,7 @@ import { CoachingLayoutSidebar } from "@/components/scout/coaching-layout-sideba
 import type { CoachingTab } from "@/components/scout/coaching-layout-sidebar";
 import { WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { color, surface, border, fontSans, fontDisplay, type as T } from "@/lib/typography";
 import type { CoachListItem } from "@/lib/coach-types";
@@ -191,7 +192,9 @@ function CoachingContent() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
   const [myCoachIds, setMyCoachIds] = useState<Set<string>>(new Set());
-  const { openPricing } = useWorkspace();
+  const { openPricing, user, authChecked } = useWorkspace();
+  const requireAuth = useRequireAuthRedirect();
+  const isLoggedIn = authChecked && Boolean(user);
 
   const coachParam = searchParams.get("coach");
 
@@ -216,6 +219,10 @@ function CoachingContent() {
 
   const navigate = useCallback(
     (tab: CoachingTab) => {
+      if (tab !== "directory" && (!authChecked || !user)) {
+        requireAuth("login");
+        return;
+      }
       setPage(tab);
       if (tab === "my-coaches") {
         router.push("/coaching/my-coaches");
@@ -226,7 +233,7 @@ function CoachingContent() {
       const qs = params.toString();
       router.push(qs ? `/coaching?${qs}` : "/coaching");
     },
-    [router, searchParams],
+    [router, searchParams, authChecked, user, requireAuth],
   );
 
   const openCoach = useCallback(
@@ -271,7 +278,7 @@ function CoachingContent() {
                 alignItems: "flex-start",
               }}
             >
-              {!isMobile && (
+              {!isMobile && isLoggedIn && (
                 <CoachingLayoutSidebar
                   tabs={SIDEBAR_TABS}
                   activePage={page}
@@ -279,12 +286,12 @@ function CoachingContent() {
                 />
               )}
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {isMobile && (
+              <div style={{ flex: 1, minWidth: 0, width: isLoggedIn ? undefined : "100%" }}>
+                {isMobile && isLoggedIn && (
                   <MobileTabBar tabs={SIDEBAR_TABS} active={page} onChange={navigate} />
                 )}
 
-                {page === "directory" && (
+                {(!isLoggedIn || page === "directory") && (
                   <CoachingDirectory
                     isMobile={isMobile}
                     isPro={isPro}
@@ -295,11 +302,11 @@ function CoachingContent() {
                   />
                 )}
 
-                {page === "my-coaches" && (
+                {isLoggedIn && page === "my-coaches" && (
                   <ProfileCoachPanel isMobile={isMobile} embedded />
                 )}
 
-                {page === "sessions" && (
+                {isLoggedIn && page === "sessions" && (
                   <PlaceholderTab
                     icon={<CalendarSvg />}
                     title="Your sessions"
@@ -307,7 +314,7 @@ function CoachingContent() {
                   />
                 )}
 
-                {page === "notes" && (
+                {isLoggedIn && page === "notes" && (
                   <PlaceholderTab
                     icon={<NotesSvg />}
                     title="Session notes"
@@ -315,7 +322,7 @@ function CoachingContent() {
                   />
                 )}
 
-                {page === "resources" && (
+                {isLoggedIn && page === "resources" && (
                   <PlaceholderTab
                     icon={<FolderSvg />}
                     title="Shared resources"
@@ -328,7 +335,7 @@ function CoachingContent() {
         </WorkspaceScroll>
       </div>
 
-      {drawerCoach && page === "directory" && (
+      {drawerCoach && (!isLoggedIn || page === "directory") && (
         <CoachDrawer
           slug={drawerCoach.slug ?? drawerCoach.id}
           preview={drawerCoach}
