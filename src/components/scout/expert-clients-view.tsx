@@ -33,27 +33,25 @@ function ExpertClientsInner() {
   }
 
   return (
-    <div style={{ height: "100%", minHeight: 0, overflowY: "auto" }}>
-      <div style={{ padding: isMobile ? "16px 16px 32px" : "24px 28px 40px" }}>
-        <header style={{ marginBottom: isMobile ? 20 : 28 }}>
-          <h1 style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: isMobile ? 22 : 26, fontWeight: 600, color: color.forest }}>
-            Clients
-          </h1>
-          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, maxWidth: 560 }}>
-            Your roster — pipeline, session notes, shared documents, and full profiles for everyone you coach.
-          </p>
-        </header>
+    <div style={{ padding: isMobile ? "16px 16px 32px" : "24px 28px 40px" }}>
+      <header style={{ marginBottom: isMobile ? 20 : 28 }}>
+        <h1 style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: isMobile ? 22 : 26, fontWeight: 600, color: color.forest }}>
+          Clients
+        </h1>
+        <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, maxWidth: 560 }}>
+          Your roster — pipeline, session notes, shared documents, and full profiles for everyone you coach.
+        </p>
+      </header>
 
-        <AdminClientsPanel
-          apiPath={showAdminUi ? "/api/admin/clients" : "/api/coach/clients"}
-          onViewAsClient={showAdminUi ? viewAsClient : undefined}
-          onViewClientProfile={showAdminUi ? (userId) => void navigateToAdminClientProfile(userId) : undefined}
-          startingUserId={starting}
-          detailMode="drawer"
-          embedded
-          canAddClient={showAdminUi}
-        />
-      </div>
+      <AdminClientsPanel
+        apiPath={showAdminUi ? "/api/admin/clients" : "/api/coach/clients"}
+        onViewAsClient={showAdminUi ? viewAsClient : undefined}
+        onViewClientProfile={showAdminUi ? (userId) => void navigateToAdminClientProfile(userId) : undefined}
+        startingUserId={starting}
+        detailMode="drawer"
+        embedded
+        canAddClient={showAdminUi}
+      />
     </div>
   );
 }
