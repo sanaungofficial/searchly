@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { onboardingAutocompleteListboxStyle } from "@/components/scout/onboarding-autocomplete-shared";
 import { reverseGeocodeCoordinatesClient } from "@/lib/location-autocomplete";
 
 type LocationSuggestion = {
@@ -218,22 +219,7 @@ export function LocationAutocompleteInput({
             <ul
               id={listboxId}
               role="listbox"
-              style={{
-                position: "absolute",
-                zIndex: 100,
-                top: "calc(100% + 6px)",
-                left: 0,
-                right: 0,
-                margin: 0,
-                padding: 6,
-                listStyle: "none",
-                background: "#FFFFFF",
-                border: "1px solid rgba(26,58,47,0.16)",
-                borderRadius: "var(--scout-radius)",
-                boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
-                maxHeight: 240,
-                overflowY: "auto",
-              }}
+              style={onboardingAutocompleteListboxStyle}
             >
               {suggestions.map((item, index) => (
                 <li key={item.id} role="option" aria-selected={index === highlight}>

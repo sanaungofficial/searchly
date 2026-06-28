@@ -24,15 +24,6 @@ export const ONBOARDING_VISA_OPTIONS: { value: VisaNeedId; label: string }[] = [
   { value: "unspecified", label: "Prefer not to say" },
 ];
 
-export const ONBOARDING_AVOID_ROLE_SUGGESTIONS = [
-  "Sales",
-  "Product Manager",
-  "Customer Success",
-  "Recruiting / HR",
-  "Individual contributor roles",
-  "Management / people leadership",
-] as const;
-
 export type OnboardingMatchingState = {
   targetMarket: string;
   fullyRemote: boolean;
@@ -41,7 +32,7 @@ export type OnboardingMatchingState = {
   visaNeed: VisaNeedId;
   targetSalary: string;
   jobTimeline: string;
-  deprioritizedRoles: string[];
+  deprioritizedCategories: string[];
 };
 
 export function buildOnboardingPriorities(input: {
@@ -99,6 +90,6 @@ export function buildOnboardingProfilePatch(state: OnboardingMatchingState): Rec
     }),
     relocationOpenness: relocationOpennessFromId(state.relocation),
     workAuthorization: workAuthorizationFromVisaNeed(state.visaNeed),
-    deprioritizedRoles: state.deprioritizedRoles.slice(0, 10),
+    deprioritizedCategories: state.deprioritizedCategories.slice(0, 10),
   };
 }
