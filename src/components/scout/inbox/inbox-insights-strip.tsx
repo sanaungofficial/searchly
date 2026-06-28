@@ -38,7 +38,7 @@ export function InboxInsightsStrip({
   const emailRows = insightsLoaded ? activities.slice(0, STRIP_LIMIT) : [];
 
   return (
-    <div style={{ borderBottom: border.line, background: surface.page, padding: "8px 14px" }}>
+    <div style={{ borderBottom: "var(--scout-border)", background: surface.page, padding: "8px 14px" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
         <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
           {title}

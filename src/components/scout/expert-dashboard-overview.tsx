@@ -57,7 +57,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
                 color: color.forest,
                 textDecoration: "none",
                 padding: "8px 14px",
-                border: border.line,
+                border: "var(--scout-border)",
                 borderRadius: "var(--scout-radius)",
                 background: surface.card,
               }}
@@ -95,7 +95,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {upcoming.map((b) => (
-              <div key={b.id} style={{ padding: "10px 12px", border: border.line, borderRadius: "var(--scout-radius)", background: surface.inset }}>
+              <div key={b.id} style={{ padding: "10px 12px", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", background: surface.inset }}>
                 <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px", color: color.stone }}>
                   {b.title ?? "Session"}
                 </p>

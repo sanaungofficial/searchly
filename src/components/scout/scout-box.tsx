@@ -11,6 +11,9 @@ type ScoutBoxProps = {
   flat?: boolean;
   style?: CSSProperties;
   className?: string;
+  onClick?: () => void;
+  role?: string;
+  tabIndex?: number;
 };
 
 /** Bordered surface — white card on cream page with soft bottom elevation */
@@ -22,10 +25,26 @@ export function ScoutBox({
   flat = false,
   style,
   className,
+  onClick,
+  role,
+  tabIndex,
 }: ScoutBoxProps) {
   return (
     <div
       className={className}
+      role={role}
+      tabIndex={tabIndex}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       style={{
         background: bg,
         border: "var(--scout-border)",
@@ -170,7 +189,7 @@ export function ScoutPrimaryBtn({
         padding: "8px 16px",
         background: disabled ? "rgba(26,58,47,0.35)" : "var(--scout-forest)",
         color: "var(--scout-gold)",
-        border: border.lineStrong,
+        border: "var(--scout-border)",
         opacity: disabled ? 0.7 : 1,
         ...style,
       }}
@@ -240,7 +259,7 @@ export function ScoutSecondaryBtn({
         padding: "8px 16px",
         background: active ? "var(--scout-forest)" : surface.card,
         color: active ? "var(--scout-gold)" : "var(--scout-forest)",
-        border: border.lineStrong,
+        border: "var(--scout-border)",
         ...style,
       }}
     >

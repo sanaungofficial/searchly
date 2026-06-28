@@ -10,6 +10,7 @@ export function InboxPageClient() {
 
   return (
     <div
+      className="bruddle"
       style={{
         height: "100%",
         minHeight: 0,

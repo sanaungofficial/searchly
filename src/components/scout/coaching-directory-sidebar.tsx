@@ -19,7 +19,7 @@ type OrgSuggestItem = {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.bodySm,
@@ -60,7 +60,7 @@ function FilterSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ borderBottom: border.line, paddingBottom: 14, marginBottom: 14 }}>
+    <div style={{ borderBottom: "var(--scout-border)", paddingBottom: 14, marginBottom: 14 }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -177,7 +177,7 @@ function CoachCompanyFilter({
             justifyContent: "space-between",
             gap: 8,
             padding: "8px 10px",
-            border: border.line,
+            border: "var(--scout-border)",
             background: "rgba(26,58,47,0.06)",
             marginBottom: 8,
           }}
@@ -217,7 +217,7 @@ function CoachCompanyFilter({
             right: 0,
             zIndex: 20,
             background: surface.card,
-            border: border.line,
+            border: "var(--scout-border)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
             maxHeight: 240,
             overflowY: "auto",
@@ -248,7 +248,7 @@ function CoachCompanyFilter({
                     gap: 10,
                     padding: "10px 12px",
                     border: "none",
-                    borderBottom: border.line,
+                    borderBottom: "var(--scout-border)",
                     background: active ? "rgba(26,58,47,0.08)" : surface.card,
                     cursor: "pointer",
                     textAlign: "left",

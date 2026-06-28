@@ -388,7 +388,7 @@ export function InboxMailView({
             alignItems: "center",
             gap: 10,
             padding: "8px 16px",
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             background: surface.card,
           }}
         >
@@ -401,7 +401,7 @@ export function InboxMailView({
               flex: 1,
               minWidth: 0,
               padding: "8px 12px",
-              border: border.line,
+              border: "var(--scout-border)",
               borderRadius: 8,
               fontFamily: fontSans,
               fontSize: T.bodySm,
@@ -415,7 +415,7 @@ export function InboxMailView({
               style={{
                 padding: "7px 11px",
                 borderRadius: 8,
-                border: border.line,
+                border: "var(--scout-border)",
                 background: meetingsCollapsed ? surface.card : "rgba(42,107,74,0.08)",
                 fontFamily: fontSans,
                 fontSize: 11,
@@ -453,7 +453,7 @@ export function InboxMailView({
               minWidth: 0,
               overflowY: "auto",
               background: surface.card,
-              borderRight: showMeetingsPanel ? border.line : undefined,
+              borderRight: showMeetingsPanel ? "var(--scout-border)" : undefined,
             }}
           >
             {listLoading && (
@@ -466,7 +466,7 @@ export function InboxMailView({
             {messages.map((msg) => {
               const expanded = msg.id === expandedId;
               return (
-                <div key={msg.id} style={{ borderBottom: border.line }}>
+                <div key={msg.id} style={{ borderBottom: "var(--scout-border)" }}>
                   <InboxMessageRow
                     msg={msg}
                     expanded={expanded}
@@ -563,13 +563,13 @@ export function InboxMailView({
               maxHeight: "90vh",
               overflow: "auto",
               background: surface.card,
-              border: border.lineStrong,
+              border: "var(--scout-border)",
               borderRadius: 12,
               zIndex: 1001,
               boxShadow: "8px 8px 0 rgba(17,17,17,0.08)",
             }}
           >
-            <div style={{ padding: "16px 20px", borderBottom: border.line, display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "var(--scout-border)", display: "flex", justifyContent: "space-between" }}>
               <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600 }}>New message</p>
               <button type="button" onClick={() => onComposeChange({ ...compose, open: false })} style={{ border: "none", background: "none", cursor: "pointer" }}>
                 ✕
@@ -587,7 +587,7 @@ export function InboxMailView({
                     width: "100%",
                     marginTop: 4,
                     padding: "10px 12px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                     borderRadius: 8,
                     fontFamily: fontSans,
                     fontSize: T.bodySm,
@@ -605,7 +605,7 @@ export function InboxMailView({
                     width: "100%",
                     marginTop: 4,
                     padding: "10px 12px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                     borderRadius: 8,
                     fontFamily: fontSans,
                     fontSize: T.bodySm,
@@ -623,7 +623,7 @@ export function InboxMailView({
                     width: "100%",
                     marginTop: 4,
                     padding: "10px 12px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                     borderRadius: 8,
                     fontFamily: fontSans,
                     fontSize: T.bodySm,

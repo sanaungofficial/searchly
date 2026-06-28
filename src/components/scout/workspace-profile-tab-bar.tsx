@@ -92,7 +92,7 @@ export function WorkspaceProfileTabBar({
               style={{
                 padding: isMobile ? "10px 16px" : "10px 20px",
                 minHeight: 40,
-                border: active ? `1px solid ${color.forest}` : border.line,
+                border: active ? `1px solid ${color.forest}` : "var(--scout-border)",
                 background: active ? color.forest : surface.card,
                 color: active ? color.gold : color.muted,
                 fontFamily: fontSans,
@@ -116,7 +116,7 @@ export function WorkspaceProfileTabBar({
       style={{
         display: "inline-flex",
         maxWidth: "100%",
-        border: border.line,
+        border: "var(--scout-border)",
         overflowX: "auto",
         WebkitOverflowScrolling: "touch",
         scrollbarWidth: "none",
@@ -136,7 +136,7 @@ export function WorkspaceProfileTabBar({
               padding: isMobile ? "10px 14px" : "8px 16px",
               minHeight: 44,
               border: "none",
-              borderRight: i < tabs.length - 1 ? border.line : "none",
+              borderRight: i < tabs.length - 1 ? "var(--scout-border)" : "none",
               background: active ? color.forest : surface.card,
               color: active ? color.gold : color.muted,
               fontFamily: fontSans,

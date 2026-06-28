@@ -86,7 +86,7 @@ export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: 
         style={{
           width: 40,
           border: "none",
-          borderLeft: border.line,
+          borderLeft: "var(--scout-border)",
           background: surface.page,
           cursor: "pointer",
           color: color.forest,
@@ -104,7 +104,7 @@ export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: 
       style={{
         width: 280,
         flexShrink: 0,
-        borderLeft: border.line,
+        borderLeft: "var(--scout-border)",
         background: surface.inset,
         display: "flex",
         flexDirection: "column",
@@ -114,7 +114,7 @@ export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: 
       <div
         style={{
           padding: "14px 16px",
-          borderBottom: border.line,
+          borderBottom: "var(--scout-border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -171,7 +171,7 @@ export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: 
                     padding: "10px 12px",
                     borderRadius: 10,
                     background: surface.card,
-                    border: border.line,
+                    border: "var(--scout-border)",
                   }}
                 >
                   <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.label, color: color.muted }}>

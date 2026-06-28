@@ -64,6 +64,7 @@ function CategoryInner({
   return (
     <>
       <WorkspacePageShell
+        bruddle
         isMobile={isMobile}
         label="1:1 coaching"
         mobileBarTitle={category}
@@ -94,7 +95,7 @@ export function CoachingCategoryClient({
 
   if (!category) {
     return (
-      <WorkspacePageShell isMobile={isMobile} label="Coaching" mobileBarTitle="Coaching" title="Category not found">
+      <WorkspacePageShell bruddle isMobile={isMobile} label="Coaching" mobileBarTitle="Coaching" title="Category not found">
         <p style={{ fontFamily: fontSans, color: color.muted }}>
           We couldn&apos;t find that category. <Link href="/coaching" style={{ color: color.forest }}>Browse all coaches</Link>
         </p>

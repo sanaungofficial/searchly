@@ -90,7 +90,7 @@ export function ProfileLayoutSidebar({
       <div
         style={{
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           overflow: "hidden",
           boxShadow: "var(--scout-shadow-card)",
@@ -216,7 +216,7 @@ export function ProfileLayoutSidebar({
                 width: "100%",
                 marginTop: 10,
                 padding: "8px 10px",
-                border: border.line,
+                border: "var(--scout-border)",
                 borderRadius: "calc(var(--scout-radius) - 2px)",
                 background: surface.inset,
                 cursor: "pointer",
@@ -238,7 +238,7 @@ export function ProfileLayoutSidebar({
       <nav
         style={{
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           padding: 6,
           boxShadow: "var(--scout-shadow-card)",

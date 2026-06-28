@@ -180,7 +180,7 @@ function TargetRoleSelect({
         width: "100%",
         maxWidth: 220,
         padding: "8px 10px",
-        border: border.lineStrong,
+        border: "var(--scout-border)",
         background: surface.card,
         fontFamily: fontSans,
         fontSize: T.bodySm,
@@ -279,7 +279,7 @@ function UpskillNextStepCard({
               style={{
                 padding: "6px 12px",
                 background: surface.card,
-                border: border.lineStrong,
+                border: "var(--scout-border)",
                 fontFamily: fontSans,
                 fontSize: T.caption,
                 color: color.forest,
@@ -1411,10 +1411,10 @@ function DreamRoleTab({
           const isLoading = result === "loading";
 
           return (
-            <ScoutBox key={role} padding={0} style={{ overflow: "hidden", borderColor: isOpen ? color.forest : border.line }}>
+            <ScoutBox key={role} padding={0} style={{ overflow: "hidden", borderColor: isOpen ? color.forest : "var(--scout-border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
                 {loaded ? (
-                  <div style={{ width: 44, height: 44, background: scoreColor(loaded.fitScore), border: border.lineStrong, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 44, height: 44, background: scoreColor(loaded.fitScore), border: "var(--scout-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 700, color: loaded.fitScore >= 50 ? color.gold : "#FFFFFF" }}>{loaded.fitScore}%</span>
                   </div>
                 ) : isLoading ? (
@@ -1462,7 +1462,7 @@ function DreamRoleTab({
                     <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       Resume for this role
                     </label>
-                    <div style={{ padding: 12, background: surface.inset, border: border.line }}>
+                    <div style={{ padding: 12, background: surface.inset, border: "var(--scout-border)" }}>
                       <select
                         value={resumeIdForRole(role) ?? ""}
                         onChange={(e) => void handleResumeChange(role, e.target.value)}
@@ -1471,7 +1471,7 @@ function DreamRoleTab({
                           width: "100%",
                           maxWidth: 420,
                           padding: "10px 12px",
-                          border: border.lineStrong,
+                          border: "var(--scout-border)",
                           background: surface.card,
                           fontFamily: fontSans,
                           fontSize: T.bodySm,
@@ -1552,7 +1552,7 @@ function DreamRoleTab({
                                         <div
                                           style={{
                                             marginTop: 6,
-                                            border: border.lineStrong,
+                                            border: "var(--scout-border)",
                                             background: surface.card,
                                             boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                                             minWidth: 220,
@@ -1566,7 +1566,7 @@ function DreamRoleTab({
                                               onAddToPortfolio(skill);
                                               setSkillMenu(null);
                                             }}
-                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: border.line, background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "var(--scout-border)", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
                                           >
                                             Add to my skills
                                           </button>
@@ -1779,7 +1779,7 @@ function ProgramLinks({ programs }: { programs: UpskillProgram[] }) {
             flexDirection: "column",
             gap: 4,
             padding: "12px 14px",
-            border: border.lineStrong,
+            border: "var(--scout-border)",
             background: surface.card,
             textDecoration: "none",
             transition: "background 0.15s",
@@ -2019,7 +2019,7 @@ function LearningTab({
                   value={newSkillName}
                   onChange={(e) => setNewSkillName(e.target.value)}
                   placeholder="e.g. Market analysis"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
                 />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
@@ -2027,7 +2027,7 @@ function LearningTab({
                 <select
                   value={newSkillRole || dreamList[0] || "__custom__"}
                   onChange={(e) => setNewSkillRole(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card }}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card }}
                 >
                   {dreamList.map((role) => (
                     <option key={role} value={role}>{role}</option>
@@ -2042,7 +2042,7 @@ function LearningTab({
                     value={customSkillRole}
                     onChange={(e) => setCustomSkillRole(e.target.value)}
                     placeholder="Role name"
-                    style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
               )}
@@ -2089,7 +2089,7 @@ function LearningTab({
       </div>
 
       {/* Progress bar */}
-      <ScoutBox flat padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: border.lineStrong }}>
+      <ScoutBox flat padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: "var(--scout-border)" }}>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
           <div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -2281,7 +2281,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: surface.card,
-          border: border.lineStrong,
+          border: "var(--scout-border)",
           padding: isMobile ? "36px 24px 28px" : "44px 40px 36px",
           width: 540,
           maxWidth: "90vw",
@@ -2300,7 +2300,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
             width: 32,
             height: 32,
             background: color.forest,
-            border: border.line,
+            border: "var(--scout-border)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -2411,7 +2411,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
             right: 0,
             top: "calc(100% + 4px)",
             background: surface.card,
-            border: border.line,
+            border: "var(--scout-border)",
             boxShadow: "4px 4px 0 rgba(17,17,17,0.06)",
             minWidth: 180,
             zIndex: 100,
@@ -2481,7 +2481,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
               padding: "8px 16px",
               background: surface.card,
               color: color.forest,
-              border: border.line,
+              border: "var(--scout-border)",
               fontSize: T.caption,
               fontWeight: 600,
               cursor: "pointer",
@@ -2526,7 +2526,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                 key={r.id}
                 style={{
                   padding: "14px 16px",
-                  borderBottom: index < resumes.length - 1 ? border.line : "none",
+                  borderBottom: index < resumes.length - 1 ? "var(--scout-border)" : "none",
                   position: "relative",
                 }}
               >
@@ -2537,7 +2537,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                     style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", flex: 1, minWidth: 0 }}
                   >
                     <div style={{
-                      width: 32, height: 32, background: color.forest, border: border.line,
+                      width: 32, height: 32, background: color.forest, border: "var(--scout-border)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       flexShrink: 0,
                     }}>
@@ -2597,7 +2597,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
           display: "grid",
           gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
           padding: "10px 20px",
-          borderBottom: border.line,
+          borderBottom: "var(--scout-border)",
           background: surface.inset,
         }}>
           {["Resume", "Target role", "Last modified", "Created", ""].map((col) => (
@@ -2626,7 +2626,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                 gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
                 padding: "14px 20px",
                 alignItems: "center",
-                borderBottom: border.line,
+                borderBottom: "var(--scout-border)",
                 position: "relative",
                 cursor: "pointer",
               }}
@@ -2635,7 +2635,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
-                  width: 32, height: 32, background: color.forest, border: border.line,
+                  width: 32, height: 32, background: color.forest, border: "var(--scout-border)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                 }}>
@@ -2719,7 +2719,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                 onClick={() => setDocFilter(key)}
                 style={{
                   padding: "6px 12px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   background: docFilter === key ? "rgba(26,58,47,0.08)" : surface.card,
                   fontFamily: fontSans,
                   fontSize: T.caption,
@@ -2811,7 +2811,7 @@ function ReadbackCard({
       style={{
         marginBottom: embedded ? 0 : (isMobile ? 16 : 20),
         height: embedded && !isMobile ? "100%" : undefined,
-        ...(embedded ? { borderColor: border.lineStrong, background: "#FFFFFF" } : {}),
+        ...(embedded ? { borderColor: "var(--scout-border)", background: "#FFFFFF" } : {}),
       }}
     >
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
@@ -2849,7 +2849,7 @@ function ReadbackCard({
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{displayData.picture}</p>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
             {displayData.strengths.map((s) => (
-              <span key={s} style={{ padding: "4px 10px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>{s}</span>
+              <span key={s} style={{ padding: "4px 10px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>{s}</span>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
@@ -2857,7 +2857,7 @@ function ReadbackCard({
               const c = r.fit === "Strong match" ? "#1A3A2F" : r.fit === "Good fit" ? "#C4A86A" : "var(--scout-muted)";
               const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
               return (
-                <span key={r.role} style={{ padding: "4px 10px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: c }}>{r.role} · {r.fit}</span>
+                <span key={r.role} style={{ padding: "4px 10px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.caption, color: c }}>{r.role} · {r.fit}</span>
               );
             })}
           </div>
@@ -3555,7 +3555,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
             width: "100%",
             padding: "10px 0",
             border: "none",
-            borderBottom: i < missingItems.length - 1 ? border.line : "none",
+            borderBottom: i < missingItems.length - 1 ? "var(--scout-border)" : "none",
             background: "transparent",
             cursor: "pointer",
             textAlign: "left",
@@ -3569,7 +3569,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   ) : null;
 
   return (
-    <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
+    <div className="bruddle" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
       <WorkspaceScroll ref={scrollRef}>
         <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (
@@ -3624,7 +3624,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   )}
                 </button>
                 {showChecklist && missingItems.length > 0 && (
-                  <div style={{ marginTop: 12, borderTop: border.line, paddingTop: 8 }}>
+                  <div style={{ marginTop: 12, borderTop: "var(--scout-border)", paddingTop: 8 }}>
                     {missingItems.map((item, i) => (
                       <button
                         key={item.label}
@@ -3637,7 +3637,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                           width: "100%",
                           padding: "10px 0",
                           border: "none",
-                          borderBottom: i < missingItems.length - 1 ? border.line : "none",
+                          borderBottom: i < missingItems.length - 1 ? "var(--scout-border)" : "none",
                           background: "transparent",
                           cursor: "pointer",
                           textAlign: "left",
@@ -3666,7 +3666,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         )}
 
         {isMobile && (
-          <div style={{ display: "flex", border: border.line, overflowX: "auto", marginBottom: page === "about" ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flexShrink: 0 }}>
+          <div style={{ display: "flex", border: "var(--scout-border)", overflowX: "auto", marginBottom: page === "about" ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flexShrink: 0 }}>
             {PAGE_TABS.map(({ id, label }, i) => (
               <button
                 key={id}
@@ -3675,7 +3675,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   padding: "10px 14px",
                   minHeight: 44,
                   border: "none",
-                  borderRight: i < PAGE_TABS.length - 1 ? border.line : "none",
+                  borderRight: i < PAGE_TABS.length - 1 ? "var(--scout-border)" : "none",
                   background: page === id ? color.forest : surface.card,
                   color: page === id ? color.gold : color.muted,
                   fontFamily: fontSans,
@@ -3708,7 +3708,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 style={{
                   padding: "6px 12px",
                   minHeight: 44,
-                  border: activeSection === s ? border.lineStrong : border.line,
+                  border: activeSection === s ? "var(--scout-border)" : "var(--scout-border)",
                   background: activeSection === s ? surface.card : "transparent",
                   color: activeSection === s ? color.forest : color.muted,
                   fontFamily: fontSans,

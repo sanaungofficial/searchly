@@ -467,7 +467,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {actionItemsOpen && (
         <>
           {/* Progress bar */}
-          <div style={{ height: 5, borderRadius: 3, background: surface.inset, border: "var(--scout-border)", overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ height: 5, borderRadius: "var(--scout-radius)", background: surface.inset, border: "var(--scout-border)", overflow: "hidden", marginBottom: 12 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
           </div>
 
@@ -612,10 +612,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
       </div>
 
       {loading ? (
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>Loading…</p>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading…</p>
       ) : goals.length === 0 ? (
         <div>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
             What are you trying to achieve? You can add up to {DASHBOARD_GOAL_MAX} goals.
           </p>
           {canAdd && (
@@ -632,7 +632,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             return (
               <div key={goal.id} style={{ borderBottom: "var(--scout-border)", paddingBottom: 12 }}>
                 {targetLabel && (
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>{targetLabel}</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>{targetLabel}</p>
                 )}
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px", lineHeight: 1.4 }}>
                   {goal.label}
@@ -734,11 +734,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={44} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
                 {new Date(bookedCoach.startAt) >= new Date() ? "Upcoming session" : "Recent session"}
               </p>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{bookedCoach.coach.displayName}</p>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
                 {new Date(bookedCoach.startAt) >= new Date() ? formatBookingWhen(bookedCoach.startAt) : `Last · ${formatBookingWhen(bookedCoach.startAt)}`}
               </p>
             </div>
@@ -815,7 +815,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                       {session.hostInitials}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.host}</p>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.host}</p>
                       {session.hostRating != null && (
                         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "2px 0 0" }}>★ {session.hostRating.toFixed(1)} ({session.hostReviews})</p>
                       )}

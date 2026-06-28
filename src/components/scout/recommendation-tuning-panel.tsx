@@ -43,7 +43,7 @@ export function RecommendationTuningPanel({ input, isMobile, onFixGap }: Props) 
           height: 6,
           borderRadius: 3,
           background: surface.inset,
-          border: border.line,
+          border: "var(--scout-border)",
           overflow: "hidden",
           marginBottom: gaps.length ? 14 : 0,
         }}
@@ -71,7 +71,7 @@ export function RecommendationTuningPanel({ input, isMobile, onFixGap }: Props) 
                 gap: 12,
                 width: "100%",
                 padding: "10px 12px",
-                border: border.line,
+                border: "var(--scout-border)",
                 borderRadius: "var(--scout-radius)",
                 background: surface.inset,
                 cursor: "pointer",

@@ -73,9 +73,9 @@ export function InboxInsightRow({ activity, jobs, onOpenMail, onAction, compact 
           gap: 12,
           alignItems: "flex-start",
           padding: compact ? "10px 0" : "12px 14px",
-          borderBottom: compact ? border.line : undefined,
+          borderBottom: compact ? "var(--scout-border)" : undefined,
           background: compact ? undefined : surface.card,
-          border: compact ? undefined : border.line,
+          border: compact ? undefined : "var(--scout-border)",
           borderRadius: compact ? undefined : "var(--scout-radius)",
         }}
       >
@@ -142,7 +142,7 @@ export function InboxInsightRow({ activity, jobs, onOpenMail, onAction, compact 
         gap: 14,
         alignItems: "flex-start",
         padding: compact ? "12px 0" : "14px 16px",
-        borderBottom: border.line,
+        borderBottom: "var(--scout-border)",
         background: compact ? undefined : "rgba(42,107,74,0.04)",
       }}
     >
@@ -188,7 +188,7 @@ export function InboxInsightRow({ activity, jobs, onOpenMail, onAction, compact 
               padding: "8px 10px",
               fontFamily: fontSans,
               fontSize: T.caption,
-              border: border.line,
+              border: "var(--scout-border)",
               borderRadius: "var(--scout-radius)",
             }}
           >
