@@ -467,7 +467,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {actionItemsOpen && (
         <>
           {/* Progress bar */}
-          <div style={{ height: 5, borderRadius: 3, background: surface.inset, border: border.line, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ height: 5, borderRadius: 3, background: surface.inset, border: "var(--scout-border)", overflow: "hidden", marginBottom: 12 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: barColor, transition: "width 0.4s ease" }} />
           </div>
 
@@ -485,7 +485,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                   gap: 12,
                   width: "100%",
                   padding: "10px 12px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   borderRadius: "var(--scout-radius)",
                   background: surface.inset,
                   cursor: "pointer",
@@ -599,7 +599,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                 onClick={openGoalModal}
                 aria-label="Add goal"
                 style={{
-                  width: 28, height: 28, border: border.line, borderRadius: "var(--scout-radius)",
+                  width: 28, height: 28, border: "var(--scout-border)", borderRadius: "var(--scout-radius)",
                   background: surface.inset, cursor: "pointer", fontFamily: fontSans,
                   fontSize: 18, lineHeight: 1, color: color.forest,
                 }}
@@ -630,7 +630,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             const targetLabel = formatGoalTargetDate(goal.targetDate);
             const isEditingTarget = editingTargetId === goal.id;
             return (
-              <div key={goal.id} style={{ borderBottom: border.line, paddingBottom: 12 }}>
+              <div key={goal.id} style={{ borderBottom: "var(--scout-border)", paddingBottom: 12 }}>
                 {targetLabel && (
                   <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>{targetLabel}</p>
                 )}
@@ -712,7 +712,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             }
           />
           {assignedCoaches.map((coach) => (
-            <div key={coach.coachProfileId} style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: assignedCoaches.length > 1 ? 12 : 0, borderBottom: assignedCoaches.length > 1 ? border.line : undefined }}>
+            <div key={coach.coachProfileId} style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: assignedCoaches.length > 1 ? 12 : 0, borderBottom: assignedCoaches.length > 1 ? "var(--scout-border)" : undefined }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={44} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -775,8 +775,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
           )}
           {!isMobile && eventSessions.length > 2 && (
             <>
-              <button type="button" onClick={() => scrollEvents(-1)} aria-label="Previous" style={{ width: 28, height: 28, border: border.line, borderRadius: "var(--scout-radius)", background: surface.card, cursor: "pointer", fontFamily: fontSans }}>←</button>
-              <button type="button" onClick={() => scrollEvents(1)} aria-label="Next" style={{ width: 28, height: 28, border: border.line, borderRadius: "var(--scout-radius)", background: surface.card, cursor: "pointer", fontFamily: fontSans }}>→</button>
+              <button type="button" onClick={() => scrollEvents(-1)} aria-label="Previous" style={{ width: 28, height: 28, border: "var(--scout-border)", borderRadius: "var(--scout-radius)", background: surface.card, cursor: "pointer", fontFamily: fontSans }}>←</button>
+              <button type="button" onClick={() => scrollEvents(1)} aria-label="Next" style={{ width: 28, height: 28, border: "var(--scout-border)", borderRadius: "var(--scout-radius)", background: surface.card, cursor: "pointer", fontFamily: fontSans }}>→</button>
             </>
           )}
         </div>
