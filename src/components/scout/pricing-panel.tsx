@@ -10,12 +10,13 @@ import {
   FREE_FOR_ALL_FEATURES,
   type BillingInterval,
 } from "@/lib/plan-config";
+import { bruddleHeadingStyle, color, fontSans, radius, type as T } from "@/lib/typography";
 
 function CheckIcon({ ok }: { ok: boolean }) {
   return ok ? (
-    <span style={{ color: "#4A8B6A", fontWeight: 700, fontSize: 18 }}>✓</span>
+    <span style={{ color: color.forest, fontWeight: 700, fontSize: 16 }}>✓</span>
   ) : (
-    <span style={{ color: "#C4574A", fontWeight: 700, fontSize: 18 }}>✕</span>
+    <span style={{ color: "#C4574A", fontWeight: 700, fontSize: 16 }}>✕</span>
   );
 }
 
@@ -71,21 +72,26 @@ export function PricingPanel({ compact = false }: Props) {
     }
   };
 
+  const btnStyle = {
+    width: "100%" as const,
+    padding: "10px 12px",
+    background: color.forest,
+    color: color.gold,
+    border: "var(--scout-border)",
+    borderRadius: radius.px,
+    fontFamily: fontSans,
+    fontWeight: 600,
+    cursor: "pointer" as const,
+    fontSize: T.btnSm,
+  };
+
   return (
-    <div style={{ fontFamily: "var(--font-ui), sans-serif" }}>
+    <div style={{ fontFamily: fontSans }}>
       <div style={{ textAlign: "center", marginBottom: compact ? 24 : 40 }}>
-        <h2
-          style={{
-            margin: "0 0 8px",
-            fontSize: compact ? 22 : 36,
-            fontWeight: 700,
-            color: "#1C3A2F",
-            letterSpacing: "-0.5px",
-          }}
-        >
+        <h2 style={{ ...bruddleHeadingStyle(compact ? "h4" : "h3"), color: color.forest, marginBottom: 8 }}>
           Kimchi Pro — unlimited AI for your search
         </h2>
-        <p style={{ margin: 0, fontSize: compact ? 14 : 16, color: "#52493F" }}>
+        <p style={{ margin: 0, fontSize: compact ? T.bodySm : T.body, color: color.stone, lineHeight: 1.55 }}>
           Match analysis, tailoring, cover letters, and Scout with no credit limits. Coaching access included.
         </p>
       </div>
@@ -93,7 +99,7 @@ export function PricingPanel({ compact = false }: Props) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: compact ? "repeat(3, 1fr)" : "repeat(3, 1fr)",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: 10,
           maxWidth: 720,
           margin: "0 auto 32px",
@@ -109,12 +115,13 @@ export function PricingPanel({ compact = false }: Props) {
               onClick={() => setInterval(key)}
               style={{
                 position: "relative",
-                background: selected ? (p.popular ? "#4A8B6A" : "#1C3A2F") : "#FFFDF9",
-                border: selected ? "2px solid #1C3A2F" : "1px solid #E5DDD0",
-                borderRadius: "var(--scout-radius)",
+                background: selected ? color.forest : "#FFFFFF",
+                border: selected ? "var(--scout-border)" : "var(--scout-border)",
+                borderRadius: radius.px,
                 padding: compact ? "16px 12px" : "20px 16px",
                 cursor: "pointer",
                 textAlign: "center",
+                boxShadow: selected ? "3px 3px 0 #161616" : undefined,
               }}
             >
               {p.popular && (
@@ -124,30 +131,46 @@ export function PricingPanel({ compact = false }: Props) {
                     top: -10,
                     left: "50%",
                     transform: "translateX(-50%)",
-                    background: "#4A8B6A",
-                    color: "#fff",
+                    background: color.forest,
+                    color: color.gold,
                     fontSize: 10,
                     fontWeight: 700,
                     padding: "3px 10px",
-                    borderRadius: 20,
+                    border: "var(--scout-border)",
+                    borderRadius: radius.px,
                     whiteSpace: "nowrap",
                   }}
                 >
-                  🔥 MOST POPULAR
+                  Most popular
                 </span>
               )}
-              <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: selected ? "#E8D5A3" : "#52493F" }}>
+              <p
+                style={{
+                  margin: "0 0 6px",
+                  fontSize: T.bodySm,
+                  fontWeight: 600,
+                  color: selected ? color.gold : color.stone,
+                }}
+              >
                 {p.label}
               </p>
-              <p style={{ margin: 0, fontSize: compact ? 22 : 28, fontWeight: 700, color: selected ? "#E8D5A3" : "#1C3A2F" }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: fontSans,
+                  fontSize: compact ? 22 : 28,
+                  fontWeight: 700,
+                  color: selected ? color.gold : color.forest,
+                }}
+              >
                 ${p.price.toFixed(2)}
               </p>
               {p.compareAt && (
                 <p
                   style={{
                     margin: "4px 0 0",
-                    fontSize: 11,
-                    color: selected ? "rgba(232,213,163,0.6)" : "#8A7F72",
+                    fontSize: T.label,
+                    color: selected ? "rgba(232,213,163,0.6)" : color.mutedLight,
                     textDecoration: "line-through",
                   }}
                 >
@@ -161,17 +184,24 @@ export function PricingPanel({ compact = false }: Props) {
                     marginTop: 6,
                     fontSize: 10,
                     fontWeight: 700,
-                    color: selected ? "#1C3A2F" : "#4A8B6A",
-                    background: selected ? "#E8D5A3" : "rgba(74,139,106,0.12)",
+                    color: selected ? color.forest : color.forest,
+                    background: selected ? color.gold : "rgba(26,58,47,0.08)",
                     padding: "2px 8px",
-                    borderRadius: 20,
+                    border: selected ? "var(--scout-border)" : "none",
+                    borderRadius: radius.px,
                   }}
                 >
                   Save {p.savePct}%
                 </span>
               )}
               {p.perMonthNote && (
-                <p style={{ margin: "6px 0 0", fontSize: 10, color: selected ? "rgba(232,213,163,0.5)" : "#8A7F72" }}>
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: 10,
+                    color: selected ? "rgba(232,213,163,0.55)" : color.mutedLight,
+                  }}
+                >
                   {p.perMonthNote}
                 </p>
               )}
@@ -182,40 +212,29 @@ export function PricingPanel({ compact = false }: Props) {
 
       <div
         style={{
-          background: "#FFFDF9",
-          border: "1px solid #E5DDD0",
-          borderRadius: "var(--scout-radius)",
+          background: "#FFFFFF",
+          border: "var(--scout-border)",
+          borderRadius: radius.px,
           overflow: "hidden",
           textAlign: "left",
+          boxShadow: "3px 3px 0 #161616",
         }}
       >
         <div
           style={{
             display: "grid",
             gridTemplateColumns: compact ? "1fr 120px 120px" : "1fr 180px 180px",
-            borderBottom: "1px solid #EEE9E2",
-            background: "#FAFAF8",
+            borderBottom: "var(--scout-border)",
+            background: "#FAF4F0",
           }}
         >
           <div style={{ padding: compact ? "12px 16px" : "16px 20px" }} />
-          <div style={{ padding: "12px", textAlign: "center", borderLeft: "1px solid #EEE9E2" }}>
-            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#1C3A2F" }}>KIMCHI PRO</p>
+          <div style={{ padding: "12px", textAlign: "center", borderLeft: "var(--scout-border)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: T.label, fontWeight: 700, color: color.forest, letterSpacing: "0.04em" }}>
+              KIMCHI PRO
+            </p>
             {proUser ? (
-              <button
-                type="button"
-                onClick={() => openPortal()}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  background: "#1C3A2F",
-                  color: "#E8D5A3",
-                  border: "none",
-                  borderRadius: "var(--scout-radius)",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: 12,
-                }}
-              >
+              <button type="button" onClick={() => openPortal()} style={btnStyle}>
                 Manage billing
               </button>
             ) : (
@@ -223,25 +242,17 @@ export function PricingPanel({ compact = false }: Props) {
                 type="button"
                 onClick={handleUpgrade}
                 disabled={loading || subLoading || authLoading}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  background: "#1C3A2F",
-                  color: "#E8D5A3",
-                  border: "none",
-                  borderRadius: "var(--scout-radius)",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: 12,
-                }}
+                style={{ ...btnStyle, opacity: loading || subLoading || authLoading ? 0.7 : 1 }}
               >
                 {loading ? "Redirecting…" : "Upgrade to Pro"}
               </button>
             )}
           </div>
-          <div style={{ padding: "12px", textAlign: "center", borderLeft: "1px solid #EEE9E2" }}>
-            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#52493F" }}>FREE PLAN</p>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1C3A2F" }}>$0.00</p>
+          <div style={{ padding: "12px", textAlign: "center", borderLeft: "var(--scout-border)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: T.label, fontWeight: 700, color: color.stone, letterSpacing: "0.04em" }}>
+              FREE PLAN
+            </p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: color.forest }}>$0.00</p>
             {isLoggedIn && !proUser && (
               <span
                 style={{
@@ -249,13 +260,14 @@ export function PricingPanel({ compact = false }: Props) {
                   marginTop: 6,
                   fontSize: 10,
                   fontWeight: 600,
-                  color: "#4A8B6A",
-                  background: "rgba(74,139,106,0.12)",
+                  color: color.forest,
+                  background: "rgba(26,58,47,0.08)",
                   padding: "3px 8px",
-                  borderRadius: 20,
+                  border: "var(--scout-border)",
+                  borderRadius: radius.px,
                 }}
               >
-                Your Current Plan
+                Your current plan
               </span>
             )}
           </div>
@@ -267,22 +279,22 @@ export function PricingPanel({ compact = false }: Props) {
             style={{
               display: "grid",
               gridTemplateColumns: compact ? "1fr 120px 120px" : "1fr 180px 180px",
-              borderBottom: "1px solid #EEE9E2",
+              borderBottom: "var(--scout-border)",
               alignItems: "center",
             }}
           >
             <div style={{ padding: compact ? "10px 16px" : "14px 20px" }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1C3A2F" }}>{row.name}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#8A7F72" }}>{row.description}</p>
+              <p style={{ margin: 0, fontSize: T.bodySm, fontWeight: 600, color: "#161616" }}>{row.name}</p>
+              <p style={{ margin: "2px 0 0", fontSize: T.label, color: color.muted }}>{row.description}</p>
             </div>
             <div
               style={{
                 padding: "10px",
                 textAlign: "center",
-                borderLeft: "1px solid #EEE9E2",
-                fontSize: 12,
+                borderLeft: "var(--scout-border)",
+                fontSize: T.bodySm,
                 fontWeight: 600,
-                color: "#1C3A2F",
+                color: color.forest,
               }}
             >
               {row.pro === "check" ? <CheckIcon ok /> : row.pro}
@@ -291,9 +303,9 @@ export function PricingPanel({ compact = false }: Props) {
               style={{
                 padding: "10px",
                 textAlign: "center",
-                borderLeft: "1px solid #EEE9E2",
-                fontSize: 12,
-                color: "#52493F",
+                borderLeft: "var(--scout-border)",
+                fontSize: T.bodySm,
+                color: color.stone,
               }}
             >
               {row.free === "check" ? <CheckIcon ok /> : row.free === "x" ? <CheckIcon ok={false} /> : row.free}
@@ -302,32 +314,45 @@ export function PricingPanel({ compact = false }: Props) {
         ))}
       </div>
 
-      {error && <p style={{ marginTop: 12, color: "#C4574A", fontSize: 13, textAlign: "center" }}>{error}</p>}
+      {error && (
+        <p style={{ marginTop: 12, color: "#C4574A", fontSize: T.bodySm, textAlign: "center" }}>{error}</p>
+      )}
 
       <div
         style={{
           marginTop: compact ? 24 : 48,
           textAlign: "left",
-          background: "#FFFDF9",
-          border: "1px solid #E5DDD0",
-          borderRadius: "var(--scout-radius)",
+          background: "#FFFFFF",
+          border: "var(--scout-border)",
+          borderRadius: radius.px,
           padding: compact ? "16px 20px" : "24px 28px",
+          boxShadow: "3px 3px 0 #161616",
         }}
       >
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#1C3A2F" }}>Included on every plan</p>
+        <p style={{ ...bruddleHeadingStyle("h6"), color: color.forest, marginBottom: 12 }}>Included on every plan</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
           {FREE_FOR_ALL_FEATURES.map((f) => (
-            <p key={f} style={{ margin: 0, fontSize: 13, color: "#52493F", display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ color: "#4A8B6A", fontWeight: 700 }}>✓</span> {f}
+            <p
+              key={f}
+              style={{
+                margin: 0,
+                fontSize: T.bodySm,
+                color: color.stone,
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ color: color.forest, fontWeight: 700 }}>✓</span> {f}
             </p>
           ))}
         </div>
       </div>
 
       {!isLoggedIn && !authLoading && !compact && (
-        <p style={{ marginTop: 20, textAlign: "center", fontSize: 14, color: "#52493F" }}>
+        <p style={{ marginTop: 20, textAlign: "center", fontSize: T.bodySm, color: color.stone }}>
           Already have an account?{" "}
-          <Link href="/login?next=/dashboard?pricing=1" style={{ color: "#1C3A2F", fontWeight: 600 }}>
+          <Link href="/login?next=/dashboard?pricing=1" style={{ color: color.forest, fontWeight: 600 }}>
             Log in
           </Link>
         </p>
