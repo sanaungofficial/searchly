@@ -371,7 +371,7 @@ export function CoachFiltersDrawer({
           <button type="button" onClick={() => { onClear(); onClose(); }} style={{ border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, cursor: "pointer", textDecoration: "underline" }}>
             Reset
           </button>
-          <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "var(--scout-border)", borderRadius: 999, background: color.forest, color: color.gold, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: "pointer" }}>
+          <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "var(--scout-border)", borderRadius: 999, background: color.cta, color: color.ctaForeground, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: "pointer" }}>
             Show results
           </button>
         </div>

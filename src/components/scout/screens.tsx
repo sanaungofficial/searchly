@@ -105,8 +105,8 @@ const ONBOARDING_LABEL_COLOR = "#2A2218";
 
 const PRIMARY_CTA: React.CSSProperties = {
   padding: "14px 30px",
-  background: "#1A3A2F",
-  color: "#E8D5A3",
+  background: "var(--scout-cta)",
+  color: "var(--scout-cta-foreground)",
   border: "none",
   borderRadius: "var(--scout-radius)",
   fontFamily: "var(--font-ui)",

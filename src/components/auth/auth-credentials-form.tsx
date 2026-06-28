@@ -228,8 +228,8 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
           disabled={loading}
           className="auth-btn"
           style={{
-            background: loading ? "rgba(26,58,47,0.35)" : "#1A3A2F",
-            color: "#E8D5A3",
+            background: loading ? "var(--scout-cta-muted)" : "var(--scout-cta)",
+            color: "var(--scout-cta-foreground)",
             border: "var(--scout-border)",
             fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",
