@@ -38,7 +38,7 @@ import {
 } from "@/lib/recommendation-tuning";
 import type { RelocationId, VisaNeedId, WorkArrangementId } from "@/lib/onboarding-preferences";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutFieldStyle, scoutInsetChipStyle } from "@/components/scout/scout-box";
-import { border, color, fontSans, fontDisplay, displayVariation, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
 
 type Props = {
   isMobile: boolean;
@@ -451,7 +451,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           marginBottom: actionItemsOpen ? 12 : 0,
         }}
       >
-        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
+        <span style={{ ...bruddleHeadingStyle("h5") }}>
           Your action items
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -523,8 +523,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
           👤
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>Update your profile</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.4 }}>Improve your Discovery Score</p>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Update your profile</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Improve your Discovery Score</p>
         </div>
         <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
       </ScoutBox>
@@ -539,8 +539,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
           🔍
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>Discover opportunities</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.4 }}>Browse roles matched to you</p>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Discover opportunities</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Browse roles matched to you</p>
         </div>
         <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
       </ScoutBox>
@@ -555,8 +555,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
           📞
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>Schedule a call</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.4 }}>Talk to our placement team</p>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 2px" }}>Schedule a call</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.4 }}>Talk to our placement team</p>
         </div>
         <span style={{ color: color.muted, fontSize: 14, flexShrink: 0 }}>→</span>
       </ScoutBox>
@@ -687,7 +687,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {!bookedCoach && assignedCoaches.length === 0 && (
         <ScoutBox padding={isMobile ? "16px 18px" : "18px 20px"} style={{ borderStyle: "dashed", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>My coaches</p>
+            <p style={{ ...bruddleHeadingStyle("h5"), margin: 0 }}>My coaches</p>
             <SectionHelpTip text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here." label="About My coaches" />
           </div>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0 }}>
@@ -716,8 +716,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={44} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{coach.displayName}</p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>{coach.headline?.slice(0, 80) ?? "Book your intro call to get started."}</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{coach.displayName}</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.45 }}>{coach.headline?.slice(0, 80) ?? "Book your intro call to get started."}</p>
                 </div>
               </div>
               <ScoutPrimaryBtn onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)} style={{ minHeight: 38, width: "100%" }}>
@@ -849,11 +849,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
         ) : initials(profile.name)}
       </div>
       <div>
-        <p style={{ fontFamily: fontDisplay, fontSize: isMobile ? 22 : 26, fontWeight: 500, fontVariationSettings: displayVariation, color: color.ink, margin: 0, lineHeight: 1.1 }}>
+        <p style={{ ...bruddleHeadingStyle(isMobile ? "h4" : "h3"), margin: 0 }}>
           Welcome, {profile.name.split(" ")[0]}
         </p>
         {profile.headline && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
             {profile.headline.slice(0, 80)}
           </p>
         )}

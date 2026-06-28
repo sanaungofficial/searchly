@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { border, color, radius, shadow, surface, displayTitleStyle } from "@/lib/typography";
+import { border, color, radius, shadow, surface, displayTitleStyle, type as T } from "@/lib/typography";
 
 type ScoutBoxProps = {
   children: ReactNode;
@@ -47,7 +47,7 @@ export const scoutFieldStyle: CSSProperties = {
   border: "var(--scout-border)",
   borderRadius: radius.box,
   fontFamily: "var(--font-ui)",
-  fontSize: 13,
+  fontSize: T.bodySm,
   color: color.ink,
   background: surface.card,
   boxSizing: "border-box",
@@ -138,8 +138,8 @@ export function KimchiBySecondLadder({
 
 const btnBase: CSSProperties = {
   fontFamily: "var(--font-ui)",
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: T.btnMd,
+  fontWeight: 700,
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",

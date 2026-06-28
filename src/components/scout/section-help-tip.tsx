@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import { border, color, fontSans, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, border, color, fontSans, type as T } from "@/lib/typography";
 
 type HelpTipProps = {
   text: string;
@@ -93,11 +93,7 @@ export function SectionHeadingWithHelp({
       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: trailing ? 1 : undefined, minWidth: 0 }}>
         <p
           style={{
-            fontFamily: fontSans,
-            fontSize: T.bodySm,
-            fontWeight: 700,
-            color: color.ink,
-            margin: 0,
+            ...bruddleHeadingStyle("h5"),
             ...titleStyle,
           }}
         >
