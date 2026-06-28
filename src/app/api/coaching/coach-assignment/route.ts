@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 export async function POST(req: NextRequest) {
   const me = await getClientCoachingUser(req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (me.role !== UserRole.USER) {
+  if (me.role !== UserRole.USER && me.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Only client accounts can save coaches here." }, { status: 403 });
   }
 
@@ -34,14 +34,20 @@ export async function POST(req: NextRequest) {
 
   const coach = await prisma.coachProfile.findUnique({
     where: { id: coachProfileId },
-    select: { id: true, displayName: true, isInternal: true, status: true },
+    select: { id: true, displayName: true, isInternal: true, requiresAssignment: true, status: true },
   });
   if (!coach || coach.status !== "ACTIVE") {
     return NextResponse.json({ error: "Coach not found" }, { status: 404 });
   }
-  if (coach.isInternal) {
+  if (coach.isInternal && me.role !== UserRole.ADMIN) {
     return NextResponse.json(
       { error: "Kimchi coaches are assigned by your team. Contact support if you need a change." },
+      { status: 400 },
+    );
+  }
+  if (coach.requiresAssignment && me.role !== UserRole.ADMIN) {
+    return NextResponse.json(
+      { error: "This coach requires assignment by an admin." },
       { status: 400 },
     );
   }
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const me = await getClientCoachingUser(req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (me.role !== UserRole.USER) {
+  if (me.role !== UserRole.USER && me.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Only client accounts can remove coaches here." }, { status: 403 });
   }
 

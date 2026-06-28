@@ -273,8 +273,9 @@ model CoachProfile {
   hourlyRate     Int?
   category       String?
   featured       Boolean     @default(false)
-  isInternal     Boolean     @default(false)
-  status         CoachStatus @default(ACTIVE)
+  isInternal          Boolean     @default(false)
+  requiresAssignment  Boolean     @default(false)
+  status              CoachStatus @default(ACTIVE)
 
   /// Pricing & offerings (Leland-style coach pricing page)
   introOfferType              CoachIntroOfferType @default(FREE_INTRO)

@@ -332,6 +332,8 @@ export function CoachingDirectoryCard({
               <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                 {coach.hourlyRate ? (
                   <RateDisplay rate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} />
+                ) : coach.requiresAssignment ? (
+                  <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest }}>Included</span>
                 ) : null}
                 {coach.location && (
                   <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>{coach.location}</span>
@@ -339,7 +341,7 @@ export function CoachingDirectoryCard({
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 {canSelfAssignCoach && onToggleMyCoach && (
-                  isMyCoach || !coach.isInternal ? (
+                  isMyCoach || (!coach.isInternal && !coach.requiresAssignment) ? (
                     <ScoutSecondaryBtn
                       onClick={() => onToggleMyCoach(coach)}
                       style={{

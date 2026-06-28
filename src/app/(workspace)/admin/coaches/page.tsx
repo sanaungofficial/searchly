@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CoachHubDrawer } from "@/components/admin/coach-hub-drawer";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ScoutBox } from "@/components/scout/scout-box";
-import { border, color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
+import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachRow = {
   id: string;

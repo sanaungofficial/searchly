@@ -38,6 +38,10 @@ import {
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
+import type { NetworkJobListing } from "@/lib/network-job-display";
+import { networkAgencyDisplayName } from "@/lib/network-job-display";
+import type { NetworkMatchedJob } from "@/lib/network-job-match";
+import { NETWORK_JOB_CLIENT_BADGE } from "@/lib/network-source-labels";
 import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
@@ -81,6 +85,34 @@ type JobsApiResponse = {
   filtersApplied?: VectorSearchFilters;
   effectiveFilters?: VectorSearchFilters;
 };
+
+type UnifiedListing = RoleListing & {
+  _networkJob?: NetworkMatchedJob;
+};
+
+function networkJobToUnifiedListing(job: NetworkMatchedJob): UnifiedListing {
+  const company = networkAgencyDisplayName(job);
+  return {
+    dedupeKey: `network:${job.id ?? job.externalId}`,
+    source: "merged",
+    title: job.positionTitle,
+    companyName: company,
+    url: job.topEchelonUrl ?? null,
+    location: job.location ?? null,
+    cached: {
+      title: job.positionTitle,
+      companyName: company,
+      url: job.topEchelonUrl ?? null,
+      location: job.location ?? null,
+    } as unknown as RoleListing["cached"],
+    matchScore: job.matchScore,
+    matchLabel: job.matchLabel,
+    matchReasons: job.matchReasons,
+    matchedSkills: job.matchedSkills,
+    gapSkills: job.gapSkills,
+    _networkJob: job,
+  };
+}
 
 function ActiveFiltersBar({
   labels,
@@ -316,13 +348,21 @@ function RecommendedResultsList({
   savingKey,
   onOpenRecommended,
   onSaveJob,
+  onOpenNetworkJob,
+  onSaveNetworkJob,
+  networkSavingId,
+  setNetworkSavingId,
   setSavingKey,
   emptyMessage,
 }: {
-  listings: RoleListing[];
+  listings: UnifiedListing[];
   savingKey: string | null;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
+  onOpenNetworkJob?: (job: NetworkJobListing) => void;
+  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
+  networkSavingId: string | null;
+  setNetworkSavingId: (id: string | null) => void;
   setSavingKey: (key: string | null) => void;
   emptyMessage: string;
 }) {
@@ -337,24 +377,52 @@ function RecommendedResultsList({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {listings.map((row) => {
-        const matchJob = roleListingToVectorMatchedJob(row);
-        const score = matchScoreStyle(matchJob.matchScore);
+        const isNetwork = Boolean(row._networkJob);
+        const networkJob = row._networkJob;
+
+        const handleOpen = () => {
+          if (isNetwork && networkJob && onOpenNetworkJob) {
+            onOpenNetworkJob(networkJob);
+          } else {
+            onOpenRecommended(roleListingToVectorMatchedJob(row));
+          }
+        };
+
+        const handleSave = () => {
+          if (isNetwork && networkJob && onSaveNetworkJob) {
+            const nid = networkJob.id ?? networkJob.externalId ?? row.dedupeKey;
+            setNetworkSavingId(nid);
+            onSaveNetworkJob(networkJob).finally(() => setNetworkSavingId(null));
+          } else {
+            const matchJob = roleListingToVectorMatchedJob(row);
+            setSavingKey(row.dedupeKey);
+            onSaveJob(matchJob).finally(() => setSavingKey(null));
+          }
+        };
+
+        const isSaving = isNetwork
+          ? networkSavingId === (networkJob?.id ?? networkJob?.externalId ?? row.dedupeKey)
+          : savingKey === row.dedupeKey;
+
+        const matchScore = row.matchScore ?? 0;
+        const matchLabel = row.matchLabel ?? "";
+        const score = matchScoreStyle(matchScore);
 
         return (
           <ScoutBox key={row.dedupeKey} padding={18}>
             <div
               role="button"
               tabIndex={0}
-              onClick={() => onOpenRecommended(matchJob)}
+              onClick={handleOpen}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onOpenRecommended(matchJob);
+                  handleOpen();
                 }
               }}
               style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
             >
-              <CompanyLogo {...companyLogoFromJobData(row.companyName, row.cached)} size={44} />
+              <CompanyLogo {...(isNetwork ? { name: row.companyName, size: 44 } : { ...companyLogoFromJobData(row.companyName, row.cached), size: 44 })} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0 }}>
@@ -363,25 +431,46 @@ function RecommendedResultsList({
                       {row.companyName}
                       {row.location ? ` · ${row.location}` : ""}
                     </p>
-                    <div style={{ marginBottom: 8 }}>
-                      <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
-                    </div>
+                    {!isNetwork && (
+                      <div style={{ marginBottom: 8 }}>
+                        <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <span
-                        style={{
-                          ...scoutInsetChipStyle,
-                          display: "inline-block",
-                          padding: "2px 8px",
-                          fontSize: T.label,
-                          fontWeight: 600,
-                          letterSpacing: "0.06em",
-                          textTransform: "uppercase",
-                          color: score.accent,
-                          background: score.bgSubtle,
-                        }}
-                      >
-                        Recommended
-                      </span>
+                      {isNetwork ? (
+                        <span
+                          style={{
+                            ...scoutInsetChipStyle,
+                            display: "inline-block",
+                            padding: "2px 8px",
+                            fontSize: T.label,
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            color: "#6B5A2A",
+                            background: "rgba(196,168,106,0.15)",
+                            border: "1px solid rgba(196,168,106,0.35)",
+                          }}
+                        >
+                          {NETWORK_JOB_CLIENT_BADGE}
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            ...scoutInsetChipStyle,
+                            display: "inline-block",
+                            padding: "2px 8px",
+                            fontSize: T.label,
+                            fontWeight: 600,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            color: score.accent,
+                            background: score.bgSubtle,
+                          }}
+                        >
+                          Recommended
+                        </span>
+                      )}
                       {row.isTrackedCompany && (
                         <span
                           style={{
@@ -402,15 +491,15 @@ function RecommendedResultsList({
                       )}
                     </div>
                   </div>
-                  {matchJob.matchScore > 0 && (
+                  {matchScore > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                      <ScoreExplainerPopover variant="vector-match" align="right" />
-                      <MatchScoreBadge score={matchJob.matchScore} label={matchJob.matchLabel} />
+                      <ScoreExplainerPopover variant={isNetwork ? "network-match" : "vector-match"} align="right" />
+                      <MatchScoreBadge score={matchScore} label={matchLabel} />
                       <ScoreSourceHint />
                     </div>
                   )}
                 </div>
-                {matchJob.matchScore > 0 && <MatchFitCallout job={matchJob} />}
+                {matchScore > 0 && <MatchFitCallout job={isNetwork ? networkJob! : roleListingToVectorMatchedJob(row)} />}
               </div>
             </div>
             <div
@@ -418,15 +507,8 @@ function RecommendedResultsList({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
-              <ScoutPrimaryBtn
-                onClick={() => {
-                  const saveKey = row.dedupeKey;
-                  setSavingKey(saveKey);
-                  onSaveJob(matchJob).finally(() => setSavingKey(null));
-                }}
-                disabled={savingKey === row.dedupeKey}
-              >
-                {savingKey === row.dedupeKey ? "Saving…" : "Save job"}
+              <ScoutPrimaryBtn onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving…" : "Save job"}
               </ScoutPrimaryBtn>
               {row.url && (
                 <a
@@ -451,12 +533,16 @@ export function PipelineRecommendedSection({
   pipelineCards,
   onOpenJob,
   onSaveJob,
+  onOpenNetworkJob,
+  onSaveNetworkJob,
   actingUserId,
 }: {
   /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
+  onOpenNetworkJob?: (job: NetworkJobListing) => void;
+  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
   actingUserId?: string | null;
 }) {
   const isMobile = useIsMobile();
@@ -484,6 +570,8 @@ export function PipelineRecommendedSection({
   const [activeFilterLabels, setActiveFilterLabels] = useState<string[]>([]);
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
+  const [networkJobs, setNetworkJobs] = useState<NetworkMatchedJob[]>([]);
+  const [networkSavingId, setNetworkSavingId] = useState<string | null>(null);
 
   const mountedRef = useRef(false);
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
@@ -638,6 +726,16 @@ export function PipelineRecommendedSection({
   }, [actingUserId, withClientScope]);
 
   useEffect(() => {
+    if (!onOpenNetworkJob) return;
+    fetch(withClientScope("/api/network-jobs/match?limit=50"))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { jobs?: NetworkMatchedJob[] } | null) => {
+        if (data?.jobs) setNetworkJobs(data.jobs);
+      })
+      .catch(() => {});
+  }, [actingUserId, withClientScope, onOpenNetworkJob]);
+
+  useEffect(() => {
     const prev = prevActingUserIdRef.current;
     prevActingUserIdRef.current = actingUserId ?? null;
     if (prev === undefined) return;
@@ -647,6 +745,7 @@ export function PipelineRecommendedSection({
     defaultFormRef.current = null;
     clearRecommendedCache();
     setJobs([]);
+    setNetworkJobs([]);
     setHasLoadedOnce(false);
     setLoading(true);
     setError(null);
@@ -782,10 +881,10 @@ export function PipelineRecommendedSection({
   };
 
   const recommendedListings = useMemo(() => {
-    const byKey = new Map<string, ReturnType<typeof vectorJobToRoleListing>>();
+    const byKey = new Map<string, UnifiedListing>();
     for (const job of jobs) {
       if (savedKeys.has(recommendedDedupeKey(job))) continue;
-      const listing = vectorJobToRoleListing(job);
+      const listing: UnifiedListing = vectorJobToRoleListing(job);
       const existing = byKey.get(listing.dedupeKey);
       if (!existing) {
         byKey.set(listing.dedupeKey, listing);
@@ -795,15 +894,20 @@ export function PipelineRecommendedSection({
       const scoreB = existing.matchScore ?? 0;
       if (scoreA > scoreB) byKey.set(listing.dedupeKey, listing);
     }
+    for (const nj of networkJobs) {
+      const listing = networkJobToUnifiedListing(nj);
+      if (byKey.has(listing.dedupeKey)) continue;
+      byKey.set(listing.dedupeKey, listing);
+    }
     return [...byKey.values()];
-  }, [jobs, savedKeys]);
+  }, [jobs, networkJobs, savedKeys]);
 
   const filteredListings = useMemo(
     () =>
       [...recommendedListings].sort((a, b) => {
-        const jobA = roleListingToVectorMatchedJob(a);
-        const jobB = roleListingToVectorMatchedJob(b);
-        return compareRecommendedMatchScore(jobA, jobB);
+        const scoreA = a.matchScore ?? 0;
+        const scoreB = b.matchScore ?? 0;
+        return scoreB - scoreA;
       }),
     [recommendedListings],
   );
@@ -836,7 +940,7 @@ export function PipelineRecommendedSection({
         >
           <div style={{ minWidth: 0 }}>
             <ScoreExplainerLabel variant="vector-match">
-              <ScoutLabel>Open roles</ScoutLabel>
+              <ScoutLabel>Roles</ScoutLabel>
             </ScoreExplainerLabel>
             {hasLoadedOnce && !showInitialLoader && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
@@ -961,6 +1065,10 @@ export function PipelineRecommendedSection({
             savingKey={savingKey}
             onOpenRecommended={onOpenJob}
             onSaveJob={onSaveJob}
+            onOpenNetworkJob={onOpenNetworkJob}
+            onSaveNetworkJob={onSaveNetworkJob}
+            networkSavingId={networkSavingId}
+            setNetworkSavingId={setNetworkSavingId}
             setSavingKey={setSavingKey}
             emptyMessage={emptyMessage}
           />

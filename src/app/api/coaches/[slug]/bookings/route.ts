@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientCoachingUser, findCoachBySlugOrId } from "@/lib/coach-api";
+import { isCoachAssignedToUser } from "@/lib/coach-client-assignment";
 import { createCoachBookingRecord } from "@/lib/coach-booking-nylas";
 import {
   introDurationForCoach,
@@ -32,6 +33,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   if (coach.nylasGrantStatus === "expired") {
     return NextResponse.json({ error: "Coach calendar connection expired" }, { status: 503 });
+  }
+
+  if (coach.requiresAssignment) {
+    const assigned = await isCoachAssignedToUser(coach.id, me.id);
+    if (!assigned) {
+      return NextResponse.json(
+        { error: "This coach requires assignment before booking. Contact your team." },
+        { status: 403 },
+      );
+    }
   }
 
   let body: BookBody;
