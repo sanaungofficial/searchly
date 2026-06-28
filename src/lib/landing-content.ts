@@ -1,4 +1,4 @@
-/** Upwize template copy — verbatim for v1; swap to Kimchi copy later. */
+/** Kimchi marketing landing copy */
 
 export const LANDING_NAV = [
   { label: "Pricing", href: "#pricing" },
@@ -6,91 +6,114 @@ export const LANDING_NAV = [
 ] as const;
 
 export const LANDING_HERO = {
-  line1: "Get Hired",
-  line2: "TodaY",
-  leftSub:
-    "AI-powered algorithm to recommend the best job opportunities, saving you time and effort.",
+  line1: "Land your",
+  line2: "next role",
+  subtitle:
+    "Kimchi is your career workspace — AI job matching, expert coaching, and tailored applications in one place.",
   trustedLabel: "Trusted by",
-  trustedStat: "250,000+ users worldwide",
-  rightSub:
-    "Discover opportunities that match your skills and ambitions. Get your dream job fast.",
-  badges: ["Smart Job Matching", "Skill-Based Job Search"],
-  newBadge: "New!",
+  trustedStat: "job seekers building their next chapter",
+  badges: ["92% match scores", "Live coaching"],
+  newBadge: "Web app",
 } as const;
 
 export const LANDING_STATS = {
   heading: "Join thousands of job seekers",
-  subheading: "employers who rely on Upwize for career success.",
+  subheading: "who use Kimchi to run a smarter, faster job search.",
   items: [
-    { value: "0", suffix: "k+", label: "Total jobs listed" },
-    { value: "0", suffix: "k+", label: "Successful hires" },
-    { value: "0", suffix: "k+", label: "Companies hiring" },
+    { value: 12, suffix: "k+", label: "Roles tracked" },
+    { value: 8, suffix: "k+", label: "Applications sent" },
+    { value: 400, suffix: "+", label: "Companies targeted" },
   ],
 } as const;
 
 export const LANDING_ANALYTICS = {
-  heading: "Stay ahead with real time data",
-  body: "With Upwize Job Analytics, you're always one step ahead in your job search to make informed job decisions.!",
+  heading: "Stay ahead with real-time insights",
+  body: "Kimchi surfaces match scores, salary signals, and hiring trends so every application is intentional.",
   cards: [
     {
       title: "Trends & demand",
-      body: "Track which industries and skills are in demand.",
+      body: "Track which industries and skills are heating up in your market.",
     },
     {
-      title: "Insights & ratings",
-      body: "Get a deeper look into potential employers",
+      title: "Company insights",
+      body: "See fit scores and context before you spend time on an application.",
     },
   ],
   cta: "Explore more features",
 } as const;
 
 export const LANDING_TOP_FEATURES = {
-  heading: "Top features of upwize",
-  body: "AI-powered algorithm to recommend the best job opportunities, saving you time and effort.",
-  cards: Array.from({ length: 4 }, () => ({
-    title: "Apply in seconds, no Hassle",
-    body: "One-Tap Apply saves time and effort",
-  })),
-  cta: "Get started",
+  heading: "Top features of Kimchi",
+  body: "Everything you need to search, apply, and get coached — without switching tools.",
+  cards: [
+    {
+      emoji: "🎯",
+      title: "AI job matching",
+      body: "Ranked roles based on your resume, goals, and preferences.",
+    },
+    {
+      emoji: "📋",
+      title: "Tailored applications",
+      body: "Resume and cover letter drafts tuned to each posting.",
+    },
+    {
+      emoji: "⚡",
+      title: "One workspace",
+      body: "Track pipelines, notes, and follow-ups in a single dashboard.",
+    },
+    {
+      emoji: "🧭",
+      title: "Expert coaching",
+      body: "Book sessions with coaches who know your target companies.",
+    },
+  ],
+  cta: "Get started free",
 } as const;
 
 export const LANDING_STEPS = {
   heading: "Simple steps to get hired",
-  body: "AI-powered algorithm to recommend the best job opportunities, saving you time and effort.",
+  body: "From profile to offer letter — Kimchi keeps the path clear.",
   steps: [
     {
-      title: "Sign up for free",
-      body: "Sign up, add your skills, experience, and preferences for recommendations.",
+      emoji: "✨",
+      title: "Build your profile",
+      body: "Upload your resume, set targets, and tell us what great looks like.",
     },
     {
-      title: "Sign up for free",
-      body: "Browse jobs, filter opportunities, and apply instantly with one tap.",
+      emoji: "🔍",
+      title: "Discover & apply",
+      body: "Browse matched roles, tailor materials, and track every application.",
     },
     {
-      title: "Get hired",
-      body: "Connect with recruiters, schedule interviews, and land your job!",
+      emoji: "🤝",
+      title: "Coach & close",
+      body: "Prep for interviews with coaching and land the role that fits.",
     },
   ],
 } as const;
 
 export const LANDING_WHY = {
-  heading: "Why Upwize? Your Smartest Career Move!",
+  heading: "Why Kimchi? Your smartest career move.",
   cards: [
     {
-      title: "AI Job Matching",
-      body: "Sign up, add your skills, experience, and preferences for recommendations.",
+      emoji: "🎯",
+      title: "AI job matching",
+      body: "Scores every role against your profile so you focus on high-fit opportunities.",
     },
     {
-      title: "Real-Time Updates",
-      body: '"Sign up, list your skills, Mand preferences for the best job suggestions."',
+      emoji: "📡",
+      title: "Real-time updates",
+      body: "New listings and status changes surface as they happen — no stale spreadsheets.",
     },
     {
-      title: "One-Tap Easy Apply",
-      body: '"Sign up, share skills, and preferences to get personalized job alerts."',
+      emoji: "📝",
+      title: "Tailored apply flow",
+      body: "Generate role-specific resumes and cover letters without starting from scratch.",
     },
     {
-      title: "Career Insights",
-      body: '"Create an account, fill in your skills, and preferences for matches."',
+      emoji: "📊",
+      title: "Career insights",
+      body: "Salary bands, company signals, and pipeline analytics in one view.",
     },
   ],
 } as const;
@@ -98,13 +121,13 @@ export const LANDING_WHY = {
 export const LANDING_SKILL_SECTIONS = [
   {
     tabs: ["Trending skills", "Popular skills"],
-    heading: "Discover demand skills in your industry",
-    body: "Uncover the most sought-after expertise in your field through comprehensive market analysis and industry trends.",
+    heading: "Discover in-demand skills in your industry",
+    body: "Uncover the expertise hiring managers ask for — and close gaps before you apply.",
     cta: "Explore more features",
   },
   {
-    heading: "Get instant notification when jobs match",
-    body: "Never miss your dream opportunity again with our real-time alert system that delivers matching job openings directly to your inbox or mobile device.",
+    heading: "Get notified when jobs match",
+    body: "Real-time alerts when a role hits your threshold — straight to your Kimchi workspace.",
     cta: "Explore more features",
   },
 ] as const;
@@ -114,26 +137,26 @@ export const LANDING_TESTIMONIALS = {
   items: [
     {
       quote:
-        "The job matching feature is a game-changer! I was applying to jobs randomly before, but Upwize suggested roles that truly aligned with my skills. I got multiple interview calls in just days!",
+        "The match scores changed everything. I stopped spraying applications and focused on roles Kimchi flagged at 85%+. Three interview loops in two weeks.",
       name: "James Thompson",
-      role: "product Designer",
+      role: "Product Designer",
     },
     {
       quote:
-        "Upwize's job analytics feature helped me understand salary trends, and I used that insight to negotiate a 20% higher salary. The data-driven approach really works!",
+        "Kimchi's salary insights helped me negotiate 20% higher. Having data on the role and company before the call gave me real leverage.",
       name: "Michael Bennett",
       role: "App Designer",
     },
     {
       quote:
-        "Using Upwize's job analytics, I gained insight into market trends, which helped me secure a 15% salary increase. The data really makes a difference!",
-      name: "Top Clofen",
-      role: "product Designer",
+        "Coaching inside the same workspace as my pipeline meant no more scattered notes. I went from stuck to offer in six weeks.",
+      name: "Sarah Chen",
+      role: "Program Manager",
     },
   ],
 } as const;
 
-export const LANDING_COMPANIES_LABEL = "Companies hiring at upwize";
+export const LANDING_COMPANIES_LABEL = "Companies our members target";
 
 export const LANDING_COMPANY_LOGOS = [
   "McKinsey",
@@ -149,7 +172,7 @@ export const LANDING_COMPANY_LOGOS = [
 export const LANDING_PRICING = {
   label: "Pricing plans",
   heading: "Flexible pricing plans",
-  body: "AI-powered algorithm to recommend the best job opportunities, saving you time and effort.",
+  body: "Start free, upgrade when you want coaching and premium matching.",
   plans: [
     {
       name: "Basic plan",
@@ -157,22 +180,22 @@ export const LANDING_PRICING = {
       price: "Free",
       period: "",
       features: [
-        "Apply to limited job postings",
-        "Access to basic job search filters",
-        "Receive real-time job updates",
+        "Track jobs and applications",
+        "Basic search filters",
+        "Real-time listing updates",
       ],
       cta: "Get this plan",
       popular: false,
     },
     {
       name: "Elite plan",
-      tagline: "For professionals premium access",
+      tagline: "For professionals who want an edge",
       price: "$29.99",
       period: "/month",
       features: [
-        "Exclusive roles for members.",
-        "Early access to listings.",
-        "Priority access to hidden jobs.",
+        "Live coaching sessions",
+        "Priority match scoring",
+        "Early access to new roles",
       ],
       cta: "Get this plan",
       popular: true,
@@ -184,9 +207,9 @@ export const LANDING_PRICING = {
       price: "$9.99",
       period: "/month",
       features: [
-        "Limited-time access to roles.",
-        "Early job access for users.",
-        "Special roles for subscribers.",
+        "AI resume tailoring",
+        "Cover letter drafts",
+        "Advanced pipeline analytics",
       ],
       cta: "Get this plan",
       popular: false,
@@ -196,25 +219,34 @@ export const LANDING_PRICING = {
 
 export const LANDING_FAQ = {
   heading: "Questions and answers",
-  body: "We have answers to your questions about services and approach.",
+  body: "Common questions about Kimchi, coaching, and how we help you land roles.",
   contactHeading: "Got more questions?",
-  contactBody: "Contact us for more information.",
+  contactBody: "Reach out — we're happy to help.",
   contactCta: "Contact us",
   items: [
     {
-      q: "How does upwize match me with jobs?",
-      a: "Based on the inspection, we provide a tailored plan with clear pricing and timelines. Our team then carries.",
+      q: "How does Kimchi match me with jobs?",
+      a: "We parse your resume and preferences, then score open roles on skills, seniority, and goals. High-match listings rise to the top of your dashboard.",
     },
-    { q: "Is upwize free to use?", a: "" },
-    { q: "How do real-time job updates work?", a: "" },
-    { q: "How do I find jobs based on location?", a: "" },
+    {
+      q: "Is Kimchi free to use?",
+      a: "Yes — the Basic plan is free. Pro and Elite add tailoring, analytics, and live coaching when you're ready.",
+    },
+    {
+      q: "How do real-time job updates work?",
+      a: "When a tracked company posts a role or a saved search hits your criteria, Kimchi surfaces it in your workspace and optional email alerts.",
+    },
+    {
+      q: "Can I book a career coach on Kimchi?",
+      a: "Elite members can book coaches directly in the app. Sessions sync with your pipeline so prep stays in context.",
+    },
   ],
 } as const;
 
 export const LANDING_FINAL_CTA = {
-  heading: "Take the next step in your career!",
-  body: "Find the right job faster with AI-powered matching, real-time updates, and powerful insights.",
-  bullets: ["Discover top opportunities", "Apply with one tap"],
+  heading: "Take the next step in your career",
+  body: "Open Kimchi in your browser — no download required. Match roles, tailor applications, and get coached.",
+  bullets: ["Discover top opportunities", "Apply with tailored materials"],
 } as const;
 
 export const LANDING_FOOTER = {
@@ -223,15 +255,15 @@ export const LANDING_FOOTER = {
     "Technology & IT",
     "Marketing & Sales",
     "Design & Creative",
-    "Real Estate",
+    "Product & Program",
     "Healthcare & Science",
     "Business & Finance",
   ],
   support: ["Help Center", "How It Works", "Changelog", "Terms & Conditions", "404"],
-  address: "123 Job Street, New York, NY 10001",
-  email: "support@upwize.com",
-  phone: "+1 (123) 456-7890",
+  address: "Second Ladder · Remote-first",
+  email: "support@kimchi.so",
+  phone: "",
   social: ["Twitter", "Linkedin", "Instagram"],
   legal: ["Support", "Terms of use"],
-  copyright: "upwize © 2025",
+  copyright: "Kimchi © 2025",
 } as const;
