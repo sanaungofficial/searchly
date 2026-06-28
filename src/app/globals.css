@@ -222,6 +222,19 @@
   min-height: 100vh;
 }
 
+.bruddle .auth-card {
+  border: var(--scout-border);
+  box-shadow: var(--scout-shadow-card);
+}
+
+.bruddle .auth-input {
+  border: var(--scout-border);
+}
+
+.bruddle .auth-btn {
+  border-radius: var(--scout-radius);
+}
+
 .auth-split-form {
   flex: 1;
   display: flex;

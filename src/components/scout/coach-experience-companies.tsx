@@ -12,7 +12,7 @@ import {
 } from "@/lib/coach-experience-companies";
 import { normalizeCompanySlug } from "@/lib/company-catalog";
 import type { CoachListItem } from "@/lib/coach-types";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { color, fontSans, surface, type as T } from "@/lib/typography";
 
 type TrackedRow = {
   id: string;
@@ -63,7 +63,7 @@ function ExperienceRow({
         gap: 12,
         padding: "10px 12px",
         background: surface.card,
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: 10,
         cursor: "pointer",
         textAlign: "left",
