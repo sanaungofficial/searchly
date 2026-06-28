@@ -33,16 +33,12 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const onAppHost = host.includes("app.kimchi.so");
 
-  // Passcode gate — production app host only (VERCEL_ENV=production). Marketing site + dev bypass.
-  // Auth callback/confirm must bypass passcode so email/OAuth links work on first click.
-  if (process.env.VERCEL_ENV === "production" && onAppHost) {
-    const bypassPasscode =
-      pathname.startsWith("/passcode") ||
-      pathname.startsWith("/api/") ||
-      pathname.startsWith("/auth/callback") ||
-      pathname.startsWith("/auth/confirm");
+  // Passcode gate — production only, login/signup pages (any host). Marketing / and app routes bypass.
+  if (process.env.VERCEL_ENV === "production") {
+    const gatePasscode =
+      pathname.startsWith("/login") || pathname.startsWith("/signup");
 
-    if (!bypassPasscode) {
+    if (gatePasscode) {
       const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
       if (!passcodeValid) {
         const url = request.nextUrl.clone();
