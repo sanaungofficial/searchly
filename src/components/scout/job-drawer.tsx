@@ -1018,6 +1018,7 @@ export function JobDrawer({
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: backdropZ }} />
       <div
+        className="bruddle"
         style={{
           position: "fixed",
           top: isMobile ? 0 : 8,
@@ -1027,10 +1028,11 @@ export function JobDrawer({
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.inset,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           overflow: "hidden",
           zIndex: drawerZ,
-          boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
+          boxShadow: isMobile ? "none" : "3px 3px 0 #000000",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",
           display: "flex",

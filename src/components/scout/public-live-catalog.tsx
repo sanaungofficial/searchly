@@ -29,6 +29,7 @@ export function PublicLiveCatalog() {
   }, [load]);
 
   return (
+    <div className="bruddle" style={{ minHeight: "100vh", background: "var(--scout-page)" }}>
     <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? "24px 16px 48px" : "40px 24px 64px" }}>
       <header style={{ marginBottom: 28 }}>
         <h1 style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: isMobile ? 28 : 34, fontWeight: 600, color: color.forest }}>
@@ -97,6 +98,7 @@ export function PublicLiveCatalog() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }

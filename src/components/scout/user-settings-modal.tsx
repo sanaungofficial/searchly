@@ -112,7 +112,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
     onToggle: () => void;
   }) {
     return (
-      <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
+      <div style={{ borderTop: "var(--scout-border)", paddingTop: 20 }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>{label}</p>
         <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px", lineHeight: 1.5 }}>{description}</p>
         <button
@@ -124,7 +124,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
             alignItems: "center",
             gap: 10,
             padding: "10px 14px",
-            border: "1px solid #EEE9E2",
+            border: "var(--scout-border)",
             borderRadius: "var(--scout-radius)",
             background: enabled ? "rgba(26,58,47,0.06)" : "transparent",
             cursor: digestLoading || digestSaving ? "not-allowed" : "pointer",
@@ -136,7 +136,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
               width: 36,
               height: 20,
               borderRadius: "var(--scout-radius)",
-              background: enabled ? "#1A3A2F" : "#D4CCC0",
+              background: enabled ? "#161616" : "#D4CCC0",
               position: "relative",
               transition: "background 0.15s",
               flexShrink: 0,
@@ -236,6 +236,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
 
       {/* Modal — portaled so it is not clipped by the sidebar transform stack */}
       <div
+        className="bruddle"
         style={{
           position: "fixed",
           top: "50%",
@@ -245,8 +246,9 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           maxWidth: "calc(100vw - 32px)",
           maxHeight: "min(80vh, calc(100dvh - 32px))",
           background: "#FFFFFF",
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.1)",
+          boxShadow: "var(--scout-shadow-bruddle)",
           zIndex: 1101,
           display: "flex",
           overflow: "hidden",
@@ -258,7 +260,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           style={{
             width: 200,
             background: "var(--scout-cream)",
-            borderRight: "1px solid #EEE9E2",
+            borderRight: "var(--scout-border)",
             display: "flex",
             flexDirection: "column",
             flexShrink: 0,
@@ -266,7 +268,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           }}
         >
           {/* User avatar — clickable to upload */}
-          <div style={{ padding: "0 16px 20px", borderBottom: "1px solid #EEE9E2" }}>
+          <div style={{ padding: "0 16px 20px", borderBottom: "var(--scout-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ position: "relative", flexShrink: 0 }}>
                 {avatarUrl ? (
@@ -320,8 +322,8 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   padding: "9px 10px",
                   borderRadius: "var(--scout-radius)",
                   border: "none",
-                  background: tab === id ? "#1A3A2F" : "transparent",
-                  color: tab === id ? "#E8D5A3" : "#52493F",
+                  background: tab === id ? "#161616" : "transparent",
+                  color: tab === id ? "#FFFFFF" : "#52493F",
                   cursor: "pointer",
                   fontSize: 13,
                   fontWeight: tab === id ? 500 : 400,
@@ -384,7 +386,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           <div
             style={{
               padding: "20px 24px 16px",
-              borderBottom: "1px solid #EEE9E2",
+              borderBottom: "var(--scout-border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",

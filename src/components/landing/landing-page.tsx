@@ -131,29 +131,29 @@ function WebAppMockup() {
             <div className="landing-browser__header">
               <div>
                 <p className="landing-browser__greet">Good morning, Alex</p>
-                <p className="landing-browser__sub">4 new matches today</p>
+                <p className="landing-browser__sub">3 trajectory matches today</p>
               </div>
               <span className="landing-browser__pill">Live coaching</span>
             </div>
             <div className="landing-browser__jobs">
               <div className="landing-browser__job">
                 <div>
-                  <strong>Senior Product Designer</strong>
+                  <strong>Product Manager</strong>
                   <span>Stripe · Remote</span>
                 </div>
                 <span className="landing-browser__score landing-browser__score--high">92%</span>
               </div>
               <div className="landing-browser__job">
                 <div>
-                  <strong>Staff UX Researcher</strong>
-                  <span>Figma · Hybrid</span>
+                  <strong>Strategy &amp; Ops</strong>
+                  <span>Series C · Hybrid</span>
                 </div>
                 <span className="landing-browser__score">87%</span>
               </div>
               <div className="landing-browser__job landing-browser__job--muted">
                 <div>
-                  <strong>Design Lead</strong>
-                  <span>Notion · Remote</span>
+                  <strong>Associate PM</strong>
+                  <span>Google · On-site</span>
                 </div>
                 <span className="landing-browser__score">81%</span>
               </div>
@@ -381,7 +381,7 @@ export function LandingPage() {
             </div>
             <div className="landing-mock-panel landing-mock-panel--skills landing-card-hover" aria-hidden>
               <div className="landing-mock-skills">
-                {["Figma", "Research", "Strategy", "SQL"].map((skill, si) => (
+                {["Product sense", "Case prep", "SQL", "GTM"].map((skill, si) => (
                   <span key={skill} className={si === 0 ? "is-hot" : ""}>
                     {skill}
                   </span>
