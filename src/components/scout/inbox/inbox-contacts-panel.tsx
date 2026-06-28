@@ -51,7 +51,7 @@ export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", background: surface.card }}>
-      <div style={{ padding: "12px 16px", borderBottom: border.line }}>
+      <div style={{ padding: "12px 16px", borderBottom: "var(--scout-border)" }}>
         <input
           type="search"
           placeholder="Search contacts…"
@@ -60,7 +60,7 @@ export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
           style={{
             width: "100%",
             padding: "9px 12px",
-            border: border.line,
+            border: "var(--scout-border)",
             borderRadius: 8,
             fontFamily: fontSans,
             fontSize: T.bodySm,
@@ -94,7 +94,7 @@ export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
               textAlign: "left",
               padding: "14px 16px",
               border: "none",
-              borderBottom: border.line,
+              borderBottom: "var(--scout-border)",
               alignItems: "flex-start",
               background: "transparent",
               cursor: "pointer",

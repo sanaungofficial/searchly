@@ -121,6 +121,7 @@ export function DashboardGoalWizardModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="goal-wizard-title"
+          className="bruddle"
           onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",

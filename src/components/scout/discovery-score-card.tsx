@@ -202,7 +202,7 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
 
         {/* Score breakdown bar */}
         {result && !loading && (
-          <div style={{ marginTop: 20, borderTop: border.line, paddingTop: 16 }}>
+          <div style={{ marginTop: 20, borderTop: "var(--scout-border)", paddingTop: 16 }}>
             <div style={{ display: "flex", gap: isMobile ? 8 : 12, flexWrap: "wrap" }}>
               {[
                 { label: "Resume", val: result.breakdown.resumeStrength },
@@ -215,7 +215,7 @@ export function DiscoveryScoreCard({ input, avatarUrl, isMobile, withClientScope
                     <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{dim.label}</span>
                     <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.ink }}>{dim.val}<span style={{ color: color.muted, fontWeight: 400 }}>/25</span></span>
                   </div>
-                  <div style={{ height: 4, borderRadius: 2, background: surface.inset, overflow: "hidden" }}>
+                  <div style={{ height: 4, borderRadius: "var(--scout-radius)", background: surface.inset, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${(dim.val / 25) * 100}%`, background: scoreColor, transition: "width 0.6s ease" }} />
                   </div>
                 </div>

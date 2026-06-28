@@ -185,7 +185,7 @@ export function CareerPreferencesPanel({
     padding: isMobile ? "12px 10px" : "8px 10px",
     fontSize: isMobile ? 16 : 13,
     borderRadius: "var(--scout-radius)",
-    border: border.line,
+    border: "var(--scout-border)",
     background: surface.inset,
     color: color.forest,
     fontFamily: fontSans,
@@ -209,7 +209,7 @@ export function CareerPreferencesPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_EMPLOYMENT.map(({ value, label }) => (
                 <button key={value} type="button" onClick={() => setEmpStatus(empStatus === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: empStatus === value ? border.lineStrong : border.line, background: empStatus === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: empStatus === value ? "var(--scout-border)" : "var(--scout-border)", background: empStatus === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -221,7 +221,7 @@ export function CareerPreferencesPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_JOB_TIMELINES.map(({ value, label }) => (
                 <button key={value} type="button" onClick={() => setTimeline(timeline === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: timeline === value ? border.lineStrong : border.line, background: timeline === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: timeline === value ? "var(--scout-border)" : "var(--scout-border)", background: timeline === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -242,7 +242,7 @@ export function CareerPreferencesPanel({
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PREF_MOTIVATIONS.map((m) => (
                 <button key={m} type="button" onClick={() => setMotivation(motivation === m ? "" : m)}
-                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: motivation === m ? border.lineStrong : border.line, background: motivation === m ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: motivation === m ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: motivation === m ? "var(--scout-border)" : "var(--scout-border)", background: motivation === m ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: motivation === m ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
                   {m}
                 </button>
               ))}
@@ -254,7 +254,7 @@ export function CareerPreferencesPanel({
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PREF_PRIORITIES.map((p) => (
                 <button key={p} type="button" onClick={() => setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))}
-                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: priorities.includes(p) ? border.lineStrong : border.line, background: priorities.includes(p) ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: priorities.includes(p) ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: priorities.includes(p) ? "var(--scout-border)" : "var(--scout-border)", background: priorities.includes(p) ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: priorities.includes(p) ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
                   {p}
                 </button>
               ))}

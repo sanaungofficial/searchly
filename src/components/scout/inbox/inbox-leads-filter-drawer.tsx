@@ -72,7 +72,7 @@ export function InboxLeadsFilterDrawer({ open, filters, onClose, onApply }: Prop
 
   if (!open) return null;
 
-  const line = border.line;
+  const line = "var(--scout-border)";
 
   function resetDrawer() {
     setView("categories");

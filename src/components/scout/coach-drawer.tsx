@@ -119,7 +119,7 @@ function ReviewFormModal({
             <input
               value={coachedFor}
               onChange={(e) => setCoachedFor(e.target.value)}
-              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: border.line, boxSizing: "border-box" }}
+              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "var(--scout-border)", boxSizing: "border-box" }}
             />
           </label>
           <label style={{ display: "block", marginBottom: 10, fontFamily: fontSans, fontSize: 14 }}>
@@ -146,7 +146,7 @@ function ReviewFormModal({
               rows={5}
               required
               minLength={20}
-              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: border.line, boxSizing: "border-box", resize: "vertical" }}
+              style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "var(--scout-border)", boxSizing: "border-box", resize: "vertical" }}
             />
           </label>
           {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}

@@ -3,12 +3,12 @@
 import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useEffect } from "react";
-import { border, radius, shadow, surface } from "@/lib/typography";
+import { radius, shadow, surface } from "@/lib/typography";
 
 const scoutModalPanelStyle = (extra?: CSSProperties): CSSProperties => ({
   position: "relative",
   background: surface.card,
-  border: border.lineStrong,
+  border: "var(--scout-border)",
   borderRadius: radius.box,
   boxShadow: shadow.cardStrong,
   width: "100%",
@@ -27,6 +27,7 @@ export function ScoutModal({
   padding = "28px 24px",
   panelStyle,
   closeOnEscape = true,
+  bruddle = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -37,6 +38,7 @@ export function ScoutModal({
   padding?: number | string;
   panelStyle?: CSSProperties;
   closeOnEscape?: boolean;
+  bruddle?: boolean;
 }) {
   useEffect(() => {
     if (!open || !closeOnEscape) return;
@@ -70,6 +72,7 @@ export function ScoutModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={ariaLabelledBy}
+        className={bruddle ? "bruddle" : undefined}
         onClick={(e) => e.stopPropagation()}
         style={scoutModalPanelStyle({ maxWidth, padding, ...panelStyle })}
       >

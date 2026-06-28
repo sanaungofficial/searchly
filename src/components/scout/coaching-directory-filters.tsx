@@ -29,7 +29,7 @@ type FilterValues = {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.bodySm,
@@ -52,7 +52,7 @@ function FilterPill({
           style={{
             display: "inline-flex", alignItems: "center", gap: 4,
             padding: "6px 12px", borderRadius: 999,
-            border: active ? border.lineStrong : border.line,
+            border: active ? "var(--scout-border)" : "var(--scout-border)",
             background: active ? surface.inset : surface.card,
             color: active ? color.forest : color.ink,
             fontFamily: fontSans, fontSize: T.caption,
@@ -66,7 +66,7 @@ function FilterPill({
       <PopoverContent
         align="start" sideOffset={6}
         className="w-auto min-w-[220px] max-w-[320px] p-0 shadow-lg"
-        style={{ background: surface.card, border: border.line, borderRadius: "var(--scout-radius)" }}
+        style={{ background: surface.card, border: "var(--scout-border)", borderRadius: "var(--scout-radius)" }}
       >
         {children}
       </PopoverContent>
@@ -89,7 +89,7 @@ function PopoverSection({ title, children }: { title?: string; children: React.R
 
 function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ borderBottom: border.line, paddingBottom: 16, marginBottom: 16 }}>
+    <div style={{ borderBottom: "var(--scout-border)", paddingBottom: 16, marginBottom: 16 }}>
       <p style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 700, color: color.forest, margin: "0 0 10px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
         {title}
       </p>
@@ -153,7 +153,7 @@ function CompanySearch({
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
       {selectedSlug && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 10px", border: border.line, background: "rgba(26,58,47,0.06)", marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 10px", border: "var(--scout-border)", background: "rgba(26,58,47,0.06)", marginBottom: 6 }}>
           <span style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest }}>{selectedName}</span>
           <button type="button" onClick={() => onSelect("")} style={{ background: "none", border: "none", fontFamily: fontSans, fontSize: 11, color: color.muted, cursor: "pointer", padding: 0 }}>Clear</button>
         </div>
@@ -164,7 +164,7 @@ function CompanySearch({
         style={{ ...inputStyle, ...(compact ? { fontSize: 12, padding: "6px 10px" } : {}) }}
       />
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, background: surface.card, border: border.line, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", maxHeight: 200, overflowY: "auto" }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, background: surface.card, border: "var(--scout-border)", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", maxHeight: 200, overflowY: "auto" }}>
           {searching ? (
             <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, padding: "8px 12px", margin: 0 }}>Searching...</p>
           ) : suggestions.length === 0 ? (
@@ -176,7 +176,7 @@ function CompanySearch({
                 <button
                   key={item.catalogSlug} type="button"
                   onClick={() => { onSelect(isActive ? "" : item.catalogSlug); setOpen(false); setQuery(""); }}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "none", borderBottom: border.line, background: isActive ? "rgba(26,58,47,0.08)" : surface.card, cursor: "pointer", textAlign: "left" }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "none", borderBottom: "var(--scout-border)", background: isActive ? "rgba(26,58,47,0.08)" : surface.card, cursor: "pointer", textAlign: "left" }}
                 >
                   <CompanyLogo name={item.name} logoUrl={item.logoUrl} website={item.website} size={24} />
                   <span style={{ fontFamily: fontSans, fontSize: 12, color: color.ink, fontWeight: isActive ? 600 : 400 }}>{item.name}</span>
@@ -257,7 +257,7 @@ export function CoachQuickFiltersBar({
           type="button" onClick={() => onInternalChange(!filters.internal)}
           style={{
             display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 999,
-            border: filters.internal ? border.lineStrong : border.line,
+            border: filters.internal ? "var(--scout-border)" : "var(--scout-border)",
             background: filters.internal ? surface.inset : surface.card,
             color: filters.internal ? color.forest : color.ink,
             fontFamily: fontSans, fontSize: T.caption, fontWeight: filters.internal ? 600 : 500,
@@ -268,13 +268,13 @@ export function CoachQuickFiltersBar({
         </button>
       )}
 
-      <div style={{ width: 1, height: 22, background: border.line, flexShrink: 0 }} />
+      <div style={{ width: 1, height: 22, background: "var(--scout-border)", flexShrink: 0 }} />
 
       <button
         type="button" onClick={onOpenAllFilters}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999,
-          border: activeCount > 0 ? border.lineStrong : border.line,
+          border: activeCount > 0 ? "var(--scout-border)" : "var(--scout-border)",
           background: activeCount > 0 ? surface.inset : surface.card,
           color: activeCount > 0 ? color.forest : color.ink,
           fontFamily: fontSans, fontSize: T.caption, fontWeight: activeCount > 0 ? 600 : 500,
@@ -318,8 +318,8 @@ export function CoachFiltersDrawer({
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 60 }} />
-      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(480px, 100vw)", background: surface.card, borderLeft: border.line, zIndex: 61, display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: border.line, flexShrink: 0 }}>
+      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(480px, 100vw)", background: surface.card, borderLeft: "var(--scout-border)", zIndex: 61, display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "var(--scout-border)", flexShrink: 0 }}>
           <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 700, color: color.ink, margin: 0 }}>All filters</p>
           <button type="button" onClick={onClose} aria-label="Close filters" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4, color: color.muted, display: "flex" }}>
             <X size={20} />
@@ -367,11 +367,11 @@ export function CoachFiltersDrawer({
           </DrawerSection>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", borderTop: border.line, flexShrink: 0, background: surface.card }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", borderTop: "var(--scout-border)", flexShrink: 0, background: surface.card }}>
           <button type="button" onClick={() => { onClear(); onClose(); }} style={{ border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, cursor: "pointer", textDecoration: "underline" }}>
             Reset
           </button>
-          <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: border.lineStrong, borderRadius: 999, background: color.forest, color: color.gold, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: "pointer" }}>
+          <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "var(--scout-border)", borderRadius: 999, background: color.forest, color: color.gold, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: "pointer" }}>
             Show results
           </button>
         </div>

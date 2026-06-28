@@ -33,7 +33,7 @@ export function InboxTopTabs({ active, primaryCount, onSelect, extraFolders = []
         alignItems: "center",
         gap: 4,
         padding: "0 12px",
-        borderBottom: border.line,
+        borderBottom: "var(--scout-border)",
         background: "#fff",
         overflowX: "auto",
       }}

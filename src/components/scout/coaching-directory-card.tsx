@@ -36,7 +36,7 @@ function CoachCompanyPill({
         gap: 6,
         padding: "4px 10px 4px 5px",
         background: surface.inset,
-        border: `1px solid ${border.line}`,
+        border: "var(--scout-border)",
         borderRadius: 999,
         fontFamily: fontSans,
         fontSize: 12,
@@ -65,7 +65,7 @@ function CoachBadgePill({
   tone?: "neutral" | "forest" | "gold" | "mint";
 }) {
   const tones = {
-    neutral: { bg: surface.inset, color: color.stone, border: border.line },
+    neutral: { bg: surface.inset, color: color.stone, border: "var(--scout-border)" },
     forest: { bg: "rgba(26,58,47,0.08)", color: color.forest, border: "rgba(26,58,47,0.15)" },
     gold: { bg: "rgba(196,168,106,0.14)", color: "#7A6020", border: "rgba(196,168,106,0.35)" },
     mint: { bg: "rgba(74,139,106,0.12)", color: "#2A5A45", border: "rgba(74,139,106,0.25)" },
@@ -224,7 +224,7 @@ export function CoachingDirectoryCard({
       <ScoutBox
         padding={isMobile ? "14px 16px" : "16px 20px"}
         style={{
-          border: coach.featured ? border.lineStrong : border.line,
+          border: coach.featured ? "var(--scout-border)" : "var(--scout-border)",
           borderTop: showTopBorder ? `2px solid ${color.forest}` : undefined,
           transition: "box-shadow 0.15s ease",
         }}
@@ -324,7 +324,7 @@ export function CoachingDirectoryCard({
                 gap: 12,
                 marginTop: 12,
                 paddingTop: 12,
-                borderTop: border.line,
+                borderTop: "var(--scout-border)",
                 flexWrap: "wrap",
               }}
               onClick={(e) => e.stopPropagation()}

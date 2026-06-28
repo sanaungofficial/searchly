@@ -151,7 +151,7 @@ export function JobSearchEmailDashboard() {
           justifyContent: "space-between",
           gap: 12,
           padding: isMobile ? "12px 14px" : "14px 16px",
-          borderBottom: border.line,
+          borderBottom: "var(--scout-border)",
           background: surface.card,
         }}
       >
@@ -187,7 +187,7 @@ export function JobSearchEmailDashboard() {
         <div
           style={{
             padding: "12px 16px",
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             background: "rgba(42,107,74,0.06)",
             display: "flex",
             flexWrap: "wrap",
@@ -216,7 +216,7 @@ export function JobSearchEmailDashboard() {
             fontSize: T.caption,
             color: notice.type === "success" ? color.forest : "#C4574A",
             background: notice.type === "success" ? "rgba(42,107,74,0.08)" : "rgba(196,87,74,0.08)",
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
           }}
         >
           {notice.text}

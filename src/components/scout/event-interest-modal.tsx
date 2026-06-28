@@ -46,6 +46,7 @@ export function EventInterestModal({ onClose }: Props) {
   return (
     <ScoutModal
       open
+      bruddle
       onClose={onClose}
       ariaLabelledBy="event-interest-title"
       maxWidth={480}

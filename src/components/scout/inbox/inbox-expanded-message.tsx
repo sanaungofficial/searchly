@@ -57,7 +57,7 @@ export function InboxExpandedMessage({
   const btnStyle = {
     padding: "5px 10px",
     borderRadius: 6,
-    border: border.line,
+    border: "var(--scout-border)",
     background: "#fff",
     fontFamily: fontSans,
     fontSize: 11,
@@ -71,7 +71,7 @@ export function InboxExpandedMessage({
       style={{
         padding: "14px 20px 18px",
         background: "#fff",
-        borderBottom: border.line,
+        borderBottom: "var(--scout-border)",
         boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
       }}
     >
@@ -135,7 +135,7 @@ export function InboxExpandedMessage({
           gap: 8,
           marginBottom: 12,
           paddingBottom: 12,
-          borderBottom: border.line,
+          borderBottom: "var(--scout-border)",
         }}
       >
         <div style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, lineHeight: 1.5 }}>
@@ -166,7 +166,7 @@ export function InboxExpandedMessage({
                 fontSize: 11,
                 color: color.forest,
                 padding: "4px 8px",
-                border: border.line,
+                border: "var(--scout-border)",
                 borderRadius: 6,
                 textDecoration: "none",
               }}
@@ -198,7 +198,7 @@ export function InboxExpandedMessage({
       )}
 
       {olderThread.length > 0 && (
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: border.line }}>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "var(--scout-border)" }}>
           <button
             type="button"
             onClick={() => setShowOlder((v) => !v)}
@@ -215,7 +215,7 @@ export function InboxExpandedMessage({
             {showOlder ? "▲ Hide" : "▼"} {olderThread.length} older message{olderThread.length === 1 ? "" : "s"}
           </button>
           {showOlder && (
-            <div style={{ marginTop: 8, border: border.line, borderRadius: 8, overflow: "hidden", background: surface.page }}>
+            <div style={{ marginTop: 8, border: "var(--scout-border)", borderRadius: 8, overflow: "hidden", background: surface.page }}>
               {olderThread.map((t) => (
                 <button
                   key={t.id}
@@ -227,7 +227,7 @@ export function InboxExpandedMessage({
                     textAlign: "left",
                     padding: "8px 12px",
                     border: "none",
-                    borderBottom: border.line,
+                    borderBottom: "var(--scout-border)",
                     background: "transparent",
                     cursor: "pointer",
                   }}

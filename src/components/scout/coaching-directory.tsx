@@ -33,7 +33,7 @@ type Props = {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.bodySm,
@@ -98,7 +98,7 @@ function FeaturedCarousel({
       >
         {coaches.map((c) => (
           <div key={c.id} style={{ flex: isMobile ? "0 0 300px" : "0 0 320px", scrollSnapAlign: "start" }}>
-            <ScoutBox padding={18} style={{ border: border.lineStrong, height: "100%" }}>
+            <ScoutBox padding={18} style={{ border: "var(--scout-border)", height: "100%" }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
                 <CoachAvatar name={c.displayName} photoUrl={c.photoUrl} size={48} rounded />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -370,7 +370,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
             <select
               value={urlFilters.sort ?? "default"}
               onChange={(e) => setFilter("sort", e.target.value === "default" ? "" : e.target.value)}
-              style={{ padding: "8px 12px", border: border.line, background: surface.inset, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, minHeight: 40 }}
+              style={{ padding: "8px 12px", border: "var(--scout-border)", background: surface.inset, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, minHeight: 40 }}
             >
               <option value="default">Sort by default</option>
               <option value="match">Match score</option>
@@ -407,7 +407,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
         )}
 
         {!scored && !loading && !loadError && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "14px 0 0", lineHeight: 1.5, padding: "10px 12px", background: surface.inset, border: border.line }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "14px 0 0", lineHeight: 1.5, padding: "10px 12px", background: surface.inset, border: "var(--scout-border)" }}>
             {COACH_MATCH_NEEDS_SIGNAL_HINT}
           </p>
         )}
@@ -441,7 +441,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
                 style={{
                   marginTop: 14,
                   background: "none",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   padding: "8px 14px",
                   fontFamily: fontSans,
                   fontSize: T.bodySm,

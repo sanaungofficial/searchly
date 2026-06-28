@@ -125,7 +125,7 @@ const textareaStyle: React.CSSProperties = {
   width: "100%",
   minHeight: 100,
   padding: "10px 12px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: 14,
@@ -669,7 +669,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
                 style={{
                   padding: "6px 12px",
                   borderRadius: "var(--scout-radius)",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   background: surface.inset,
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
@@ -708,7 +708,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: border.line }}>
+              <tr style={{ borderBottom: "var(--scout-border)" }}>
                 <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Company</th>
                 <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Priority</th>
               </tr>
@@ -717,7 +717,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
               {companies.slice(0, 12).map((c) => (
                 <tr
                   key={c.id}
-                  style={{ borderBottom: border.line, cursor: "pointer" }}
+                  style={{ borderBottom: "var(--scout-border)", cursor: "pointer" }}
                   onClick={() => router.push(profileTargetCompaniesUrl(c.id))}
                 >
                   <td style={{ padding: "8px", color: color.forest, textDecoration: "underline" }}>{c.name}</td>
@@ -797,7 +797,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
                       fontFamily: fontSans,
                       fontSize: 13,
                       padding: "6px 10px",
-                      border: border.line,
+                      border: "var(--scout-border)",
                       background: surface.inset,
                       color: color.forest,
                     }}
@@ -842,7 +842,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
               marginBottom: 12,
               padding: "12px 14px",
               background: "rgba(26, 58, 47, 0.06)",
-              border: border.line,
+              border: "var(--scout-border)",
               fontFamily: fontSans,
               fontSize: 13,
               color: color.forest,
@@ -988,7 +988,7 @@ function ApplyProfileModal({
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: "#FFFDF9", maxWidth: 560, width: "100%", maxHeight: "80vh", overflow: "auto", padding: 24, border: border.lineStrong }}>
+      <div style={{ background: "#FFFDF9", maxWidth: 560, width: "100%", maxHeight: "80vh", overflow: "auto", padding: 24, border: "var(--scout-border)" }}>
         <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: color.forest }}>Review profile updates</h3>
         <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 16px" }}>{result.summary}</p>
         {entries.length === 0 && contextEntries.length === 0 && trackedCompanies.length === 0 ? (
@@ -999,7 +999,7 @@ function ApplyProfileModal({
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
                 <tbody>
                   {entries.map(([key, val]) => (
-                    <tr key={key} style={{ borderBottom: border.line }}>
+                    <tr key={key} style={{ borderBottom: "var(--scout-border)" }}>
                       <td style={{ padding: "8px 8px 8px 0", color: color.muted, verticalAlign: "top", width: "40%" }}>{FIELD_LABELS[key] ?? key}</td>
                       <td style={{ padding: "8px 0", color: color.forest }}>{formatValue(val)}</td>
                     </tr>
@@ -1015,7 +1015,7 @@ function ApplyProfileModal({
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
                   <tbody>
                     {contextEntries.map(([key, val]) => (
-                      <tr key={key} style={{ borderBottom: border.line }}>
+                      <tr key={key} style={{ borderBottom: "var(--scout-border)" }}>
                         <td style={{ padding: "8px 8px 8px 0", color: color.muted, verticalAlign: "top", width: "40%" }}>{INTAKE_CONTEXT_LABELS[key] ?? key}</td>
                         <td style={{ padding: "8px 0", color: color.forest }}>{formatValue(val)}</td>
                       </tr>
@@ -1031,7 +1031,7 @@ function ApplyProfileModal({
                 </p>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
                   <thead>
-                    <tr style={{ borderBottom: border.line }}>
+                    <tr style={{ borderBottom: "var(--scout-border)" }}>
                       <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Company</th>
                       <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Priority</th>
                       <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Notes</th>
@@ -1039,7 +1039,7 @@ function ApplyProfileModal({
                   </thead>
                   <tbody>
                     {trackedCompanies.slice(0, 12).map((c) => (
-                      <tr key={c.name} style={{ borderBottom: border.line }}>
+                      <tr key={c.name} style={{ borderBottom: "var(--scout-border)" }}>
                         <td style={{ padding: "8px", verticalAlign: "top" }}>{c.name}</td>
                         <td style={{ padding: "8px", color: color.muted, verticalAlign: "top" }}>{c.priority ?? "—"}</td>
                         <td style={{ padding: "8px", color: color.muted, verticalAlign: "top" }}>

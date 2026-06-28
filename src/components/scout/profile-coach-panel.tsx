@@ -193,7 +193,7 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
                       {canSelfAssignCoach && (
                         <ScoutSecondaryBtn
                           onClick={() => removeCoach(coach.coachProfileId)}
-                          style={{ minHeight: 40, fontSize: 14, color: color.muted, borderColor: border.line }}
+                          style={{ minHeight: 40, fontSize: 14, color: color.muted, borderColor: "var(--scout-border)" }}
                         >
                           Remove from my coaches
                         </ScoutSecondaryBtn>

@@ -21,7 +21,7 @@ export function WorkspaceMobileTopBar({ center, right, noBorder }: Props) {
         alignItems: "center",
         minHeight: MOBILE_TOP_BAR_HEIGHT,
         padding: "6px 16px",
-        borderBottom: noBorder ? undefined : border.line,
+        borderBottom: noBorder ? undefined : "var(--scout-border)",
         background: surface.card,
         flexShrink: 0,
         boxSizing: "border-box",

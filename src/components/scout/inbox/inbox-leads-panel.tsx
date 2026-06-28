@@ -48,7 +48,7 @@ type Props = {
 };
 
 const PAGE_SIZE = 25;
-const line = border.line;
+const line = "var(--scout-border)";
 
 export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = true, onComposeTo }: Props) {
   const [contacts, setContacts] = useState<ContactRow[]>([]);
@@ -544,7 +544,7 @@ const popoverStyle: React.CSSProperties = {
   top: "calc(100% + 6px)",
   right: 0,
   background: "#fff",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: 10,
   boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
   padding: 12,

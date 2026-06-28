@@ -133,7 +133,7 @@ function ClientSessionRow({
       </button>
 
       {open && (
-        <div style={{ borderTop: border.line, padding: "12px 14px 14px", background: "rgba(26,58,47,0.02)" }}>
+        <div style={{ borderTop: "var(--scout-border)", padding: "12px 14px 14px", background: "rgba(26,58,47,0.02)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
             <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.5 }}>
               {date} · {time}
