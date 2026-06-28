@@ -2172,16 +2172,28 @@ type CompanySuggestion = {
   type: string | null;
 };
 
+export type OnboardingCompanySuggestion = {
+  catalogSlug: string;
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  type: string | null;
+};
+
 interface TargetCompaniesProps {
   selectedCompanies: OnboardingCompanyPick[];
   targetRoles: string[];
+  prioritizedRoles?: string[];
+  readbackData?: ReadBackData | null;
   onAddCompany: (company: OnboardingCompanyPick) => void;
   onRemoveCompany: (catalogSlug: string) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
 
-function suggestionToPick(item: CompanySuggestion): OnboardingCompanyPick {
+function suggestionToPick(
+  item: CompanySuggestion | OnboardingCompanySuggestion,
+): OnboardingCompanyPick {
   return {
     catalogSlug: item.catalogSlug,
     name: item.name,
@@ -2189,6 +2201,169 @@ function suggestionToPick(item: CompanySuggestion): OnboardingCompanyPick {
     careersUrl: item.careersUrl,
     type: item.type,
   };
+}
+
+function OnboardingSuggestedCompanies({
+  targetRoles,
+  prioritizedRoles,
+  readbackData,
+  selectedCompanies,
+  onAddCompany,
+}: {
+  targetRoles: string[];
+  prioritizedRoles: string[];
+  readbackData: ReadBackData | null;
+  selectedCompanies: OnboardingCompanyPick[];
+  onAddCompany: (company: OnboardingCompanyPick) => void;
+}) {
+  const [recommendations, setRecommendations] = useState<OnboardingCompanySuggestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const max = ONBOARDING_MAX_TARGET_COMPANIES;
+  const atMax = selectedCompanies.length >= max;
+  const selectedSlugs = useMemo(
+    () => new Set(selectedCompanies.map((c) => c.catalogSlug)),
+    [selectedCompanies],
+  );
+
+  const signalKey = useMemo(
+    () =>
+      JSON.stringify({
+        targetRoles,
+        prioritizedRoles,
+        readbackRoles: readbackData?.targetRoles?.map((r) => r.role) ?? [],
+      }),
+    [targetRoles, prioritizedRoles, readbackData],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    void fetch("/api/onboarding/company-recommendations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetRoles,
+        prioritizedRoles,
+        readbackData,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { recommendations?: OnboardingCompanySuggestion[] } | null) => {
+        if (cancelled) return;
+        setRecommendations(data?.recommendations ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRecommendations([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [signalKey, targetRoles, prioritizedRoles, readbackData]);
+
+  const visible = recommendations.filter((rec) => !selectedSlugs.has(rec.catalogSlug));
+  if (!loading && visible.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: ONBOARDING_FIELD_BORDER }}>
+      <p
+        style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 12,
+          fontWeight: 600,
+          color: ONBOARDING_TEXT_SECONDARY,
+          letterSpacing: "0.4px",
+          textTransform: "uppercase",
+          marginBottom: 10,
+          marginTop: 0,
+        }}
+      >
+        Suggested for you
+      </p>
+
+      {loading && visible.length === 0 ? (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, margin: 0 }}>
+          Loading suggestions…
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {visible.map((rec) => (
+            <button
+              key={rec.catalogSlug}
+              type="button"
+              disabled={atMax}
+              onClick={() => onAddCompany(suggestionToPick(rec))}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "12px 14px",
+                border: ONBOARDING_FIELD_BORDER,
+                borderRadius: "var(--scout-radius)",
+                background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
+                textAlign: "left",
+                cursor: atMax ? "not-allowed" : "pointer",
+                opacity: atMax ? 0.7 : 1,
+              }}
+            >
+              <CompanyLogo
+                name={rec.name}
+                website={rec.website}
+                careersUrl={rec.careersUrl}
+                size={32}
+                borderRadius={6}
+              />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  style={{
+                    display: "block",
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: ONBOARDING_TEXT,
+                  }}
+                >
+                  {rec.name}
+                </span>
+                {rec.type ? (
+                  <span
+                    style={{
+                      display: "block",
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 12,
+                      fontWeight: 400,
+                      color: ONBOARDING_TEXT_SECONDARY,
+                      marginTop: 2,
+                    }}
+                  >
+                    {rec.type}
+                  </span>
+                ) : null}
+              </span>
+              {!atMax && (
+                <span
+                  style={{
+                    flexShrink: 0,
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: ONBOARDING_TEXT_SECONDARY,
+                  }}
+                >
+                  Add
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TargetCompanyChip({
@@ -2474,6 +2649,8 @@ function TargetCompanyAutocomplete({
 export function ScreenTargetCompanies({
   selectedCompanies,
   targetRoles,
+  prioritizedRoles = [],
+  readbackData = null,
   onAddCompany,
   onRemoveCompany,
   onContinue,
@@ -2482,6 +2659,8 @@ export function ScreenTargetCompanies({
   const canContinue = selectedCompanies.length > 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const rolesPreview = targetRoles.slice(0, 2).join(", ");
+  const hasSuggestionSignals =
+    targetRoles.length > 0 || prioritizedRoles.length > 0 || !!readbackData?.targetRoles?.length;
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
@@ -2512,6 +2691,16 @@ export function ScreenTargetCompanies({
           zIndex: dropdownOpen ? 30 : undefined,
         }}
       >
+        {hasSuggestionSignals && (
+          <OnboardingSuggestedCompanies
+            targetRoles={targetRoles}
+            prioritizedRoles={prioritizedRoles}
+            readbackData={readbackData}
+            selectedCompanies={selectedCompanies}
+            onAddCompany={onAddCompany}
+          />
+        )}
+
         <TargetCompanyAutocomplete
           selectedCompanies={selectedCompanies}
           onAddCompany={onAddCompany}

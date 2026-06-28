@@ -965,6 +965,8 @@ export default function OnboardingPage() {
                 <ScreenTargetCompanies
                   selectedCompanies={selectedCompanies}
                   targetRoles={selectedTitles}
+                  prioritizedRoles={priorityRole ? [priorityRole] : []}
+                  readbackData={readbackData}
                   onAddCompany={onAddTargetCompany}
                   onRemoveCompany={onRemoveTargetCompany}
                   onContinue={onCompaniesContinue}
