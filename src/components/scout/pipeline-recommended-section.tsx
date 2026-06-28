@@ -55,7 +55,7 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { matchScoreStyle, isLowQualityMatchReason } from "@/lib/match-score";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
-import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
+import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
   RecommendedFiltersDrawer,
   RecommendedQuickFiltersBar,
@@ -289,7 +289,7 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
-  border: border.line,
+  border: "var(--scout-border)",
   borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.caption,
@@ -412,6 +412,58 @@ function WhyMatchPanel({ reasons, matchedSkills }: { reasons: string[]; matchedS
   );
 }
 
+function MetadataChips({
+  row,
+  isNetwork,
+  networkJob,
+}: {
+  row: UnifiedListing;
+  isNetwork: boolean;
+  networkJob?: NetworkMatchedJob;
+}) {
+  if (isNetwork && networkJob?.sharedAt) {
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
+          Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
+        </span>
+      </div>
+    );
+  }
+  const c = row.cached;
+  const days = c.datePosted ? daysSincePosted(c.datePosted) : null;
+  const postedText =
+    days === null || days === undefined
+      ? null
+      : days === 0
+        ? "Today"
+        : days === 1
+          ? "1 day ago"
+          : `${days} days ago`;
+  const items: string[] = [];
+  if (postedText) items.push(postedText);
+  if (c.jobType) items.push(c.jobType);
+  if (c.seniority) items.push(c.seniority);
+  if (c.locationType) items.push(c.locationType);
+  else if (c.remote) items.push("Remote");
+  if (c.salary) items.push(c.salary);
+  if (c.experienceLevel) items.push(c.experienceLevel);
+  if (!items.length) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+      {items.map((item, i) => (
+        <span
+          key={i}
+          style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, whiteSpace: "nowrap" }}
+        >
+          {i > 0 ? " · " : ""}
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RecommendedJobCard({
   row,
   savingKey,
@@ -470,6 +522,17 @@ function RecommendedJobCard({
   const score = matchScoreStyle(matchScore);
   const panelBg = matchScore >= 75 ? "#0D2419" : matchScore >= 60 ? "#1F1508" : "#1A1A1A";
 
+  const postedDays = !isNetwork && row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
+  const postedText =
+    postedDays === null
+      ? null
+      : postedDays === 0
+        ? "Posted today"
+        : postedDays === 1
+          ? "Posted 1 day ago"
+          : `Posted ${postedDays} days ago`;
+  const isRecentPost = postedDays !== null && postedDays <= 3;
+
   return (
     <div
       key={row.dedupeKey}
@@ -497,37 +560,56 @@ function RecommendedJobCard({
           {showWhy && hasWhyContent ? (
             <WhyMatchPanel reasons={reasons} matchedSkills={matchedSkills} />
           ) : (
-            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-              <CompanyLogo {...(isNetwork ? { name: row.companyName, size: 44 } : { ...companyLogoFromJobData(row.companyName, row.cached), size: 44 })} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
-                  {row.companyName}
-                  {row.location ? ` · ${row.location}` : ""}
-                </p>
-                <div style={{ marginBottom: 8 }}>
+            <>
+              {/* Top badge row */}
+              {(isNetwork || postedText || row.isTrackedCompany) && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   {isNetwork && networkJob?.sharedAt ? (
-                    <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 9px",
+                        fontSize: T.label,
+                        fontWeight: 500,
+                        color: color.muted,
+                        background: "rgba(0,0,0,0.04)",
+                        border: "1px solid rgba(0,0,0,0.07)",
+                        borderRadius: 4,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
                     </span>
-                  ) : (
-                    <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  ) : postedText ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 9px",
+                        fontSize: T.label,
+                        fontWeight: 500,
+                        color: isRecentPost ? color.forest : color.muted,
+                        background: isRecentPost ? "rgba(26,58,47,0.07)" : "rgba(0,0,0,0.04)",
+                        border: `1px solid ${isRecentPost ? "rgba(26,58,47,0.15)" : "rgba(0,0,0,0.07)"}`,
+                        borderRadius: 4,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {postedText}
+                    </span>
+                  ) : null}
                   {isNetwork && (
                     <span
                       style={{
                         display: "inline-block",
-                        padding: "3px 10px",
-                        fontSize: T.bodySm,
+                        padding: "3px 9px",
+                        fontSize: T.label,
                         fontWeight: 700,
                         letterSpacing: "0.04em",
                         textTransform: "uppercase",
                         color: "#7A4F00",
-                        background: "rgba(196,140,40,0.18)",
-                        border: "1.5px solid rgba(196,140,40,0.5)",
-                        borderRadius: "var(--scout-radius)",
+                        background: "rgba(196,140,40,0.14)",
+                        border: "1px solid rgba(196,140,40,0.35)",
+                        borderRadius: 4,
                       }}
                     >
                       {NETWORK_JOB_CLIENT_BADGE}
@@ -538,7 +620,7 @@ function RecommendedJobCard({
                       style={{
                         ...scoutInsetChipStyle,
                         display: "inline-block",
-                        padding: "2px 8px",
+                        padding: "3px 9px",
                         fontSize: T.label,
                         fontWeight: 600,
                         letterSpacing: "0.06em",
@@ -546,14 +628,27 @@ function RecommendedJobCard({
                         color: color.forest,
                         background: "rgba(26,58,47,0.08)",
                         border: border.lineStrong,
+                        borderRadius: 4,
                       }}
                     >
                       Watchlist
                     </span>
                   )}
                 </div>
+              )}
+              {/* Logo + Title + Company */}
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <CompanyLogo {...(isNetwork ? { name: row.companyName, size: 44 } : { ...companyLogoFromJobData(row.companyName, row.cached), size: 44 })} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                    {row.companyName}
+                    {row.location ? ` · ${row.location}` : ""}
+                  </p>
+                  <MetadataGrid row={row} isNetwork={isNetwork} networkJob={networkJob} />
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
         <div
