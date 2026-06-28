@@ -30,7 +30,7 @@ export function WorkspaceNetwork() {
   ];
 
   return (
-    <WorkspacePageShell isMobile={isMobile} label="Your network" mobileBarTitle="Network" title="Who can open the door.">
+    <WorkspacePageShell bruddle isMobile={isMobile} label="Your network" mobileBarTitle="Network" title="Who can open the door.">
         {/* Hive Mind toggle */}
         <ScoutBox
           padding={isMobile ? "14px 16px" : "14px 18px"}
@@ -247,7 +247,7 @@ export function WorkspaceNetwork() {
                     style={{
                       padding: "10px 12px",
                       background: "rgba(26,58,47,0.05)",
-                      border: border.line,
+                      border: "var(--scout-border)",
                       marginBottom: 10,
                     }}
                   >

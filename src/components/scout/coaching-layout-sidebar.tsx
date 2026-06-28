@@ -60,7 +60,7 @@ export function CoachingLayoutSidebar({
       <div
         style={{
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           overflow: "hidden",
           boxShadow: "var(--scout-shadow-card)",
@@ -98,7 +98,7 @@ export function CoachingLayoutSidebar({
                 justifyContent: "center",
                 marginTop: 14,
                 paddingTop: 14,
-                borderTop: border.line,
+                borderTop: "var(--scout-border)",
               }}
             >
               {coachCount !== undefined && (
@@ -129,7 +129,7 @@ export function CoachingLayoutSidebar({
       <nav
         style={{
           background: surface.card,
-          border: border.line,
+          border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
           padding: 6,
           boxShadow: "var(--scout-shadow-card)",

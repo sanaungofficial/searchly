@@ -16,7 +16,7 @@ import type { ContactCardData, ContactTimelineItem } from "./inbox-types";
 
 const DRAWER_WIDTH = "88vw";
 const SIDEBAR_WIDTH = 320;
-const line = border.line;
+const line = "var(--scout-border)";
 
 type ActivityFilter = "all" | "email" | "meeting";
 

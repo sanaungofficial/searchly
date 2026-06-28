@@ -100,7 +100,7 @@ function PlaceholderTab({
     <div
       style={{
         background: surface.card,
-        border: border.line,
+        border: "var(--scout-border)",
         borderRadius: "var(--scout-radius)",
         padding: "52px 32px",
         textAlign: "center",
@@ -160,7 +160,7 @@ function MobileTabBar({
             style={{
               flexShrink: 0,
               padding: "8px 14px",
-              border: border.line,
+              border: "var(--scout-border)",
               borderRadius: "calc(var(--scout-radius) - 2px)",
               background: isActive ? surface.inset : surface.card,
               color: isActive ? color.ink : color.muted,
@@ -252,6 +252,7 @@ function CoachingContent() {
   return (
     <>
       <div
+        className="bruddle"
         style={{
           height: "100%",
           minHeight: 0,

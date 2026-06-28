@@ -15,7 +15,7 @@ export function InboxFolderNav({ folders, selectedId, onSelect }: Props) {
       style={{
         width: 196,
         flexShrink: 0,
-        borderRight: border.line,
+        borderRight: "var(--scout-border)",
         background: surface.inset,
         padding: "12px 10px",
         overflowY: "auto",

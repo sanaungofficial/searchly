@@ -80,7 +80,7 @@ export function InboxLinkOpportunityModal({
           maxHeight: "85vh",
           overflow: "auto",
           background: surface.card,
-          border: border.lineStrong,
+          border: "var(--scout-border)",
           borderRadius: 12,
           zIndex: 1101,
           boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
@@ -89,7 +89,7 @@ export function InboxLinkOpportunityModal({
         <div
           style={{
             padding: "14px 16px",
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -115,14 +115,14 @@ export function InboxLinkOpportunityModal({
                 style={{
                   width: "100%",
                   padding: "9px 12px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   borderRadius: 8,
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
                   marginBottom: 10,
                 }}
               />
-              <div style={{ maxHeight: 220, overflowY: "auto", border: border.line, borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ maxHeight: 220, overflowY: "auto", border: "var(--scout-border)", borderRadius: 8, marginBottom: 12 }}>
                 {filtered.length === 0 && (
                   <p style={{ padding: 12, margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
                     No matching opportunities.
@@ -140,7 +140,7 @@ export function InboxLinkOpportunityModal({
                       textAlign: "left",
                       padding: "10px 12px",
                       border: "none",
-                      borderBottom: border.line,
+                      borderBottom: "var(--scout-border)",
                       background: linkedJobId === job.id ? "rgba(42,107,74,0.08)" : "#fff",
                       cursor: saving ? "wait" : "pointer",
                     }}
@@ -189,7 +189,7 @@ export function InboxLinkOpportunityModal({
                     width: "100%",
                     marginTop: 4,
                     padding: "8px 10px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                     borderRadius: 6,
                     fontFamily: fontSans,
                     fontSize: 13,
@@ -206,7 +206,7 @@ export function InboxLinkOpportunityModal({
                     width: "100%",
                     marginTop: 4,
                     padding: "8px 10px",
-                    border: border.line,
+                    border: "var(--scout-border)",
                     borderRadius: 6,
                     fontFamily: fontSans,
                     fontSize: 13,

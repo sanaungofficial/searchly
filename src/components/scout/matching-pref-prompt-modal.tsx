@@ -15,7 +15,7 @@ import {
 import { SALARY_RANGES } from "@/components/scout/screens";
 import type { MatchingTuningGapId } from "@/lib/recommendation-tuning";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
-import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
 export type MatchingPrefProfile = {
   targetRoles: string[];
@@ -54,7 +54,7 @@ function listOption(selected: boolean, onClick: () => void, label: string) {
         width: "100%",
         textAlign: "left",
         padding: "12px 14px",
-        border: selected ? `1.5px solid ${color.forest}` : border.line,
+        border: selected ? `1.5px solid ${color.forest}` : "var(--scout-border)",
         borderRadius: "var(--scout-radius)",
         background: selected ? "rgba(74,139,106,0.1)" : surface.inset,
         cursor: "pointer",
@@ -160,7 +160,7 @@ export function MatchingPrefPromptModal({
             onClick={() => setLocal({ ...local, fullyRemote: !local.fullyRemote, targetMarket: local.fullyRemote ? local.targetMarket : "" })}
             style={{
               padding: "10px 14px",
-              border: local.fullyRemote ? `1.5px solid ${color.forest}` : border.line,
+              border: local.fullyRemote ? `1.5px solid ${color.forest}` : "var(--scout-border)",
               borderRadius: "var(--scout-radius)",
               background: surface.inset,
               cursor: "pointer",
@@ -232,7 +232,7 @@ export function MatchingPrefPromptModal({
           style={{
             width: "100%",
             padding: "10px 12px",
-            border: border.line,
+            border: "var(--scout-border)",
             fontFamily: fontSans,
             fontSize: T.bodySm,
             boxSizing: "border-box",
@@ -340,11 +340,12 @@ export function MatchingPrefPromptModal({
         <div
           role="dialog"
           aria-modal="true"
+          className="bruddle"
           onClick={(e) => e.stopPropagation()}
           style={{
             pointerEvents: "auto",
             background: surface.card,
-            border: border.lineStrong,
+            border: "var(--scout-border)",
             width: "100%",
             maxWidth: 480,
             padding: 24,

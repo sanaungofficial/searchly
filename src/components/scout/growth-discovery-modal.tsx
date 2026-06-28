@@ -126,6 +126,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
   return (
     <ScoutModal
       open
+      bruddle
       onClose={onClose}
       ariaLabelledBy="growth-discovery-title"
       maxWidth={480}

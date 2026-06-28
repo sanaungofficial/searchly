@@ -55,7 +55,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
   };
 
   return (
-    <ScoutModal open onClose={onClose} ariaLabelledBy="growth-upgrade-title" maxWidth={420} padding="36px 32px" zIndex={70}>
+    <ScoutModal open bruddle onClose={onClose} ariaLabelledBy="growth-upgrade-title" maxWidth={420} padding="36px 32px" zIndex={70}>
         <p
           id="growth-upgrade-title"
           style={{

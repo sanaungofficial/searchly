@@ -9,6 +9,7 @@ export function GrowthWelcomeModal({ onClose }: Props) {
   return (
     <ScoutModal
       open
+      bruddle
       onClose={onClose}
       maxWidth={420}
       padding="40px 36px"

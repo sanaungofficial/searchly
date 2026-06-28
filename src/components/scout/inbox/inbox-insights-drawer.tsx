@@ -71,7 +71,7 @@ export function InboxInsightsDrawer({
           width: isMobile ? "100%" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,
-          border: isMobile ? "none" : border.lineStrong,
+          border: isMobile ? "none" : "var(--scout-border)",
           zIndex: 201,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
           display: "flex",
@@ -83,7 +83,7 @@ export function InboxInsightsDrawer({
         <div
           style={{
             padding: isMobile ? "14px 16px 12px" : "18px 20px 14px",
-            borderBottom: border.line,
+            borderBottom: "var(--scout-border)",
             background: surface.card,
             flexShrink: 0,
             display: "flex",
@@ -114,7 +114,7 @@ export function InboxInsightsDrawer({
 
         <div style={{ flex: 1, overflowY: "auto" }}>
           {!insightsLoaded && (
-            <div style={{ padding: "16px 20px", borderBottom: border.line, background: "rgba(42,107,74,0.06)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "var(--scout-border)", background: "rgba(42,107,74,0.06)" }}>
               <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.55 }}>
                 {checkHint}
               </p>
@@ -125,7 +125,7 @@ export function InboxInsightsDrawer({
           )}
 
           {insightsLoaded && activities.length === 0 && (
-            <div style={{ padding: "14px 20px", borderBottom: border.line, background: "rgba(42,107,74,0.04)" }}>
+            <div style={{ padding: "14px 20px", borderBottom: "var(--scout-border)", background: "rgba(42,107,74,0.04)" }}>
               <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55 }}>
                 No new email updates right now. Tips below are still worth a skim.
               </p>
@@ -136,12 +136,12 @@ export function InboxInsightsDrawer({
           )}
 
           {insightsLoaded && followUps.length > 0 && (
-            <div style={{ padding: "16px 20px", borderBottom: border.line, background: "rgba(196,168,106,0.08)" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "var(--scout-border)", background: "rgba(196,168,106,0.08)" }}>
               <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
                 Follow-up ideas
               </p>
               {followUps.map((fu) => (
-                <div key={fu.jobId} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 0", borderBottom: border.line }}>
+                <div key={fu.jobId} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 0", borderBottom: "var(--scout-border)" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink }}>
                       {fu.company} — {fu.role}

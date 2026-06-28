@@ -17,6 +17,8 @@ type Props = {
   children: ReactNode;
   /** Max content width; defaults to WORKSPACE_MAX_WIDTH */
   maxWidth?: number;
+  /** Apply Bruddle design tokens (job seeker pages) */
+  bruddle?: boolean;
 };
 
 /** Citebound workspace page chrome — cream bg, editorial header, scroll body */
@@ -28,6 +30,7 @@ export function WorkspacePageShell({
   children,
   maxWidth = WORKSPACE_MAX_WIDTH,
   compact = false,
+  bruddle = false,
 }: Props) {
   if (compact) {
     return (
@@ -39,6 +42,7 @@ export function WorkspacePageShell({
 
   return (
     <div
+      className={bruddle ? "bruddle" : undefined}
       style={{
         height: "100%",
         minHeight: 0,

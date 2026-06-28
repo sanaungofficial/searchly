@@ -14,7 +14,7 @@ type Props = {
 
 export function ProfileSyncPromptModal({ sync, onConfirm, onSkip, saving }: Props) {
   return (
-    <ScoutModal open onClose={onSkip} ariaLabelledBy="profile-sync-title" maxWidth={420}>
+    <ScoutModal open bruddle onClose={onSkip} ariaLabelledBy="profile-sync-title" maxWidth={420}>
       <p id="profile-sync-title" style={{ ...displayTitleStyle(22), margin: "0 0 10px", lineHeight: 1.3 }}>
         Update your profile?
       </p>

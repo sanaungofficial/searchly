@@ -13,7 +13,7 @@ export function InboxWisdomTipRow({ tip, compact }: Props) {
     <div
       style={{
         padding: compact ? "10px 0" : "12px 14px",
-        borderBottom: border.line,
+        borderBottom: "var(--scout-border)",
         background: compact ? undefined : "rgba(196,168,106,0.06)",
       }}
     >
