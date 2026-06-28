@@ -206,7 +206,7 @@ export function JobMatchScorePanel({
         <button
           type="button"
           onClick={onRunFullMatch}
-          style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.forest, color: color.gold, border: "none", borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.cta, color: color.ctaForeground, border: "var(--scout-border)", borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "var(--scout-shadow-bruddle)" }}
         >
           Analyze match
         </button>

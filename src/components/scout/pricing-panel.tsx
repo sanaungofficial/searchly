@@ -75,10 +75,11 @@ export function PricingPanel({ compact = false }: Props) {
   const btnStyle = {
     width: "100%" as const,
     padding: "10px 12px",
-    background: color.forest,
-    color: color.gold,
+    background: color.cta,
+    color: color.ctaForeground,
     border: "var(--scout-border)",
     borderRadius: radius.px,
+    boxShadow: "var(--scout-shadow-bruddle)",
     fontFamily: fontSans,
     fontWeight: 600,
     cursor: "pointer" as const,

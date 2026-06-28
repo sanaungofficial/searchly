@@ -237,7 +237,7 @@ export function LiveSessionLobby({
             <ScoutPrimaryBtn
               onClick={() => void startSession()}
               disabled={busy}
-              style={{ minHeight: 48, background: color.forest, color: color.gold }}
+              style={{ minHeight: 48 }}
             >
               {busy ? "Starting…" : "Start session →"}
             </ScoutPrimaryBtn>
@@ -249,9 +249,9 @@ export function LiveSessionLobby({
               disabled={busy}
               style={{
                 minHeight: 48,
-                background: s.isLive ? "#C4574A" : color.forest,
-                color: s.isLive ? "#fff" : color.gold,
-                borderColor: s.isLive ? "#C4574A" : undefined,
+                ...(s.isLive
+                  ? { background: "#C4574A", color: "#fff", borderColor: "#C4574A", boxShadow: "none" }
+                  : {}),
               }}
             >
               {canHost ? "Join as host →" : "Join now →"}
@@ -279,7 +279,7 @@ export function LiveSessionLobby({
                 <ScoutPrimaryBtn
                   onClick={() => void reserveSeat()}
                   disabled={busy}
-                  style={{ minHeight: 48, background: color.forest, color: color.gold }}
+                  style={{ minHeight: 48 }}
                 >
                   {busy ? "Saving…" : "Register for this session →"}
                 </ScoutPrimaryBtn>

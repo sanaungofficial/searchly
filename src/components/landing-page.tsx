@@ -15,7 +15,7 @@ export function LandingPage() {
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Link href="/pricing" style={{ fontSize: 14, color: "#52493F", textDecoration: "none", padding: "8px 16px" }}>Pricing</Link>
           <Link href="/login" style={{ fontSize: 14, color: "#52493F", textDecoration: "none", padding: "8px 16px" }}>Log in</Link>
-          <Link href="/signup" style={{ fontSize: 14, color: "#F2EDE3", background: "#1C3A2F", borderRadius: "var(--scout-radius)", padding: "9px 20px", textDecoration: "none", fontWeight: 500 }}>
+          <Link href="/signup" style={{ fontSize: 14, color: "var(--scout-cta-foreground)", background: "var(--scout-cta)", border: "var(--scout-border)", boxShadow: "var(--scout-shadow-bruddle)", borderRadius: "var(--scout-radius)", padding: "9px 20px", textDecoration: "none", fontWeight: 500 }}>
             Get started free
           </Link>
         </div>
@@ -33,7 +33,7 @@ export function LandingPage() {
           Upload your resume, track every role in one pipeline, and tailor cover letters and bullets from your real experience — not a generic template.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/signup" style={{ fontSize: 15, fontWeight: 600, color: "#F2EDE3", background: "#1C3A2F", borderRadius: "var(--scout-radius)", padding: "14px 32px", textDecoration: "none", display: "inline-block" }}>
+          <Link href="/signup" style={{ fontSize: 15, fontWeight: 600, color: "var(--scout-cta-foreground)", background: "var(--scout-cta)", border: "var(--scout-border)", boxShadow: "var(--scout-shadow-bruddle)", borderRadius: "var(--scout-radius)", padding: "14px 32px", textDecoration: "none", display: "inline-block" }}>
             Start for free
           </Link>
           <Link href="/pricing" style={{ fontSize: 15, color: "#1C3A2F", background: "transparent", border: "1.5px solid #1C3A2F40", borderRadius: "var(--scout-radius)", padding: "14px 32px", textDecoration: "none", display: "inline-block" }}>
@@ -76,7 +76,7 @@ export function LandingPage() {
         <p style={{ margin: "0 0 36px", fontSize: 16, color: "#52493F", lineHeight: 1.65 }}>
           Upload your resume, add your first job, and see what tailored applications actually look like.
         </p>
-        <Link href="/signup" style={{ fontSize: 15, fontWeight: 600, color: "#F2EDE3", background: "#1C3A2F", borderRadius: "var(--scout-radius)", padding: "14px 36px", textDecoration: "none", display: "inline-block" }}>
+        <Link href="/signup" style={{ fontSize: 15, fontWeight: 600, color: "var(--scout-cta-foreground)", background: "var(--scout-cta)", border: "var(--scout-border)", boxShadow: "var(--scout-shadow-bruddle)", borderRadius: "var(--scout-radius)", padding: "14px 36px", textDecoration: "none", display: "inline-block" }}>
           Create your free workspace
         </Link>
       </section>

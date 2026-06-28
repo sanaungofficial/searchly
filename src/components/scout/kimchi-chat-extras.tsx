@@ -1096,8 +1096,8 @@ function KimchiSideSheetStyles() {
         width: 100%;
         margin-top: 12px;
         padding: 10px 12px;
-        background: #1A3A2F;
-        color: #E8D5A3;
+        background: var(--scout-cta);
+        color: var(--scout-cta-foreground);
         border: none;
         border-radius: 0;
         font-family: ${sans};
@@ -1145,8 +1145,8 @@ function KimchiSideSheetStyles() {
       }
       .kimchi-modal__primary {
         padding: 10px 14px;
-        background: #1A3A2F;
-        color: #E8D5A3;
+        background: var(--scout-cta);
+        color: var(--scout-cta-foreground);
         border: none;
         border-radius: 0;
         font-family: ${sans};

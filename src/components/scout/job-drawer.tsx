@@ -216,8 +216,8 @@ function CompanyTrackPanel({
             onClick={() => router.push(withClientReviewPath("/profile/target-companies"))}
             style={{
               padding: "10px 18px",
-              background: color.forest,
-              color: color.gold,
+              background: color.cta,
+              color: color.ctaForeground,
               borderRadius: "var(--scout-radius)",
               fontFamily: sans,
               fontSize: 14,
@@ -244,8 +244,8 @@ function CompanyTrackPanel({
               disabled={saving}
               style={{
                 padding: "10px 18px",
-                background: saving ? "rgba(26,58,47,0.35)" : color.forest,
-                color: color.gold,
+                background: saving ? "var(--scout-cta-muted)" : color.cta,
+                color: color.ctaForeground,
                 border: "none",
                 borderRadius: "var(--scout-radius)",
                 fontFamily: sans,
@@ -509,8 +509,8 @@ function JobDrawerMatchSection({
           style={{
             marginTop: 14,
             padding: "11px 18px",
-            background: color.forest,
-            color: color.gold,
+            background: color.cta,
+            color: color.ctaForeground,
             border: "none",
             borderRadius: "var(--scout-radius)",
             fontFamily: sans,
@@ -742,8 +742,8 @@ function AiToolCard({
         style={{
           width: "100%",
           padding: "12px 16px",
-          background: color.forest,
-          color: color.gold,
+          background: color.cta,
+          color: color.ctaForeground,
           border: lineStrong,
           borderRadius: "var(--scout-radius)",
           fontFamily: sans,
@@ -1091,8 +1091,8 @@ export function JobDrawer({
                 rel="noopener noreferrer"
                 style={{
                   padding: "10px 20px",
-                  background: color.forest,
-                  color: color.gold,
+                  background: color.cta,
+                  color: color.ctaForeground,
                   borderRadius: "var(--scout-radius)",
                   fontFamily: sans,
                   fontSize: 14,
@@ -1436,7 +1436,7 @@ export function JobDrawer({
                         Track your progress, add notes, and use AI tools for this role.
                       </p>
                       {onOpenInPipeline && (
-                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                           Open saved job →
                         </button>
                       )}
@@ -1447,7 +1447,7 @@ export function JobDrawer({
                         Save this job to track your progress, see how you match, and create a tailored resume or cover letter.
                       </p>
                       {onAddToPipeline && (
-                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
+                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "var(--scout-cta-muted)" : color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
                           {addingToPipeline ? "Saving…" : "Save this job"}
                         </button>
                       )}
@@ -1630,7 +1630,7 @@ export function JobDrawer({
               <button
                 type="button"
                 onClick={() => setMatchDrawerOpen(true)}
-                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
+                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
               >
                 {displayFit <= 0 ? "See how you match →" : `Improve match (${displayFit}%) →`}
               </button>
@@ -1639,7 +1639,7 @@ export function JobDrawer({
                 href={externalPostUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ display: "block", width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}
+                style={{ display: "block", width: "100%", padding: "14px 16px", minHeight: 48, background: color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}
               >
                 {networkJob ? networkOpenLabel : "APPLY NOW"}
               </a>
@@ -1648,7 +1648,7 @@ export function JobDrawer({
                 type="button"
                 onClick={() => void onAddToPipeline()}
                 disabled={addingToPipeline}
-                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer" }}
+                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "var(--scout-cta-muted)" : color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer" }}
               >
                 {addingToPipeline ? "Saving…" : "Save this job"}
               </button>

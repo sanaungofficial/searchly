@@ -166,6 +166,14 @@ const btnBase: CSSProperties = {
   borderRadius: radius.box,
 };
 
+/** Bruddle primary CTA — purple fill, ink text, scout border, offset shadow */
+export const scoutPrimaryCtaStyle: CSSProperties = {
+  background: "var(--scout-cta)",
+  color: "var(--scout-cta-foreground)",
+  border: "var(--scout-border)",
+  boxShadow: "var(--scout-shadow-bruddle)",
+};
+
 export function ScoutPrimaryBtn({
   children,
   onClick,
@@ -187,9 +195,8 @@ export function ScoutPrimaryBtn({
       style={{
         ...btnBase,
         padding: "8px 16px",
-        background: disabled ? "rgba(26,58,47,0.35)" : "var(--scout-forest)",
-        color: "var(--scout-gold)",
-        border: "var(--scout-border)",
+        ...scoutPrimaryCtaStyle,
+        background: disabled ? "var(--scout-cta-muted)" : scoutPrimaryCtaStyle.background,
         opacity: disabled ? 0.7 : 1,
         ...style,
       }}
@@ -257,9 +264,10 @@ export function ScoutSecondaryBtn({
       style={{
         ...btnBase,
         padding: "8px 16px",
-        background: active ? "var(--scout-forest)" : surface.card,
-        color: active ? "var(--scout-gold)" : "var(--scout-forest)",
+        background: active ? color.bruddleInk : surface.card,
+        color: active ? "#FFFFFF" : color.bruddleInk,
         border: "var(--scout-border)",
+        boxShadow: active ? undefined : "var(--scout-shadow-bruddle)",
         ...style,
       }}
     >

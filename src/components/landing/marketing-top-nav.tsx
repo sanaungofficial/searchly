@@ -74,10 +74,11 @@ function primaryBtnStyle(isMobile: boolean): CSSProperties {
     fontFamily: fontSans,
     fontSize: isMobile ? T.caption : T.bodySm,
     fontWeight: 600,
-    color: color.gold,
+    color: color.ctaForeground,
     textDecoration: "none",
-    background: color.forest,
+    background: color.cta,
     border: "var(--scout-border)",
+    boxShadow: "var(--scout-shadow-bruddle)",
     whiteSpace: "nowrap",
   };
 }

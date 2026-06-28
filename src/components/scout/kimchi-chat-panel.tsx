@@ -1561,8 +1561,8 @@ function KimchiChatPanelStyles() {
         align-items: flex-start;
         gap: 2px;
         padding: 10px 12px;
-        background: #1A3A2F;
-        color: #E8D5A3;
+        background: var(--scout-cta);
+        color: var(--scout-cta-foreground);
         border: var(--scout-border);
         border-radius: 5px;
         font-family: ${sans};
@@ -1802,8 +1802,8 @@ function KimchiChatPanelStyles() {
         height: 34px;
         border: var(--scout-border);
         border-radius: 5px;
-        background: #1A3A2F;
-        color: #E8D5A3;
+        background: var(--scout-cta);
+        color: var(--scout-cta-foreground);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1812,8 +1812,8 @@ function KimchiChatPanelStyles() {
         flex-shrink: 0;
       }
       .kimchi-composer-box__send:disabled {
-        background: rgba(26, 58, 47, 0.08);
-        color: rgba(26, 58, 47, 0.3);
+        background: var(--scout-cta-subtle);
+        color: rgba(124, 58, 237, 0.3);
         cursor: default;
       }
     `}</style>
