@@ -47,7 +47,7 @@ import {
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
 import { CompanyLogo } from "./company-logo";
-import { ScoutBox, ScoutInsetBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "./scout-box";
+import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -368,7 +368,7 @@ function RecommendedResultsList({
 }) {
   if (!listings.length) {
     return (
-      <ScoutBox style={{ padding: 40, textAlign: "center" }}>
+      <ScoutBox style={{ padding: 40, textAlign: "center", border: "1.5px solid #161616" }}>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>{emptyMessage}</p>
       </ScoutBox>
     );
@@ -409,7 +409,7 @@ function RecommendedResultsList({
         const score = matchScoreStyle(matchScore);
 
         return (
-          <ScoutBox key={row.dedupeKey} padding={18}>
+          <ScoutBox key={row.dedupeKey} padding={18} style={{ border: "1.5px solid #161616" }}>
             <div
               role="button"
               tabIndex={0}
@@ -495,9 +495,25 @@ function RecommendedResultsList({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
-              <ScoutPrimaryBtn onClick={handleSave} disabled={isSaving}>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                style={{
+                  padding: "8px 16px",
+                  background: isSaving ? "#888" : "#AE7AFF",
+                  color: "#FFFFFF",
+                  border: "1.5px solid #161616",
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  cursor: isSaving ? "not-allowed" : "pointer",
+                  opacity: isSaving ? 0.65 : 1,
+                }}
+              >
                 {isSaving ? "Saving…" : "Save job"}
-              </ScoutPrimaryBtn>
+              </button>
               {row.url && (
                 <a
                   href={row.url}
@@ -941,9 +957,26 @@ export function PipelineRecommendedSection({
               </p>
             )}
           </div>
-          <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating} style={{ alignSelf: isMobile ? "flex-start" : "flex-end" }}>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading || revalidating}
+            style={{
+              alignSelf: isMobile ? "flex-start" : "flex-end",
+              padding: "8px 16px",
+              background: "transparent",
+              color: "#161616",
+              border: "1.5px solid #161616",
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
+              cursor: loading || revalidating ? "not-allowed" : "pointer",
+              opacity: loading || revalidating ? 0.65 : 1,
+            }}
+          >
             {loading || revalidating ? "Loading…" : "Refresh"}
-          </ScoutSecondaryBtn>
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexDirection: isMobile ? "column" : "row" }}>
@@ -961,13 +994,27 @@ export function PipelineRecommendedSection({
             aria-label="Search roles"
             maxLength={400}
           />
-          <ScoutPrimaryBtn
+          <button
+            type="button"
             onClick={() => applyFilters()}
             disabled={loading || revalidating}
-            style={{ flexShrink: 0, minWidth: isMobile ? undefined : 96 }}
+            style={{
+              flexShrink: 0,
+              minWidth: isMobile ? undefined : 96,
+              padding: "8px 16px",
+              background: "#AE7AFF",
+              color: "#FFFFFF",
+              border: "1.5px solid #161616",
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
+              cursor: loading || revalidating ? "not-allowed" : "pointer",
+              opacity: loading || revalidating ? 0.65 : 1,
+            }}
           >
             {loading || revalidating ? "Loading…" : "Search"}
-          </ScoutPrimaryBtn>
+          </button>
         </div>
 
         <div

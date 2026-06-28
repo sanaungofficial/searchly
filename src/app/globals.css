@@ -417,3 +417,17 @@
     gap: 20px !important;
   }
 }
+
+/* ─────────────────────────────────────────────
+   Bruddle design scope — zero-radius, bold borders
+   ───────────────────────────────────────────── */
+.bruddle {
+  --scout-radius: 0px;
+  --radius: 0px;
+  --scout-page: #FAF4F0;
+  --scout-surface: #FFFFFF;
+  --scout-inset: #F0ECE8;
+  --scout-shadow-card: none;
+  --scout-shadow-card-strong: none;
+  --font-ui: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
+}
