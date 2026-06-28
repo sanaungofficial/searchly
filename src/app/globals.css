@@ -58,6 +58,7 @@
   --scout-stack-plate: #D4CFC4;
   --scout-shadow-card: 0 1px 2px rgba(17, 17, 17, 0.04), 0 4px 12px rgba(17, 17, 17, 0.06);
   --scout-shadow-card-strong: 0 2px 4px rgba(17, 17, 17, 0.05), 0 8px 20px rgba(17, 17, 17, 0.07);
+  --scout-border: 1px solid rgba(17,17,17,0.14);
   --background: var(--scout-page);
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
@@ -471,4 +472,6 @@
   --scout-shadow-card: none;
   --scout-shadow-card-strong: none;
   --font-ui: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
+  --font-display: var(--font-roboto-flex, var(--font-source-sans)), system-ui, sans-serif;
+  --scout-border: 1.5px solid #161616;
 }
