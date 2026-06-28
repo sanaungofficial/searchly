@@ -4,10 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
-  formatCompactProfileLocation,
-  parseProfileLocationString,
-} from "@/lib/profile-location";
-import {
   buildOnboardingProfilePatch,
   type OnboardingMatchingState,
   type RelocationId,
@@ -48,6 +44,10 @@ import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
 import type { OnelinerAnalysisResponse } from "@/lib/onboarding-oneliner-suggestions";
+import {
+  extractOnelinerPrefill,
+  onelinerPrefillSuccessMessage,
+} from "@/lib/onboarding-oneliner-prefill";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -64,8 +64,14 @@ type LinkedInImportStepResult = "done" | "skipped" | "failed" | "unavailable";
 type LinkedInImportOutcome = {
   status: LinkedInImportStepResult;
   headline?: string | null;
+  summary?: string | null;
   error?: string;
   sparseMessage?: string;
+};
+
+type OnelinerImportBanner = {
+  type: "success" | "error" | "info";
+  message: string;
 };
 
 async function importLinkedInProfile(
@@ -92,6 +98,7 @@ async function importLinkedInProfile(
     return {
       status: "done",
       headline: typeof data.headline === "string" ? data.headline : null,
+      summary: typeof data.summary === "string" ? data.summary : null,
       sparseMessage: typeof data.sparseMessage === "string" ? data.sparseMessage : undefined,
     };
   } catch {
@@ -181,7 +188,6 @@ export default function OnboardingPage() {
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [suggestedPrioritizedCategories, setSuggestedPrioritizedCategories] = useState<string[]>([]);
   const [suggestedDeprioritizedCategories, setSuggestedDeprioritizedCategories] = useState<string[]>([]);
-  const [onelinerLocationHint, setOnelinerLocationHint] = useState<string | null>(null);
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -196,7 +202,6 @@ export default function OnboardingPage() {
   const [readbackData, setReadbackData] = useState<ReadBackData | null>(null);
   const [readbackStatus, setReadbackStatus] = useState<ReadBackStatus>("idle");
   const readbackStartedRef = useRef(false);
-  const locationHintFetchedRef = useRef(false);
   const [targetMarket, setTargetMarket] = useState("");
   const [fullyRemote, setFullyRemote] = useState(false);
   const [workArrangement, setWorkArrangement] = useState<WorkArrangementId>("");
@@ -205,15 +210,13 @@ export default function OnboardingPage() {
   const [targetSalary, setTargetSalary] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
-  const [locationHint, setLocationHint] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState(false);
+  const [resumeAssetId, setResumeAssetId] = useState<string | null>(null);
   const [linkedinImportAvailable, setLinkedinImportAvailable] = useState<boolean | null>(null);
   const [linkedinImporting, setLinkedinImporting] = useState(false);
-  const [linkedinImportBanner, setLinkedinImportBanner] = useState<{
-    type: "success" | "error" | "info";
-    message: string;
-  } | null>(null);
+  const [onelinerImportBanner, setOnelinerImportBanner] = useState<OnelinerImportBanner | null>(null);
   const linkedinImportedRef = useRef(false);
+  const resumeParsePollRef = useRef<number | null>(null);
   const [setupSteps, setSetupSteps] = useState<SetupStep[]>(() => buildInitialSetupSteps(false));
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
@@ -231,20 +234,6 @@ export default function OnboardingPage() {
       })
       .catch(() => setLinkedinImportAvailable(false));
   }, []);
-
-  useEffect(() => {
-    if (screen !== 4 || locationHintFetchedRef.current) return;
-    locationHintFetchedRef.current = true;
-    void fetch("/api/profile")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { parsedData?: { location?: string | null } } | null) => {
-        const raw = data?.parsedData?.location?.trim();
-        if (!raw) return;
-        const compact = formatCompactProfileLocation(parseProfileLocationString(raw)) ?? raw;
-        setLocationHint(compact);
-      })
-      .catch(() => {});
-  }, [screen]);
 
   const setStepStatus = useCallback((id: string, status: SetupStepStatus) => {
     setSetupSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
@@ -296,6 +285,78 @@ export default function OnboardingPage() {
     });
   }, [applyReadbackRoles]);
 
+  const applyResumeParsePrefill = useCallback(async (assetId: string) => {
+    try {
+      const res = await fetch(`/api/assets/${assetId}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        parseStatus?: string;
+        parseError?: string | null;
+        parsedData?: { summary?: string | null };
+      };
+      if (data.parseStatus === "failed") {
+        setOnelinerImportBanner({
+          type: "error",
+          message:
+            data.parseError?.trim() ||
+            "We couldn't analyze your resume. Type your one-liner manually.",
+        });
+        return "failed" as const;
+      }
+      if (data.parseStatus !== "complete") return "pending" as const;
+
+      const profileRes = await fetch("/api/profile");
+      const profile = profileRes.ok
+        ? ((await profileRes.json()) as { headline?: string | null; summary?: string | null })
+        : null;
+      const prefill = extractOnelinerPrefill({
+        headline: profile?.headline,
+        summary: profile?.summary ?? data.parsedData?.summary,
+      });
+      if (prefill) {
+        setProfileOneLiner(prefill.text);
+        setOnelinerImportBanner({
+          type: "success",
+          message: onelinerPrefillSuccessMessage(prefill.source, "resume"),
+        });
+      }
+      return "complete" as const;
+    } catch {
+      return "pending" as const;
+    }
+  }, []);
+
+  const startResumeParsePolling = useCallback(
+    (assetId: string) => {
+      if (resumeParsePollRef.current != null) {
+        window.clearInterval(resumeParsePollRef.current);
+        resumeParsePollRef.current = null;
+      }
+
+      const poll = async () => {
+        const outcome = await applyResumeParsePrefill(assetId);
+        if (outcome === "complete" || outcome === "failed") {
+          if (resumeParsePollRef.current != null) {
+            window.clearInterval(resumeParsePollRef.current);
+            resumeParsePollRef.current = null;
+          }
+        }
+      };
+
+      void poll();
+      resumeParsePollRef.current = window.setInterval(() => void poll(), 2500);
+    },
+    [applyResumeParsePrefill],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (resumeParsePollRef.current != null) {
+        window.clearInterval(resumeParsePollRef.current);
+      }
+    };
+  }, []);
+
   const processFile = useCallback(
     (file: File | undefined | null) => {
       if (!file) return;
@@ -303,6 +364,9 @@ export default function OnboardingPage() {
       setResumeUploaded(false);
       setResumeUploading(true);
       setResumeError(false);
+      setResumeAssetId(null);
+      setProfileOneLiner("");
+      setOnelinerImportBanner(null);
 
       const formData = new FormData();
       formData.append("file", file);
@@ -310,7 +374,13 @@ export default function OnboardingPage() {
       void fetch("/api/resume", { method: "POST", body: formData })
         .then(async (res) => {
           if (res.ok) {
+            const data = (await res.json().catch(() => ({}))) as { asset?: { id?: string } };
+            const assetId = data.asset?.id;
             setResumeUploaded(true);
+            if (assetId) {
+              setResumeAssetId(assetId);
+              startResumeParsePolling(assetId);
+            }
             if (liInput.trim()) await saveLinkedIn(liInput);
             startBackgroundReadback();
           } else {
@@ -328,7 +398,7 @@ export default function OnboardingPage() {
           setResumeUploading(false);
         });
     },
-    [liInput, startBackgroundReadback],
+    [liInput, startBackgroundReadback, startResumeParsePolling],
   );
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
@@ -367,13 +437,14 @@ export default function OnboardingPage() {
   const onLinkedInOnly = useCallback(async () => {
     if (!liInput.trim() || linkedinImporting) return;
 
-    setLinkedinImportBanner(null);
+    setOnelinerImportBanner(null);
+    setProfileOneLiner("");
     await saveLinkedIn(liInput);
 
     const importAvailable = linkedinImportAvailable === true;
     if (!importAvailable) {
       setReadbackStatus("skipped");
-      setLinkedinImportBanner({
+      setOnelinerImportBanner({
         type: "info",
         message: "LinkedIn URL saved. You can import from Profile later.",
       });
@@ -386,16 +457,24 @@ export default function OnboardingPage() {
       const result = await importLinkedInProfile(liInput, true);
       if (result.status === "done") {
         linkedinImportedRef.current = true;
-        const headline = result.headline?.trim();
-        if (headline) setProfileOneLiner(headline);
-        setLinkedinImportBanner({
-          type: "success",
-          message: headline
-            ? "LinkedIn imported — we prefilled your one-liner from your headline."
-            : result.sparseMessage ?? "LinkedIn imported successfully.",
+        const prefill = extractOnelinerPrefill({
+          headline: result.headline,
+          summary: result.summary,
         });
+        if (prefill) {
+          setProfileOneLiner(prefill.text);
+          setOnelinerImportBanner({
+            type: "success",
+            message: onelinerPrefillSuccessMessage(prefill.source, "linkedin"),
+          });
+        } else {
+          setOnelinerImportBanner({
+            type: "success",
+            message: result.sparseMessage ?? "LinkedIn imported successfully.",
+          });
+        }
       } else {
-        setLinkedinImportBanner({
+        setOnelinerImportBanner({
           type: "error",
           message:
             result.error ??
@@ -456,10 +535,6 @@ export default function OnboardingPage() {
         setDeprioritizedCategories((prev) =>
           prev.length ? prev : data.deprioritizedCategories.slice(0, 5),
         );
-      }
-      if (data.targetMarket) {
-        setOnelinerLocationHint(data.targetMarket);
-        setTargetMarket((prev) => prev.trim() || data.targetMarket || prev);
       }
       if (data.workArrangement) {
         setWorkArrangement((prev) => prev || data.workArrangement || prev);
@@ -875,11 +950,11 @@ export default function OnboardingPage() {
           {intentDone && showOneLiner && (
             <ScreenOneLiner
               initialValue={profileOneLiner}
-              importBanner={linkedinImportBanner}
+              importBanner={onelinerImportBanner}
               onContinue={(text) => void onOneLinerSubmit(text)}
               onBack={() => {
                 setShowOneLiner(false);
-                setLinkedinImportBanner(null);
+                setOnelinerImportBanner(null);
               }}
               loading={onelinerAnalyzing}
             />
@@ -971,7 +1046,6 @@ export default function OnboardingPage() {
               {screen === 4 && (
                 <ScreenOnboardingLocation
                   targetMarket={targetMarket}
-                  locationHint={locationHint ?? onelinerLocationHint}
                   onTargetMarketChange={setTargetMarket}
                   onContinue={() => void onLocationContinue()}
                   onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}

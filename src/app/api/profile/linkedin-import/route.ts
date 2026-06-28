@@ -115,6 +115,7 @@ export async function POST(request: Request) {
       linkedinUrl,
       name: fullName ?? dbUser.name,
       headline: scraped.headline ?? null,
+      summary: mergedParsed.summary ?? null,
       experienceCount: mergedParsed.workExperience.length,
       educationCount: mergedParsed.education.length,
       skillsCount: mergedParsed.skills.length,
