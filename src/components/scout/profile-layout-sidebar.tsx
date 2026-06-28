@@ -5,6 +5,7 @@ import { fontSans, fontDisplay, color, surface, border, displayTitleStyle, type 
 export type ProfileSidebarTab =
   | "about"
   | "linkedin"
+  | "discoveryscore"
   | "dreamrole"
   | "targetcompanies"
   | "strategy"
