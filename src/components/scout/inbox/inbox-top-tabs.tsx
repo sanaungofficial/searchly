@@ -1,6 +1,6 @@
 "use client";
 
-import { color, fontSans, border, type as T } from "@/lib/typography";
+import { color, fontSans, surface, type as T } from "@/lib/typography";
 
 export type InboxTab = "primary" | "sent" | "contacts";
 
@@ -13,13 +13,13 @@ type Props = {
 };
 
 const TAB_STYLE = (active: boolean) => ({
-  padding: "10px 14px",
+  padding: "12px 16px",
   border: "none",
   borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
   background: "transparent",
   fontFamily: fontSans,
-  fontSize: 13,
-  fontWeight: active ? 700 : 500,
+  fontSize: active ? T.body : T.bodySm,
+  fontWeight: active ? 600 : 500,
   color: active ? color.forest : color.muted,
   cursor: "pointer" as const,
   whiteSpace: "nowrap" as const,
@@ -32,9 +32,9 @@ export function InboxTopTabs({ active, primaryCount, onSelect, extraFolders = []
         display: "flex",
         alignItems: "center",
         gap: 4,
-        padding: "0 12px",
+        padding: "0 4px",
         borderBottom: "var(--scout-border)",
-        background: "#fff",
+        background: surface.page,
         overflowX: "auto",
       }}
     >

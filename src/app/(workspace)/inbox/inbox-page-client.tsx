@@ -3,11 +3,8 @@
 import { JobSearchEmailDashboard } from "@/components/scout/job-search-email-dashboard";
 import { WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
 import { surface } from "@/lib/typography";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export function InboxPageClient() {
-  const isMobile = useIsMobile();
-
   return (
     <div
       className="bruddle"
@@ -18,19 +15,10 @@ export function InboxPageClient() {
         flexDirection: "column",
         overflow: "hidden",
         background: surface.page,
-        animation: "fadeIn 0.3s ease both",
       }}
     >
       <WorkspaceScroll style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <WorkspaceContent
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "column",
-            padding: isMobile ? "16px 16px 24px" : "24px 28px 32px",
-          }}
-        >
+        <WorkspaceContent style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <JobSearchEmailDashboard />
         </WorkspaceContent>
       </WorkspaceScroll>

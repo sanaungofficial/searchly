@@ -61,8 +61,8 @@ export function InboxMessageRow({
             style={{
               flex: 1,
               fontFamily: fontSans,
-              fontSize: T.bodySm,
-              fontWeight: msg.unread ? 700 : 600,
+              fontSize: T.body,
+              fontWeight: msg.unread ? 600 : 500,
               color: color.ink,
               overflow: "hidden",
               textOverflow: "ellipsis",

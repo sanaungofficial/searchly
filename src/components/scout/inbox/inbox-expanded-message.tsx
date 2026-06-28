@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { color, fontSans, border, surface, type as T } from "@/lib/typography";
+import { color, fontMono, fontSans, radius, surface, type as T } from "@/lib/typography";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { InboxStatusDropdown } from "./inbox-status-pill";
 import { InboxLinkOpportunityModal } from "./inbox-link-opportunity-modal";
@@ -55,12 +55,12 @@ export function InboxExpandedMessage({
   );
 
   const btnStyle = {
-    padding: "5px 10px",
-    borderRadius: 6,
+    padding: "6px 12px",
+    borderRadius: radius.px,
     border: "var(--scout-border)",
-    background: "#fff",
+    background: surface.card,
     fontFamily: fontSans,
-    fontSize: 11,
+    fontSize: T.bodySm,
     fontWeight: 600 as const,
     color: color.ink,
     cursor: "pointer" as const,
@@ -69,10 +69,9 @@ export function InboxExpandedMessage({
   return (
     <div
       style={{
-        padding: "14px 20px 18px",
-        background: "#fff",
+        padding: "16px 20px 20px",
+        background: surface.inset,
         borderBottom: "var(--scout-border)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
       }}
     >
       {/* Subject + close — FlowCRM style */}
@@ -82,7 +81,7 @@ export function InboxExpandedMessage({
             flex: 1,
             margin: 0,
             fontFamily: fontSans,
-            fontSize: 16,
+            fontSize: T.body,
             fontWeight: 700,
             color: color.ink,
             lineHeight: 1.35,
