@@ -61,23 +61,41 @@ function saveLinkedIn(handle: string): Promise<void> {
 
 type LinkedInImportStepResult = "done" | "skipped" | "failed" | "unavailable";
 
+type LinkedInImportOutcome = {
+  status: LinkedInImportStepResult;
+  headline?: string | null;
+  error?: string;
+  sparseMessage?: string;
+};
+
 async function importLinkedInProfile(
   handle: string,
   importAvailable: boolean,
-): Promise<LinkedInImportStepResult> {
+): Promise<LinkedInImportOutcome> {
   const url = normalizeLinkedInUrl(handle);
-  if (!url) return "skipped";
-  if (!importAvailable) return "unavailable";
+  if (!url) return { status: "skipped" };
+  if (!importAvailable) return { status: "unavailable" };
   try {
     const res = await fetch("/api/profile/linkedin-import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ linkedinUrl: url }),
     });
-    if (res.status === 503) return "unavailable";
-    return res.ok ? "done" : "failed";
+    if (res.status === 503) return { status: "unavailable" };
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        status: "failed",
+        error: typeof data.error === "string" ? data.error : "LinkedIn import failed.",
+      };
+    }
+    return {
+      status: "done",
+      headline: typeof data.headline === "string" ? data.headline : null,
+      sparseMessage: typeof data.sparseMessage === "string" ? data.sparseMessage : undefined,
+    };
   } catch {
-    return "failed";
+    return { status: "failed", error: "LinkedIn import failed. Check your connection and try again." };
   }
 }
 
@@ -190,6 +208,12 @@ export default function OnboardingPage() {
   const [locationHint, setLocationHint] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState(false);
   const [linkedinImportAvailable, setLinkedinImportAvailable] = useState<boolean | null>(null);
+  const [linkedinImporting, setLinkedinImporting] = useState(false);
+  const [linkedinImportBanner, setLinkedinImportBanner] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+  const linkedinImportedRef = useRef(false);
   const [setupSteps, setSetupSteps] = useState<SetupStep[]>(() => buildInitialSetupSteps(false));
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
@@ -340,11 +364,51 @@ export default function OnboardingPage() {
     setShowOneLiner(true);
   }, [resumeFilename, resumeError, liInput, startBackgroundReadback]);
 
-  const onLinkedInOnly = useCallback(() => {
+  const onLinkedInOnly = useCallback(async () => {
+    if (!liInput.trim() || linkedinImporting) return;
+
+    setLinkedinImportBanner(null);
+    await saveLinkedIn(liInput);
+
+    const importAvailable = linkedinImportAvailable === true;
+    if (!importAvailable) {
+      setReadbackStatus("skipped");
+      setLinkedinImportBanner({
+        type: "info",
+        message: "LinkedIn URL saved. You can import from Profile later.",
+      });
+      setShowOneLiner(true);
+      return;
+    }
+
+    setLinkedinImporting(true);
+    try {
+      const result = await importLinkedInProfile(liInput, true);
+      if (result.status === "done") {
+        linkedinImportedRef.current = true;
+        const headline = result.headline?.trim();
+        if (headline) setProfileOneLiner(headline);
+        setLinkedinImportBanner({
+          type: "success",
+          message: headline
+            ? "LinkedIn imported — we prefilled your one-liner from your headline."
+            : result.sparseMessage ?? "LinkedIn imported successfully.",
+        });
+      } else {
+        setLinkedinImportBanner({
+          type: "error",
+          message:
+            result.error ??
+            "We couldn't import your LinkedIn profile. Your URL was saved — you can keep going.",
+        });
+      }
+    } finally {
+      setLinkedinImporting(false);
+    }
+
     setReadbackStatus("skipped");
-    if (liInput.trim()) void saveLinkedIn(liInput);
     setShowOneLiner(true);
-  }, [liInput]);
+  }, [liInput, linkedinImporting, linkedinImportAvailable]);
 
   const onLIKey = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -641,16 +705,19 @@ export default function OnboardingPage() {
       if (liInput.trim()) await saveLinkedIn(liInput);
       setStepStatus("profile", "done");
 
-      if (liInput.trim()) {
+      if (liInput.trim() && !linkedinImportedRef.current) {
         setStepStatus("linkedin", "active");
         const importResult = await importLinkedInProfile(liInput, importAvailable);
-        if (importResult === "done") {
+        if (importResult.status === "done") {
+          linkedinImportedRef.current = true;
           setStepStatus("linkedin", "done");
-        } else if (importResult === "failed") {
+        } else if (importResult.status === "failed") {
           setStepStatus("linkedin", "failed");
         } else {
           setStepStatus("linkedin", "skipped");
         }
+      } else if (liInput.trim() && linkedinImportedRef.current) {
+        setStepStatus("linkedin", "done");
       } else {
         setStepStatus("linkedin", "skipped");
       }
@@ -808,8 +875,12 @@ export default function OnboardingPage() {
           {intentDone && showOneLiner && (
             <ScreenOneLiner
               initialValue={profileOneLiner}
+              importBanner={linkedinImportBanner}
               onContinue={(text) => void onOneLinerSubmit(text)}
-              onBack={() => setShowOneLiner(false)}
+              onBack={() => {
+                setShowOneLiner(false);
+                setLinkedinImportBanner(null);
+              }}
               loading={onelinerAnalyzing}
             />
           )}
@@ -848,10 +919,11 @@ export default function OnboardingPage() {
               isDragging={isDragging}
               liInput={liInput}
               linkedinImportAvailable={linkedinImportAvailable}
+              linkedinImporting={linkedinImporting}
               onLIChange={onLIChange}
               onLIKey={onLIKey}
               onContinue={onWelcomeContinue}
-              onLinkedInOnly={onLinkedInOnly}
+              onLinkedInOnly={() => void onLinkedInOnly()}
               onStartFromScratch={onSkipProfile}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
