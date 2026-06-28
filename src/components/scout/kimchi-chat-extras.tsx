@@ -136,8 +136,8 @@ function KimchiCopyButtonStyles() {
         width: 28px;
         height: 28px;
         padding: 0;
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: 8px;
+        border: var(--scout-border);
+        border-radius: 0;
         background: rgba(255, 255, 255, 0.9);
         color: rgba(26, 58, 47, 0.55);
         cursor: pointer;
@@ -146,7 +146,6 @@ function KimchiCopyButtonStyles() {
       }
       .kimchi-copy-btn:hover {
         color: #1A3A2F;
-        border-color: rgba(26, 58, 47, 0.22);
         background: #fff;
       }
       .kimchi-copy-btn__check {
@@ -172,9 +171,9 @@ function KimchiTypingStyles() {
         min-height: 12px;
       }
       .kimchi-typing__dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
+        width: 6px;
+        height: 6px;
+        border-radius: 0;
         background: rgba(26, 58, 47, 0.38);
         animation: kimchi-typing-bounce 1.2s ease-in-out infinite;
       }
@@ -269,8 +268,8 @@ function KimchiStarterStyles() {
         margin: 0 0 10px;
         padding: 10px 12px;
         background: linear-gradient(135deg, rgba(124, 92, 191, 0.08) 0%, rgba(45, 154, 106, 0.08) 100%);
-        border: 1px solid rgba(26, 58, 47, 0.1);
-        border-radius: 10px;
+        border: var(--scout-border);
+        border-radius: 0;
       }
       .kimchi-knows-you__label {
         margin: 0 0 4px;
@@ -336,7 +335,7 @@ function KimchiChipStyles() {
         gap: 10px;
         width: 100%;
         padding: 12px 14px;
-        border-radius: var(--scout-radius);
+        border-radius: 0;
         font-family: ${sans};
         cursor: pointer;
         text-align: left;
@@ -344,21 +343,19 @@ function KimchiChipStyles() {
       }
       .kimchi-chips__chip--chat {
         background: #fff;
-        border: 1.5px solid rgba(26, 58, 47, 0.14);
+        border: var(--scout-border);
         color: #1A3A2F;
       }
       .kimchi-chips__chip--chat:hover {
         background: rgba(26, 58, 47, 0.04);
-        border-color: rgba(26, 58, 47, 0.24);
       }
       .kimchi-chips__chip--action {
         background: rgba(26, 58, 47, 0.06);
-        border: 1.5px solid rgba(26, 58, 47, 0.12);
+        border: var(--scout-border);
         color: #1A3A2F;
       }
       .kimchi-chips__chip--action:hover {
         background: rgba(26, 58, 47, 0.1);
-        border-color: rgba(26, 58, 47, 0.22);
       }
       .kimchi-chips__arrow {
         flex-shrink: 0;
@@ -397,16 +394,14 @@ function KimchiChipStyles() {
         padding: 7px 14px;
         align-items: center;
         gap: 0;
-        border-radius: 999px;
-        border-width: 1px;
+        border-radius: 0;
+        border: var(--scout-border);
         background: #fff;
-        border-color: rgba(0, 0, 0, 0.1);
         color: rgba(26, 26, 26, 0.7);
       }
       .kimchi-chips--inline .kimchi-chips__chip:hover {
-        background: rgba(0, 0, 0, 0.03);
-        border-color: rgba(0, 0, 0, 0.18);
-        color: #1A1A1A;
+        background: rgba(26, 58, 47, 0.04);
+        color: #161616;
       }
       .kimchi-chips--inline .kimchi-chips__chip:active {
         transform: scale(0.97);
@@ -428,7 +423,7 @@ function KimchiChipStyles() {
       .kimchi-chips--inline .kimchi-chips__chip--tone-rose,
       .kimchi-chips--inline .kimchi-chips__chip--tone-neutral {
         background: #fff;
-        border-color: rgba(0, 0, 0, 0.1);
+        border: var(--scout-border);
         color: rgba(26, 26, 26, 0.7);
       }
       .kimchi-chips--inline .kimchi-chips__chip--chat:hover,
@@ -439,9 +434,8 @@ function KimchiChipStyles() {
       .kimchi-chips--inline .kimchi-chips__chip--tone-mint:hover,
       .kimchi-chips--inline .kimchi-chips__chip--tone-rose:hover,
       .kimchi-chips--inline .kimchi-chips__chip--tone-neutral:hover {
-        background: rgba(0, 0, 0, 0.03);
-        border-color: rgba(0, 0, 0, 0.18);
-        color: #1A1A1A;
+        background: rgba(26, 58, 47, 0.04);
+        color: #161616;
       }
       .kimchi-chips--inline .kimchi-chips__pill-dot {
         display: none;
@@ -453,16 +447,15 @@ function KimchiChipStyles() {
       .kimchi-chips--cta .kimchi-chips__chip {
         max-width: none;
         padding: 7px 14px;
-        border-radius: 999px;
+        border-radius: 0;
         font-weight: 500;
         background: #fff;
-        border-color: rgba(0, 0, 0, 0.1);
+        border: var(--scout-border);
         color: rgba(26, 26, 26, 0.7);
       }
       .kimchi-chips--cta .kimchi-chips__chip:hover {
-        background: rgba(0, 0, 0, 0.03);
-        border-color: rgba(0, 0, 0, 0.18);
-        color: #1A1A1A;
+        background: rgba(26, 58, 47, 0.04);
+        color: #161616;
       }
       .kimchi-chips--cta .kimchi-chips__chip-label {
         font-size: 13px;
@@ -475,19 +468,18 @@ function KimchiChipStyles() {
       .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-mint,
       .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-rose {
         background: #fff;
-        border-color: rgba(0, 0, 0, 0.1);
+        border: var(--scout-border);
         color: rgba(26, 26, 26, 0.7);
       }
       .kimchi-chips--cta .kimchi-chips__chip--solid:hover {
-        background: rgba(0, 0, 0, 0.03);
-        border-color: rgba(0, 0, 0, 0.18);
-        color: #1A1A1A;
+        background: rgba(26, 58, 47, 0.04);
+        color: #161616;
         filter: none;
         transform: none;
       }
       .kimchi-chips--cta .kimchi-chips__chip--chat {
         background: #fff;
-        border-color: rgba(0, 0, 0, 0.1);
+        border: var(--scout-border);
         box-shadow: none;
       }
       .kimchi-chips__pill-dot {
@@ -581,16 +573,16 @@ function KimchiSuggestionsBarStyles() {
       .kimchi-suggestions-bar {
         flex-shrink: 0;
         padding: 8px 16px 4px;
-        border-top: 1px solid rgba(26, 58, 47, 0.06);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 248, 235, 0.5) 100%);
+        border-top: var(--scout-border);
+        background: var(--scout-page);
       }
       .kimchi-suggest-trigger {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         padding: 6px 12px;
-        border: 1px solid rgba(26, 58, 47, 0.14);
-        border-radius: 10px;
+        border: var(--scout-border);
+        border-radius: 0;
         background: #fff;
         font-family: ${sans};
         font-size: 12px;
@@ -601,7 +593,6 @@ function KimchiSuggestionsBarStyles() {
       }
       .kimchi-suggest-trigger:hover:not(:disabled) {
         background: rgba(26, 58, 47, 0.04);
-        border-color: rgba(26, 58, 47, 0.22);
         color: #1A3A2F;
       }
       .kimchi-suggest-trigger:disabled {
@@ -650,8 +641,8 @@ function KimchiDoNextStyles() {
         max-width: 180px;
         padding: 6px 12px;
         background: #fff;
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: 10px;
+        border: var(--scout-border);
+        border-radius: 0;
         cursor: pointer;
         font-family: ${sans};
         font-size: 12px;
@@ -660,27 +651,12 @@ function KimchiDoNextStyles() {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        transition: background 0.12s ease, transform 0.1s ease, box-shadow 0.12s ease;
-        box-shadow: 0 1px 2px rgba(17, 17, 17, 0.04);
-      }
-      .kimchi-do-next__pill:nth-child(3n+1) {
-        background: #f3ecff;
-        border-color: #c4a8e8;
-        color: #4a2d7a;
-      }
-      .kimchi-do-next__pill:nth-child(3n+2) {
-        background: #e8f4ff;
-        border-color: #9ec5ef;
-        color: #1a4a6e;
-      }
-      .kimchi-do-next__pill:nth-child(3n) {
-        background: #fff8e6;
-        border-color: #e8c96a;
-        color: #6b4f00;
+        transition: background 0.12s ease, transform 0.1s ease;
+        box-shadow: none;
       }
       .kimchi-do-next__pill:hover {
         background: rgba(26, 58, 47, 0.05);
-        border-color: rgba(26, 58, 47, 0.22);
+        color: #161616;
       }
       .kimchi-do-next__pill:active {
         transform: scale(0.97);
@@ -713,7 +689,7 @@ export function KimchiEmailInsightDrawer({
   if (!activity) {
     return (
       <div className="kimchi-side-sheet-backdrop" onClick={onClose} role="presentation">
-        <div className="kimchi-side-sheet" onClick={(e) => e.stopPropagation()} role="dialog">
+        <div className="kimchi-side-sheet bruddle" onClick={(e) => e.stopPropagation()} role="dialog">
           <KimchiSideSheetHead title="Email insight" onClose={onClose} />
           <div className="kimchi-side-sheet__body">
             <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
@@ -731,7 +707,7 @@ export function KimchiEmailInsightDrawer({
 
   return (
     <div className="kimchi-side-sheet-backdrop" onClick={onClose} role="presentation">
-      <div className="kimchi-side-sheet kimchi-side-sheet--wide" onClick={(e) => e.stopPropagation()} role="dialog">
+      <div className="kimchi-side-sheet kimchi-side-sheet--wide bruddle" onClick={(e) => e.stopPropagation()} role="dialog">
         <KimchiSideSheetHead title="Email insight" onClose={onClose} />
         <div className="kimchi-side-sheet__body">
           <p className="kimchi-email-insight__signal">{activity.signal.replace(/_/g, " ")}</p>
@@ -798,7 +774,7 @@ export function KimchiSaveIntakeModal({
 
   return (
     <div className="kimchi-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="kimchi-modal" onClick={(e) => e.stopPropagation()} role="dialog">
+      <div className="kimchi-modal bruddle" onClick={(e) => e.stopPropagation()} role="dialog">
         <KimchiModalHead title="Added to career strategy intake" onClose={onClose} />
         <div className="kimchi-modal__body">
           <p style={{ fontFamily: sans, fontSize: 14, margin: "0 0 10px", lineHeight: 1.5 }}>
@@ -912,7 +888,7 @@ export function KimchiStrategyGenerateModal({
 
   return (
     <div className="kimchi-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="kimchi-modal kimchi-modal--tall" onClick={(e) => e.stopPropagation()} role="dialog">
+      <div className="kimchi-modal kimchi-modal--tall bruddle" onClick={(e) => e.stopPropagation()} role="dialog">
         <KimchiModalHead title="Career strategy doc" onClose={onClose} />
         <div className="kimchi-modal__body">
           {status === "running" && (
@@ -1012,7 +988,7 @@ export function KimchiTranscriptModal({
 
   return (
     <div className="kimchi-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="kimchi-modal kimchi-modal--tall" onClick={(e) => e.stopPropagation()} role="dialog">
+      <div className="kimchi-modal kimchi-modal--tall bruddle" onClick={(e) => e.stopPropagation()} role="dialog">
         <div className="kimchi-modal__head">
           <h2>{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close">
@@ -1043,10 +1019,10 @@ function KimchiSideSheetStyles() {
         width: min(100%, 420px);
         height: 100%;
         background: #fff;
-        border-left: 1px solid rgba(26, 58, 47, 0.12);
+        border-left: var(--scout-border);
         display: flex;
         flex-direction: column;
-        box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+        box-shadow: -4px 4px 0 #161616;
       }
       .kimchi-side-sheet--wide { width: min(100%, 480px); }
       .kimchi-side-sheet__head {
@@ -1117,7 +1093,7 @@ function KimchiSideSheetStyles() {
         background: #1A3A2F;
         color: #E8D5A3;
         border: none;
-        border-radius: var(--scout-radius);
+        border-radius: 0;
         font-family: ${sans};
         font-size: 13px;
         font-weight: 600;
@@ -1135,7 +1111,7 @@ function KimchiSideSheetStyles() {
         padding: 10px 12px;
         background: rgba(26, 58, 47, 0.04);
         border: 1px solid rgba(26, 58, 47, 0.1);
-        border-radius: var(--scout-radius);
+        border-radius: 0;
         max-height: 160px;
         overflow-y: auto;
       }
@@ -1166,7 +1142,7 @@ function KimchiSideSheetStyles() {
         background: #1A3A2F;
         color: #E8D5A3;
         border: none;
-        border-radius: var(--scout-radius);
+        border-radius: 0;
         font-family: ${sans};
         font-size: 13px;
         font-weight: 600;
@@ -1203,8 +1179,8 @@ function KimchiModalStyles() {
         width: min(440px, 100%);
         max-height: min(520px, 85vh);
         background: #fff;
-        border: 1.5px solid rgba(26, 58, 47, 0.12);
-        box-shadow: 0 20px 50px rgba(26, 58, 47, 0.2);
+        border: var(--scout-border);
+        box-shadow: 4px 4px 0 #161616;
         display: flex;
         flex-direction: column;
         overflow: hidden;
