@@ -125,7 +125,7 @@ export function DashboardGoalWizardModal({
           style={{
             pointerEvents: "auto",
             background: surface.card,
-            border: border.lineStrong,
+            border: "var(--scout-border)",
             width: "100%",
             maxWidth: 520,
             maxHeight: "min(90vh, 640px)",
@@ -211,7 +211,7 @@ export function DashboardGoalWizardModal({
                       style={{
                         textAlign: "left",
                         padding: "14px 16px",
-                        border: selected ? `1.5px solid ${color.forest}` : border.line,
+                        border: selected ? `1.5px solid ${color.forest}` : "var(--scout-border)",
                         borderRadius: "var(--scout-radius)",
                         background: selected ? "rgba(74,139,106,0.1)" : surface.inset,
                         cursor: "pointer",
@@ -245,7 +245,7 @@ export function DashboardGoalWizardModal({
                 style={{
                   width: "100%",
                   padding: "10px 12px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   borderRadius: "var(--scout-radius)",
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
@@ -265,7 +265,7 @@ export function DashboardGoalWizardModal({
                     style={{
                       textAlign: "left",
                       padding: "12px 14px",
-                      border: pickValue === opt.value ? `1.5px solid ${color.forest}` : border.line,
+                      border: pickValue === opt.value ? `1.5px solid ${color.forest}` : "var(--scout-border)",
                       borderRadius: "var(--scout-radius)",
                       background: pickValue === opt.value ? "rgba(74,139,106,0.1)" : surface.card,
                       cursor: "pointer",
@@ -299,7 +299,7 @@ export function DashboardGoalWizardModal({
                 style={{
                   width: "100%",
                   padding: "10px 12px",
-                  border: border.line,
+                  border: "var(--scout-border)",
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
                   marginBottom: 20,
