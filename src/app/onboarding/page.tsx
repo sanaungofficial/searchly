@@ -4,10 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
-  formatCompactProfileLocation,
-  parseProfileLocationString,
-} from "@/lib/profile-location";
-import {
   buildOnboardingProfilePatch,
   type OnboardingMatchingState,
   type RelocationId,
@@ -192,7 +188,6 @@ export default function OnboardingPage() {
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [suggestedPrioritizedCategories, setSuggestedPrioritizedCategories] = useState<string[]>([]);
   const [suggestedDeprioritizedCategories, setSuggestedDeprioritizedCategories] = useState<string[]>([]);
-  const [onelinerLocationHint, setOnelinerLocationHint] = useState<string | null>(null);
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -207,7 +202,6 @@ export default function OnboardingPage() {
   const [readbackData, setReadbackData] = useState<ReadBackData | null>(null);
   const [readbackStatus, setReadbackStatus] = useState<ReadBackStatus>("idle");
   const readbackStartedRef = useRef(false);
-  const locationHintFetchedRef = useRef(false);
   const [targetMarket, setTargetMarket] = useState("");
   const [fullyRemote, setFullyRemote] = useState(false);
   const [workArrangement, setWorkArrangement] = useState<WorkArrangementId>("");
@@ -216,7 +210,6 @@ export default function OnboardingPage() {
   const [targetSalary, setTargetSalary] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
-  const [locationHint, setLocationHint] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState(false);
   const [resumeAssetId, setResumeAssetId] = useState<string | null>(null);
   const [linkedinImportAvailable, setLinkedinImportAvailable] = useState<boolean | null>(null);
@@ -241,20 +234,6 @@ export default function OnboardingPage() {
       })
       .catch(() => setLinkedinImportAvailable(false));
   }, []);
-
-  useEffect(() => {
-    if (screen !== 4 || locationHintFetchedRef.current) return;
-    locationHintFetchedRef.current = true;
-    void fetch("/api/profile")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { parsedData?: { location?: string | null } } | null) => {
-        const raw = data?.parsedData?.location?.trim();
-        if (!raw) return;
-        const compact = formatCompactProfileLocation(parseProfileLocationString(raw)) ?? raw;
-        setLocationHint(compact);
-      })
-      .catch(() => {});
-  }, [screen]);
 
   const setStepStatus = useCallback((id: string, status: SetupStepStatus) => {
     setSetupSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
@@ -556,10 +535,6 @@ export default function OnboardingPage() {
         setDeprioritizedCategories((prev) =>
           prev.length ? prev : data.deprioritizedCategories.slice(0, 5),
         );
-      }
-      if (data.targetMarket) {
-        setOnelinerLocationHint(data.targetMarket);
-        setTargetMarket((prev) => prev.trim() || data.targetMarket || prev);
       }
       if (data.workArrangement) {
         setWorkArrangement((prev) => prev || data.workArrangement || prev);
@@ -1071,7 +1046,6 @@ export default function OnboardingPage() {
               {screen === 4 && (
                 <ScreenOnboardingLocation
                   targetMarket={targetMarket}
-                  locationHint={locationHint ?? onelinerLocationHint}
                   onTargetMarketChange={setTargetMarket}
                   onContinue={() => void onLocationContinue()}
                   onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}

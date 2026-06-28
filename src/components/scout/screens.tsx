@@ -2238,6 +2238,7 @@ function OnboardingSuggestedCompanies({
   onAddCompany: (company: OnboardingCompanyPick) => void;
 }) {
   const [recommendations, setRecommendations] = useState<OnboardingCompanySuggestion[]>([]);
+  const [personalized, setPersonalized] = useState(false);
   const [loading, setLoading] = useState(true);
   const max = ONBOARDING_MAX_TARGET_COMPANIES;
   const atMax = selectedCompanies.length >= max;
@@ -2270,12 +2271,16 @@ function OnboardingSuggestedCompanies({
       }),
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { recommendations?: OnboardingCompanySuggestion[] } | null) => {
+      .then((data: { recommendations?: OnboardingCompanySuggestion[]; personalized?: boolean } | null) => {
         if (cancelled) return;
         setRecommendations(data?.recommendations ?? []);
+        setPersonalized(data?.personalized ?? false);
       })
       .catch(() => {
-        if (!cancelled) setRecommendations([]);
+        if (!cancelled) {
+          setRecommendations([]);
+          setPersonalized(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -2303,7 +2308,7 @@ function OnboardingSuggestedCompanies({
           marginTop: 0,
         }}
       >
-        Suggested for you
+        {personalized ? "Suggested for you" : "Popular companies"}
       </p>
 
       {loading && visible.length === 0 ? (
@@ -2680,8 +2685,6 @@ export function ScreenTargetCompanies({
   const canContinue = selectedCompanies.length > 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const rolesPreview = targetRoles.slice(0, 2).join(", ");
-  const hasSuggestionSignals =
-    targetRoles.length > 0 || prioritizedRoles.length > 0 || !!readbackData?.targetRoles?.length;
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
@@ -2712,15 +2715,13 @@ export function ScreenTargetCompanies({
           zIndex: dropdownOpen ? 30 : undefined,
         }}
       >
-        {hasSuggestionSignals && (
-          <OnboardingSuggestedCompanies
-            targetRoles={targetRoles}
-            prioritizedRoles={prioritizedRoles}
-            readbackData={readbackData}
-            selectedCompanies={selectedCompanies}
-            onAddCompany={onAddCompany}
-          />
-        )}
+        <OnboardingSuggestedCompanies
+          targetRoles={targetRoles}
+          prioritizedRoles={prioritizedRoles}
+          readbackData={readbackData}
+          selectedCompanies={selectedCompanies}
+          onAddCompany={onAddCompany}
+        />
 
         <TargetCompanyAutocomplete
           selectedCompanies={selectedCompanies}

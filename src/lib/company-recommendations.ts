@@ -2,6 +2,7 @@ import {
   COMPANY_CATALOG,
   getCatalogCompany,
   normalizeCompanySlug,
+  ONBOARDING_COMPANY_PICKS,
   type CatalogCompany,
 } from "@/lib/company-catalog";
 import {
@@ -286,18 +287,46 @@ function scoreCompany(company: CatalogCompany, signals: RecommendationProfileSig
   };
 }
 
-export function computeCompanyRecommendations(
-  signals: RecommendationProfileSignals,
-): CompanyRecommendation[] {
-  const hasSignals =
+export function hasRecommendationSignals(signals: RecommendationProfileSignals): boolean {
+  return (
     signals.targetRoles.length > 0 ||
     signals.prioritizedRoles.length > 0 ||
     (signals.parsedData?.skills.length ?? 0) > 0 ||
     (signals.parsedData?.tools.length ?? 0) > 0 ||
     (signals.parsedData?.workExperience.length ?? 0) > 0 ||
-    (signals.readbackData?.targetRoles?.length ?? 0) > 0;
+    (signals.readbackData?.targetRoles?.length ?? 0) > 0
+  );
+}
 
-  if (!hasSignals) return [];
+function buildPopularRecommendations(signals: RecommendationProfileSignals): CompanyRecommendation[] {
+  const excludedSlugs = new Set([...signals.watchlistSlugs, ...signals.pastEmployerSlugs]);
+  const picks = ONBOARDING_COMPANY_PICKS.filter(
+    (c) => ![...excludedSlugs].some((slug) => companyMatchesSlug(c, slug)),
+  );
+  const catalogFallback = COMPANY_CATALOG.filter(
+    (c) =>
+      !picks.some((p) => p.slug === c.slug) &&
+      ![...excludedSlugs].some((slug) => companyMatchesSlug(c, slug)),
+  );
+  return [...picks, ...catalogFallback]
+    .slice(0, MAX_RECOMMENDATIONS)
+    .map((c) => ({
+      catalogSlug: c.slug,
+      name: c.name,
+      website: c.website ?? null,
+      careersUrl: c.careersUrl ?? null,
+      type: c.type ?? null,
+      score: 1,
+      reasons: ["Popular dream company"],
+    }));
+}
+
+export function computeCompanyRecommendations(
+  signals: RecommendationProfileSignals,
+): CompanyRecommendation[] {
+  if (!hasRecommendationSignals(signals)) {
+    return buildPopularRecommendations(signals);
+  }
 
   const scored = COMPANY_CATALOG.map((company) => scoreCompany(company, signals)).filter(
     (row): row is CompanyRecommendation => row !== null,
@@ -306,22 +335,7 @@ export function computeCompanyRecommendations(
   scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
   if (scored.length === 0) {
-    const fallback = COMPANY_CATALOG.filter(
-      (c) =>
-        !signals.watchlistSlugs.some((s) => companyMatchesSlug(c, s)) &&
-        !signals.pastEmployerSlugs.some((s) => companyMatchesSlug(c, s)),
-    )
-      .slice(0, MAX_RECOMMENDATIONS)
-      .map((c) => ({
-        catalogSlug: c.slug,
-        name: c.name,
-        website: c.website ?? null,
-        careersUrl: c.careersUrl ?? null,
-        type: c.type ?? null,
-        score: 1,
-        reasons: ["Popular dream company — add roles in Profile for sharper picks"],
-      }));
-    return fallback;
+    return buildPopularRecommendations(signals);
   }
 
   return scored.slice(0, MAX_RECOMMENDATIONS);
