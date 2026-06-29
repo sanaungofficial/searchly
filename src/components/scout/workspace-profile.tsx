@@ -74,6 +74,7 @@ import { LibraryDocumentUploadModal } from "./library-document-upload-modal";
 import { assetTypeLabel, LIBRARY_DOCUMENT_FILTER_TYPES, type LibraryDocumentType, type UserAssetType } from "@/lib/asset-types";
 import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
 import { ApplicationQaPanel } from "./application-qa-bank";
+import { ProfileImportPanel } from "./profile-import-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
@@ -2944,9 +2945,11 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi } = useWorkspace();
+  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating } = useWorkspace();
   const profileLoc = parseProfileLocation(pathname);
   const clientId = adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? undefined;
+  const canAccessImport = Boolean(clientId) && (showAdminUi || isAdminReviewing) && !isImpersonating;
+  const preferencesSection = profileLoc.preferencesSection;
   const profileBase = profileBasePath(clientId, { sessionScoped: isAdminReviewing });
   const api = withClientScope;
   const page = profileLoc.page;
@@ -3835,8 +3838,60 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
             )}
             {page === "preferences" && profile && (
               <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
-                <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
-                <ApplicationQaPanel scopePath={api} />
+                {canAccessImport && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {(
+                      [
+                        { id: "general" as const, label: "General" },
+                        { id: "import" as const, label: "Import" },
+                      ] as const
+                    ).map(({ id, label }) => {
+                      const active = id === "import" ? preferencesSection === "import" : preferencesSection !== "import";
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              profileTabPath(profileBase, "preferences", {
+                                preferencesSection: id === "import" ? "import" : undefined,
+                              }),
+                            )
+                          }
+                          style={{
+                            padding: "8px 14px",
+                            minHeight: 44,
+                            border: "var(--scout-border)",
+                            background: active ? color.forest : surface.card,
+                            color: active ? color.gold : color.muted,
+                            fontFamily: fontSans,
+                            fontSize: T.bodySm,
+                            fontWeight: active ? 600 : 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {preferencesSection === "import" && canAccessImport && clientId ? (
+                  <ProfileImportPanel
+                    clientUserId={clientId}
+                    isMobile={isMobile}
+                    onPatchProfile={async (patch) => {
+                      await patchProfile(patch);
+                      setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
+                    }}
+                  />
+                ) : (
+                  <>
+                    <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
+                    <ApplicationQaPanel scopePath={api} />
+                  </>
+                )}
               </div>
             )}
 

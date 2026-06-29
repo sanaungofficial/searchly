@@ -178,6 +178,12 @@ export type SuggestedTrackedCompanyInput = {
   candidateEdge?: string | null;
 };
 
+export type SuggestedApplicationQa = {
+  question: string;
+  answer: string;
+  tags?: string[];
+};
+
 export type IntakeParseResult = {
   proposed: StrategyProfileFields;
   summary: string;
@@ -186,6 +192,8 @@ export type IntakeParseResult = {
   suggestedDreamCompanies?: string[];
   /** Rich target company rows with priority, notes, and candidate edge. */
   suggestedTrackedCompanies?: SuggestedTrackedCompanyInput[];
+  /** Application Q&A pairs from onboarding questionnaires. */
+  suggestedApplicationQa?: SuggestedApplicationQa[];
   /** Rich intake details kept for strategy generation (also stored in strategyIntakeNotes). */
   intakeContext?: IntakeContextFields;
 };
@@ -472,12 +480,29 @@ export function parseStrategyJson(text: string): CareerStrategyDocument {
 export function parseIntakeJson(text: string): IntakeParseResult {
   const parsed = JSON.parse(extractJsonObject(text)) as IntakeParseResult;
   const tracked = mergeIntakeTrackedCompanies(parsed);
+  const qa = Array.isArray(parsed.suggestedApplicationQa)
+    ? parsed.suggestedApplicationQa
+        .filter(
+          (row): row is { question: string; answer: string; tags?: string[] } =>
+            !!row &&
+            typeof row.question === "string" &&
+            typeof row.answer === "string" &&
+            row.question.trim().length > 0 &&
+            row.answer.trim().length > 0,
+        )
+        .map((row) => ({
+          question: row.question.trim(),
+          answer: row.answer.trim(),
+          tags: Array.isArray(row.tags) ? row.tags.filter((t): t is string => typeof t === "string") : undefined,
+        }))
+    : [];
   return {
     proposed: parsed.proposed ?? {},
     summary: parsed.summary ?? "",
     fieldsFound: parsed.fieldsFound ?? [],
     suggestedDreamCompanies: tracked.map((c) => c.name),
     suggestedTrackedCompanies: tracked,
+    suggestedApplicationQa: qa,
     intakeContext: parsed.intakeContext ?? {},
   };
 }

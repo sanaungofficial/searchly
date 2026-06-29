@@ -9,7 +9,7 @@ export function classifyImportFilename(filename: string): {
   reason: string;
 } {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv")) {
     return { kind: "xlsx", assetType: "OTHER", reason: "Workbook import" };
   }
   if (lower.includes("linkedin") && (lower.includes("strategy") || lower.includes("linkedin"))) {
