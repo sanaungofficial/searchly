@@ -10,6 +10,9 @@ import { extractRawResumeText, parseResumeText } from "@/lib/resume-extract";
 import { ensureProfileRow } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { parseImportType } from "@/lib/client-import/import-types";
+import { filterImportPreviewByType } from "@/lib/client-import/filter-preview";
+import { parsePasteImport } from "@/lib/client-import/paste-parser";
 
 type RouteParams = { params: Promise<{ userId: string }> };
 
@@ -30,17 +33,34 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const formData = await request.formData();
+  const importType = parseImportType(formData.get("importType")?.toString());
+  const pasteText = formData.get("pasteText")?.toString()?.trim() ?? "";
   const files = formData.getAll("files").filter((f): f is File => f instanceof File);
-  if (!files.length) {
-    return NextResponse.json({ error: "Upload at least one file" }, { status: 400 });
+
+  if (!files.length && !pasteText) {
+    return NextResponse.json({ error: "Upload a file or paste text to import" }, { status: 400 });
+  }
+
+  if (!importType) {
+    return NextResponse.json({ error: "importType is required" }, { status: 400 });
+  }
+
+  if (importType === "application_info") {
+    return NextResponse.json(
+      { error: "Application info uses the strategy intake parser — submit from the import modal." },
+      { status: 400 },
+    );
   }
 
   await ensureProfileRow(dbUser.id);
 
   let preview = emptyImportPreview();
-  const warnings: string[] = [];
 
   try {
+    if (pasteText && importType) {
+      preview = parsePasteImport(importType, pasteText);
+    }
+
     for (const file of files) {
       const classification = classifyImportFilename(file.name);
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -48,6 +68,16 @@ export async function POST(request: Request, { params }: RouteParams) {
       if (classification.kind === "xlsx") {
         const parsed = parseClientImportWorkbook(buffer, file.name);
         preview = mergeImportPreviews(preview, parsed);
+        continue;
+      }
+
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (["txt", "csv"].includes(ext) && importType !== "application_info") {
+        const text = (await file.text()).trim();
+        if (text) {
+          const parsed = parsePasteImport(importType, text);
+          preview = mergeImportPreviews(preview, parsed);
+        }
         continue;
       }
 
@@ -88,7 +118,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    preview.warnings.push(...warnings);
+    if (importType) {
+      preview = filterImportPreviewByType(preview, importType);
+    }
 
     return NextResponse.json({ preview });
   } catch (err) {

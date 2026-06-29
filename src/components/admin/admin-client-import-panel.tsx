@@ -61,16 +61,65 @@ function setProfileRoleSelection(
   };
 }
 
-function ImportReviewModal({
+function toggleProfileCategory(
+  preview: ClientImportPreview,
+  kind: "prioritizedCategories" | "deprioritizedCategories",
+  id: string,
+  selected: boolean,
+): ClientImportPreview {
+  const rows = (preview.profile[kind] ?? []).map((row) => (row.id === id ? { ...row, selected } : row));
+  return {
+    ...preview,
+    profile: { ...preview.profile, [kind]: rows },
+  };
+}
+
+function toggleApplicationQa(
+  preview: ClientImportPreview,
+  id: string,
+  selected: boolean,
+): ClientImportPreview {
+  const rows = (preview.applicationQa ?? []).map((row) => (row.id === id ? { ...row, selected } : row));
+  return { ...preview, applicationQa: rows };
+}
+
+function setProfileCategorySelection(
+  preview: ClientImportPreview,
+  kind: "prioritizedCategories" | "deprioritizedCategories",
+  selected: boolean,
+): ClientImportPreview {
+  return {
+    ...preview,
+    profile: {
+      ...preview.profile,
+      [kind]: (preview.profile[kind] ?? []).map((row) => ({ ...row, selected })),
+    },
+  };
+}
+
+function setApplicationQaSelection(preview: ClientImportPreview, selected: boolean): ClientImportPreview {
+  return {
+    ...preview,
+    applicationQa: (preview.applicationQa ?? []).map((row) => ({ ...row, selected })),
+  };
+}
+
+export function ImportReviewModal({
   preview,
   applyResume,
   onApplyResumeChange,
   onToggle,
   onToggleRole,
+  onToggleCategory,
+  onToggleQa,
   onSelectAll,
   onUnselectAll,
   onSelectAllRoles,
   onUnselectAllRoles,
+  onSelectAllCategories,
+  onUnselectAllCategories,
+  onSelectAllQa,
+  onUnselectAllQa,
   onClose,
   onApply,
   applying,
@@ -80,10 +129,16 @@ function ImportReviewModal({
   onApplyResumeChange: (v: boolean) => void;
   onToggle: (bucket: "pipelineJobs" | "companies" | "contacts", id: string, selected: boolean) => void;
   onToggleRole: (kind: "targetRoles" | "deprioritizedRoles", id: string, selected: boolean) => void;
+  onToggleCategory?: (kind: "prioritizedCategories" | "deprioritizedCategories", id: string, selected: boolean) => void;
+  onToggleQa?: (id: string, selected: boolean) => void;
   onSelectAll: (bucket: "pipelineJobs" | "companies" | "contacts") => void;
   onUnselectAll: (bucket: "pipelineJobs" | "companies" | "contacts") => void;
   onSelectAllRoles: (kind: "targetRoles" | "deprioritizedRoles") => void;
   onUnselectAllRoles: (kind: "targetRoles" | "deprioritizedRoles") => void;
+  onSelectAllCategories?: (kind: "prioritizedCategories" | "deprioritizedCategories") => void;
+  onUnselectAllCategories?: (kind: "prioritizedCategories" | "deprioritizedCategories") => void;
+  onSelectAllQa?: () => void;
+  onUnselectAllQa?: () => void;
   onClose: () => void;
   onApply: () => void;
   applying: boolean;
@@ -93,6 +148,12 @@ function ImportReviewModal({
   const selectedContacts = preview.contacts.filter((r) => r.selected).length;
   const selectedRoles = preview.profile.targetRoles.filter((r) => r.selected).length;
   const selectedDeprioritized = preview.profile.deprioritizedRoles.filter((r) => r.selected).length;
+  const prioritizedKw = preview.profile.prioritizedCategories ?? [];
+  const deprioritizedKw = preview.profile.deprioritizedCategories ?? [];
+  const selectedPrioritizedKw = prioritizedKw.filter((r) => r.selected).length;
+  const selectedDeprioritizedKw = deprioritizedKw.filter((r) => r.selected).length;
+  const qaRows = preview.applicationQa ?? [];
+  const selectedQa = qaRows.filter((r) => r.selected).length;
 
   return (
     <div
@@ -204,6 +265,65 @@ function ImportReviewModal({
                 ))}
               </>
             )}
+          </Section>
+        )}
+
+        {(prioritizedKw.length > 0 || deprioritizedKw.length > 0) && (
+          <Section title="Keywords">
+            {prioritizedKw.length > 0 && onToggleCategory && (
+              <>
+                <BulkToggle
+                  label={`To use (${selectedPrioritizedKw}/${prioritizedKw.length})`}
+                  onSelectAll={() => onSelectAllCategories?.("prioritizedCategories")}
+                  onUnselectAll={() => onUnselectAllCategories?.("prioritizedCategories")}
+                />
+                {prioritizedKw.map((row) => (
+                  <CheckRow
+                    key={row.id}
+                    checked={row.selected}
+                    onChange={(v) => onToggleCategory("prioritizedCategories", row.id, v)}
+                    label={row.data}
+                  />
+                ))}
+              </>
+            )}
+            {deprioritizedKw.length > 0 && onToggleCategory && (
+              <>
+                <BulkToggle
+                  label={`To avoid (${selectedDeprioritizedKw}/${deprioritizedKw.length})`}
+                  onSelectAll={() => onSelectAllCategories?.("deprioritizedCategories")}
+                  onUnselectAll={() => onUnselectAllCategories?.("deprioritizedCategories")}
+                />
+                {deprioritizedKw.map((row) => (
+                  <CheckRow
+                    key={row.id}
+                    checked={row.selected}
+                    onChange={(v) => onToggleCategory("deprioritizedCategories", row.id, v)}
+                    label={row.data}
+                  />
+                ))}
+              </>
+            )}
+          </Section>
+        )}
+
+        {qaRows.length > 0 && onToggleQa && (
+          <Section
+            title={`Passwords / Q&A (${selectedQa}/${qaRows.length})`}
+            onSelectAll={onSelectAllQa}
+            onUnselectAll={onUnselectAllQa}
+            showBulk
+          >
+            <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
+              {qaRows.map((row) => (
+                <CheckRow
+                  key={row.id}
+                  checked={row.selected}
+                  onChange={(v) => onToggleQa(row.id, v)}
+                  label={`${row.data.question} — ••••••`}
+                />
+              ))}
+            </div>
           </Section>
         )}
 
@@ -654,10 +774,18 @@ export function AdminClientImportPanel({
           onApplyResumeChange={setApplyResume}
           onToggle={(bucket, id, selected) => setPreview((p) => (p ? toggleRow(p, bucket, id, selected) : p))}
           onToggleRole={(kind, id, selected) => setPreview((p) => (p ? toggleProfileRole(p, kind, id, selected) : p))}
+          onToggleCategory={(kind, id, selected) =>
+            setPreview((p) => (p ? toggleProfileCategory(p, kind, id, selected) : p))
+          }
+          onToggleQa={(id, selected) => setPreview((p) => (p ? toggleApplicationQa(p, id, selected) : p))}
           onSelectAll={(bucket) => setPreview((p) => (p ? setBucketSelection(p, bucket, true) : p))}
           onUnselectAll={(bucket) => setPreview((p) => (p ? setBucketSelection(p, bucket, false) : p))}
           onSelectAllRoles={(kind) => setPreview((p) => (p ? setProfileRoleSelection(p, kind, true) : p))}
           onUnselectAllRoles={(kind) => setPreview((p) => (p ? setProfileRoleSelection(p, kind, false) : p))}
+          onSelectAllCategories={(kind) => setPreview((p) => (p ? setProfileCategorySelection(p, kind, true) : p))}
+          onUnselectAllCategories={(kind) => setPreview((p) => (p ? setProfileCategorySelection(p, kind, false) : p))}
+          onSelectAllQa={() => setPreview((p) => (p ? setApplicationQaSelection(p, true) : p))}
+          onUnselectAllQa={() => setPreview((p) => (p ? setApplicationQaSelection(p, false) : p))}
           onClose={() => setShowReview(false)}
           onApply={handleApply}
           applying={applying}

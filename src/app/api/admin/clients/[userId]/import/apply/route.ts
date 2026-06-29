@@ -43,6 +43,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     const deprioritizedRoles =
       body.profile?.deprioritizedRoles ??
       body.preview.profile.deprioritizedRoles.filter((r) => r.selected).map((r) => r.data);
+    const prioritizedCategories =
+      body.profile?.prioritizedCategories ??
+      (body.preview.profile.prioritizedCategories ?? []).filter((r) => r.selected).map((r) => r.data);
+    const deprioritizedCategories =
+      body.profile?.deprioritizedCategories ??
+      (body.preview.profile.deprioritizedCategories ?? []).filter((r) => r.selected).map((r) => r.data);
 
     const result = await applyClientImport(dbUser.id, {
       preview: body.preview,
@@ -50,6 +56,8 @@ export async function POST(request: Request, { params }: RouteParams) {
         ...profileSelection,
         targetRoles,
         deprioritizedRoles,
+        prioritizedCategories,
+        deprioritizedCategories,
         searchDuration: profileSelection.searchDuration ?? body.preview.profile.searchDuration,
         avoidNotes: profileSelection.avoidNotes ?? body.preview.profile.avoidNotes,
         proposed: profileSelection.proposed ?? body.preview.profile.proposed,
@@ -61,6 +69,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         body.companyIds ?? body.preview.companies.filter((r) => r.selected).map((r) => r.id),
       contactIds:
         body.contactIds ?? body.preview.contacts.filter((r) => r.selected).map((r) => r.id),
+      applicationQaIds:
+        body.applicationQaIds ??
+        (body.preview.applicationQa ?? []).filter((r) => r.selected).map((r) => r.id),
       applyResume: body.applyResume === true,
     });
 
