@@ -1,9 +1,14 @@
 import * as XLSX from "xlsx";
-import type { ClientImportPreview, ImportContact, ImportPipelineJob, ImportRow } from "@/lib/client-import/types";
+import type { ClientImportPreview, ImportApplicationQa, ImportContact, ImportPipelineJob, ImportRow } from "@/lib/client-import/types";
 import { detectJobTrackerColumns } from "@/lib/client-import/job-columns";
 import { mapImportJobStage, parseImportApproved } from "@/lib/client-import/job-status-map";
 import { importJobDedupeKey } from "@/lib/client-import/job-url";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
+import {
+  dedupeCredentials,
+  parseCredentialsFromSheetRows,
+  resetCredentialIds,
+} from "@/lib/client-import/credentials-parser";
 
 let rowCounter = 0;
 function nextId(prefix: string): string {
@@ -517,8 +522,28 @@ function companiesFromJobs(jobs: ImportRow<ImportPipelineJob>[]): ImportRow<Sugg
   return out;
 }
 
+function parseCredentialsSheet(wb: XLSX.WorkBook, sheetName: string): ImportRow<ImportApplicationQa>[] {
+  const rows = sheetRows(wb, sheetName).map((row) =>
+    (row as unknown[]).map((cell) => String(cell ?? "").trim()),
+  );
+  resetCredentialIds();
+  return parseCredentialsFromSheetRows(rows, sheetName);
+}
+
+function collectCredentialsFromWorkbook(wb: XLSX.WorkBook) {
+  const patterns = [/password/, /login/, /credential/, /account info/];
+  const all: ImportRow<ImportApplicationQa>[] = [];
+  for (const name of wb.SheetNames) {
+    if (patterns.some((p) => p.test(name.trim().toLowerCase()))) {
+      all.push(...parseCredentialsSheet(wb, name));
+    }
+  }
+  return dedupeCredentials(all);
+}
+
 export function parseClientImportWorkbook(buffer: Buffer, filename: string): ClientImportPreview {
   resetIds();
+  resetCredentialIds();
   const wb = XLSX.read(buffer, { type: "buffer", cellStyles: true });
   const warnings: string[] = [];
 
@@ -538,6 +563,7 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
   const keywords = keywordsSheet
     ? parseKeywordsSheet(wb, keywordsSheet)
     : { prioritizedCategories: [], deprioritizedCategories: [] };
+  const applicationQa = collectCredentialsFromWorkbook(wb);
 
   if (!pipelineJobs.length) {
     warnings.push(
@@ -549,6 +575,7 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
   if (!contactSheet) warnings.push("No Contact List tab found.");
   if (!companiesSheet) warnings.push("No Target Companies tab found (companies from job tracker will still import).");
   if (!titlesSheet) warnings.push("No Target Job Titles tab found.");
+  if (applicationQa.length) warnings.push(`Found ${applicationQa.length} login credential entries.`);
 
   const allCompanies = dedupeCompanies([...companiesFromSheet, ...companiesFromJobs(pipelineJobs)]);
 
@@ -566,6 +593,7 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
     pipelineJobs,
     companies: allCompanies,
     contacts: dedupeContacts(contacts),
+    applicationQa,
     referenceDocuments: [],
     warnings,
   };
@@ -592,6 +620,7 @@ export function mergeImportPreviews(base: ClientImportPreview, extra: ClientImpo
     pipelineJobs: dedupeJobs([...base.pipelineJobs, ...extra.pipelineJobs]),
     companies: dedupeCompanies([...base.companies, ...extra.companies, ...companiesFromJobs(extra.pipelineJobs)]),
     contacts: dedupeContacts([...base.contacts, ...extra.contacts]),
+    applicationQa: dedupeCredentials([...(base.applicationQa ?? []), ...(extra.applicationQa ?? [])]),
     referenceDocuments: [...base.referenceDocuments, ...extra.referenceDocuments],
     warnings: [...base.warnings, ...extra.warnings],
   };

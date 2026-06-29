@@ -16,6 +16,9 @@ export function filterImportPreviewByType(
   base.warnings = [...preview.warnings];
 
   switch (importType) {
+    case "client_packet":
+      return preview;
+
     case "job_tracker":
       return {
         ...base,
@@ -90,8 +93,8 @@ export function filterImportPreviewByType(
         ...base,
         applicationQa: preview.applicationQa ?? [],
         warnings: preview.applicationQa?.length
-          ? [`${preview.applicationQa.length} password entries.`]
-          : ["No password entries found."],
+          ? [`${preview.applicationQa.length} login credential entries.`]
+          : ["No login credentials found."],
       };
 
     default:

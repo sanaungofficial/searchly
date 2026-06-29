@@ -5,6 +5,7 @@ import { mapImportJobStage, parseImportApproved } from "@/lib/client-import/job-
 import { emptyImportPreview } from "@/lib/client-import/xlsx-parser";
 import { parseRoleTitleList } from "@/lib/parse-role-title-list";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
+import { parseCredentialsFromText, resetCredentialIds } from "@/lib/client-import/credentials-parser";
 
 let rowCounter = 0;
 function nextId(prefix: string): string {
@@ -246,35 +247,8 @@ function parseKeywordsFromPaste(text: string): {
 }
 
 function parsePasswordsFromPaste(text: string): ImportRow<{ question: string; answer: string; tags: string[] }>[] {
-  const lines = text.replace(/\r\n/g, "\n").split("\n").filter(Boolean);
-  const out: ImportRow<{ question: string; answer: string; tags: string[] }>[] = [];
-
-  for (const line of lines) {
-    let site = "";
-    let password = "";
-    if (line.includes("\t")) {
-      const [a, b, ...rest] = line.split("\t");
-      site = (a ?? "").trim();
-      password = [b, ...rest].join("\t").trim();
-    } else if (/^[^:]+:\s*.+$/.test(line) && !line.startsWith("http")) {
-      const idx = line.indexOf(":");
-      site = line.slice(0, idx).trim();
-      password = line.slice(idx + 1).trim();
-    } else if (line.includes(",")) {
-      const idx = line.indexOf(",");
-      site = line.slice(0, idx).trim();
-      password = line.slice(idx + 1).trim();
-    }
-    if (!site || !password) continue;
-    if (/^(site|service|portal|name|password)/i.test(site)) continue;
-    out.push({
-      id: nextId("pw"),
-      selected: true,
-      source: "paste",
-      data: { question: site, answer: password, tags: ["passwords"] },
-    });
-  }
-  return out;
+  resetCredentialIds();
+  return parseCredentialsFromText(text, "paste");
 }
 
 /** Parse pasted text for a given import type. Returns a partial ClientImportPreview. */
@@ -340,8 +314,8 @@ export function parsePasteImport(importType: ImportType, text: string): ClientIm
     case "passwords": {
       preview.applicationQa = parsePasswordsFromPaste(trimmed);
       preview.warnings = preview.applicationQa.length
-        ? [`Parsed ${preview.applicationQa.length} password entries.`]
-        : ["No password entries — use Site\\tPassword or Site: Password format."];
+        ? [`Parsed ${preview.applicationQa.length} login credential entries.`]
+        : ["No credentials found — use Site\\tLogin\\tPassword or Site: login / password format."];
       break;
     }
     default:

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useCallback, useRef, useState } from "react";
-import type { ClientImportPreview } from "@/lib/client-import/types";
+import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-import/types";
 import type { ImportType } from "@/lib/client-import/import-types";
 import { IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
 import type { IntakeParseResult } from "@/lib/career-strategy";
 import { ImportReviewModal } from "@/components/admin/admin-client-import-panel";
+import { ImportSummaryModal } from "@/components/scout/import-summary-modal";
+import { summarizeImportResult } from "@/lib/client-import/import-summary";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -45,7 +47,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const api = (path: string) => withClientUserId(path, clientUserId);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [importType, setImportType] = useState<ImportType>("job_tracker");
+  const [importType, setImportType] = useState<ImportType>("client_packet");
   const [files, setFiles] = useState<File[]>([]);
   const [pasteText, setPasteText] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -56,6 +58,8 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const [preview, setPreview] = useState<ClientImportPreview | null>(null);
   const [applyResume, setApplyResume] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [applyResult, setApplyResult] = useState<ClientImportApplyResult | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
 
   const [intakeResult, setIntakeResult] = useState<IntakeParseResult | null>(null);
   const [showApplyProfile, setShowApplyProfile] = useState(false);
@@ -69,6 +73,8 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
     setPreview(null);
     setShowReview(false);
+    setApplyResult(null);
+    setShowSummary(false);
     setIntakeResult(null);
     setShowApplyProfile(false);
     setApplyResume(false);
@@ -259,40 +265,19 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preview, applyResume }),
       });
-      const data = (await readResponseJson(res)) as {
-        error?: string;
-        profileUpdated?: boolean;
-        jobs?: { added: number; updated: number };
-        companies?: { added: number; updated: number };
-        contacts?: { added: number; updated: number };
-        roles?: { targetSelected: number; deprioritizedSelected: number };
-        categories?: { prioritizedSelected: number; deprioritizedSelected: number };
-        applicationQa?: { added: number; skipped: number };
-      };
+      const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
 
-      const parts = [
-        data.jobs?.added || data.jobs?.updated ? `jobs ${data.jobs.added} added, ${data.jobs.updated} updated` : null,
-        data.companies?.added || data.companies?.updated
-          ? `companies ${data.companies.added} added, ${data.companies.updated} updated`
-          : null,
-        data.contacts?.added || data.contacts?.updated
-          ? `contacts ${data.contacts.added} added, ${data.contacts.updated} updated`
-          : null,
-        data.roles?.targetSelected || data.roles?.deprioritizedSelected
-          ? `roles ${data.roles.targetSelected} target, ${data.roles.deprioritizedSelected} deprioritized`
-          : null,
-        data.categories?.prioritizedSelected || data.categories?.deprioritizedSelected
-          ? `keywords ${data.categories.prioritizedSelected} use, ${data.categories.deprioritizedSelected} avoid`
-          : null,
-        data.applicationQa?.added ? `${data.applicationQa.added} passwords saved` : null,
-        data.profileUpdated ? "profile updated" : null,
-      ].filter(Boolean);
-
+      const summaryLines = summarizeImportResult(data);
       setShowReview(false);
       setPreview(null);
-      handleClose();
-      onSuccess?.(parts.length ? `Import complete: ${parts.join("; ")}.` : "Import complete.");
+      setApplyResult(data);
+      setShowSummary(true);
+      onSuccess?.(
+        summaryLines.length
+          ? `Import complete: ${summaryLines.slice(0, 4).join("; ")}. Open summary for full audit.`
+          : "Import complete. Open summary for details.",
+      );
     } catch (e) {
       setError(formatApiErrorMessage(e, "Apply failed"));
     } finally {
@@ -597,6 +582,19 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           result={intakeResult}
           onClose={() => setShowApplyProfile(false)}
           onApply={handleApplyProfile}
+        />
+      )}
+
+      {showSummary && applyResult && (
+        <ImportSummaryModal
+          open={showSummary}
+          result={applyResult}
+          clientUserId={clientUserId}
+          onClose={() => {
+            setShowSummary(false);
+            setApplyResult(null);
+            handleClose();
+          }}
         />
       )}
 
