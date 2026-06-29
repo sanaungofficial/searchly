@@ -1,6 +1,7 @@
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { resolveAdminClientSubject, readClientUserIdFromRequest } from "@/lib/admin-client-subject";
 import { serializeImportRunDetail } from "@/lib/client-import/import-run";
+import { importRunUnavailableResponse, isPrismaMissingRelationError } from "@/lib/prisma-errors";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -22,12 +23,19 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Client mismatch" }, { status: 400 });
   }
 
-  const run = await prisma.importRun.findFirst({
-    where: { id: runId, clientUserId: dbUser.id },
-    include: { importedBy: { select: { name: true, email: true } } },
-  });
+  try {
+    const run = await prisma.importRun.findFirst({
+      where: { id: runId, clientUserId: dbUser.id },
+      include: { importedBy: { select: { name: true, email: true } } },
+    });
 
-  if (!run) return NextResponse.json({ error: "Import run not found" }, { status: 404 });
+    if (!run) return NextResponse.json({ error: "Import run not found" }, { status: 404 });
 
-  return NextResponse.json({ run: serializeImportRunDetail(run) });
+    return NextResponse.json({ run: serializeImportRunDetail(run) });
+  } catch (err) {
+    if (isPrismaMissingRelationError(err)) return importRunUnavailableResponse();
+    console.error("[import run detail]", err);
+    const message = err instanceof Error ? err.message : "Failed to load import details";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
