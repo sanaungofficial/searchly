@@ -254,6 +254,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
             name: item.name,
             logoUrl: item.logoUrl ?? null,
             website: item.website ?? null,
+            careersUrl: null,
           };
         }
         setCompanyLookup(map);

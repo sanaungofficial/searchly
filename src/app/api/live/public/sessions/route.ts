@@ -1,3 +1,4 @@
+import { CoachStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -12,7 +13,7 @@ export async function GET() {
   const coaches =
     coachIds.length > 0
       ? await prisma.coachProfile.findMany({
-          where: { id: { in: coachIds } },
+          where: { id: { in: coachIds }, status: CoachStatus.ACTIVE },
           select: { id: true, slug: true },
         })
       : [];
