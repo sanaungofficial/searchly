@@ -95,11 +95,30 @@ async function importLinkedInProfile(
         error: typeof data.error === "string" ? data.error : "LinkedIn import failed.",
       };
     }
+    if (!data.scraped) {
+      return { status: "failed", error: "LinkedIn import preview was incomplete." };
+    }
+    const applyRes = await fetch("/api/profile/linkedin-import/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkedinUrl: url,
+        applyAll: true,
+        scraped: data.scraped,
+      }),
+    });
+    const applyData = await applyRes.json().catch(() => ({}));
+    if (!applyRes.ok) {
+      return {
+        status: "failed",
+        error: typeof applyData.error === "string" ? applyData.error : "LinkedIn import failed.",
+      };
+    }
     return {
       status: "done",
-      headline: typeof data.headline === "string" ? data.headline : null,
-      summary: typeof data.summary === "string" ? data.summary : null,
-      sparseMessage: typeof data.sparseMessage === "string" ? data.sparseMessage : undefined,
+      headline: typeof applyData.headline === "string" ? applyData.headline : null,
+      summary: typeof applyData.summary === "string" ? applyData.summary : null,
+      sparseMessage: typeof applyData.sparseMessage === "string" ? applyData.sparseMessage : undefined,
     };
   } catch {
     return { status: "failed", error: "LinkedIn import failed. Check your connection and try again." };

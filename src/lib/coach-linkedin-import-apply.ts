@@ -1,12 +1,12 @@
 import type { ApifyLinkedInProfile } from "@/lib/apify-linkedin";
-import { mapApifyProfileToParsedData } from "@/lib/apify-linkedin";
+import {
+  buildCoachLinkedInImportPreview,
+  type CoachLinkedInImportProposed,
+  type CoachLinkedInImportSection,
+} from "@/lib/coach-linkedin-import-merge";
 import { persistExternalImageToAvatarsBucket } from "@/lib/persist-external-image";
 import { prisma } from "@/lib/prisma";
 import type { CoachProfile, Prisma } from "@prisma/client";
-
-function isBlank(value: string | null | undefined): boolean {
-  return !value?.trim();
-}
 
 function mergeUnique(existing: string[], incoming: string[]): string[] {
   const set = new Set(existing.map((item) => item.trim()).filter(Boolean));
@@ -17,119 +17,106 @@ function mergeUnique(existing: string[], incoming: string[]): string[] {
   return Array.from(set);
 }
 
-function firstCurrentPosition(raw: ApifyLinkedInProfile) {
-  const positions = raw.positions ?? [];
-  return positions.find((position) => position.current) ?? positions[0];
-}
-
-function formatSchoolEntry(edu: NonNullable<ApifyLinkedInProfile["educations"]>[number]): string | null {
-  const parts = [edu.schoolName?.trim(), edu.degreeName?.trim()].filter(Boolean);
-  return parts.length ? parts.join(" — ") : null;
+function proposedListValue(
+  section: "firms" | "schools" | "specialties",
+  coach: CoachProfile,
+  proposed: CoachLinkedInImportProposed,
+): string[] {
+  const incoming = proposed[section];
+  if (!incoming.length) return coach[section] ?? [];
+  return mergeUnique(coach[section] ?? [], incoming);
 }
 
 export type CoachLinkedInImportApplyResult = {
   coach: CoachProfile;
-  filledFields: string[];
+  appliedFields: string[];
 };
+
+export { buildCoachLinkedInImportPreview } from "@/lib/coach-linkedin-import-merge";
 
 export async function applyLinkedInImportForCoach(input: {
   coach: CoachProfile;
   linkedinUrl: string;
   scraped: ApifyLinkedInProfile;
+  sections?: CoachLinkedInImportSection[];
 }): Promise<CoachLinkedInImportApplyResult> {
-  const { coach, linkedinUrl, scraped } = input;
-  const parsed = mapApifyProfileToParsedData(scraped);
-  const filledFields: string[] = [];
+  const { coach, linkedinUrl, scraped, sections } = input;
+  const preview = buildCoachLinkedInImportPreview({ coach, scraped, linkedinUrl });
+  const { proposed } = preview;
+  const selected = new Set(sections ?? []);
+  const appliedFields: string[] = [];
   const patch: Prisma.CoachProfileUpdateInput = {};
 
-  const name = parsed.name?.trim();
-  if (name && isBlank(coach.displayName)) {
-    patch.displayName = name;
-    filledFields.push("displayName");
+  if (selected.has("displayName") && proposed.displayName) {
+    patch.displayName = proposed.displayName;
+    appliedFields.push("displayName");
+  }
+  if (selected.has("headline") && proposed.headline) {
+    patch.headline = proposed.headline;
+    appliedFields.push("headline");
+  }
+  if (selected.has("bio") && proposed.bio) {
+    patch.bio = proposed.bio;
+    appliedFields.push("bio");
+  }
+  if (selected.has("aboutMe") && proposed.aboutMe) {
+    patch.aboutMe = proposed.aboutMe;
+    appliedFields.push("aboutMe");
+  }
+  if (selected.has("currentRole") && proposed.currentRole) {
+    patch.currentRole = proposed.currentRole;
+    appliedFields.push("currentRole");
+  }
+  if (selected.has("currentCompany") && proposed.currentCompany) {
+    patch.currentCompany = proposed.currentCompany;
+    appliedFields.push("currentCompany");
+  }
+  if (selected.has("location") && proposed.location) {
+    patch.location = proposed.location;
+    appliedFields.push("location");
+  }
+  if (selected.has("linkedinUrl") && proposed.linkedinUrl) {
+    patch.linkedinUrl = proposed.linkedinUrl;
+    appliedFields.push("linkedinUrl");
   }
 
-  const headline = scraped.headline?.trim();
-  if (headline && isBlank(coach.headline)) {
-    patch.headline = headline;
-    filledFields.push("headline");
-  }
-
-  const summary = parsed.summary?.trim();
-  if (summary && isBlank(coach.bio)) {
-    patch.bio = summary;
-    filledFields.push("bio");
-  }
-  if (summary && isBlank(coach.aboutMe)) {
-    patch.aboutMe = summary;
-    filledFields.push("aboutMe");
-  }
-
-  const position = firstCurrentPosition(scraped);
-  if (position?.title?.trim() && isBlank(coach.currentRole)) {
-    patch.currentRole = position.title.trim();
-    filledFields.push("currentRole");
-  }
-  if (position?.companyName?.trim() && isBlank(coach.currentCompany)) {
-    patch.currentCompany = position.companyName.trim();
-    filledFields.push("currentCompany");
-  }
-
-  const location = scraped.locationName?.trim();
-  if (location && isBlank(coach.location)) {
-    patch.location = location;
-    filledFields.push("location");
-  }
-
-  if (isBlank(coach.linkedinUrl)) {
-    patch.linkedinUrl = linkedinUrl;
-    filledFields.push("linkedinUrl");
-  }
-
-  if (isBlank(coach.photoUrl) && scraped.picture?.trim()) {
+  if (selected.has("photoUrl") && proposed.photoSourceUrl) {
     const photoResult = await persistExternalImageToAvatarsBucket({
-      sourceUrl: scraped.picture.trim(),
+      sourceUrl: proposed.photoSourceUrl,
       storagePath: `coaches/${coach.id}/photo.jpg`,
       existingUrl: coach.photoUrl,
       forceRefresh: true,
     });
     if (photoResult.url) {
       patch.photoUrl = photoResult.url;
-      filledFields.push("photoUrl");
+      appliedFields.push("photoUrl");
     }
   }
 
-  const companies = (scraped.positions ?? [])
-    .map((item) => item.companyName?.trim())
-    .filter(Boolean) as string[];
-  if (companies.length) {
-    const merged = mergeUnique(coach.firms ?? [], companies);
-    if (merged.length > (coach.firms?.length ?? 0)) {
+  if (selected.has("firms")) {
+    const merged = proposedListValue("firms", coach, proposed);
+    if (JSON.stringify(merged) !== JSON.stringify(coach.firms ?? [])) {
       patch.firms = merged;
-      filledFields.push("firms");
+      appliedFields.push("firms");
     }
   }
-
-  const schools = (scraped.educations ?? [])
-    .map(formatSchoolEntry)
-    .filter(Boolean) as string[];
-  if (schools.length) {
-    const merged = mergeUnique(coach.schools ?? [], schools);
-    if (merged.length > (coach.schools?.length ?? 0)) {
+  if (selected.has("schools")) {
+    const merged = proposedListValue("schools", coach, proposed);
+    if (JSON.stringify(merged) !== JSON.stringify(coach.schools ?? [])) {
       patch.schools = merged;
-      filledFields.push("schools");
+      appliedFields.push("schools");
     }
   }
-
-  if (parsed.skills.length) {
-    const merged = mergeUnique(coach.specialties ?? [], parsed.skills);
-    if (merged.length > (coach.specialties?.length ?? 0)) {
+  if (selected.has("specialties")) {
+    const merged = proposedListValue("specialties", coach, proposed);
+    if (JSON.stringify(merged) !== JSON.stringify(coach.specialties ?? [])) {
       patch.specialties = merged;
-      filledFields.push("specialties");
+      appliedFields.push("specialties");
     }
   }
 
   if (Object.keys(patch).length === 0) {
-    return { coach, filledFields: [] };
+    return { coach, appliedFields: [] };
   }
 
   const updated = await prisma.coachProfile.update({
@@ -137,5 +124,5 @@ export async function applyLinkedInImportForCoach(input: {
     data: patch,
   });
 
-  return { coach: updated, filledFields };
+  return { coach: updated, appliedFields };
 }

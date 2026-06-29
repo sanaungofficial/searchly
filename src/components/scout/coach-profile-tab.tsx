@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { ApifyLinkedInProfile } from "@/lib/apify-linkedin";
+import type { CoachLinkedInImportMergeDiff, CoachLinkedInImportSection } from "@/lib/coach-linkedin-import-merge";
+import { CoachLinkedInImportMergeModal } from "@/components/scout/coach-linkedin-import-merge-modal";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
 import { CoachResourcesLibrary } from "@/components/scout/coach-resources-library";
@@ -193,6 +196,14 @@ export function CoachProfileTab({
   const [linkedInImportUrl, setLinkedInImportUrl] = useState("");
   const [linkedInImporting, setLinkedInImporting] = useState(false);
   const [linkedInImportNotice, setLinkedInImportNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [linkedInMergeOpen, setLinkedInMergeOpen] = useState(false);
+  const [linkedInMergeApplying, setLinkedInMergeApplying] = useState(false);
+  const [linkedInMergeError, setLinkedInMergeError] = useState<string | null>(null);
+  const [linkedInMergeDiffs, setLinkedInMergeDiffs] = useState<CoachLinkedInImportMergeDiff[]>([]);
+  const [pendingLinkedInImport, setPendingLinkedInImport] = useState<{
+    linkedinUrl: string;
+    scraped: ApifyLinkedInProfile;
+  } | null>(null);
 
   async function loadProfile() {
     const url = isAdminEdit ? `/api/admin/coaches/${coachId}` : "/api/coach/profile";
@@ -337,37 +348,82 @@ export function CoachProfileTab({
 
   async function importFromLinkedIn() {
     if (!isAdminEdit || !coachId) return;
+    const url = linkedInImportUrl.trim() || form.linkedinUrl?.trim() || "";
+    if (!url) {
+      setLinkedInImportNotice({ type: "error", message: "Enter a LinkedIn profile URL to import." });
+      return;
+    }
+
     setLinkedInImporting(true);
+    setLinkedInMergeOpen(true);
+    setLinkedInMergeError(null);
     setLinkedInImportNotice(null);
+    setPendingLinkedInImport(null);
+    try {
+      const response = await fetch(`/api/admin/coaches/${coachId}/linkedin-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: url }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "LinkedIn import failed.");
+      }
+      if (!data.scraped || typeof data.linkedinUrl !== "string") {
+        throw new Error("Import preview was incomplete. Try again.");
+      }
+      setLinkedInMergeDiffs(Array.isArray(data.diffs) ? data.diffs : []);
+      setPendingLinkedInImport({
+        linkedinUrl: data.linkedinUrl,
+        scraped: data.scraped as ApifyLinkedInProfile,
+      });
+      setLinkedInImportUrl("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "LinkedIn import failed. Please try again.";
+      setLinkedInMergeError(message);
+      setLinkedInImportNotice({ type: "error", message });
+    } finally {
+      setLinkedInImporting(false);
+    }
+  }
+
+  async function applyLinkedInImport(sections: CoachLinkedInImportSection[]) {
+    if (!isAdminEdit || !coachId || !pendingLinkedInImport) return;
+    setLinkedInMergeApplying(true);
+    setLinkedInMergeError(null);
     try {
       const response = await fetch(`/api/admin/coaches/${coachId}/linkedin-import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          linkedinUrl: linkedInImportUrl.trim() || form.linkedinUrl || "",
+          linkedinUrl: pendingLinkedInImport.linkedinUrl,
+          sections,
+          scraped: pendingLinkedInImport.scraped,
         }),
       });
       const data = await response.json();
       if (!response.ok) {
-        setLinkedInImportNotice({ type: "error", message: data.error ?? "LinkedIn import failed." });
-        return;
+        throw new Error(data.error ?? "LinkedIn import apply failed.");
       }
       setProfile(data.coach);
       setForm(data.coach);
-      setLinkedInImportUrl("");
+      setLinkedInMergeOpen(false);
+      setPendingLinkedInImport(null);
       onProfileSaved?.();
       setLinkedInImportNotice({
         type: "success",
         message:
           data.message ??
-          (Array.isArray(data.filledFields) && data.filledFields.length > 0
-            ? `Filled ${data.filledFields.join(", ")} from LinkedIn.`
-            : "Import completed — existing fields were kept."),
+          (Array.isArray(data.appliedFields) && data.appliedFields.length > 0
+            ? `Applied ${data.appliedFields.join(", ")} from LinkedIn.`
+            : "Import completed — no changes were needed for the selected sections."),
       });
-    } catch {
-      setLinkedInImportNotice({ type: "error", message: "LinkedIn import failed. Please try again." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "LinkedIn import apply failed.";
+      setLinkedInMergeError(message);
+      setLinkedInImportNotice({ type: "error", message });
     } finally {
-      setLinkedInImporting(false);
+      setLinkedInMergeApplying(false);
     }
   }
 
@@ -860,7 +916,7 @@ export function CoachProfileTab({
               Import from LinkedIn
             </p>
             <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
-              Pulls public LinkedIn profile data via Apify and fills only empty coach fields — existing bio, photo, firms, and other data are not overwritten.
+              Fetches public LinkedIn profile data via Apify, then lets you review and choose which sections to apply — nothing is overwritten until you confirm.
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <input
@@ -1019,6 +1075,23 @@ export function CoachProfileTab({
             setPricingOpen(false);
             loadProfile().catch(() => {});
           }}
+        />
+      )}
+
+      {isAdminEdit && (
+        <CoachLinkedInImportMergeModal
+          open={linkedInMergeOpen}
+          loading={linkedInImporting}
+          applying={linkedInMergeApplying}
+          error={linkedInMergeError}
+          diffs={linkedInMergeDiffs}
+          onClose={() => {
+            if (!linkedInMergeApplying && !linkedInImporting) {
+              setLinkedInMergeOpen(false);
+              setPendingLinkedInImport(null);
+            }
+          }}
+          onApply={(sections) => void applyLinkedInImport(sections)}
         />
       )}
     </div>

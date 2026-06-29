@@ -7,7 +7,10 @@ import {
 } from "@/lib/linkedin-profile";
 import { useCompactLayout } from "@/hooks/use-compact-layout";
 import { LinkedInAboutMergeModal } from "./linkedin-about-merge-modal";
+import { LinkedInImportMergeModal } from "./linkedin-import-merge-modal";
 import type { LinkedInAboutMergeDiff, LinkedInAboutMergeSection } from "@/lib/linkedin-about-merge";
+import type { LinkedInImportMergeDiff, LinkedInImportMergeSection } from "@/lib/linkedin-import-merge";
+import type { ApifyLinkedInProfile } from "@/lib/apify-linkedin";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ScoutBox, ScoutDisplayTitle, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface } from "@/lib/typography";
@@ -299,6 +302,17 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
   const [fixSuggestIssues, setFixSuggestIssues] = useState<SectionFixIssue[]>([]);
   const [fixSuggestionsLoading, setFixSuggestionsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importMergeOpen, setImportMergeOpen] = useState(false);
+  const [importMergeLoading, setImportMergeLoading] = useState(false);
+  const [importMergeApplying, setImportMergeApplying] = useState(false);
+  const [importMergeError, setImportMergeError] = useState<string | null>(null);
+  const [importMergeDiffs, setImportMergeDiffs] = useState<LinkedInImportMergeDiff[]>([]);
+  const [pendingImport, setPendingImport] = useState<{
+    linkedinUrl: string;
+    scraped: ApifyLinkedInProfile;
+    sparse?: boolean;
+    sparseMessage?: string;
+  } | null>(null);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
   const [showImportInput, setShowImportInput] = useState(false);
@@ -569,8 +583,12 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
       return;
     }
     setImporting(true);
+    setImportMergeOpen(true);
+    setImportMergeLoading(true);
+    setImportMergeError(null);
     setError(null);
     setImportNotice(null);
+    setPendingImport(null);
     try {
       const res = await fetch(api("/api/profile/linkedin-import"), {
         method: "POST",
@@ -582,6 +600,50 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
         const friendly = friendlyLinkedInImportError(typeof data.error === "string" ? data.error : "Import failed");
         throw new Error(`${friendly.headline} ${friendly.body}`);
       }
+      if (!data.scraped || typeof data.linkedinUrl !== "string") {
+        throw new Error("Import preview was incomplete. Try again.");
+      }
+      setImportMergeDiffs(Array.isArray(data.diffs) ? data.diffs : []);
+      setPendingImport({
+        linkedinUrl: data.linkedinUrl,
+        scraped: data.scraped as ApifyLinkedInProfile,
+        sparse: data.sparse === true,
+        sparseMessage: typeof data.sparseMessage === "string" ? data.sparseMessage : undefined,
+      });
+      setShowImportInput(false);
+      setImportUrl("");
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : "LinkedIn import failed";
+      const friendly = friendlyLinkedInImportError(raw);
+      const message = `${friendly.headline} ${friendly.body}`;
+      setImportMergeError(message);
+      setError(message);
+    } finally {
+      setImporting(false);
+      setImportMergeLoading(false);
+    }
+  };
+
+  const applyImportMerge = async (sections: LinkedInImportMergeSection[]) => {
+    if (!pendingImport) return;
+    setImportMergeApplying(true);
+    setImportMergeError(null);
+    setError(null);
+    try {
+      const res = await fetch(api("/api/profile/linkedin-import/apply"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          linkedinUrl: pendingImport.linkedinUrl,
+          sections,
+          scraped: pendingImport.scraped,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const friendly = friendlyLinkedInImportError(typeof data.error === "string" ? data.error : "Apply failed");
+        throw new Error(`${friendly.headline} ${friendly.body}`);
+      }
       await load();
       if (typeof data.linkedinUrl === "string") setLinkedinUrl(data.linkedinUrl);
       if (typeof data.name === "string") setName(data.name);
@@ -589,21 +651,27 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
         setAvatarUrl(data.avatarUrl);
         updateAvatarUrl(data.avatarUrl);
       }
-      setUpdatedAt(new Date().toISOString());
-      setShowImportInput(false);
-      setImportUrl("");
+      setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : new Date().toISOString());
       setLastLinkedInImportAt(new Date().toISOString());
       setAboutSyncStale(false);
-      if (data.sparse) {
-        setImportNotice(typeof data.sparseMessage === "string" ? data.sparseMessage : LINKEDIN_SPARSE_MESSAGE);
+      if (data.sparse || pendingImport.sparse) {
+        setImportNotice(
+          typeof data.sparseMessage === "string"
+            ? data.sparseMessage
+            : pendingImport.sparseMessage ?? LINKEDIN_SPARSE_MESSAGE,
+        );
       }
+      setImportMergeOpen(false);
+      setPendingImport(null);
       await loadAnalysis(true);
     } catch (e) {
-      const raw = e instanceof Error ? e.message : "LinkedIn import failed";
+      const raw = e instanceof Error ? e.message : "Apply failed";
       const friendly = friendlyLinkedInImportError(raw);
-      setError(`${friendly.headline} ${friendly.body}`);
+      const message = `${friendly.headline} ${friendly.body}`;
+      setImportMergeError(message);
+      setError(message);
     } finally {
-      setImporting(false);
+      setImportMergeApplying(false);
     }
   };
 
@@ -799,6 +867,21 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
           if (!applyingAbout) setAboutMergeOpen(false);
         }}
         onApply={(sections) => void applyAboutMerge(sections)}
+      />
+      <LinkedInImportMergeModal
+        open={importMergeOpen}
+        loading={importMergeLoading || importing}
+        applying={importMergeApplying}
+        error={importMergeError}
+        diffs={importMergeDiffs}
+        isFirstImport={!draft}
+        onClose={() => {
+          if (!importMergeApplying && !importing) {
+            setImportMergeOpen(false);
+            setPendingImport(null);
+          }
+        }}
+        onApply={(sections) => void applyImportMerge(sections)}
       />
       {importing && (
         <div
