@@ -35,9 +35,11 @@ type Props = {
   coachId: string;
   coachPreview?: CoachHubPreview | null;
   onClose: () => void;
+  basePath?: string;
+  onCoachUpdated?: () => void;
 };
 
-function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
+function CoachHubDrawerInner({ coachId, coachPreview, onClose, basePath = "/admin/coaches", onCoachUpdated }: Props) {
   const isMobile = useIsMobile();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,7 +71,7 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
     params.set("coachId", coachId);
     if (next === "overview") params.delete("tab");
     else params.set("tab", next);
-    router.replace(`/admin/coaches?${params.toString()}`, { scroll: false });
+    router.replace(`${basePath}?${params.toString()}`, { scroll: false });
   }
 
   return (
@@ -187,7 +189,7 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
             />
           )}
           {tab === "profile" && (
-            <CoachProfileTab mode="admin" coachId={coachId} />
+            <CoachProfileTab mode="admin" coachId={coachId} onProfileSaved={onCoachUpdated} />
           )}
           {tab === "pricing" && (
             <CoachPricingDrawer embedded coachId={coachId} coachSlug={null} />
