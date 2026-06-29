@@ -31,8 +31,17 @@ type NavLink = {
   children?: NavChild[];
 };
 
-function buildNavLinks(isAdmin: boolean): NavLink[] {
+function buildNavLinks(opts: { isAdmin: boolean; isStaffPortal: boolean }): NavLink[] {
+  const { isAdmin, isStaffPortal } = opts;
   const links: NavLink[] = [];
+  if (isStaffPortal) {
+    links.push({
+      id: "expert",
+      label: "Expert",
+      path: "/expert/dashboard",
+      match: isExpertPortalPath,
+    });
+  }
   links.push({
     id: "dashboard",
     label: "Dashboard",
@@ -598,7 +607,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const navLinks = buildNavLinks(showAdminUi);
+  const navLinks = buildNavLinks({ isAdmin: showAdminUi, isStaffPortal });
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
   const isLoggedOut = !user;
@@ -620,8 +629,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   const showExpertModeChip =
     isStaffPortal &&
     !isImpersonating &&
-    pathname === "/dashboard" &&
-    staffDashboardView === "expert";
+    isExpertPortalPath(pathname);
   const adminPortalActive = showAdminUi && pathname.startsWith("/admin");
 
   const expertNavItems: NavChild[] = STAFF_DASHBOARD_NAV.map(({ label, path }) => ({
@@ -727,7 +735,13 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   useEffect(() => {
     if (!isStaffPortal || isImpersonating || isAdminReviewing) return;
-    if (isExpertPortalPath(pathname)) setStaffDashboardView("expert");
+    if (isExpertPortalPath(pathname)) {
+      setStaffDashboardView("expert");
+      return;
+    }
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+      setStaffDashboardView("seeker");
+    }
   }, [pathname, isStaffPortal, isImpersonating, isAdminReviewing, setStaffDashboardView]);
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
@@ -752,6 +766,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   const navigateMainFromDrawer = (link: NavLink, childPath?: string) => {
     if (link.id === "dashboard") {
       navigateToSeekerDashboard();
+    } else if (link.id === "expert") {
+      navigateExpertPortal(childPath ?? link.path);
     } else {
       authGateOrNavigate(childPath ?? link.path);
     }
@@ -1068,6 +1084,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                   className={`workspace-nav-link${active ? " is-active" : ""}`}
                   onClick={() => {
                     if (id === "dashboard") navigateToSeekerDashboard();
+                    else if (id === "expert") navigateExpertPortal(path);
                     else authGateOrNavigate(path);
                   }}
                   style={{
@@ -1148,7 +1165,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               {showExpertSection && (
                 <UtilityPortalDropdown
                   label={isMobile ? "Expert" : "Expert mode"}
-                  defaultPath="/expert/inbox"
+                  defaultPath="/expert/dashboard"
                   active={expertPortalActive}
                   items={expertNavItems}
                   dropdownOpen={navDropdownOpen === "expert-portal"}
