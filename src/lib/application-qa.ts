@@ -7,6 +7,11 @@ export type ApplicationQaEntry = {
   updatedAt: string;
 };
 
+/** Collapse whitespace and case for dedupe when importing Q&A. */
+export function normalizeQaQuestion(question: string): string {
+  return question.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export function normalizeQaTags(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();

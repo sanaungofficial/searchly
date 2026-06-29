@@ -180,6 +180,7 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
 
 export type ProfileLocation = {
   page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy" | "discoveryscore";
+  preferencesSection?: "import";
   aboutSection?: AboutSectionSlug;
   assetId?: string;
   companyId?: string;
@@ -211,6 +212,7 @@ export function isAdminClientReviewPath(pathname: string): boolean {
 function parseProfileLocationInner(pathname: string): ProfileLocation {
   if (pathname === "/profile/dream-role") return { page: "dreamrole" };
   if (pathname === "/profile/learning-path") return { page: "learning" };
+  if (pathname === "/profile/preferences/import") return { page: "preferences", preferencesSection: "import" };
   if (pathname === "/profile/preferences") return { page: "preferences" };
   if (pathname === "/profile/linkedin") return { page: "linkedin" };
   if (pathname === "/profile/career-strategy") return { page: "strategy" };
@@ -284,7 +286,13 @@ export function withClientReviewPagePath(path: string, clientUserId?: string | n
 export function profileTabPath(
   base: string,
   tab: ProfileLocation["page"],
-  opts?: { aboutSection?: AboutSectionSlug; assetId?: string; companyId?: string; skill?: string | null },
+  opts?: {
+    aboutSection?: AboutSectionSlug;
+    assetId?: string;
+    companyId?: string;
+    skill?: string | null;
+    preferencesSection?: "import";
+  },
 ): string {
   switch (tab) {
     case "about":
@@ -308,6 +316,9 @@ export function profileTabPath(
         ? `${base}/assets/${encodeURIComponent(opts.assetId)}`
         : `${base}/assets`;
     case "preferences":
+      if (opts?.preferencesSection === "import") {
+        return `${base}/preferences/import`;
+      }
       return `${base}/preferences`;
     case "linkedin":
       return `${base}/linkedin`;
