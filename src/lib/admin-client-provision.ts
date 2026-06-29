@@ -234,15 +234,25 @@ export async function provisionClient(input: ProvisionClientInput): Promise<Prov
   }
 
   if (input.linkedinUrl?.trim()) {
+    const linkedinUrl = normalizeLinkedInUrl(input.linkedinUrl.trim());
     try {
       await importLinkedInForClient({ dbUser: user, linkedinUrl: input.linkedinUrl.trim() });
       linkedinImported = true;
       user = (await prisma.user.findUnique({ where: { id: user.id } })) ?? user;
     } catch (err) {
-      if (resumeUploaded) {
-        warnings.push(err instanceof Error ? err.message : "LinkedIn import failed.");
-      } else {
-        throw err;
+      const message = err instanceof Error ? err.message : "LinkedIn import failed.";
+      warnings.push(message);
+      if (linkedinUrl) {
+        await prisma.profile.upsert({
+          where: { userId: user.id },
+          update: { linkedinUrl },
+          create: {
+            userId: user.id,
+            linkedinUrl,
+            targetRoles: [],
+            priorities: [],
+          },
+        });
       }
     }
   }
