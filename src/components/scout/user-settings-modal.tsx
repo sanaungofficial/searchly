@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCredits } from "@/hooks/useCredits";
 import { ReferEarnModal } from "./refer-earn-modal";
-import { fontSans } from "@/lib/typography";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { color, fontSans, surface, type as T } from "@/lib/typography";
 
 type SettingsTab = "profile" | "security" | "subscription";
 
