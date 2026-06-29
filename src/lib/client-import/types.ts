@@ -88,6 +88,36 @@ export type ClientImportApplyPayload = {
   preview: ClientImportPreview;
 };
 
+export type ImportListAudit = {
+  added: string[];
+  skipped: string[];
+};
+
+export type ImportJobAuditItem = {
+  company: string;
+  role: string;
+  fields?: string[];
+};
+
+export type ClientImportApplyAudit = {
+  targetRoles: ImportListAudit;
+  deprioritizedRoles: ImportListAudit;
+  prioritizedCategories: ImportListAudit;
+  deprioritizedCategories: ImportListAudit;
+  searchDuration: { set: boolean; value: string | null };
+  avoidNotes: { appended: boolean; preview: string | null };
+  applicationQa: {
+    added: Array<{ question: string }>;
+    skipped: Array<{ question: string; reason: string }>;
+  };
+  jobs: {
+    added: ImportJobAuditItem[];
+    updated: ImportJobAuditItem[];
+    skipped: ImportJobAuditItem[];
+  };
+  resume: { applied: boolean; filename: string | null };
+};
+
 export type ClientImportApplyResult = {
   profileUpdated: boolean;
   jobs: { added: number; updated: number; skipped: number; descriptionsEnriched: number };
@@ -97,5 +127,6 @@ export type ClientImportApplyResult = {
   categories: { prioritizedSelected: number; deprioritizedSelected: number };
   applicationQa: { added: number; skipped: number };
   referenceDocumentsStored: number;
+  audit: ClientImportApplyAudit;
   errors: string[];
 };

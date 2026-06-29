@@ -14,6 +14,7 @@ import { importJobDedupeKey, normalizeImportJobUrl } from "@/lib/client-import/j
 import type {
   ClientImportApplyPayload,
   ClientImportApplyResult,
+  ClientImportApplyAudit,
   ClientImportPreview,
 } from "@/lib/client-import/types";
 import { normalizeQaQuestion, normalizeQaTags } from "@/lib/application-qa";
@@ -115,11 +116,45 @@ function findExistingImportJob(
   return lookups.byCompanyRole.get(`${data.company.toLowerCase()}::${data.role.toLowerCase()}`) ?? null;
 }
 
+function mergeStringList(existing: string[], incoming: string[]): { merged: string[]; added: string[]; skipped: string[] } {
+  const existingKeys = new Set(existing.map((v) => v.trim().toLowerCase()));
+  const added: string[] = [];
+  const skipped: string[] = [];
+  const merged = [...existing];
+  for (const item of incoming) {
+    const key = item.trim().toLowerCase();
+    if (!key) continue;
+    if (existingKeys.has(key)) {
+      skipped.push(item);
+      continue;
+    }
+    existingKeys.add(key);
+    added.push(item);
+    merged.push(item);
+  }
+  return { merged, added, skipped };
+}
+
+function emptyAudit(): ClientImportApplyAudit {
+  return {
+    targetRoles: { added: [], skipped: [] },
+    deprioritizedRoles: { added: [], skipped: [] },
+    prioritizedCategories: { added: [], skipped: [] },
+    deprioritizedCategories: { added: [], skipped: [] },
+    searchDuration: { set: false, value: null },
+    avoidNotes: { appended: false, preview: null },
+    applicationQa: { added: [], skipped: [] },
+    jobs: { added: [], updated: [], skipped: [] },
+    resume: { applied: false, filename: null },
+  };
+}
+
 export async function applyClientImport(
   userId: string,
   payload: ClientImportApplyPayload,
 ): Promise<ClientImportApplyResult> {
   const { preview } = payload;
+  const audit = emptyAudit();
   const result: ClientImportApplyResult = {
     profileUpdated: false,
     jobs: { added: 0, updated: 0, skipped: 0, descriptionsEnriched: 0 },
@@ -129,6 +164,7 @@ export async function applyClientImport(
     categories: { prioritizedSelected: 0, deprioritizedSelected: 0 },
     applicationQa: { added: 0, skipped: 0 },
     referenceDocumentsStored: preview.referenceDocuments.length,
+    audit,
     errors: [],
   };
 
@@ -160,6 +196,8 @@ export async function applyClientImport(
             data: { isPrimary: true, ...(parsed.parsed ? { parsedData: parsed.parsed, resumeText: text } : {}) },
           });
           result.profileUpdated = true;
+          audit.resume.applied = true;
+          audit.resume.filename = payload.preview.resume?.filename ?? null;
         }
       }
     } catch (err) {
@@ -176,31 +214,51 @@ export async function applyClientImport(
     const existing = await prisma.profile.findUnique({ where: { userId } });
 
     if (payload.profile.targetRoles?.length) {
-      const merged = [...new Set([...(existing?.targetRoles ?? []), ...payload.profile.targetRoles])];
+      const { merged, added, skipped } = mergeStringList(existing?.targetRoles ?? [], payload.profile.targetRoles);
       profilePatch.targetRoles = merged;
+      audit.targetRoles.added = added;
+      audit.targetRoles.skipped = skipped;
     }
     if (payload.profile.deprioritizedRoles?.length) {
-      const merged = [...new Set([...(existing?.deprioritizedRoles ?? []), ...payload.profile.deprioritizedRoles])];
+      const { merged, added, skipped } = mergeStringList(
+        existing?.deprioritizedRoles ?? [],
+        payload.profile.deprioritizedRoles,
+      );
       profilePatch.deprioritizedRoles = merged;
+      audit.deprioritizedRoles.added = added;
+      audit.deprioritizedRoles.skipped = skipped;
     }
     if (payload.profile.prioritizedCategories?.length) {
-      const merged = [...new Set([...(existing?.prioritizedCategories ?? []), ...payload.profile.prioritizedCategories])];
+      const { merged, added, skipped } = mergeStringList(
+        existing?.prioritizedCategories ?? [],
+        payload.profile.prioritizedCategories,
+      );
       profilePatch.prioritizedCategories = merged;
       result.categories.prioritizedSelected = payload.profile.prioritizedCategories.length;
+      audit.prioritizedCategories.added = added;
+      audit.prioritizedCategories.skipped = skipped;
     }
     if (payload.profile.deprioritizedCategories?.length) {
-      const merged = [
-        ...new Set([...(existing?.deprioritizedCategories ?? []), ...payload.profile.deprioritizedCategories]),
-      ];
+      const { merged, added, skipped } = mergeStringList(
+        existing?.deprioritizedCategories ?? [],
+        payload.profile.deprioritizedCategories,
+      );
       profilePatch.deprioritizedCategories = merged;
       result.categories.deprioritizedSelected = payload.profile.deprioritizedCategories.length;
+      audit.deprioritizedCategories.added = added;
+      audit.deprioritizedCategories.skipped = skipped;
     }
     if (payload.profile.searchDuration) {
       profilePatch.searchDuration = payload.profile.searchDuration;
+      audit.searchDuration = { set: true, value: payload.profile.searchDuration };
     }
     if (payload.profile.avoidNotes) {
       const motivation = [existing?.careerMotivation, payload.profile.avoidNotes].filter(Boolean).join("\n\n");
       profilePatch.careerMotivation = motivation;
+      audit.avoidNotes = {
+        appended: true,
+        preview: payload.profile.avoidNotes.slice(0, 200),
+      };
     }
     if (payload.profile.proposed) {
       Object.assign(profilePatch, payload.profile.proposed);
@@ -328,8 +386,14 @@ export async function applyClientImport(
             if (nextUrlKey) jobLookups.byUrlKey.set(nextUrlKey, existing);
           }
           result.jobs.updated++;
+          audit.jobs.updated.push({
+            company: companyName,
+            role,
+            fields: Object.keys(patch),
+          });
         } else {
           result.jobs.skipped++;
+          audit.jobs.skipped.push({ company: companyName, role });
         }
         jobIdByDedupeKey.set(dedupeKey, existing.id);
         continue;
@@ -364,6 +428,7 @@ export async function applyClientImport(
       jobLookups.byCompanyRole.set(`${created.company.toLowerCase()}::${created.role.toLowerCase()}`, createdRow);
       jobIdByDedupeKey.set(dedupeKey, created.id);
       result.jobs.added++;
+      audit.jobs.added.push({ company: companyName, role });
     } catch (err) {
       console.error("[applyClientImport job]", companyName, role, err);
       result.errors.push(`Job: ${companyName} — ${role}`);
@@ -421,6 +486,10 @@ export async function applyClientImport(
       const key = normalizeQaQuestion(row.data.question);
       if (seen.has(key) || existingKeys.has(key)) {
         result.applicationQa.skipped++;
+        audit.applicationQa.skipped.push({
+          question: row.data.question.trim(),
+          reason: seen.has(key) ? "duplicate in import" : "already in Q&A bank",
+        });
         continue;
       }
       seen.add(key);
@@ -434,6 +503,7 @@ export async function applyClientImport(
           },
         });
         result.applicationQa.added++;
+        audit.applicationQa.added.push({ question: row.data.question.trim() });
         existingKeys.add(key);
       } catch (err) {
         console.error("[applyClientImport qa]", row.data.question, err);

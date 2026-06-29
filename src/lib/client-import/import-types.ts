@@ -1,4 +1,5 @@
 export type ImportType =
+  | "client_packet"
   | "job_tracker"
   | "contacts"
   | "application_info"
@@ -20,6 +21,17 @@ export type ImportTypeConfig = {
 };
 
 export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
+  {
+    id: "client_packet",
+    label: "Full client packet (.xlsx)",
+    description:
+      "Complete Google Sheet export — jobs, contacts, target companies, roles, keywords, and login credentials (if present). Review all tabs before apply.",
+    accept: ".xlsx,.xls,.csv,.docx,.doc,.pdf,.txt",
+    pastePlaceholder: "For full packet import, upload the .xlsx export. Paste is for single-type imports below.",
+    supportsFile: true,
+    supportsPaste: false,
+    usesAi: false,
+  },
   {
     id: "job_tracker",
     label: "Job tracker",
@@ -92,10 +104,12 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
   },
   {
     id: "passwords",
-    label: "Passwords",
-    description: "Application portal passwords — stored in Application Q&A (admin-only, tagged passwords).",
-    accept: ".txt,.csv",
-    pastePlaceholder: "Site name and password — one per line: Site\\tPassword or Site: Password",
+    label: "Login credentials",
+    description:
+      "Portal logins and passwords — stored in Application Q&A (plain text, not encrypted). Only import if the client accepts that.",
+    accept: ".txt,.csv,.xlsx,.xls",
+    pastePlaceholder:
+      "Site, login, and password — one per line: Site\\tLogin\\tPassword, Site: login / password, or Site\\tPassword",
     supportsFile: true,
     supportsPaste: true,
     usesAi: false,
