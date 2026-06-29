@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachFitAssessment, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { CoachMatchScoreColumn } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { CoachListItem } from "@/lib/coach-types";
 import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
@@ -130,7 +130,9 @@ export function ProfileMyCoachCard({
   }
 
   return (
-    <ScoutBox padding={isMobile ? 18 : 22} style={{ marginBottom: 24 }}>
+    <ScoutBox padding={0} style={{ marginBottom: 24, overflow: "hidden" }}>
+      <div style={{ display: "flex" }}>
+        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 18 : 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
         <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: color.muted, margin: 0 }}>
           My Coach
@@ -149,7 +151,7 @@ export function ProfileMyCoachCard({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
         <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={56} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 8 }}>
+          <div style={{ marginBottom: 8 }}>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, color: color.ink, margin: 0 }}>
                 {coach.displayName}
@@ -163,19 +165,6 @@ export function ProfileMyCoachCard({
                 </p>
               )}
             </div>
-            {(coach.matchScore ?? 0) > 0 && (
-              <CoachMatchScoreCluster
-                score={coach.matchScore!}
-                label={coach.matchLabel ?? ""}
-                align="right"
-                job={{
-                  matchScore: coach.matchScore!,
-                  matchLabel: coach.matchLabel ?? "",
-                  matchReasons: coach.matchReasons ?? [],
-                  matchedSkills: coach.matchedSkills,
-                }}
-              />
-            )}
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: coach.bio ? 12 : 0, alignItems: "center" }}>
@@ -202,17 +191,6 @@ export function ProfileMyCoachCard({
                 </span>
               ))}
             </div>
-          )}
-
-          {(coach.matchScore ?? 0) > 0 && (
-            <CoachFitAssessment
-              job={{
-                matchScore: coach.matchScore!,
-                matchLabel: coach.matchLabel ?? "",
-                matchReasons: coach.matchReasons ?? [],
-                matchedSkills: coach.matchedSkills,
-              }}
-            />
           )}
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
@@ -249,6 +227,16 @@ export function ProfileMyCoachCard({
             )}
           </div>
         </div>
+      </div>
+        </div>
+        {(coach.matchScore ?? 0) > 0 && (
+          <CoachMatchScoreColumn
+            score={coach.matchScore!}
+            label={coach.matchLabel ?? ""}
+            reasons={coach.matchReasons ?? []}
+            matchedSkills={coach.matchedSkills}
+          />
+        )}
       </div>
     </ScoutBox>
   );
