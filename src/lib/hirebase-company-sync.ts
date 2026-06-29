@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CompanyIntel } from "@prisma/client";
+import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { TOP_50_CATALOG, type CatalogCompany } from "@/lib/company-catalog";
 import { findOrCreateCompanyIntel } from "@/lib/company-intel";
 import {
@@ -253,6 +253,54 @@ export async function syncHirebaseCompanyFromCatalog(
     return {
       ...base,
       error: err instanceof Error ? err.message : "Hirebase sync failed.",
+    };
+  }
+}
+
+export type TrackedCompanyHirebaseRefreshResult =
+  | { ok: true; enrichment: CompanyEnrichmentCache }
+  | { ok: false; error: string };
+
+function slugHintForTrackedCompany(
+  tracked: TrackedCompany & { companyIntel?: CompanyIntel | null },
+): string | null {
+  const cachedRaw = tracked.enrichmentCache ?? tracked.companyIntel?.enrichmentCache;
+  const fromEnrichment = getHirebaseMetaFromEnrichment(cachedRaw)?.slug?.trim();
+  if (fromEnrichment) return fromEnrichment;
+
+  const intelSlug = tracked.companyIntel?.slug?.trim();
+  if (intelSlug) return intelSlug;
+
+  const jobsCache = tracked.jobsCache;
+  if (jobsCache && typeof jobsCache === "object" && !Array.isArray(jobsCache)) {
+    const slug = (jobsCache as { hirebase_slug?: string | null }).hirebase_slug?.trim();
+    if (slug) return slug;
+  }
+
+  return null;
+}
+
+/** Force-fetch Hirebase profile and persist on a tracked company (same path as company drawer). */
+export async function refreshTrackedCompanyFromHirebase(
+  tracked: TrackedCompany & { companyIntel?: CompanyIntel | null },
+  userId: string,
+): Promise<TrackedCompanyHirebaseRefreshResult> {
+  if (!isHirebaseConfigured()) {
+    return { ok: false, error: "Hirebase is not configured on this environment." };
+  }
+
+  try {
+    const profile = await fetchHirebaseCompanyProfile({
+      companyName: tracked.name,
+      slugHint: slugHintForTrackedCompany(tracked),
+      website: tracked.website ?? tracked.companyIntel?.website ?? null,
+    });
+    const enrichment = await persistHirebaseProfileOnTracked(tracked.id, userId, profile);
+    return { ok: true, enrichment };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Hirebase refresh failed.",
     };
   }
 }
