@@ -1,6 +1,6 @@
 "use client";
 
-import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
+import { clearAdminReviewClient, clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 import { useState } from "react";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
@@ -21,6 +21,7 @@ export function ImpersonationBanner({ state }: { state: ImpersonationState }) {
     setExiting(true);
     try {
       await fetch("/api/admin/impersonate", { method: "DELETE" });
+      clearAdminReviewClient();
       clearClientSessionCaches();
       setActingUserScope(null);
       window.location.href = "/expert/clients";

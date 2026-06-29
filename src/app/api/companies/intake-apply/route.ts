@@ -1,4 +1,4 @@
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import {
   applyIntakeTrackedCompanies,
   normalizeSuggestedTrackedCompanies,
@@ -7,8 +7,8 @@ import {
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const acting = await getActingUser(request);
-  const { dbUser } = acting;
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();

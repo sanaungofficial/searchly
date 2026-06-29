@@ -327,6 +327,7 @@ interface ReadbackData {
 }
 
 interface UserProfile {
+  userId?: string;
   name: string;
   email: string | null;
   avatarUrl?: string | null;
@@ -393,10 +394,13 @@ async function migrateLegacyProfileData(
   const patch: Record<string, unknown> = {};
   let skillGoals = userProfile.skillGoals ?? [];
   let roleAnalyses = normalizeRoleAnalysesMap(userProfile.roleAnalyses);
+  const storageScope = userProfile.userId ?? "self";
 
   if (!skillGoals.length) {
     try {
-      const stored = localStorage.getItem(SKILL_GOALS_KEY);
+      const stored =
+        localStorage.getItem(`${SKILL_GOALS_KEY}:${storageScope}`) ??
+        (storageScope === "self" ? localStorage.getItem(SKILL_GOALS_KEY) : null);
       if (stored) {
         const legacy = normalizeSkillGoals(JSON.parse(stored));
         if (legacy.length) {
@@ -420,7 +424,10 @@ async function migrateLegacyProfileData(
   for (const role of roles) {
     if (getStoredRoleAnalysis(migratedAnalyses, role, null)) continue;
     try {
-      const cached = localStorage.getItem(LEGACY_ANALYSIS_CACHE_KEY(role));
+      const scopedKey = `${LEGACY_ANALYSIS_CACHE_KEY(role)}:${storageScope}`;
+      const cached =
+        localStorage.getItem(scopedKey) ??
+        (storageScope === "self" ? localStorage.getItem(LEGACY_ANALYSIS_CACHE_KEY(role)) : null);
       if (!cached) continue;
       const { data, cachedAt } = JSON.parse(cached) as { data: unknown; cachedAt?: string };
       const normalized = normalizeRoleGapAnalysis(data);
@@ -2947,7 +2954,10 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const searchParams = useSearchParams();
   const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating } = useWorkspace();
   const profileLoc = parseProfileLocation(pathname);
-  const clientId = adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? undefined;
+  const clientId = isImpersonating
+    ? undefined
+    : (adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? undefined);
+  const profileScopeKey = isImpersonating ? "impersonate" : (clientId ?? "self");
   const canAccessImport = Boolean(clientId) && (showAdminUi || isAdminReviewing) && !isImpersonating;
   const preferencesSection = profileLoc.preferencesSection;
   const profileBase = profileBasePath(clientId, { sessionScoped: isAdminReviewing });
@@ -3046,7 +3056,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
       .catch(() => {})
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId]);
+  }, [profileScopeKey, withClientScope]);
 
   useEffect(() => {
     if (!profile?.resumeUrl) return;

@@ -5,6 +5,8 @@ import { createSupabaseFromRequest } from "@/lib/extension-api";
 import { prisma } from "@/lib/prisma";
 
 export const IMPERSONATE_COOKIE = "kimchi_impersonate";
+/** Admin profile review (View profile) — not impersonation; httpOnly like impersonate. */
+export const ADMIN_REVIEW_COOKIE = "kimchi_admin_review";
 
 export type ActingUserResult = {
   authUser: { id: string; email: string } | null;
@@ -23,14 +25,27 @@ function readClientUserIdFromRequest(request?: Request): string | null {
   return id?.trim() || null;
 }
 
+function readCookieFromHeader(cookieHeader: string, name: string): string | undefined {
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+}
+
 async function resolveImpersonateId(request?: Request): Promise<string | undefined> {
   if (request) {
     const cookieHeader = request.headers.get("cookie") ?? "";
-    const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${IMPERSONATE_COOKIE}=([^;]+)`));
-    return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+    return readCookieFromHeader(cookieHeader, IMPERSONATE_COOKIE);
   }
   const cookieStore = await cookies();
   return cookieStore.get(IMPERSONATE_COOKIE)?.value;
+}
+
+async function resolveAdminReviewId(request?: Request): Promise<string | undefined> {
+  if (request) {
+    const cookieHeader = request.headers.get("cookie") ?? "";
+    return readCookieFromHeader(cookieHeader, ADMIN_REVIEW_COOKIE);
+  }
+  const cookieStore = await cookies();
+  return cookieStore.get(ADMIN_REVIEW_COOKIE)?.value;
 }
 
 export async function getActingUser(request?: Request): Promise<ActingUserResult> {
@@ -68,7 +83,8 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
     }
   }
 
-  const clientUserId = readClientUserIdFromRequest(request);
+  const clientUserId =
+    readClientUserIdFromRequest(request) ?? (await resolveAdminReviewId(request)) ?? null;
   if (clientUserId && realDbUser.role === "ADMIN") {
     const client = await prisma.user.findUnique({ where: { id: clientUserId } });
     if (client && client.role === "USER") {

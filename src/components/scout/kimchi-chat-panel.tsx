@@ -825,7 +825,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
 
   const appendStrategyIntake = async (msg: VoiceMessage, opts?: { silent?: boolean }) => {
     const block = msg.rawTranscript.slice(0, 8000);
-    const res = await fetch("/api/assistant/strategy-intake", {
+    const res = await fetch(withClientScope("/api/assistant/strategy-intake"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
