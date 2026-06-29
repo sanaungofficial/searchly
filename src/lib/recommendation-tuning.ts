@@ -110,7 +110,7 @@ const GAP_CATALOG: Record<MatchingTuningGapId, Omit<MatchingTuningGap, "id">> = 
   },
   primary_goal: {
     label: "Primary goal",
-    actionLabel: "Add a goal so we know what you're after",
+    actionLabel: "Add a goal so we can match you with resources",
     weight: WEIGHTS.primary_goal,
   },
   resume: {

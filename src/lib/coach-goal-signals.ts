@@ -83,6 +83,11 @@ export const GOAL_COACH_SIGNALS: Record<string, GoalCoachSignals> = {
     categoryHints: ["portfolio", "profile", "career"],
     specialtyHints: ["portfolio", "personal brand", "positioning"],
   },
+  build_network: {
+    keywords: ["network", "networking", "connections", "relationships", "community", "events"],
+    categoryHints: ["network", "career", "community"],
+    specialtyHints: ["networking", "community", "relationships"],
+  },
 };
 
 type CoachGoalMatchInput = {
