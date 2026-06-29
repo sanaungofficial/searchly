@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
-import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutSecondaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
 import { color, fontSans, displayTitleStyle } from "@/lib/typography";
 import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 
@@ -97,6 +97,7 @@ export function CoachBookingModal({
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [guestNotes, setGuestNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +110,7 @@ export function CoachBookingModal({
     setWeekStart(startOfLocalDay(new Date()));
     setSlots([]);
     setSelectedSlot(null);
+    setGuestNotes("");
     setError(null);
     setSubmitting(false);
   }, [initialSessionType]);
@@ -180,6 +182,7 @@ export function CoachBookingModal({
           sessionType,
           guestName,
           timezone,
+          guestNotes: guestNotes.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -422,10 +425,23 @@ export function CoachBookingModal({
                 <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, margin: "0 0 16px" }}>
                   {formatSlotLabel(selectedSlot.startTime, selectedSlot.endTime)}
                 </p>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                   <CoachAvatar name={coachDisplayName} photoUrl={coachPhotoUrl} size={44} />
                   <p style={{ fontFamily: fontSans, fontSize: 14, margin: 0 }}>with {coachDisplayName}</p>
                 </div>
+                <label style={{ display: "block", fontFamily: fontSans, fontSize: 13 }}>
+                  <span style={{ display: "block", marginBottom: 6, color: color.muted }}>
+                    Anything you&apos;d like your coach to know?
+                  </span>
+                  <textarea
+                    value={guestNotes}
+                    onChange={(e) => setGuestNotes(e.target.value)}
+                    rows={4}
+                    maxLength={2000}
+                    placeholder="Goals for this session, questions to cover, context from your job search…"
+                    style={{ ...scoutFieldStyle, width: "100%", resize: "vertical", boxSizing: "border-box" }}
+                  />
+                </label>
               </div>
               <div style={{ width: 280, border: line, padding: 20, background: "rgba(26,58,47,0.03)" }}>
                 <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 12px" }}>This session only</p>

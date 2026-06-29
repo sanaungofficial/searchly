@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
   type FormEvent,
   type MouseEvent,
@@ -31,6 +32,8 @@ type Props = {
   preview?: CoachListItem | null;
   onFollowChange?: (coachId: string, following: boolean) => void;
   onMyCoachChange?: (coachId: string, isMyCoach: boolean, coachIds: string[]) => void;
+  /** When set, opens the booking modal once the coach profile has loaded. */
+  initialBookingType?: CoachBookingSessionType | null;
 };
 
 function ReviewFormModal({
@@ -161,7 +164,14 @@ function ReviewFormModal({
   );
 }
 
-export function CoachDrawer({ slug, onClose, preview, onFollowChange, onMyCoachChange }: Props) {
+export function CoachDrawer({
+  slug,
+  onClose,
+  preview,
+  onFollowChange,
+  onMyCoachChange,
+  initialBookingType = null,
+}: Props) {
   const isMobile = useIsMobile();
   const requireAuth = useRequireAuthRedirect();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
@@ -175,6 +185,7 @@ export function CoachDrawer({ slug, onClose, preview, onFollowChange, onMyCoachC
   const [bookingModalType, setBookingModalType] = useState<CoachBookingSessionType>("intro");
   const [nextSlotStart, setNextSlotStart] = useState<number | null>(null);
   const [nextSlotLoading, setNextSlotLoading] = useState(false);
+  const autoOpenedBooking = useRef(false);
 
   useLayoutEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -217,6 +228,14 @@ export function CoachDrawer({ slug, onClose, preview, onFollowChange, onMyCoachC
       cancelled = true;
     };
   }, [coach?.hasNylasBooking, slug]);
+
+  useEffect(() => {
+    if (autoOpenedBooking.current || !initialBookingType || !coach?.hasNylasBooking || loading) return;
+    if (!authChecked || !user) return;
+    autoOpenedBooking.current = true;
+    setBookingModalType(initialBookingType);
+    setBookingModalOpen(true);
+  }, [initialBookingType, coach?.hasNylasBooking, loading, authChecked, user]);
 
   const openBooking = (type: CoachBookingSessionType) => {
     if (!authChecked || !user) {

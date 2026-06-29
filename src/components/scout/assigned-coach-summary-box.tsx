@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
+import { CoachDrawer } from "@/components/scout/coach-drawer";
+import type { CoachBookingSessionType } from "@/components/scout/coach-booking-modal";
 import { SectionHeadingWithHelp, SectionHelpTip } from "@/components/scout/section-help-tip";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { formatBookingWhen } from "@/lib/coach-user-booking";
+import type { CoachListItem } from "@/lib/coach-types";
 import { bruddleHeadingStyle, color, fontSans, type as T } from "@/lib/typography";
 
 type AssignedCoach = {
@@ -41,12 +44,42 @@ type Props = {
   enabled?: boolean;
 };
 
+function assignedCoachPreview(coach: AssignedCoach): CoachListItem {
+  return {
+    id: coach.coachProfileId,
+    slug: coach.slug,
+    displayName: coach.displayName,
+    photoUrl: coach.photoUrl,
+    headline: coach.headline,
+    bio: null,
+    currentRole: null,
+    currentCompany: null,
+    location: null,
+    firms: [],
+    schools: [],
+    specialties: [],
+    industries: [],
+    clientSpecializations: [],
+    hourlyRate: null,
+    category: null,
+    featured: false,
+    isProfessionalCoach: true,
+    isInternal: coach.isInternal,
+    avgRating: null,
+    reviewCount: 0,
+    followerCount: 0,
+    hasNylasBooking: coach.hasNylasBooking,
+  };
+}
+
 export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Props) {
   const router = useRouter();
   const { withClientScope, withClientReviewPath } = useWorkspace();
   const [bookedCoach, setBookedCoach] = useState<BookedCoach | null>(null);
   const [assignedCoaches, setAssignedCoaches] = useState<AssignedCoach[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
+  const [initialBookingType, setInitialBookingType] = useState<CoachBookingSessionType | null>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -96,10 +129,30 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
     Promise.all([assignedPromise, bookingPromise]).finally(() => setLoading(false));
   }, [enabled, withClientScope]);
 
-  const openCoachProfile = (slug: string | null) => {
-    if (slug) router.push(`/coach/${slug}`);
-    else router.push("/coaching");
-  };
+  const openCoachDrawer = useCallback(
+    (coach: AssignedCoach | BookedCoach["coach"], bookingType: CoachBookingSessionType | null = null) => {
+      const assigned =
+        "coachProfileId" in coach
+          ? coach
+          : assignedCoaches.find((c) => c.coachProfileId === coach.id) ?? {
+              coachProfileId: coach.id,
+              displayName: coach.displayName,
+              slug: coach.slug,
+              photoUrl: coach.photoUrl,
+              headline: coach.headline,
+              isInternal: false,
+              hasNylasBooking: false,
+            };
+      setInitialBookingType(bookingType);
+      setDrawerCoach(assignedCoachPreview(assigned));
+    },
+    [assignedCoaches],
+  );
+
+  const closeDrawer = useCallback(() => {
+    setDrawerCoach(null);
+    setInitialBookingType(null);
+  }, []);
 
   if (!enabled || loading) return null;
 
@@ -112,7 +165,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
             <p style={{ ...bruddleHeadingStyle("h5"), margin: 0 }}>My coaches</p>
             <SectionHelpTip
-              text="Your Second Ladder coach works with you one-on-one. When someone is assigned to you, they'll show up here."
+              text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here."
               label="About My coaches"
             />
           </div>
@@ -132,7 +185,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
         <ScoutBox padding={padding} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <SectionHeadingWithHelp
             title="My coaches"
-            help="Your Second Ladder coach works with you one-on-one."
+            help="Your Kimchi coach works with you one-on-one."
           />
           {assignedCoaches.map((coach) => (
             <div
@@ -157,7 +210,9 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
                 </div>
               </div>
               <ScoutPrimaryBtn
-                onClick={() => openCoachProfile(coach.slug)}
+                onClick={() =>
+                  openCoachDrawer(coach, coach.hasNylasBooking ? "intro" : null)
+                }
                 style={{ minHeight: 38, width: "100%" }}
               >
                 {coach.hasNylasBooking ? "Book →" : "View →"}
@@ -169,7 +224,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
 
       {bookedCoach && (
         <ScoutBox padding={padding} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <SectionHeadingWithHelp title="My coaches" help="Your Second Ladder coach works with you one-on-one." />
+          <SectionHeadingWithHelp title="My coaches" help="Your Kimchi coach works with you one-on-one." />
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={44} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -187,7 +242,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
             </div>
           </div>
           <ScoutSecondaryBtn
-            onClick={() => openCoachProfile(bookedCoach.coach.slug)}
+            onClick={() => openCoachDrawer(bookedCoach.coach)}
             style={{ minHeight: 38, width: "100%" }}
           >
             View coach →
@@ -232,6 +287,15 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
             </div>
           )}
         </ScoutBox>
+      )}
+
+      {drawerCoach && (
+        <CoachDrawer
+          slug={drawerCoach.slug ?? drawerCoach.id}
+          preview={drawerCoach}
+          onClose={closeDrawer}
+          initialBookingType={initialBookingType}
+        />
       )}
     </>
   );
