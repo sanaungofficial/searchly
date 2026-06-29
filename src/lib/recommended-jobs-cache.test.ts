@@ -4,6 +4,7 @@ import {
   filtersCacheKey,
   hasDefaultRecommendedFeedLoaded,
   markDefaultRecommendedFeedLoaded,
+  migrateRecommendedCacheScope,
   readRecommendedCache,
   resetRecommendedCacheForTests,
   writeRecommendedCache,
@@ -77,5 +78,27 @@ describe("recommended-jobs-cache", () => {
     expect(hasDefaultRecommendedFeedLoaded()).toBe(true);
     clearRecommendedCache();
     expect(hasDefaultRecommendedFeedLoaded()).toBe(false);
+  });
+
+  it("migrates cache and loaded flag when acting user scope resolves", () => {
+    const filtersKey = filtersCacheKey(DEFAULT_VECTOR_SEARCH_FILTERS);
+    const entry = {
+      jobs: [sampleJob],
+      filtersKey,
+      fetchedAt: Date.now(),
+    };
+
+    writeRecommendedCache(entry);
+    markDefaultRecommendedFeedLoaded();
+
+    migrateRecommendedCacheScope("self", "user-abc");
+
+    Object.assign(globalThis.window, { location: { search: "" } });
+    sessionStorage.setItem("kimchi_acting_user_id", "user-abc");
+
+    expect(readRecommendedCache(filtersKey)?.jobs).toHaveLength(1);
+    expect(hasDefaultRecommendedFeedLoaded()).toBe(true);
+    expect(sessionStorage.getItem(`kimchi_recommended_jobs_v1:self:${filtersKey}`)).toBeNull();
+    expect(sessionStorage.getItem(`kimchi_recommended_jobs_v1:user-abc:${filtersKey}`)).toBeTruthy();
   });
 });

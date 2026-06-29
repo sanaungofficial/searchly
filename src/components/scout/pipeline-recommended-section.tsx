@@ -36,6 +36,7 @@ import {
   writeRecommendedCache,
   clearRecommendedCacheForKey,
   clearRecommendedCache,
+  migrateRecommendedCacheScope,
   markDefaultRecommendedFeedLoaded,
   hasDefaultRecommendedFeedLoaded,
   type RecommendedCacheEntry,
@@ -945,7 +946,7 @@ export function PipelineRecommendedSection({
 
     // Profile resolves actingUserId after first paint — not an admin/client switch.
     if (prev === null && next !== null) {
-      initialFetchAttemptedRef.current = false;
+      migrateRecommendedCacheScope("self", next);
       hydrateFromCache(defaultFeedCacheKey());
       return;
     }
@@ -970,6 +971,9 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     if (initialFetchAttemptedRef.current || !defaultsLoaded) return;
+    // Fetching before profile resolves actingUserId writes cache under scope "self", which remounts miss.
+    if (!isAdminReviewing && actingUserId == null) return;
+
     initialFetchAttemptedRef.current = true;
 
     const feedForm = defaultFeedForm();
@@ -989,7 +993,7 @@ export function PipelineRecommendedSection({
     }
 
     void fetchRecommended(feedForm, { preferCache: true });
-  }, [fetchRecommended, defaultsLoaded, isAdminReviewing, hydrateFromCache]);
+  }, [fetchRecommended, defaultsLoaded, isAdminReviewing, hydrateFromCache, actingUserId]);
 
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
     const location = profileLocationFromForm(filtersForm);
