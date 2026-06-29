@@ -614,7 +614,7 @@ export function JobTrackerImportWizard({
         )}
         {step === "options" && (
           <ScoutPrimaryBtn onClick={finishWizard} disabled={loading}>
-            Review import
+            {loading ? "Importing…" : "Import jobs"}
           </ScoutPrimaryBtn>
         )}
       </div>

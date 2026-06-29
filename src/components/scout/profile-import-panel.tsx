@@ -60,7 +60,7 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
 
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showImportModal, setShowImportModal] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const [referenceFiles, setReferenceFiles] = useState<UserAssetListItem[]>([]);
   const [referenceUploading, setReferenceUploading] = useState(false);
@@ -138,7 +138,7 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
           Import
         </h2>
         <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-          Load trackers, onboarding questionnaires, contacts, and more for this client — review before anything is written.
+          Import jobs, companies, or onboarding questionnaires for this client — review before anything is written.
         </p>
       </div>
 
@@ -155,7 +155,7 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
       <ScoutBox padding={isMobile ? 16 : 22}>
         {sectionHeading(
           "Client data",
-          "Import job trackers, contacts, questionnaires, passwords, and more. Choose the type, upload a file or paste copied rows, then review before apply.",
+          "Import a jobs list, companies list, or onboarding questionnaire. Choose the type first, then upload or paste on the next step.",
         )}
         <ScoutPrimaryBtn type="button" onClick={() => setShowImportModal(true)}>
           Import

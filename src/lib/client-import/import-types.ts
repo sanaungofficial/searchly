@@ -1,11 +1,13 @@
+/** Types exposed in the client import UI — only these three. */
+export type VisibleImportType = "job_tracker" | "target_companies" | "application_info";
+
+/** All import types supported by the parse API (legacy / admin). */
 export type ImportType =
+  | VisibleImportType
   | "client_packet"
-  | "job_tracker"
   | "contacts"
-  | "application_info"
   | "interview_tracker"
   | "job_titles"
-  | "target_companies"
   | "keywords"
   | "passwords";
 
@@ -20,7 +22,42 @@ export type ImportTypeConfig = {
   usesAi: boolean;
 };
 
+/** Three-option picker shown in UnifiedImportModal step 0. */
+export const VISIBLE_IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
+  {
+    id: "job_tracker",
+    label: "Jobs list",
+    description: "Pipeline jobs from a spreadsheet export — map columns and status values before import.",
+    accept: ".xlsx,.xls,.csv,.txt",
+    pastePlaceholder: "Paste rows copied from Excel — include a header row with Company and Job Title columns.",
+    supportsFile: true,
+    supportsPaste: true,
+    usesAi: false,
+  },
+  {
+    id: "target_companies",
+    label: "Companies list",
+    description: "Target companies to watch or prioritize.",
+    accept: ".xlsx,.xls,.csv,.txt",
+    pastePlaceholder: "One company per line, or paste from Target Companies tab.",
+    supportsFile: true,
+    supportsPaste: true,
+    usesAi: false,
+  },
+  {
+    id: "application_info",
+    label: "Onboarding questionnaire",
+    description: "Parse questionnaire responses into profile fields and preferences.",
+    accept: ".pdf,.doc,.docx,.txt",
+    pastePlaceholder: "Paste questionnaire responses or intake notes…",
+    supportsFile: true,
+    supportsPaste: true,
+    usesAi: true,
+  },
+];
+
 export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
+  ...VISIBLE_IMPORT_TYPE_CONFIGS,
   {
     id: "client_packet",
     label: "Full client packet (.xlsx)",
@@ -33,16 +70,6 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
     usesAi: false,
   },
   {
-    id: "job_tracker",
-    label: "Job tracker",
-    description: "Pipeline jobs from Google Sheet export (.xlsx) or pasted rows.",
-    accept: ".xlsx,.xls,.csv,.txt",
-    pastePlaceholder: "Paste rows copied from Excel — include a header row with Company and Job Title columns.",
-    supportsFile: true,
-    supportsPaste: true,
-    usesAi: false,
-  },
-  {
     id: "contacts",
     label: "Contacts",
     description: "Contact list with email addresses.",
@@ -51,16 +78,6 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
     supportsFile: true,
     supportsPaste: true,
     usesAi: false,
-  },
-  {
-    id: "application_info",
-    label: "Application info",
-    description: "Onboarding questionnaire → profile, preferences, and Application Q&A.",
-    accept: ".pdf,.doc,.docx,.txt",
-    pastePlaceholder: "Paste questionnaire responses or intake notes…",
-    supportsFile: true,
-    supportsPaste: true,
-    usesAi: true,
   },
   {
     id: "interview_tracker",
@@ -78,16 +95,6 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
     description: "Target roles and deprioritized titles.",
     accept: ".xlsx,.xls,.csv,.txt",
     pastePlaceholder: "One role per line, or paste from Target Job Titles tab.",
-    supportsFile: true,
-    supportsPaste: true,
-    usesAi: false,
-  },
-  {
-    id: "target_companies",
-    label: "Target companies list",
-    description: "Companies to watch or prioritize.",
-    accept: ".xlsx,.xls,.csv,.txt",
-    pastePlaceholder: "One company per line, or paste from Target Companies tab.",
     supportsFile: true,
     supportsPaste: true,
     usesAi: false,
