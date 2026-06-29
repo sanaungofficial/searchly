@@ -9,12 +9,12 @@ import type { ParsedResumeData } from "@/lib/resume-parse";
  *
  * Env:
  * - APIFY_API_TOKEN — required for LinkedIn import
- * - APIFY_LINKEDIN_ACTOR_ID — optional; default `dataweave/linkedin-profile-scraper` (Apify id etiW1XfulkpulZA4D)
+ * - APIFY_LINKEDIN_ACTOR_ID — optional; default `anchor/linkedin-profile-enrichment` (Apify id AgfKk0sQQxkpQJ1Dt)
  * - APIFY_LINKEDIN_TIMEOUT_SEC — optional sync run timeout (default 120, max 300)
- * - APIFY_USD_PER_LINKEDIN_RUN — optional cost estimate for admin usage stats (default 0.05)
+ * - APIFY_USD_PER_LINKEDIN_RUN — optional cost estimate for admin usage stats (default 0.006)
  */
-export const DEFAULT_LINKEDIN_ACTOR = "dataweave/linkedin-profile-scraper";
-export const DEFAULT_LINKEDIN_ACTOR_ID = "etiW1XfulkpulZA4D";
+export const DEFAULT_LINKEDIN_ACTOR = "anchor/linkedin-profile-enrichment";
+export const DEFAULT_LINKEDIN_ACTOR_ID = "AgfKk0sQQxkpQJ1Dt";
 
 const DEFAULT_ACTOR = DEFAULT_LINKEDIN_ACTOR;
 
@@ -112,6 +112,77 @@ function formatYearMonth(year?: number, month?: number): string | null {
     return `${String(month).padStart(2, "0")}/${year}`;
   }
   return String(year);
+}
+
+const HARVEST_MONTH: Record<string, number> = {
+  Jan: 1,
+  Feb: 2,
+  Mar: 3,
+  Apr: 4,
+  May: 5,
+  Jun: 6,
+  Jul: 7,
+  Aug: 8,
+  Sep: 9,
+  Oct: 10,
+  Nov: 11,
+  Dec: 12,
+};
+
+type HarvestDate = { month?: string; year?: number; text?: string };
+
+function parseHarvestDate(date?: HarvestDate): { year?: number; month?: number; present?: boolean } {
+  if (!date) return {};
+  if (date.text?.trim().toLowerCase() === "present") return { present: true };
+  const month = date.month ? HARVEST_MONTH[date.month] : undefined;
+  return { year: date.year, month, present: false };
+}
+
+function parseFlexibleDate(value: unknown): { year?: number; month?: number; present?: boolean } {
+  if (value == null) return {};
+  if (typeof value === "object") return parseHarvestDate(value as HarvestDate);
+  if (typeof value === "number" && value >= 1900 && value <= 2100) return { year: value };
+  if (typeof value !== "string") return {};
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+  if (trimmed.toLowerCase() === "present") return { present: true };
+  const iso = trimmed.match(/^(\d{4})-(\d{2})/);
+  if (iso) return { year: Number(iso[1]), month: Number(iso[2]) };
+  if (/^\d{4}$/.test(trimmed)) return { year: Number(trimmed) };
+  const monthYear = trimmed.match(/([A-Za-z]{3})\s+(\d{4})/);
+  if (monthYear?.[1] && monthYear[2]) {
+    return { year: Number(monthYear[2]), month: HARVEST_MONTH[monthYear[1]] };
+  }
+  return {};
+}
+
+function buildLinkedInActorInput(linkedinUrl: string): Record<string, unknown> {
+  return {
+    startUrls: [{ url: linkedinUrl }],
+    // Legacy fields for other actors when APIFY_LINKEDIN_ACTOR_ID overrides the default
+    url: linkedinUrl,
+    urls: [linkedinUrl],
+    profileUrls: [linkedinUrl],
+  };
+}
+
+function locationTextFromRaw(raw: Record<string, unknown>): string | undefined {
+  const location = raw.location;
+  if (typeof location === "string" && location.trim()) return location.trim();
+  if (location && typeof location === "object") {
+    const loc = location as Record<string, unknown>;
+    if (typeof loc.linkedinText === "string" && loc.linkedinText.trim()) return loc.linkedinText.trim();
+    const parsed = loc.parsed;
+    if (parsed && typeof parsed === "object") {
+      const text = (parsed as Record<string, unknown>).text;
+      if (typeof text === "string" && text.trim()) return text.trim();
+    }
+  }
+  if (typeof raw.locationName === "string" && raw.locationName.trim()) return raw.locationName.trim();
+  const city = typeof raw.city === "string" ? raw.city.trim() : "";
+  const country = typeof raw.country === "string" ? raw.country.trim() : "";
+  if (city || country) return [city, country].filter(Boolean).join(", ");
+  return undefined;
 }
 
 function positionRange(pos: ApifyPosition): { from: string | null; to: string | null } {
@@ -242,11 +313,7 @@ export async function scrapeLinkedInProfile(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        urls: [normalized],
-        profileUrls: [normalized],
-        startUrls: [{ url: normalized }],
-      }),
+      body: JSON.stringify(buildLinkedInActorInput(normalized)),
       signal: AbortSignal.timeout((timeoutSec + 15) * 1000),
     }
   );
@@ -256,13 +323,9 @@ export async function scrapeLinkedInProfile(
     throw new Error(formatApifyErrorBody(text, res.status));
   }
 
-  const items = (await res.json()) as ApifyLinkedInProfile[];
-  const raw = items?.[0];
-  if (!raw) {
-    throw new Error("LINKEDIN_EMPTY:We couldn't find that LinkedIn profile. Double-check the link is public.");
-  }
-  const profile = normalizeApifyProfile(raw);
-  if (!profile.publicIdentifier && !profile.firstName) {
+  const items = (await res.json()) as Array<ApifyLinkedInProfile & Record<string, unknown>>;
+  const profile = unwrapApifyDatasetItem(items?.[0]);
+  if (!profile.publicIdentifier && !profile.firstName && !profile.lastName) {
     throw new Error("LINKEDIN_EMPTY:We couldn't find that LinkedIn profile. Double-check the link is public.");
   }
 
@@ -270,21 +333,65 @@ export async function scrapeLinkedInProfile(
   return profile;
 }
 
+function unwrapApifyDatasetItem(item: (ApifyLinkedInProfile & Record<string, unknown>) | undefined): ApifyLinkedInProfile {
+  if (!item) {
+    throw new Error("LINKEDIN_EMPTY:We couldn't find that LinkedIn profile. Double-check the link is public.");
+  }
+
+  const status = typeof item.status === "number" ? item.status : undefined;
+  if (status && status >= 400) {
+    const errObj = item.error;
+    const message =
+      (typeof item.message === "string" && item.message.trim()) ||
+      (errObj && typeof errObj === "object" && typeof (errObj as Record<string, unknown>).message === "string"
+        ? String((errObj as Record<string, unknown>).message).trim()
+        : "") ||
+      "LinkedIn profile scrape failed.";
+    throw new Error(message);
+  }
+
+  if (item.element && typeof item.element === "object") {
+    return normalizeApifyProfile(item.element as ApifyLinkedInProfile & Record<string, unknown>);
+  }
+
+  return normalizeApifyProfile(item);
+}
+
 function asApifyPositions(raw: ApifyLinkedInProfile & Record<string, unknown>): ApifyPosition[] {
   if (Array.isArray(raw.positions) && raw.positions.length) return raw.positions;
-  const experience = raw.experience;
+  const experience = raw.experiences ?? raw.experience;
   if (!Array.isArray(experience)) return [];
   return experience.map((row) => {
     if (!row || typeof row !== "object") return {};
     const e = row as Record<string, unknown>;
+    const start = parseFlexibleDate(e.starts_at ?? e.startDate ?? e.start_date ?? e.start_year);
+    const end = parseFlexibleDate(e.ends_at ?? e.endDate ?? e.end_date ?? e.end_year);
+    const endText =
+      typeof e.end_date === "string"
+        ? e.end_date.trim().toLowerCase()
+        : (e.endDate as HarvestDate | undefined)?.text?.trim().toLowerCase();
+    const isCurrent = end.present === true || endText === "present" || e.current === true;
     return {
-      companyName: typeof e.companyName === "string" ? e.companyName : typeof e.company === "string" ? e.company : undefined,
-      title: typeof e.title === "string" ? e.title : typeof e.position === "string" ? e.position : undefined,
+      companyName:
+        typeof e.companyName === "string"
+          ? e.companyName
+          : typeof e.company === "string"
+            ? e.company
+            : undefined,
+      title:
+        typeof e.title === "string" ? e.title : typeof e.position === "string" ? e.position : undefined,
       description: typeof e.description === "string" ? e.description : undefined,
-      locationName: typeof e.locationName === "string" ? e.locationName : typeof e.location === "string" ? e.location : undefined,
-      startYear: typeof e.startYear === "number" ? e.startYear : undefined,
-      endYear: typeof e.endYear === "number" ? e.endYear : undefined,
-      current: e.current === true,
+      locationName:
+        typeof e.locationName === "string"
+          ? e.locationName
+          : typeof e.location === "string"
+            ? e.location
+            : undefined,
+      startYear: start.year ?? (typeof e.startYear === "number" ? e.startYear : undefined),
+      startMonth: start.month ?? (typeof e.startMonth === "number" ? e.startMonth : undefined),
+      endYear: isCurrent ? undefined : end.year ?? (typeof e.endYear === "number" ? e.endYear : undefined),
+      endMonth: isCurrent ? undefined : end.month ?? (typeof e.endMonth === "number" ? e.endMonth : undefined),
+      current: isCurrent,
     } satisfies ApifyPosition;
   });
 }
@@ -296,37 +403,121 @@ function asApifyEducations(raw: ApifyLinkedInProfile & Record<string, unknown>):
   return education.map((row) => {
     if (!row || typeof row !== "object") return {};
     const e = row as Record<string, unknown>;
+    const start = parseFlexibleDate(e.starts_at ?? e.startDate ?? e.start_date ?? e.start_year);
+    const end = parseFlexibleDate(e.ends_at ?? e.endDate ?? e.end_date ?? e.end_year);
     return {
-      schoolName: typeof e.schoolName === "string" ? e.schoolName : typeof e.school === "string" ? e.school : undefined,
-      degreeName: typeof e.degreeName === "string" ? e.degreeName : typeof e.degree === "string" ? e.degree : undefined,
-      fieldOfStudy: typeof e.fieldOfStudy === "string" ? e.fieldOfStudy : undefined,
+      schoolName:
+        typeof e.schoolName === "string"
+          ? e.schoolName
+          : typeof e.school === "string"
+            ? e.school
+            : typeof e.title === "string"
+              ? e.title
+              : undefined,
+      degreeName:
+        typeof e.degreeName === "string" ? e.degreeName : typeof e.degree === "string" ? e.degree : undefined,
+      fieldOfStudy:
+        typeof e.fieldOfStudy === "string"
+          ? e.fieldOfStudy
+          : typeof e.field_of_study === "string"
+            ? e.field_of_study
+            : undefined,
+      startYear: start.year ?? (typeof e.startYear === "number" ? e.startYear : undefined),
+      startMonth: start.month ?? (typeof e.startMonth === "number" ? e.startMonth : undefined),
+      endYear: end.year ?? (typeof e.endYear === "number" ? e.endYear : undefined),
+      endMonth: end.month ?? (typeof e.endMonth === "number" ? e.endMonth : undefined),
     } satisfies ApifyEducation;
   });
 }
 
-function normalizeApifyProfile(raw: ApifyLinkedInProfile): ApifyLinkedInProfile {
-  const ext = raw as ApifyLinkedInProfile & Record<string, unknown>;
-  let firstName = raw.firstName;
-  let lastName = raw.lastName;
-  if (!firstName && typeof ext.fullName === "string") {
-    const parts = ext.fullName.trim().split(/\s+/);
+function asApifyCertifications(raw: ApifyLinkedInProfile & Record<string, unknown>): ApifyCertification[] {
+  const source = raw.certifications;
+  if (!Array.isArray(source) || !source.length) return [];
+  return source.map((row) => {
+    if (!row || typeof row !== "object") return {};
+    const c = row as Record<string, unknown>;
+    const issued = parseIssuedAt(typeof c.issuedAt === "string" ? c.issuedAt : undefined);
+    return {
+      name: typeof c.name === "string" ? c.name : typeof c.title === "string" ? c.title : undefined,
+      authority:
+        typeof c.authority === "string" ? c.authority : typeof c.issuedBy === "string" ? c.issuedBy : undefined,
+      startYear: issued.year ?? (typeof c.startYear === "number" ? c.startYear : undefined),
+      startMonth: issued.month ?? (typeof c.startMonth === "number" ? c.startMonth : undefined),
+      setLicenseNumber: typeof c.setLicenseNumber === "string" ? c.setLicenseNumber : undefined,
+    } satisfies ApifyCertification;
+  });
+}
+
+function parseIssuedAt(issuedAt?: string): { year?: number; month?: number } {
+  if (!issuedAt?.trim()) return {};
+  const match = issuedAt.trim().match(/([A-Za-z]{3})\s+(\d{4})/);
+  if (!match?.[1] || !match[2]) return {};
+  const month = HARVEST_MONTH[match[1]];
+  const year = Number(match[2]);
+  return { year: Number.isFinite(year) ? year : undefined, month };
+}
+
+function asApifySkills(raw: ApifyLinkedInProfile & Record<string, unknown>): ApifySkill[] {
+  if (Array.isArray(raw.skills)) {
+    return raw.skills.map((s) => {
+      if (typeof s === "string") return { skillName: s };
+      if (s && typeof s === "object") {
+        const skill = s as Record<string, unknown>;
+        const name =
+          typeof skill.skillName === "string"
+            ? skill.skillName
+            : typeof skill.name === "string"
+              ? skill.name
+              : undefined;
+        return { skillName: name };
+      }
+      return {};
+    });
+  }
+  return [];
+}
+
+function normalizeApifyProfile(raw: ApifyLinkedInProfile & Record<string, unknown>): ApifyLinkedInProfile {
+  let firstName =
+    raw.firstName ?? (typeof raw.first_name === "string" ? raw.first_name.trim() : undefined);
+  let lastName = raw.lastName ?? (typeof raw.last_name === "string" ? raw.last_name.trim() : undefined);
+  const fullName =
+    typeof raw.full_name === "string"
+      ? raw.full_name.trim()
+      : typeof raw.fullName === "string"
+        ? raw.fullName.trim()
+        : undefined;
+  if (!firstName && fullName) {
+    const parts = fullName.split(/\s+/);
     firstName = parts[0];
     lastName = parts.slice(1).join(" ") || undefined;
   }
+
+  const publicIdentifier =
+    raw.publicIdentifier ??
+    (typeof raw.public_identifier === "string" ? raw.public_identifier.trim() : undefined);
+
   return {
     ...raw,
     firstName,
     lastName,
-    headline: raw.headline ?? (typeof ext.headline === "string" ? ext.headline : undefined),
-    summary: raw.summary ?? (typeof ext.about === "string" ? ext.about : undefined),
-    locationName: raw.locationName ?? (typeof ext.location === "string" ? ext.location : undefined),
-    picture: raw.picture ?? (typeof ext.profilePicture === "string" ? ext.profilePicture : undefined),
-    positions: asApifyPositions(ext),
-    educations: asApifyEducations(ext),
-    skills: Array.isArray(raw.skills)
-      ? raw.skills
-      : Array.isArray(ext.skills)
-        ? ext.skills.map((s) => (typeof s === "string" ? { skillName: s } : (s as ApifySkill)))
-        : [],
+    publicIdentifier,
+    headline: typeof raw.headline === "string" ? raw.headline : undefined,
+    summary: raw.summary ?? (typeof raw.about === "string" ? raw.about : undefined),
+    url:
+      raw.url?.trim() ||
+      (typeof raw.linkedinUrl === "string" ? raw.linkedinUrl.trim() : undefined) ||
+      undefined,
+    locationName: locationTextFromRaw(raw),
+    picture:
+      raw.picture?.trim() ||
+      (typeof raw.profile_pic_url === "string" ? raw.profile_pic_url.trim() : undefined) ||
+      (typeof raw.photo === "string" ? raw.photo.trim() : undefined) ||
+      (typeof raw.profilePicture === "string" ? raw.profilePicture.trim() : undefined) ||
+      undefined,
+    positions: asApifyPositions(raw),
+    educations: asApifyEducations(raw),
+    skills: asApifySkills(raw),
+    certifications: asApifyCertifications(raw),
   };
 }
