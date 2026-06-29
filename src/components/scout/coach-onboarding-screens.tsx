@@ -733,7 +733,7 @@ export function CoachScreenReview({
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <ScreenIntro
         title="Review your profile"
-        body="After you submit, the Kimchi team will review your coach profile before it goes live in the marketplace."
+        body="After you submit, the Second Ladder team will review your coach profile before it goes live in the marketplace."
       />
 
       <div className="anim-fade-up" style={ONBOARDING_CARD}>

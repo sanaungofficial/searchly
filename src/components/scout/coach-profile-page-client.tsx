@@ -242,8 +242,6 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
       return;
     }
     const isAssigned = coach.isMyCoach ?? false;
-    if (!isAssigned && coach.isInternal && !isAdmin) return;
-    if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {

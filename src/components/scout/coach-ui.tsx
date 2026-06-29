@@ -8,32 +8,11 @@ import type { CoachListItem } from "@/lib/coach-types";
 import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
-export function CoachRate({
-  hourlyRate,
-  isPro,
-  onSubscribe,
-}: {
-  hourlyRate: number | null;
-  isPro: boolean;
-  onSubscribe: () => void;
-}) {
+export function CoachRate({ hourlyRate }: { hourlyRate: number | null }) {
   if (!hourlyRate) return null;
-  if (isPro) {
-    return (
-      <span style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
-        ${hourlyRate}<span style={{ fontWeight: 400, color: color.muted }}>/hr</span>
-      </span>
-    );
-  }
   return (
-    <span
-      onClick={onSubscribe}
-      title="Subscribe to see rate"
-      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", userSelect: "none" }}
-    >
-      <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, filter: "blur(4px)", pointerEvents: "none" }}>
-        ${hourlyRate}/hr
-      </span>
+    <span style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
+      ${hourlyRate}<span style={{ fontWeight: 400, color: color.muted }}>/hr</span>
     </span>
   );
 }
@@ -91,17 +70,13 @@ export function ProfileMyCoachCard({
   loading,
   needsProfile,
   profileHint,
-  isPro,
   isMobile,
-  onSubscribe,
 }: {
   coach: CoachListItem | null;
   loading: boolean;
   needsProfile: boolean;
   profileHint: string | null;
-  isPro: boolean;
   isMobile: boolean;
-  onSubscribe: () => void;
 }) {
   if (loading) {
     return (
@@ -171,7 +146,7 @@ export function ProfileMyCoachCard({
             {coach.firms.slice(0, 2).map((f) => (
               <span key={f} style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 500 }}>{f}</span>
             ))}
-            <CoachRate hourlyRate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} />
+            <CoachRate hourlyRate={coach.hourlyRate} />
             {coach.location && (
               <span style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>{coach.location}</span>
             )}
@@ -194,14 +169,14 @@ export function ProfileMyCoachCard({
           )}
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
-            {isPro && coach.calLink ? (
+            {coach.calLink ? (
               <a href={coach.calLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                 <ScoutPrimaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Book a session →</ScoutPrimaryBtn>
               </a>
             ) : (
-              <ScoutSecondaryBtn onClick={onSubscribe} style={{ minHeight: isMobile ? 44 : undefined }}>
-                Subscribe to book
-              </ScoutSecondaryBtn>
+              <Link href="/coaching" style={{ textDecoration: "none" }}>
+                <ScoutSecondaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Browse coaches</ScoutSecondaryBtn>
+              </Link>
             )}
             {coach.linkedinUrl && (
               <a

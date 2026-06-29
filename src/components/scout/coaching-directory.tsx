@@ -24,8 +24,6 @@ import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 type Props = {
   category?: string | null;
   isMobile: boolean;
-  isPro: boolean;
-  onSubscribe: () => void;
   onOpenCoach: (coach: CoachListItem) => void;
   myCoachIds?: Set<string>;
   onMyCoachIdsChange?: (ids: Set<string>) => void;
@@ -70,14 +68,10 @@ function SpotlightBadge({ badge }: { badge: CoachSpotlightBadge }) {
 function FeaturedCarousel({
   coaches,
   isMobile,
-  isPro,
-  onSubscribe,
   onOpenCoach,
 }: {
   coaches: (CoachListItem & { spotlightBadge?: CoachSpotlightBadge | null })[];
   isMobile: boolean;
-  isPro: boolean;
-  onSubscribe: () => void;
   onOpenCoach: (coach: CoachListItem) => void;
 }) {
   if (!coaches.length) return null;
@@ -141,14 +135,13 @@ function countActiveFilters(params: URLSearchParams): number {
   return n;
 }
 
-export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOpenCoach, myCoachIds: myCoachIdsProp, onMyCoachIdsChange }: Props) {
+export function CoachingDirectory({ category, isMobile, onOpenCoach, myCoachIds: myCoachIdsProp, onMyCoachIdsChange }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requireAuth = useRequireAuthRedirect();
   const { userRole, isImpersonating, user, authChecked } = useWorkspace();
   const isAdmin = userRole === "ADMIN";
   const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
-  const canAdminAssignCoach = isImpersonating || isAdmin;
   const [allCoaches, setAllCoaches] = useState<CoachListItem[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [localMyCoachIds, setLocalMyCoachIds] = useState<Set<string>>(new Set());
@@ -342,8 +335,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
       return;
     }
     const isAssigned = myCoachIds.has(coach.id);
-    if (!isAssigned && coach.isInternal && !canAdminAssignCoach) return;
-    if (!isAssigned && coach.requiresAssignment && !canAdminAssignCoach) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -363,7 +354,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
   return (
     <div>
-      <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} isPro={isPro} onSubscribe={onSubscribe} onOpenCoach={onOpenCoach} />
+      <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} onOpenCoach={onOpenCoach} />
 
       <ScoutBox padding={isMobile ? 18 : 22} style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 16, marginBottom: 16 }}>
@@ -399,7 +390,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
         <input
           type="search"
-          placeholder="Search by name, specialty, or Kimchi coach…"
+          placeholder="Search by name, specialty, or Second Ladder coach…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           style={{ ...inputStyle, marginBottom: 14 }}
@@ -432,7 +423,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
         {!loading && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 14px", lineHeight: 1.45 }}>
             {filteredCoaches.length} coach{filteredCoaches.length !== 1 ? "es" : ""}
-            {!isPro && <span style={{ marginLeft: 10, color: "#b45309" }}>Subscribe to see rates and book sessions</span>}
           </p>
         )}
 
@@ -475,14 +465,11 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
                 key={c.id}
                 coach={c}
                 isMobile={isMobile}
-                isPro={isPro}
-                onSubscribe={onSubscribe}
                 onFollow={toggleFollow}
                 following={followedIds.has(c.id)}
                 onOpenCoach={onOpenCoach}
                 isMyCoach={myCoachIds.has(c.id)}
                 canSelfAssignCoach={canSelfAssignCoach}
-                canAdminAssignCoach={canAdminAssignCoach}
                 onToggleMyCoach={toggleMyCoach}
                 companyLookup={companyLookup}
               />

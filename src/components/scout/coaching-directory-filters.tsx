@@ -265,7 +265,7 @@ export function CoachQuickFiltersBar({
             cursor: "pointer", whiteSpace: "nowrap",
           }}
         >
-          Kimchi team
+          Second Ladder team
         </button>
       )}
 
@@ -329,8 +329,8 @@ export function CoachFiltersDrawer({
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
           {kimchiCount > 0 && (
-            <DrawerSection title="Kimchi team">
-              <CheckRow checked={filters.internal} label={`Kimchi coaches (${kimchiCount})`} onChange={() => onInternalChange(!filters.internal)} />
+            <DrawerSection title="Second Ladder team">
+              <CheckRow checked={filters.internal} label={`Second Ladder coaches (${kimchiCount})`} onChange={() => onInternalChange(!filters.internal)} />
             </DrawerSection>
           )}
 

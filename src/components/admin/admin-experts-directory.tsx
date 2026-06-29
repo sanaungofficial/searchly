@@ -350,8 +350,6 @@ export function AdminExpertsDirectory() {
                 key={coach.id}
                 coach={coach}
                 isMobile={isMobile}
-                isPro
-                onSubscribe={() => {}}
                 onFollow={() => {}}
                 following={false}
                 onOpenCoach={openCoach}

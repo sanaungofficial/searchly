@@ -158,18 +158,10 @@ function FavoriteBadge() {
   );
 }
 
-function RateDisplay({ rate, isPro, onSubscribe }: { rate: number; isPro: boolean; onSubscribe: () => void }) {
-  if (isPro) {
-    return (
-      <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: color.ink }}>
-        ${rate}<span style={{ fontWeight: 500, color: color.muted, fontSize: 14 }}>/hr</span>
-      </span>
-    );
-  }
+function RateDisplay({ rate }: { rate: number }) {
   return (
-    <span onClick={onSubscribe} title="Subscribe to see rate" style={{ cursor: "pointer", userSelect: "none" }}>
-      <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, filter: "blur(5px)", pointerEvents: "none" }}>${rate}</span>
-      <span style={{ fontSize: 14, color: color.muted, filter: "blur(5px)", pointerEvents: "none" }}>/hr</span>
+    <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: color.ink }}>
+      ${rate}<span style={{ fontWeight: 500, color: color.muted, fontSize: 14 }}>/hr</span>
     </span>
   );
 }
@@ -207,14 +199,11 @@ function CoachStatusBadge({ status }: { status: string }) {
 export function CoachingDirectoryCard({
   coach,
   isMobile,
-  isPro,
-  onSubscribe,
   onFollow,
   following,
   onOpenCoach,
   isMyCoach = false,
   canSelfAssignCoach = false,
-  canAdminAssignCoach = false,
   onToggleMyCoach,
   companyLookup = {},
   variant = "client",
@@ -223,14 +212,11 @@ export function CoachingDirectoryCard({
 }: {
   coach: CoachListItem;
   isMobile: boolean;
-  isPro: boolean;
-  onSubscribe: () => void;
   onFollow: (coach: CoachListItem) => void;
   following: boolean;
   onOpenCoach: (coach: CoachListItem) => void;
   isMyCoach?: boolean;
   canSelfAssignCoach?: boolean;
-  canAdminAssignCoach?: boolean;
   onToggleMyCoach?: (coach: CoachListItem) => void;
   companyLookup?: Record<string, CoachCompanyLookupItem>;
   variant?: "client" | "admin";
@@ -362,7 +348,7 @@ export function CoachingDirectoryCard({
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                 {coach.hourlyRate ? (
-                  <RateDisplay rate={coach.hourlyRate} isPro={isAdminView || isPro} onSubscribe={onSubscribe} />
+                  <RateDisplay rate={coach.hourlyRate} />
                 ) : coach.requiresAssignment ? (
                   <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest }}>Included</span>
                 ) : null}
@@ -372,37 +358,19 @@ export function CoachingDirectoryCard({
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 {!isAdminView && canSelfAssignCoach && onToggleMyCoach && (
-                  isMyCoach || (!coach.isInternal && !coach.requiresAssignment) || canAdminAssignCoach ? (
-                    <ScoutSecondaryBtn
-                      onClick={() => onToggleMyCoach(coach)}
-                      style={{
-                        minHeight: 38,
-                        fontSize: 13,
-                        padding: "8px 14px",
-                        ...(isMyCoach
-                          ? { borderColor: color.forest, color: color.forest, fontWeight: 600 }
-                          : {}),
-                      }}
-                    >
-                      {isMyCoach
-                        ? "Remove from my coaches"
-                        : canAdminAssignCoach && (coach.isInternal || coach.requiresAssignment)
-                          ? "Assign coach"
-                          : "Add as my coach"}
-                    </ScoutSecondaryBtn>
-                  ) : (
-                    <span
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: 12,
-                        color: color.muted,
-                        padding: "8px 4px",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      Assigned by your team
-                    </span>
-                  )
+                  <ScoutSecondaryBtn
+                    onClick={() => onToggleMyCoach(coach)}
+                    style={{
+                      minHeight: 38,
+                      fontSize: 13,
+                      padding: "8px 14px",
+                      ...(isMyCoach
+                        ? { borderColor: color.forest, color: color.forest, fontWeight: 600 }
+                        : {}),
+                    }}
+                  >
+                    {isMyCoach ? "Remove from my coaches" : "Add as my coach"}
+                  </ScoutSecondaryBtn>
                 )}
                 {!isAdminView && (
                   <ScoutSecondaryBtn onClick={() => onFollow(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 14px" }}>
@@ -410,7 +378,7 @@ export function CoachingDirectoryCard({
                   </ScoutSecondaryBtn>
                 )}
                 <ScoutPrimaryBtn onClick={() => onOpenCoach(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 16px" }}>
-                  {isAdminView ? "Manage" : isPro ? "Free intro call" : "View profile"}
+                  {isAdminView ? "Manage" : "Free intro call"}
                 </ScoutPrimaryBtn>
               </div>
             </div>

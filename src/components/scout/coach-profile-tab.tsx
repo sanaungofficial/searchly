@@ -536,7 +536,7 @@ export function CoachProfileTab({
                 style={{ width: 14, height: 14, cursor: "pointer" }}
               />
               <label htmlFor="internal-coach" style={{ fontSize: 13, color: color.stone, cursor: "pointer", fontFamily: fontSans }}>
-                Internal Kimchi coach
+                Internal Second Ladder coach
               </label>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
