@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ClientImportPreview } from "@/lib/client-import/types";
 import {
-  COMPANIES_DESTINATION_FIELDS,
   DEFAULT_COMPANY_IMPORT_OPTIONS,
+  applyCompaniesFieldSelection,
+  buildCompanyNotesFromRow,
+  colForDestination,
   countMappedColumns,
-  skipAllUnmapped,
+  noteColumnsFromMapping,
   validateCompaniesMapping,
   type CompaniesColumnMapping,
-  type CompaniesDestinationFieldId,
   type CompanyImportOptions,
   type CompaniesSheetPreview,
 } from "@/lib/client-import/company-field-mapping";
@@ -44,7 +45,7 @@ const selectStyle: React.CSSProperties = {
 function StepPills({ step }: { step: WizardStep }) {
   const steps: Array<{ id: WizardStep; label: string }> = [
     { id: "upload", label: "Upload" },
-    { id: "map", label: "Map columns" },
+    { id: "map", label: "Map fields" },
     { id: "options", label: "Options" },
   ];
   const idx = steps.findIndex((s) => s.id === step);
@@ -70,6 +71,14 @@ function StepPills({ step }: { step: WizardStep }) {
   );
 }
 
+function firstSampleCompanyRow(preview: CompaniesSheetPreview, companyCol: number): number | null {
+  for (let r = preview.headerRowIndex + 1; r < preview.rows.length; r++) {
+    const name = (preview.rows[r]?.[companyCol] ?? "").trim();
+    if (name) return r;
+  }
+  return null;
+}
+
 export function CompaniesImportWizard({
   open,
   onClose,
@@ -92,6 +101,27 @@ export function CompaniesImportWizard({
   const [mappingRecommendation, setMappingRecommendation] = useState<string | null>(null);
 
   const mappedCounts = useMemo(() => countMappedColumns(columns), [columns]);
+  const noteColumns = useMemo(() => noteColumnsFromMapping(columns), [columns]);
+  const companyCol = colForDestination(columns, "company");
+  const priorityCol = colForDestination(columns, "priority");
+
+  const notesPreview = useMemo(() => {
+    if (!sheetPreview || companyCol < 0 || !importOptions.includeUnmappedInNotes) return null;
+    const rowIdx = firstSampleCompanyRow(sheetPreview, companyCol);
+    if (rowIdx == null) return null;
+    const headers = columns.map((c) => c.header);
+    const skipped = columns.filter((c) => c.skipped || c.isEmpty).map((c) => c.columnIndex);
+    const category = sheetPreview.rowCategories?.[rowIdx] ?? null;
+    return buildCompanyNotesFromRow(
+      sheetPreview.rows[rowIdx] ?? [],
+      headers,
+      companyCol,
+      priorityCol >= 0 ? priorityCol : null,
+      { includeUnmappedInNotes: true, skippedColumnIndexes: skipped, category },
+    );
+  }, [sheetPreview, columns, companyCol, priorityCol, importOptions.includeUnmappedInNotes]);
+
+  const selectableColumns = useMemo(() => columns.filter((c) => !c.isEmpty), [columns]);
 
   const reset = useCallback(() => {
     setStep("upload");
@@ -137,6 +167,26 @@ export function CompaniesImportWizard({
     } finally {
       setLoading(false);
     }
+  }
+
+  function setCompanyColumn(colIndex: number) {
+    setColumns((prev) => {
+      const priority = colForDestination(prev, "priority");
+      const validPriority = priority >= 0 && priority !== colIndex ? priority : null;
+      return applyCompaniesFieldSelection(prev, colIndex, validPriority);
+    });
+  }
+
+  function setPriorityColumn(colIndex: number | null) {
+    setColumns((prev) => {
+      const company = colForDestination(prev, "company");
+      if (company < 0) return prev;
+      return applyCompaniesFieldSelection(prev, company, colIndex);
+    });
+  }
+
+  function toggleNoteColumnSkip(colIndex: number, skipped: boolean) {
+    setColumns((prev) => prev.map((col) => (col.columnIndex === colIndex ? { ...col, skipped } : col)));
   }
 
   function continueFromMap() {
@@ -188,16 +238,6 @@ export function CompaniesImportWizard({
     }
   }
 
-  function updateColumn(index: number, patch: Partial<CompaniesColumnMapping>) {
-    setColumns((prev) => prev.map((col) => (col.columnIndex === index ? { ...col, ...patch } : col)));
-  }
-
-  const usedSingleDestinations = new Set(
-    columns
-      .filter((c) => !c.skipped && c.destination && c.destination !== "notes")
-      .map((c) => c.destination as CompaniesDestinationFieldId),
-  );
-
   return (
     <ScoutModal open={open} onClose={onClose} maxWidth={860} bruddle>
       <ScoutLabel>Companies import</ScoutLabel>
@@ -219,8 +259,8 @@ export function CompaniesImportWizard({
       {step === "upload" && (
         <>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-            Upload an Excel/CSV export or paste rows with a header row. Map Company (required), Priority, and fold
-            descriptive columns into notes.
+            Upload an Excel/CSV export or paste rows with a header row. Pick the company name column (required) and
+            optional priority — everything else becomes structured notes automatically.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
@@ -257,7 +297,7 @@ export function CompaniesImportWizard({
                   setPasteText(e.target.value);
                   setError(null);
                 }}
-                placeholder="Company, Industry, Location/HQ, Fit Notes, Priority…"
+                placeholder="Company, Industry, Location, Drive, Local Asset Base, Fit Notes, Priority…"
                 style={{
                   width: "100%",
                   minHeight: 120,
@@ -277,82 +317,140 @@ export function CompaniesImportWizard({
 
       {step === "map" && sheetPreview && (
         <>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px" }}>
             {sheetPreview.filename} · {sheetPreview.sheetName} · {sheetPreview.dataRowCount} data row(s)
           </p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, margin: "0 0 12px" }}>
-            {mappedCounts.mapped} / {mappedCounts.total} columns mapped
-            {mappedCounts.unmapped > 0 ? ` · ${mappedCounts.unmapped} unmapped (can fold into notes)` : ""}
-          </p>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
-            Industry, location, drive time, and fit notes should map to Notes — multiple columns are allowed. Unmapped
-            descriptive columns are included in notes automatically unless you skip them.
-          </p>
-          <div style={{ overflowX: "auto", marginBottom: 12 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: T.bodySm }}>
-              <thead>
-                <tr style={{ textAlign: "left", color: color.muted, fontSize: T.caption }}>
-                  <th style={{ padding: "8px 6px" }}>Skip</th>
-                  <th style={{ padding: "8px 6px" }}>Column</th>
-                  <th style={{ padding: "8px 6px" }}>Map to</th>
-                  <th style={{ padding: "8px 6px" }}>Sample</th>
-                </tr>
-              </thead>
-              <tbody>
-                {columns.map((col) => (
-                  <tr key={col.columnIndex} style={{ borderTop: "var(--scout-border)" }}>
-                    <td style={{ padding: "8px 6px", verticalAlign: "top" }}>
-                      <input
-                        type="checkbox"
-                        checked={col.skipped}
-                        onChange={(e) =>
-                          updateColumn(col.columnIndex, {
-                            skipped: e.target.checked,
-                            destination: e.target.checked ? null : col.destination,
-                          })
-                        }
-                      />
-                    </td>
-                    <td style={{ padding: "8px 6px", verticalAlign: "top", fontWeight: 600 }}>{col.header}</td>
-                    <td style={{ padding: "8px 6px", verticalAlign: "top", minWidth: 180 }}>
-                      <select
-                        value={col.skipped ? "" : (col.destination ?? "")}
-                        disabled={col.skipped}
-                        onChange={(e) => {
-                          const destination = (e.target.value || null) as CompaniesDestinationFieldId | null;
-                          updateColumn(col.columnIndex, { destination, skipped: false });
-                        }}
-                        style={selectStyle}
-                      >
-                        <option value="">— Not mapped —</option>
-                        {COMPANIES_DESTINATION_FIELDS.map((field) => (
-                          <option
-                            key={field.id}
-                            value={field.id}
-                            disabled={
-                              !field.allowMultiple &&
-                              usedSingleDestinations.has(field.id) &&
-                              col.destination !== field.id
-                            }
-                          >
-                            {field.label}
-                            {field.required ? " *" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={{ padding: "8px 6px", verticalAlign: "top", color: color.muted, fontSize: T.caption }}>
-                      {col.sampleValues.join(" · ") || "—"}
-                    </td>
-                  </tr>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+            <label>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, fontWeight: 600 }}>
+                Company column *
+              </span>
+              <select
+                value={companyCol >= 0 ? companyCol : ""}
+                onChange={(e) => setCompanyColumn(Number(e.target.value))}
+                style={{ ...selectStyle, marginTop: 6 }}
+              >
+                <option value="" disabled>
+                  Select column…
+                </option>
+                {selectableColumns.map((col) => (
+                  <option key={col.columnIndex} value={col.columnIndex}>
+                    {col.header}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </label>
+            <label>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, fontWeight: 600 }}>
+                Priority column (optional)
+              </span>
+              <select
+                value={priorityCol >= 0 ? priorityCol : ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPriorityColumn(val === "" ? null : Number(val));
+                }}
+                style={{ ...selectStyle, marginTop: 6 }}
+              >
+                <option value="">— None —</option>
+                {selectableColumns
+                  .filter((col) => col.columnIndex !== companyCol)
+                  .map((col) => (
+                    <option key={col.columnIndex} value={col.columnIndex}>
+                      {col.header}
+                    </option>
+                  ))}
+              </select>
+            </label>
           </div>
-          {mappedCounts.unmapped > 0 && (
-            <ScoutSecondaryBtn type="button" onClick={() => setColumns(skipAllUnmapped(columns))}>
-              Skip unmapped columns
-            </ScoutSecondaryBtn>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 16,
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={importOptions.includeUnmappedInNotes}
+              onChange={(e) => setImportOptions((o) => ({ ...o, includeUnmappedInNotes: e.target.checked }))}
+            />
+            Include other columns in notes (one line per field)
+          </label>
+
+          {importOptions.includeUnmappedInNotes && noteColumns.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, margin: "0 0 8px" }}>
+                {noteColumns.length} column(s) will merge into notes
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  maxHeight: 160,
+                  overflowY: "auto",
+                  padding: "10px 12px",
+                  background: surface.inset,
+                  border: "var(--scout-border)",
+                }}
+              >
+                {noteColumns.map((col) => (
+                  <label
+                    key={col.columnIndex}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontFamily: fontSans,
+                      fontSize: T.bodySm,
+                      color: col.skipped ? color.muted : color.stone,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!col.skipped}
+                      onChange={(e) => toggleNoteColumnSkip(col.columnIndex, !e.target.checked)}
+                    />
+                    <span style={{ fontWeight: 600 }}>{col.header}</span>
+                    <span style={{ color: color.muted, fontSize: T.caption }}>
+                      {col.sampleValues[0] ? `e.g. ${col.sampleValues[0]}` : ""}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {notesPreview && (
+            <div style={{ marginBottom: 8, padding: 12, background: surface.inset, border: "var(--scout-border)" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, margin: "0 0 8px" }}>
+                Notes preview (first company row)
+              </p>
+              <pre
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  color: color.stone,
+                  margin: 0,
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.5,
+                }}
+              >
+                {notesPreview}
+              </pre>
+            </div>
+          )}
+
+          {!mappedCounts.companyMapped && (
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#b04040", margin: "8px 0 0" }}>
+              Select a company column to continue.
+            </p>
           )}
         </>
       )}
@@ -368,15 +466,7 @@ export function CompaniesImportWizard({
               checked={importOptions.dedupeEnabled}
               onChange={(e) => setImportOptions((o) => ({ ...o, dedupeEnabled: e.target.checked }))}
             />
-            Check for existing companies before import
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontFamily: fontSans, fontSize: T.bodySm }}>
-            <input
-              type="checkbox"
-              checked={importOptions.includeUnmappedInNotes}
-              onChange={(e) => setImportOptions((o) => ({ ...o, includeUnmappedInNotes: e.target.checked }))}
-            />
-            Fold unmapped descriptive columns into notes
+            Dedupe by company name before import
           </label>
 
           {importOptions.dedupeEnabled && (
@@ -456,7 +546,7 @@ export function CompaniesImportWizard({
           </ScoutPrimaryBtn>
         )}
         {step === "map" && (
-          <ScoutPrimaryBtn onClick={continueFromMap} disabled={loading}>
+          <ScoutPrimaryBtn onClick={continueFromMap} disabled={loading || !mappedCounts.companyMapped}>
             Continue
           </ScoutPrimaryBtn>
         )}
