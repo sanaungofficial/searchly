@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Legacy detail URL — opens coach hub drawer on the list page. */
+/** Legacy detail URL — opens coach hub drawer on the expert directory. */
 export default async function AdminCoachDetailRedirect({
   params,
   searchParams,
@@ -18,5 +18,5 @@ export default async function AdminCoachDetailRedirect({
   }
 
   qs.set("coachId", coachId);
-  redirect(`/admin/coaches?${qs.toString()}`);
+  redirect(`/admin/experts?${qs.toString()}`);
 }

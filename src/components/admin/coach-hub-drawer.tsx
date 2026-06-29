@@ -39,7 +39,7 @@ type Props = {
   onCoachUpdated?: () => void;
 };
 
-function CoachHubDrawerInner({ coachId, coachPreview, onClose, basePath = "/admin/coaches", onCoachUpdated }: Props) {
+function CoachHubDrawerInner({ coachId, coachPreview, onClose, basePath = "/admin/experts", onCoachUpdated }: Props) {
   const isMobile = useIsMobile();
   const router = useRouter();
   const searchParams = useSearchParams();
