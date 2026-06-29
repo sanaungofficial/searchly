@@ -65,6 +65,7 @@ export function ApplyProfileModal({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -77,6 +78,9 @@ export function ApplyProfileModal({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: "#FFFDF9",
           maxWidth: 560,
