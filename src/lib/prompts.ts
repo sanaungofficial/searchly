@@ -117,7 +117,17 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Cover Letter (Full)",
     description: "Full cover letter generated from a complete job description and resume.",
     category: "Cover Letter",
-    variables: ["jobTitle", "company", "description", "resumeSlice", "candidateName"],
+    variables: [
+      "jobTitle",
+      "company",
+      "description",
+      "resumeSlice",
+      "candidateName",
+      "motivation",
+      "achievements",
+      "tone",
+      "notes",
+    ],
   },
   JOB_PARSE: {
     label: "Job URL Parser",
@@ -653,32 +663,42 @@ Full context:
 
   COVER_LETTER_FULL: `${KIMCHI_VOICE}
 
-Write a compelling, personalized cover letter for this candidate.
+Write a professional cover letter for {{candidateName}} applying to {{jobTitle}} at {{company}}.
 
-JOB:
-Title: {{jobTitle}}
-Company: {{company}}
-Description:
+JOB DESCRIPTION:
 {{description}}
 
 CANDIDATE RESUME:
 {{resumeSlice}}
 
-Write a 3-paragraph cover letter that:
-1. Opens with a specific hook referencing something real about the company or role (not generic)
-2. Highlights 2-3 concrete achievements from the resume most relevant to this role with specific metrics where available
-3. Closes with genuine enthusiasm and a clear call to action
+CANDIDATE INPUT (use this — do not invent details they did not provide):
+- Why they're interested: {{motivation}}
+- Achievements to highlight: {{achievements}}
+- Tone preference: {{tone}}
+- Mention or avoid: {{notes}}
 
-Rules:
-- Do NOT use the phrase "I am writing to express my interest"
-- Do NOT use "I am excited about this opportunity" or similar filler
-- Do NOT use em dashes
-- Write in first person as {{candidateName}}
-- Keep it under 300 words
-- Professional but not stiff — conversational and direct
-- No salutation (Dear Hiring Manager) or sign-off — just the body paragraphs
+Write a complete business letter with this exact structure, separated by blank lines:
+1. Today's date (e.g. June 29, 2026) — use the current month and year
+2. Recipient block (2 lines): "Hiring Manager" then the company name
+3. Salutation: "Dear Hiring Manager,"
+4. Body: 2-3 short paragraphs (under 320 words total)
+5. Closing: "Sincerely," or "Best regards," (match tone preference)
+6. Signature line: {{candidateName}}
 
-Return ONLY the cover letter text, no JSON, no labels, no extra commentary.`,
+Body paragraph rules:
+- Open with a specific hook tied to the role or company — never generic praise
+- Weave in the candidate's stated motivation and chosen achievements with concrete metrics from the resume when available
+- Close with a direct, confident call to action (one sentence)
+- Tone: {{tone}} — formal means polished and restrained; conversational means warm and direct but still professional
+
+Banned phrases and patterns (never use):
+- "I am writing to express my interest"
+- "I am excited about this opportunity" / "I am thrilled"
+- "passionate about" / "dynamic team" / "fast-paced environment"
+- "I believe I would be a great fit" / "I am confident that"
+- Em dashes, bullet points, markdown, subject lines, or headers
+
+Return ONLY the letter text — no JSON, labels, or commentary.`,
 
   JOB_PARSE: `Extract job posting details from this page content. Return ONLY valid JSON, no other text.
 
