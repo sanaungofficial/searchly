@@ -4,7 +4,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachExperienceCompanies } from "@/components/scout/coach-experience-companies";
-import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { CoachMatchScoreColumn } from "@/components/scout/match-score-ui";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "@/components/scout/scout-box";
@@ -437,11 +437,13 @@ export function CoachProfileView({
       {/* Hero */}
       <div
         style={{
-          padding: isMobile ? "20px 16px" : "28px 32px",
+          display: "flex",
           background: cardBg,
           borderBottom: line,
+          overflow: "hidden",
         }}
       >
+        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "20px 16px" : "28px 32px" }}>
         <div style={{ display: "flex", gap: isMobile ? 16 : 24, alignItems: "flex-start" }}>
           <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 88 : 120} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -478,15 +480,17 @@ export function CoachProfileView({
               <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "10px 0 0" }}>{coach.location}</p>
             )}
           </div>
-          {!isMobile && matchScore > 0 && (
-            <CoachMatchScoreCluster
-              score={matchScore}
-              label={matchLabel}
-              align="right"
-              job={{ matchScore, matchLabel, matchReasons, matchedSkills }}
-            />
-          )}
         </div>
+        </div>
+        {matchScore > 0 && (
+          <CoachMatchScoreColumn
+            score={matchScore}
+            label={matchLabel}
+            reasons={matchReasons}
+            matchedSkills={matchedSkills}
+            width={isMobile ? 96 : 120}
+          />
+        )}
       </div>
 
       {/* Body */}
@@ -499,10 +503,6 @@ export function CoachProfileView({
         }}
       >
         <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
-          {matchScore > 0 && (
-            <CoachMatchSection job={{ matchScore, matchLabel, matchReasons, matchedSkills }} />
-          )}
-
           {introText && (
             <Section title={`Message from ${coach.displayName.split(" ")[0]}`}>
               <p style={{ fontFamily: fontSans, fontSize: T.body, lineHeight: 1.7, color: color.stone, margin: 0 }}>

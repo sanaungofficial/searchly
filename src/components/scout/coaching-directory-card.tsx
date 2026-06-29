@@ -3,8 +3,8 @@
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CompanyLogo } from "@/components/scout/company-logo";
-import { CoachFitAssessment } from "@/components/scout/match-score-ui";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { CoachMatchScoreColumn } from "@/components/scout/match-score-ui";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { bioSnippet } from "@/lib/coach-directory";
 import {
   buildCoachExperienceCompanies,
@@ -221,15 +221,16 @@ export function CoachingDirectoryCard({
           onOpenCoach(coach);
         }
       }}
-      style={{ cursor: "pointer" }}
+      style={{
+        cursor: "pointer",
+        display: "flex",
+        border: "1.5px solid #161616",
+        background: surface.card,
+        overflow: "hidden",
+        ...(showTopBorder ? { borderTop: `2px solid ${color.forest}` } : {}),
+      }}
     >
-      <ScoutBox
-        padding={isMobile ? "14px 16px" : "16px 20px"}
-        style={{
-          ...(showTopBorder ? { borderTop: `2px solid ${color.forest}` } : {}),
-          transition: "box-shadow 0.15s ease",
-        }}
-      >
+      <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "14px 16px" : "16px 20px" }}>
         <div style={{ display: "flex", gap: isMobile ? 12 : 16, alignItems: "flex-start" }}>
           <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 56 : 64} rounded />
 
@@ -302,21 +303,6 @@ export function CoachingDirectoryCard({
               ))}
             </div>
 
-            {matchScore > 0 && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <CoachFitAssessment
-                  compact
-                  showScore
-                  job={{
-                    matchScore,
-                    matchLabel: coach.matchLabel ?? "",
-                    matchReasons: coach.matchReasons ?? [],
-                    matchedSkills: coach.matchedSkills,
-                  }}
-                />
-              </div>
-            )}
-
             <div
               style={{
                 display: "flex",
@@ -384,7 +370,15 @@ export function CoachingDirectoryCard({
             </div>
           </div>
         </div>
-      </ScoutBox>
+      </div>
+      {matchScore > 0 && (
+        <CoachMatchScoreColumn
+          score={matchScore}
+          label={coach.matchLabel ?? ""}
+          reasons={coach.matchReasons ?? []}
+          matchedSkills={coach.matchedSkills}
+        />
+      )}
     </div>
   );
 }

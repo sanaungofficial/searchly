@@ -56,13 +56,11 @@ import {
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel } from "./score-explainer-popover";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useHoverCapable } from "@/hooks/use-hover-capable";
-import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
+import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
-import { matchScoreStyle, isLowQualityMatchReason } from "@/lib/match-score";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
@@ -351,75 +349,6 @@ function recommendedDedupeKey(job: VectorMatchedJob): string {
   });
 }
 
-function CircularMatchScore({ score }: { score: number }) {
-  const radius = 30;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference - (score / 100) * circumference;
-  return (
-    <div style={{ position: "relative", width: 80, height: 80 }}>
-      <svg width="80" height="80" viewBox="0 0 80 80" style={{ display: "block" }}>
-        <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="#44E8A4"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          transform="rotate(-90 40 40)"
-        />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontFamily: fontMono, fontSize: 17, fontWeight: 700, color: "#FFFFFF", lineHeight: 1 }}>
-          {score}<span style={{ fontSize: 11 }}>%</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function WhyMatchPanel({ reasons, matchedSkills }: { reasons: string[]; matchedSkills: string[] }) {
-  return (
-    <div style={{ padding: "4px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
-          <path d="M7.5 1L9 6H14.5L10 9.5L11.5 14.5L7.5 11.5L3.5 14.5L5 9.5L0.5 6H6L7.5 1Z" fill="#44E8A4" stroke="#44E8A4" strokeWidth="0.5" strokeLinejoin="round"/>
-        </svg>
-        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
-          Why This Job Is A Match
-        </span>
-      </div>
-      {reasons.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: matchedSkills.length > 0 ? 14 : 0 }}>
-          {reasons.map((r, i) => (
-            <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-              <span style={{ color: "#44E8A4", fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>✓</span>
-              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.45 }}>{r}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {matchedSkills.length > 0 && (
-        <div>
-          <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 7px" }}>
-            Matched Skills
-          </p>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {matchedSkills.map((skill) => (
-              <span key={skill} style={{ display: "inline-block", padding: "3px 10px", fontSize: T.label, fontWeight: 600, color: "#44E8A4", background: "rgba(68,232,164,0.12)", border: "1px solid rgba(68,232,164,0.35)", borderRadius: 4 }}>
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function IconBriefcase() {
   return (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -498,85 +427,6 @@ function MetadataGrid({
   );
 }
 
-function MatchWhyScorePopover({
-  reasons,
-  matchedSkills,
-  children,
-}: {
-  reasons: string[];
-  matchedSkills: string[];
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const hoverCapable = useHoverCapable();
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasContent = reasons.length > 0 || matchedSkills.length > 0;
-
-  const clearCloseTimer = useCallback(() => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  }, []);
-
-  const scheduleClose = useCallback(() => {
-    if (!hoverCapable) return;
-    clearCloseTimer();
-    closeTimer.current = setTimeout(() => setOpen(false), 180);
-  }, [clearCloseTimer, hoverCapable]);
-
-  const show = useCallback(() => {
-    if (!hoverCapable || !hasContent) return;
-    clearCloseTimer();
-    setOpen(true);
-  }, [clearCloseTimer, hasContent, hoverCapable]);
-
-  if (!hasContent) return <>{children}</>;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
-      <PopoverTrigger asChild>
-        <div
-          onMouseEnter={show}
-          onMouseLeave={scheduleClose}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!hoverCapable) setOpen((v) => !v);
-          }}
-          style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: hoverCapable ? "default" : "pointer" }}
-        >
-          {children}
-        </div>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        side="left"
-        sideOffset={8}
-        collisionPadding={12}
-        avoidCollisions
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onMouseEnter={show}
-        onMouseLeave={scheduleClose}
-        className="rounded-[var(--scout-radius)] border-0 bg-transparent p-0 shadow-none outline-none"
-        style={{
-          width: 320,
-          maxWidth: "min(320px, calc(100vw - 24px))",
-          maxHeight: 280,
-          overflowY: "auto",
-          zIndex: 10000,
-          background: surface.card,
-          border: border.lineStrong,
-          boxShadow: "4px 4px 0 rgba(17,17,17,0.08)",
-          padding: "14px 16px 12px",
-          borderRadius: "var(--scout-radius)",
-        }}
-      >
-        <WhyMatchPanel reasons={reasons} matchedSkills={matchedSkills} />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 function RecommendedJobCard({
   row,
   savingKey,
@@ -627,10 +477,6 @@ function RecommendedJobCard({
 
   const matchScore = row.matchScore ?? 0;
   const matchLabel = row.matchLabel ?? "";
-  const reasons = (row.matchReasons ?? []).filter((r) => !isLowQualityMatchReason(r)).slice(0, 4);
-  const matchedSkills = (row.matchedSkills ?? []).slice(0, 6);
-
-  const panelBg = matchScore >= 75 ? "#0D2419" : matchScore >= 60 ? "#1F1508" : "#1A1A1A";
 
   const postedDays = !isNetwork && row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
   const postedText =
@@ -794,39 +640,13 @@ function RecommendedJobCard({
           )}
         </div>
       </div>
-      {/* Right: dark score panel — hover triggers "Why Match" in left content */}
       {matchScore > 0 && (
-        <div
-          style={{
-            width: 120,
-            flexShrink: 0,
-            background: panelBg,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            borderLeft: "1.5px solid rgba(255,255,255,0.07)",
-          }}
-        >
-          <MatchWhyScorePopover reasons={reasons} matchedSkills={matchedSkills}>
-            <CircularMatchScore score={matchScore} />
-            <p
-              style={{
-                fontFamily: fontSans,
-                fontSize: 10,
-                fontWeight: 700,
-                color: "#FFFFFF",
-                letterSpacing: "0.07em",
-                textTransform: "uppercase",
-                textAlign: "center",
-                margin: 0,
-                padding: "0 8px 20px",
-              }}
-            >
-              {matchLabel} Match
-            </p>
-          </MatchWhyScorePopover>
-        </div>
+        <MatchScoreColumn
+          score={matchScore}
+          label={matchLabel}
+          reasons={row.matchReasons ?? []}
+          matchedSkills={row.matchedSkills ?? []}
+        />
       )}
     </div>
   );
