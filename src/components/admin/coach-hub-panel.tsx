@@ -115,7 +115,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
     }
 
     if (coachId && mode === "admin") {
-      router.replace(`/admin/coaches?coachId=${encodeURIComponent(coachId)}`, { scroll: false });
+      router.replace(`/admin/experts?coachId=${encodeURIComponent(coachId)}`, { scroll: false });
     }
   }, [searchParams, coachId, mode, router]);
 
@@ -304,7 +304,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                 )}
                 {coach.calendarConnected && coach.schedulerReady && coachId && (
                   <Link
-                    href={`/admin/coaches?coachId=${encodeURIComponent(coachId)}&tab=availability`}
+                    href={`/admin/experts?coachId=${encodeURIComponent(coachId)}&tab=availability`}
                     style={{
                       display: "block",
                       marginTop: 12,

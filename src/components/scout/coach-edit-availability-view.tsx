@@ -225,7 +225,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/expert/o
 
   const returnPath =
     mode === "admin" && coachId
-      ? `/admin/coaches?coachId=${encodeURIComponent(coachId)}&tab=availability`
+      ? `/admin/experts?coachId=${encodeURIComponent(coachId)}&tab=availability`
       : "/expert/offerings?section=availability";
 
   const loadProfile = useCallback(async () => {

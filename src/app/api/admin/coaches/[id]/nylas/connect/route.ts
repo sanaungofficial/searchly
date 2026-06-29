@@ -10,7 +10,7 @@ import {
 } from "@/lib/nylas";
 
 function adminCoachReturnPath(coachProfileId: string) {
-  return `/admin/coaches?coachId=${encodeURIComponent(coachProfileId)}`;
+  return `/admin/experts?coachId=${encodeURIComponent(coachProfileId)}`;
 }
 
 export async function GET(

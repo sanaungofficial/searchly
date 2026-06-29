@@ -180,6 +180,7 @@ export default function AdminBookingsPage() {
       {coachHubId && (
         <CoachHubDrawer
           coachId={coachHubId}
+          basePath="/admin/experts"
           onClose={() => setCoachHubId(null)}
         />
       )}
