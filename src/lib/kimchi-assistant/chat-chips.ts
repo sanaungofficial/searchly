@@ -1,5 +1,6 @@
 import type {
   AssistantContextPayload,
+  AssistantPageHint,
   AssistantProfileGaps,
   AssistantSuggestion,
 } from "@/lib/kimchi-assistant/types";
@@ -580,8 +581,188 @@ function suggestionToWelcomeChip(
   return suggestionToActionChip(s);
 }
 
-export function buildWelcomeChips(_ctx: AssistantContextPayload | null): AssistantChip[] {
-  return BUCKET_WELCOME_CHIPS.map(compactChip);
+export const FOLLOW_UP_PROMPT = "What do you want to do next?";
+
+/** Route- and drawer-aware starters (keyword heuristics, no AI). */
+export function buildRouteSuggestionChips(pageHint?: AssistantPageHint | null): AssistantChip[] {
+  if (!pageHint) return [];
+
+  if (pageHint.jobDbId && pageHint.jobRole) {
+    const company = pageHint.jobCompany ? ` at ${pageHint.jobCompany}` : "";
+    return [
+      {
+        id: "route-job-prep",
+        label: "Prep for this interview",
+        variant: "chat",
+        tone: "violet",
+        action: {
+          type: "chat",
+          prompt: `Help me prep for the ${pageHint.jobRole}${company} role in my pipeline.`,
+        },
+      },
+      {
+        id: "route-job-followup",
+        label: "Draft a follow-up",
+        variant: "chat",
+        tone: "sky",
+        action: {
+          type: "chat",
+          prompt: `Draft a short follow-up for my ${pageHint.jobRole}${company} application.`,
+        },
+      },
+      {
+        id: "route-job-fit",
+        label: "Am I a good fit?",
+        variant: "chat",
+        tone: "mint",
+        action: {
+          type: "chat",
+          prompt: `How strong is my fit for ${pageHint.jobRole}${company}? What should I emphasize?`,
+        },
+      },
+    ].map(compactChip);
+  }
+
+  const pathname = pageHint.pathname ?? "";
+  if (pathname.startsWith("/opportunities/pipeline")) {
+    return [
+      {
+        id: "route-pipeline-next",
+        label: "What should I do next?",
+        variant: "chat",
+        tone: "rose",
+        action: { type: "chat", prompt: "Looking at my pipeline, what should I focus on next?" },
+      },
+      {
+        id: "route-pipeline-stale",
+        label: "Roles needing follow-up",
+        variant: "chat",
+        tone: "sky",
+        action: { type: "chat", prompt: "Which pipeline roles are going stale and need a follow-up?" },
+      },
+      {
+        id: "route-pipeline-add",
+        label: "Help me add a role",
+        variant: "chat",
+        tone: "mint",
+        action: { type: "chat", prompt: "Help me decide what roles to add to my pipeline this week." },
+      },
+    ].map(compactChip);
+  }
+  if (pathname.startsWith("/profile/assets") || pathname.startsWith("/profile/resume")) {
+    return [
+      {
+        id: "route-resume-bullet",
+        label: "Improve a bullet",
+        variant: "chat",
+        tone: "sky",
+        action: { type: "chat", prompt: "Help me turn my experience into a stronger resume bullet." },
+      },
+      {
+        id: "route-resume-tailor",
+        label: "Tailor for a role",
+        variant: "chat",
+        tone: "violet",
+        action: { type: "chat", prompt: "Help me tailor my resume for a role I'm targeting." },
+      },
+    ].map(compactChip);
+  }
+  if (pathname.startsWith("/profile/career-strategy")) {
+    return [
+      {
+        id: "route-strategy-sharpen",
+        label: "Sharpen my strategy",
+        variant: "chat",
+        tone: "violet",
+        action: { type: "chat", prompt: "What should I sharpen or add to my career strategy this week?" },
+      },
+      {
+        id: "route-strategy-priorities",
+        label: "Set this week's priorities",
+        variant: "chat",
+        tone: "rose",
+        action: { type: "chat", prompt: "Based on my strategy, what should I prioritize this week?" },
+      },
+    ].map(compactChip);
+  }
+  if (pathname.startsWith("/inbox")) {
+    return [
+      {
+        id: "route-inbox-summarize",
+        label: "Summarize my inbox",
+        variant: "chat",
+        tone: "amber",
+        action: { type: "chat", prompt: "Summarize my inbox — anything urgent or worth replying to?" },
+      },
+      {
+        id: "route-inbox-reply",
+        label: "Draft a reply",
+        variant: "chat",
+        tone: "sky",
+        action: { type: "chat", prompt: "Help me draft a reply to the most important recruiter email." },
+      },
+    ].map(compactChip);
+  }
+  if (pathname.startsWith("/network")) {
+    return [
+      {
+        id: "route-network-outreach",
+        label: "Plan outreach",
+        variant: "chat",
+        tone: "mint",
+        action: { type: "chat", prompt: "Help me plan networking outreach for roles I'm targeting." },
+      },
+    ].map(compactChip);
+  }
+  if (pathname.startsWith("/coaching")) {
+    return [
+      {
+        id: "route-coach-pick",
+        label: "Pick the right coach",
+        variant: "chat",
+        tone: "violet",
+        action: { type: "chat", prompt: "Help me figure out what kind of coach would help me most right now." },
+      },
+    ].map(compactChip);
+  }
+  if (pathname.startsWith("/dashboard")) {
+    return [
+      {
+        id: "route-dash-focus",
+        label: "Focus for today",
+        variant: "chat",
+        tone: "rose",
+        action: { type: "chat", prompt: "What should I focus on today in my job search?" },
+      },
+    ].map(compactChip);
+  }
+
+  return [];
+}
+
+function rotateChipPool(chips: AssistantChip[], seed: number, count: number): AssistantChip[] {
+  if (chips.length <= count) return chips;
+  const start = Math.abs(seed) % chips.length;
+  return [...chips.slice(start), ...chips.slice(0, start)].slice(0, count);
+}
+
+export function buildWelcomeChips(
+  _ctx: AssistantContextPayload | null,
+  pageHint?: AssistantPageHint | null,
+): AssistantChip[] {
+  const routeChips = buildRouteSuggestionChips(pageHint);
+  const seen = new Set<string>();
+  const merged: AssistantChip[] = [];
+
+  for (const chip of [...routeChips, ...BUCKET_WELCOME_CHIPS]) {
+    const compact = compactChip(chip);
+    if (seen.has(compact.label)) continue;
+    seen.add(compact.label);
+    merged.push(compact);
+    if (merged.length >= 6) break;
+  }
+
+  return merged;
 }
 
 /** Profile-aware suggestion chips (same source as the old "Suggested" strip). */
@@ -891,6 +1072,7 @@ export function buildFollowUpChips(params: {
   threadContext?: string;
   profileGaps?: AssistantProfileGaps;
   ctx?: AssistantContextPayload | null;
+  pageHint?: AssistantPageHint | null;
 }): AssistantChip[] {
   const ctx = params.ctx;
   const profileGaps = params.profileGaps ?? ctx?.profileGaps;
@@ -899,6 +1081,7 @@ export function buildFollowUpChips(params: {
     .join("\n");
   const out: AssistantChip[] = [];
   const usedLabels = new Set<string>();
+  const rotateSeed = params.userMessage.length + params.assistantMessage.length;
 
   const pushChip = (chip: AssistantChip) => {
     const compact = compactChip(chip);
@@ -907,6 +1090,11 @@ export function buildFollowUpChips(params: {
     usedLabels.add(compact.label);
     out.push(compact);
   };
+
+  for (const chip of buildRouteSuggestionChips(params.pageHint)) {
+    pushChip(chip);
+    if (out.length >= 2) break;
+  }
 
   if (ctx?.suggestions?.length) {
     const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
@@ -950,23 +1138,23 @@ export function buildFollowUpChips(params: {
       }
       if (shouldSkipChipForContext(chip, ctx)) continue;
       pushChip(chip);
-      if (out.length >= 4) return out.slice(0, 4);
+      if (out.length >= 5) return out.slice(0, 5);
     }
   }
 
   if (ctx) {
     for (const chip of buildPersonalizedFollowUpExtras(ctx, combined)) {
       pushChip(chip);
-      if (out.length >= 4) return out.slice(0, 4);
+      if (out.length >= 5) return out.slice(0, 5);
     }
   }
 
-  for (const chip of FALLBACK_DRILLDOWNS) {
+  for (const chip of rotateChipPool(FALLBACK_DRILLDOWNS, rotateSeed, FALLBACK_DRILLDOWNS.length)) {
     pushChip(chip);
-    if (out.length >= 4) break;
+    if (out.length >= 5) break;
   }
 
-  return out.slice(0, 4);
+  return out.slice(0, 5);
 }
 
 /** Back-compat for follow-ups API */
