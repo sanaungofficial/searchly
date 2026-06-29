@@ -1,6 +1,10 @@
 import { generateText, stepCountIs, streamText, type ModelMessage, type ToolSet } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { getKimchiAiSettings, getKimchiModelIdFromSettings } from "@/lib/kimchi-ai-settings";
+import {
+  formatKimchiFollowUpsMarker,
+  generateAiSuggestedFollowUps,
+} from "@/lib/kimchi-assistant/chat-follow-ups";
 import { KIMCHI_DIRECT_MODELS, type KimchiModelTier } from "@/lib/llm/models";
 
 export function usesAiGateway(): boolean {
@@ -73,6 +77,59 @@ export async function kimchiGenerateText(params: {
   };
 }
 
+type KimchiStreamFollowUpContext = {
+  userMessage: string;
+  threadContext: string;
+  userId: string;
+};
+
+async function appendFollowUpsToTextStream(
+  result: Awaited<ReturnType<typeof streamText>>,
+  base: Response,
+  followUpContext?: KimchiStreamFollowUpContext,
+): Promise<Response> {
+  if (!followUpContext) return base;
+
+  const body = base.body;
+  if (!body) return base;
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of result.textStream) {
+          if (chunk) controller.enqueue(encoder.encode(chunk));
+        }
+
+        const finalText = ((await result.text) ?? "").trim();
+        if (finalText.length >= 48) {
+          const suggestedFollowUps = await generateAiSuggestedFollowUps({
+            userMessage: followUpContext.userMessage,
+            assistantMessage: finalText,
+            threadContext: followUpContext.threadContext,
+            userId: followUpContext.userId,
+          });
+          const marker = formatKimchiFollowUpsMarker(suggestedFollowUps);
+          if (marker) controller.enqueue(encoder.encode(marker));
+        }
+      } catch {
+        controller.enqueue(
+          encoder.encode(
+            "Something went wrong on my end. Try your message again, or use the buttons below.",
+          ),
+        );
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: base.status,
+    headers: base.headers,
+  });
+}
+
 export async function kimchiStreamText(params: {
   tier: KimchiModelTier;
   system?: string;
@@ -81,6 +138,7 @@ export async function kimchiStreamText(params: {
   userId?: string;
   tags?: string[];
   onUsage?: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => void;
+  followUpContext?: KimchiStreamFollowUpContext;
 }): Promise<Response> {
   const modelId = await kimchiModelId(params.tier);
   const result = streamText({
@@ -100,7 +158,9 @@ export async function kimchiStreamText(params: {
     },
   });
 
-  return result.toTextStreamResponse();
+  const base = result.toTextStreamResponse();
+  if (!params.followUpContext) return base;
+  return appendFollowUpsToTextStream(result, base, params.followUpContext);
 }
 
 export async function kimchiStreamTextWithTools(params: {
@@ -113,6 +173,7 @@ export async function kimchiStreamTextWithTools(params: {
   userId?: string;
   tags?: string[];
   onUsage?: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => void;
+  followUpContext?: KimchiStreamFollowUpContext;
 }): Promise<Response> {
   const modelId = await kimchiModelId(params.tier);
   const result = streamText({
@@ -186,6 +247,17 @@ export async function kimchiStreamTextWithTools(params: {
         }
         if (navigateRoute) {
           controller.enqueue(encoder.encode(`\n<!--kimchi-nav:${navigateRoute}-->`));
+        }
+
+        if (params.followUpContext && trimmedFinal.length >= 48) {
+          const suggestedFollowUps = await generateAiSuggestedFollowUps({
+            userMessage: params.followUpContext.userMessage,
+            assistantMessage: trimmedFinal,
+            threadContext: params.followUpContext.threadContext,
+            userId: params.followUpContext.userId,
+          });
+          const marker = formatKimchiFollowUpsMarker(suggestedFollowUps);
+          if (marker) controller.enqueue(encoder.encode(marker));
         }
       } catch {
         controller.enqueue(

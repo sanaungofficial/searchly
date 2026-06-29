@@ -581,7 +581,7 @@ function suggestionToWelcomeChip(
   return suggestionToActionChip(s);
 }
 
-export const FOLLOW_UP_PROMPT = "What do you want to do next?";
+export const FOLLOW_UP_PROMPT = "Continue with…";
 
 /** Route- and drawer-aware starters (keyword heuristics, no AI). */
 export function buildRouteSuggestionChips(pageHint?: AssistantPageHint | null): AssistantChip[] {
@@ -933,10 +933,10 @@ const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
   },
 ];
 
-const FALLBACK_DRILLDOWNS: AssistantChip[] = [
+const CONVERSATION_FALLBACKS: AssistantChip[] = [
   {
     id: "deeper",
-    label: "Go deeper",
+    label: "Go deeper on that",
     variant: "chat",
     action: { type: "chat", prompt: "Go deeper on that — what am I missing?" },
   },
@@ -950,7 +950,194 @@ const FALLBACK_DRILLDOWNS: AssistantChip[] = [
     id: "next-step",
     label: "What's my next step?",
     variant: "chat",
-    action: { type: "chat", prompt: "What's the single best next step for me?" },
+    action: { type: "chat", prompt: "What's the single best next step for me based on what you just said?" },
+  },
+  {
+    id: "apply-it",
+    label: "How do I apply this?",
+    variant: "chat",
+    action: { type: "chat", prompt: "How do I apply this to my job search this week?" },
+  },
+];
+
+const TOPIC_STOP_WORDS = new Set([
+  "you",
+  "your",
+  "that",
+  "this",
+  "what",
+  "which",
+  "also",
+  "like",
+  "with",
+  "from",
+  "have",
+  "been",
+  "would",
+  "could",
+  "should",
+  "about",
+  "more",
+  "some",
+  "they",
+  "them",
+  "their",
+  "there",
+  "when",
+  "where",
+  "just",
+  "very",
+  "really",
+  "based",
+  "profile",
+  "kimchi",
+  "help",
+  "work",
+  "good",
+  "great",
+  "strong",
+  "skills",
+  "experience",
+  "career",
+  "search",
+  "jobs",
+  "role",
+  "roles",
+  "areas",
+  "strengths",
+]);
+
+function truncateChipLabel(text: string, max = 58): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 1).trim()}…`;
+}
+
+function cleanConversationTopic(raw: string): string | null {
+  let topic = raw
+    .replace(/\*\*/g, "")
+    .replace(/^[\d.)\s\-•*]+/, "")
+    .replace(/\s+(and|or|but)$/i, "")
+    .trim();
+  topic = topic.replace(/[.:;,!?]+$/, "").trim();
+  if (topic.length < 3 || topic.length > 52) return null;
+  const words = topic.toLowerCase().split(/\s+/);
+  if (words.every((w) => TOPIC_STOP_WORDS.has(w))) return null;
+  if (/^(the|a|an)\s/i.test(topic) && topic.length < 10) return null;
+  return topic;
+}
+
+/** Extract noun phrases / topics from Kimchi's reply for heuristic follow-ups. */
+export function extractConversationTopics(
+  assistantMessage: string,
+  userMessage = "",
+): string[] {
+  const found: string[] = [];
+  const push = (raw: string) => {
+    const topic = cleanConversationTopic(raw);
+    if (!topic) return;
+    if (found.some((f) => f.toLowerCase() === topic.toLowerCase())) return;
+    found.push(topic);
+  };
+
+  for (const match of assistantMessage.matchAll(/\*\*([^*\n]{3,50})\*\*/g)) {
+    push(match[1] ?? "");
+  }
+
+  for (const match of assistantMessage.matchAll(/"([^"\n]{3,55})"/g)) {
+    push(match[1] ?? "");
+  }
+
+  for (const line of assistantMessage.split("\n")) {
+    const bullet = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.{4,55}?)(?:[.:,]|$)/);
+    if (bullet?.[1]) push(bullet[1]);
+  }
+
+  for (const match of assistantMessage.matchAll(
+    /(?:including|like|such as|especially|strengths in|good at|skilled in|experience in|background in)\s+([\w\s,/&-]{8,120})/gi,
+  )) {
+    const segment = (match[1] ?? "").replace(/\s+and\s+/gi, ", ").split(",");
+    for (const part of segment) push(part);
+  }
+
+  for (const match of assistantMessage.matchAll(
+    /\b([A-Z][a-z]+(?:\s+[a-z]+){0,3}(?:\s+[A-Z][a-z]+)*)\b/g,
+  )) {
+    const phrase = match[1]?.trim() ?? "";
+    if (phrase.split(/\s+/).length >= 2) push(phrase);
+  }
+
+  if (found.length === 0 && userMessage.trim()) {
+    const userTopic = userMessage.replace(/\?+$/, "").trim();
+    if (userTopic.length >= 8 && userTopic.length <= 80) push(userTopic);
+  }
+
+  return found.slice(0, 6);
+}
+
+const TOPIC_CHIP_TEMPLATES: Array<(topic: string) => { label: string; prompt: string }> = [
+  (topic) => ({
+    label: truncateChipLabel(`Tell me more about ${topic}`),
+    prompt: `Tell me more about ${topic.toLowerCase()}.`,
+  }),
+  (topic) => ({
+    label: truncateChipLabel(`Jobs in ${topic}`),
+    prompt: `How do I get jobs in ${topic.toLowerCase()}?`,
+  }),
+  (topic) => ({
+    label: truncateChipLabel(`Stand out in ${topic}`),
+    prompt: `How can I stand out when applying for ${topic.toLowerCase()} roles?`,
+  }),
+  (topic) => ({
+    label: truncateChipLabel(`Examples of ${topic}`),
+    prompt: `Can you give me concrete examples of ${topic.toLowerCase()} from my background?`,
+  }),
+];
+
+const CONVERSATION_TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
+  {
+    match: /follow[- ]?up|reach out|haven't heard|check in|nudge/i,
+    chips: [
+      {
+        id: "draft-followup",
+        label: "Draft that follow-up",
+        variant: "chat",
+        action: { type: "chat", prompt: "Draft a short follow-up I can send based on what we discussed." },
+      },
+    ],
+  },
+  {
+    match: /interview|prep|screen|hiring manager|panel/i,
+    chips: [
+      {
+        id: "prep-checklist",
+        label: "Turn into a prep checklist",
+        variant: "chat",
+        action: { type: "chat", prompt: "Turn that into a short prep checklist I can use." },
+      },
+    ],
+  },
+  {
+    match: /resume|bullet|position|frame|story|talk about/i,
+    chips: [
+      {
+        id: "resume-bullet",
+        label: "Help me write a bullet",
+        variant: "chat",
+        action: { type: "chat", prompt: "Help me turn that into a strong resume bullet." },
+      },
+    ],
+  },
+  {
+    match: /what am i good at|strengths|skills|talents|stand out/i,
+    chips: [
+      {
+        id: "highlight-strengths",
+        label: "Highlight this on my resume",
+        variant: "chat",
+        action: { type: "chat", prompt: "How should I highlight these strengths on my resume and in interviews?" },
+      },
+    ],
   },
 ];
 
@@ -1066,16 +1253,19 @@ export function parseAiFollowUpChips(raw: unknown): AssistantChip[] {
   return out;
 }
 
+export { followUpStringsToChips } from "@/lib/kimchi-assistant/chat-follow-ups";
+
 export function buildFollowUpChips(params: {
   userMessage: string;
   assistantMessage: string;
   threadContext?: string;
+  /** @deprecated ignored — follow-ups are conversation-based, not page/profile based */
   profileGaps?: AssistantProfileGaps;
+  /** @deprecated ignored */
   ctx?: AssistantContextPayload | null;
+  /** @deprecated ignored */
   pageHint?: AssistantPageHint | null;
 }): AssistantChip[] {
-  const ctx = params.ctx;
-  const profileGaps = params.profileGaps ?? ctx?.profileGaps;
   const combined = [params.threadContext, params.userMessage, params.assistantMessage]
     .filter(Boolean)
     .join("\n");
@@ -1086,75 +1276,37 @@ export function buildFollowUpChips(params: {
   const pushChip = (chip: AssistantChip) => {
     const compact = compactChip(chip);
     if (usedLabels.has(compact.label)) return;
-    if (shouldSkipChipForContext(compact, ctx)) return;
     usedLabels.add(compact.label);
     out.push(compact);
   };
 
-  for (const chip of buildRouteSuggestionChips(params.pageHint)) {
-    pushChip(chip);
-    if (out.length >= 2) break;
-  }
-
-  if (ctx?.suggestions?.length) {
-    const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
-    for (const s of filtered.slice(0, 4)) {
-      const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s, ctx);
-      pushChip(chip);
-      if (out.length >= 3) break;
-    }
-  }
-
-  if (
-    profileGaps &&
-    !profileGaps.hasStrategyDoc &&
-    /strategy|career plan|north star|goals doc|priorit|timeline|focus on/i.test(combined)
-  ) {
-    pushChip(openStrategyChip(ctx));
-  } else if (profileGaps?.hasStrategyDoc && /strategy|plan|priorit|focus|timeline|goal/i.test(combined)) {
-    pushChip(expandStrategyChip(ctx));
-  }
-
-  if (
-    profileGaps &&
-    !profileGaps.hasResume &&
-    /resume|bullet|position|CV|curriculum/i.test(combined)
-  ) {
+  const topics = extractConversationTopics(params.assistantMessage, params.userMessage);
+  for (let i = 0; i < topics.length && out.length < 4; i++) {
+    const template = TOPIC_CHIP_TEMPLATES[i % TOPIC_CHIP_TEMPLATES.length]!;
+    const { label, prompt } = template(topics[i]!);
     pushChip({
-      id: "open-resume-gap",
-      label: "Upload your resume",
-      variant: "action",
-      tone: "sky",
-      action: { type: "navigate", href: "/profile/assets" },
+      id: `topic-${i}`,
+      label,
+      variant: "chat",
+      tone: "neutral",
+      action: { type: "chat", prompt },
     });
   }
 
-  for (const rule of TOPIC_RULES) {
+  for (const rule of CONVERSATION_TOPIC_RULES) {
     if (!rule.match.test(combined)) continue;
     for (const chip of rule.chips) {
-      if (chip.id === "open-strategy") {
-        pushChip(openStrategyChip(ctx));
-        continue;
-      }
-      if (shouldSkipChipForContext(chip, ctx)) continue;
       pushChip(chip);
-      if (out.length >= 5) return out.slice(0, 5);
+      if (out.length >= 4) return out;
     }
   }
 
-  if (ctx) {
-    for (const chip of buildPersonalizedFollowUpExtras(ctx, combined)) {
-      pushChip(chip);
-      if (out.length >= 5) return out.slice(0, 5);
-    }
-  }
-
-  for (const chip of rotateChipPool(FALLBACK_DRILLDOWNS, rotateSeed, FALLBACK_DRILLDOWNS.length)) {
+  for (const chip of rotateChipPool(CONVERSATION_FALLBACKS, rotateSeed, CONVERSATION_FALLBACKS.length)) {
     pushChip(chip);
-    if (out.length >= 5) break;
+    if (out.length >= 4) break;
   }
 
-  return out.slice(0, 5);
+  return out.slice(0, 4);
 }
 
 /** Back-compat for follow-ups API */

@@ -6,9 +6,10 @@ import {
   parseAiFollowUpChips,
   type AssistantChip,
 } from "@/lib/kimchi-assistant/chat-chips";
+import { followUpStringsToChips, generateAiSuggestedFollowUps } from "@/lib/kimchi-assistant/chat-follow-ups";
 import { buildAssistantContext } from "@/lib/kimchi-assistant/context";
 import type { AssistantProfileGaps } from "@/lib/kimchi-assistant/types";
-import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
+import { isKimchiAiConfigured } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
@@ -74,12 +75,10 @@ export async function POST(request: Request) {
     userMessage,
     assistantMessage,
     threadContext,
-    profileGaps,
-    ctx: assistantCtx,
   });
 
   if (!body.useAi) {
-    return NextResponse.json({ chips: fallback });
+    return NextResponse.json({ chips: fallback, suggestedFollowUps: chipsToStrings(fallback) });
   }
 
   if (
@@ -87,10 +86,22 @@ export async function POST(request: Request) {
     !isKimchiAiConfigured() ||
     assistantMessage.length < 48
   ) {
-    return NextResponse.json({ chips: fallback });
+    return NextResponse.json({ chips: fallback, suggestedFollowUps: chipsToStrings(fallback) });
   }
 
   try {
+    const suggestedFollowUps = await generateAiSuggestedFollowUps({
+      userMessage,
+      assistantMessage,
+      threadContext,
+      userId: dbUser.id,
+    });
+
+    if (suggestedFollowUps.length >= 2) {
+      const chips = followUpStringsToChips(suggestedFollowUps);
+      return NextResponse.json({ chips, suggestedFollowUps });
+    }
+
     const template = await getPrompt("KIMCHI_CHAT_FOLLOW_UPS");
     const prompt = interpolate(template, {
       userMessage: userMessage.slice(0, 500),
@@ -101,6 +112,7 @@ export async function POST(request: Request) {
       pipelineSnippet: pipelineSnippet.slice(0, 800),
     });
 
+    const { kimchiGenerateText } = await import("@/lib/llm");
     const { text } = await kimchiGenerateText({
       tier: "talk",
       prompt,
@@ -113,11 +125,23 @@ export async function POST(request: Request) {
     const aiChips = parseAiFollowUpChips(parsed);
 
     if (aiChips.length >= 2) {
-      return NextResponse.json({ chips: aiChips as AssistantChip[] });
+      return NextResponse.json({
+        chips: aiChips as AssistantChip[],
+        suggestedFollowUps: aiChips
+          .filter((c) => c.action.type === "chat")
+          .map((c) => (c.action.type === "chat" ? c.action.prompt : c.label)),
+      });
     }
   } catch {
     /* use fallback */
   }
 
-  return NextResponse.json({ chips: fallback });
+  return NextResponse.json({ chips: fallback, suggestedFollowUps: chipsToStrings(fallback) });
+}
+
+function chipsToStrings(chips: AssistantChip[]): string[] {
+  return chips
+    .filter((c) => c.action.type === "chat")
+    .map((c) => (c.action.type === "chat" ? c.action.prompt : c.label))
+    .slice(0, 4);
 }
