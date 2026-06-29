@@ -133,6 +133,17 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss?: () =
   );
 }
 
+function InfoBanner({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
+  return (
+    <div style={{ background: surface.card, border: `1px solid ${color.forest}33`, borderRadius: "var(--scout-radius)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, lineHeight: 1.45 }}>{message}</div>
+      {onDismiss && (
+        <button type="button" onClick={onDismiss} aria-label="Dismiss" style={{ background: "none", border: "none", color: color.forest, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+      )}
+    </div>
+  );
+}
+
 function ScanHint({ company }: { company: TrackedCompany }) {
   if (hasScanSource(company)) return null;
   return (
@@ -501,18 +512,22 @@ function BulkActionsToolbar({
   count,
   total,
   busy,
+  refreshBusy,
   onSelectAll,
   onDeselectAll,
   onDelete,
   onPriorityChange,
+  onRefresh,
 }: {
   count: number;
   total: number;
   busy: boolean;
+  refreshBusy?: boolean;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onDelete: () => void;
   onPriorityChange: (priority: string) => void;
+  onRefresh: () => void;
 }) {
   const [priorityOpen, setPriorityOpen] = useState(false);
   const priorityRef = useRef<HTMLDivElement>(null);
@@ -542,7 +557,7 @@ function BulkActionsToolbar({
             <button
               type="button"
               onClick={onSelectAll}
-              disabled={busy}
+              disabled={busy || refreshBusy}
               style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, background: "none", border: "none", padding: 0, cursor: busy ? "default" : "pointer", textDecoration: "underline" }}
             >
               Select all
@@ -551,7 +566,7 @@ function BulkActionsToolbar({
           <button
             type="button"
             onClick={onDeselectAll}
-            disabled={busy}
+            disabled={busy || refreshBusy}
             style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, background: "none", border: "none", padding: 0, cursor: busy ? "default" : "pointer", textDecoration: "underline" }}
           >
             Deselect all
@@ -559,16 +574,24 @@ function BulkActionsToolbar({
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <ScoutSecondaryBtn
+          type="button"
+          disabled={busy || refreshBusy}
+          onClick={onRefresh}
+          style={{ minHeight: 36 }}
+        >
+          {refreshBusy ? "Refreshing…" : "Refresh from HireBase"}
+        </ScoutSecondaryBtn>
         <div ref={priorityRef} style={{ position: "relative" }}>
           <ScoutSecondaryBtn
             type="button"
-            disabled={busy}
+            disabled={busy || refreshBusy}
             onClick={() => setPriorityOpen((o) => !o)}
             style={{ minHeight: 36 }}
           >
-            {busy ? "Updating…" : "Update priority"}
+            {busy && !refreshBusy ? "Updating…" : "Update priority"}
           </ScoutSecondaryBtn>
-          {priorityOpen && !busy && (
+          {priorityOpen && !busy && !refreshBusy && (
             <div
               style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: surface.card, border: border.line, borderRadius: "var(--scout-radius)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 50, minWidth: 120, overflow: "hidden" }}
               onMouseDown={(e) => e.stopPropagation()}
@@ -592,8 +615,8 @@ function BulkActionsToolbar({
         <button
           type="button"
           onClick={onDelete}
-          disabled={busy}
-          style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: "var(--scout-radius)", padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
+          disabled={busy || refreshBusy}
+          style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: "var(--scout-radius)", padding: "8px 14px", cursor: busy || refreshBusy ? "default" : "pointer", opacity: busy || refreshBusy ? 0.6 : 1 }}
         >
           Delete selected
         </button>
@@ -1551,7 +1574,9 @@ export function WorkspaceCompanies({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkRefreshBusy, setBulkRefreshBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
   const loadRecommendations = useCallback(async (opts?: { force?: boolean; ai?: boolean }) => {
     setRecsLoading(true);
@@ -1837,6 +1862,55 @@ export function WorkspaceCompanies({
     }
   }
 
+  async function handleBulkRefresh() {
+    const ids = [...checkedIds];
+    if (ids.length === 0) return;
+    setBulkRefreshBusy(true);
+    setBulkError(null);
+    setBulkMessage(null);
+    try {
+      const res = await fetch(withClientScope("/api/companies/bulk/refresh"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json().catch(() => ({})) as {
+        error?: string;
+        updated?: number;
+        failed?: number;
+        total?: number;
+        results?: Array<{ id: string; ok: boolean; error?: string; company?: TrackedCompany }>;
+      };
+      if (!res.ok) {
+        setBulkError(humanizeApiError(data.error, res.status));
+        return;
+      }
+
+      const results = data.results ?? [];
+      const updatedRows = results.filter((row) => row.ok && row.company);
+      if (updatedRows.length > 0) {
+        const byId = new Map(updatedRows.map((row) => [row.id, row.company!]));
+        setCompanies((prev) => prev.map((c) => byId.get(c.id) ?? c));
+      }
+
+      const updated = data.updated ?? updatedRows.length;
+      const failed = data.failed ?? results.filter((row) => !row.ok).length;
+      if (updated > 0 && failed === 0) {
+        setBulkMessage(`Refreshed ${updated} ${updated === 1 ? "company" : "companies"} from HireBase.`);
+      } else if (updated > 0 && failed > 0) {
+        setBulkMessage(`Refreshed ${updated} ${updated === 1 ? "company" : "companies"}. ${failed} failed — check names or try again.`);
+      } else if (failed > 0) {
+        setBulkError(`Couldn't refresh ${failed} ${failed === 1 ? "company" : "companies"} from HireBase.`);
+      } else {
+        setBulkMessage("Refresh complete.");
+      }
+    } catch {
+      setBulkError("Network error — company data may not have updated.");
+    } finally {
+      setBulkRefreshBusy(false);
+    }
+  }
+
   function handleRefreshed(updated: TrackedCompany) {
     setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   }
@@ -1900,16 +1974,19 @@ export function WorkspaceCompanies({
       {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
       {removeError && <ErrorBanner message={removeError} onDismiss={() => setRemoveError(null)} />}
       {bulkError && <ErrorBanner message={bulkError} onDismiss={() => setBulkError(null)} />}
+      {bulkMessage && <InfoBanner message={bulkMessage} onDismiss={() => setBulkMessage(null)} />}
 
       {checkedCount > 0 && (
         <BulkActionsToolbar
           count={checkedCount}
           total={sortedCompanies.length}
           busy={bulkBusy}
+          refreshBusy={bulkRefreshBusy}
           onSelectAll={() => selectAllCompanies(allCompanyIds)}
           onDeselectAll={deselectAllCompanies}
           onDelete={() => setShowDeleteConfirm(true)}
           onPriorityChange={handleBulkPriority}
+          onRefresh={handleBulkRefresh}
         />
       )}
 
