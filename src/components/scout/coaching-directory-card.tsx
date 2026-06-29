@@ -219,6 +219,7 @@ export function CoachingDirectoryCard({
   companyLookup = {},
   variant = "client",
   adminStatus,
+  adminAssignedClientCount,
 }: {
   coach: CoachListItem;
   isMobile: boolean;
@@ -234,6 +235,7 @@ export function CoachingDirectoryCard({
   companyLookup?: Record<string, CoachCompanyLookupItem>;
   variant?: "client" | "admin";
   adminStatus?: string;
+  adminAssignedClientCount?: number;
 }) {
   const isAdminView = variant === "admin";
   const matchScore = isAdminView ? 0 : (coach.matchScore ?? 0);
@@ -290,6 +292,12 @@ export function CoachingDirectoryCard({
               {coach.featured && <CoachBadgePill label="Featured" tone="gold" />}
               {coach.isProfessionalCoach && <CoachBadgePill label="Top expert" tone="gold" />}
               {isAdminView && adminStatus && <CoachStatusBadge status={adminStatus} />}
+              {isAdminView && adminAssignedClientCount != null && adminAssignedClientCount > 0 && (
+                <CoachBadgePill
+                  label={`${adminAssignedClientCount} client${adminAssignedClientCount === 1 ? "" : "s"}`}
+                  tone="neutral"
+                />
+              )}
             </div>
 
             {primaryLine && (

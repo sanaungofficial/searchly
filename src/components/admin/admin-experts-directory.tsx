@@ -18,6 +18,7 @@ import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/ty
 type AdminExpertListItem = CoachListItem & {
   status?: string;
   email?: string | null;
+  assignedClientCount?: number;
 };
 
 const inputStyle: React.CSSProperties = {
@@ -357,6 +358,7 @@ export function AdminExpertsDirectory() {
                 companyLookup={companyLookup}
                 variant="admin"
                 adminStatus={(coach as AdminExpertListItem).status}
+                adminAssignedClientCount={(coach as AdminExpertListItem).assignedClientCount}
               />
             ))}
           </div>

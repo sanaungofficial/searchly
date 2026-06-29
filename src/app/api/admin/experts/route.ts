@@ -30,7 +30,7 @@ const coachListSelect = {
   status: true,
   email: true,
   createdAt: true,
-  _count: { select: { reviews: true, followers: true } },
+  _count: { select: { reviews: true, followers: true, clientAssignments: true } },
   reviews: { select: { rating: true } },
 } as const;
 
@@ -62,7 +62,7 @@ function mapCoachRow(c: {
   status: string;
   email: string | null;
   createdAt: Date;
-  _count: { reviews: number; followers: number };
+  _count: { reviews: number; followers: number; clientAssignments: number };
   reviews: { rating: number }[];
 }) {
   const avgRating =
@@ -102,6 +102,7 @@ function mapCoachRow(c: {
     avgRating,
     reviewCount: c._count.reviews,
     followerCount: c._count.followers,
+    assignedClientCount: c._count.clientAssignments,
   };
 }
 

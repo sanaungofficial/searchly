@@ -7,6 +7,7 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
 import type { HubBooking, HubCommunication, CoachClientSummary, CoachHubStats } from "@/lib/coach-hub";
+import { CoachClientAssignmentSection } from "@/components/admin/coach-client-assignment-section";
 import { bookingStatusColor, formatBookingWhen } from "@/lib/booking-display";
 import { emailDomainLooksMicrosoft } from "@/lib/nylas";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -359,14 +360,16 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
             Clients
           </p>
           {filteredClients.length === 0 ? (
-            <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.muted }}>No clients yet — bookings will appear here.</p>
+            <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.muted }}>
+              No clients yet — assign job seekers below or they will appear after bookings.
+            </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {filteredClients.map((client) => {
                 const active = selectedClient?.email === client.email;
                 return (
                   <button
-                    key={client.email}
+                    key={client.userId ?? client.email}
                     type="button"
                     onClick={() => setSelectedClient(active ? null : client)}
                     style={{
@@ -380,6 +383,9 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>{client.name ?? client.email}</p>
                     <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: 12, color: color.muted }}>{client.email}</p>
                     <p style={{ margin: "6px 0 0", fontFamily: fontMono, fontSize: 11, color: color.stone }}>
+                      {client.isAssigned && (
+                        <span style={{ color: color.forest, marginRight: 8 }}>Assigned</span>
+                      )}
                       {client.sessionCount} session{client.sessionCount === 1 ? "" : "s"}
                       {client.upcomingCount > 0 ? ` · ${client.upcomingCount} upcoming` : ""}
                     </p>
@@ -484,6 +490,10 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
           </ScoutBox>
         </div>
       </div>
+
+      {mode === "admin" && coachId && (
+        <CoachClientAssignmentSection coachId={coachId} onUpdated={load} />
+      )}
 
       {mode === "coach" && (
         <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted }}>
