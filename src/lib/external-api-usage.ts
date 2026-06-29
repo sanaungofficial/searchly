@@ -50,7 +50,7 @@ export function estimateHirebaseCost(operation: string, units: number): number {
 }
 
 export function estimateApifyCost(runs = 1): number {
-  const perRun = Number(process.env.APIFY_USD_PER_LINKEDIN_RUN ?? 0.05);
+  const perRun = Number(process.env.APIFY_USD_PER_LINKEDIN_RUN ?? 0.004);
   return perRun * Math.max(1, runs);
 }
 
@@ -98,6 +98,6 @@ export function logApifyLinkedInRun(userId?: string | null): void {
     userId,
     units: 1,
     costUsd: estimateApifyCost(1),
-    meta: { actor: process.env.APIFY_LINKEDIN_ACTOR_ID ?? "dataweave/linkedin-profile-scraper" },
+    meta: { actor: process.env.APIFY_LINKEDIN_ACTOR_ID ?? "harvestapi/linkedin-profile-scraper" },
   });
 }

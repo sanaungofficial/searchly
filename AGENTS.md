@@ -40,9 +40,9 @@ Keep environments and branches separated so work does not collide or break produ
 | `ANTHROPIC_API_KEY` | usually unset | set |
 | `HIREBASE_API_KEY` | set on preview — resume parse + company profiles/job scans | set for resume parse + company index |
 | `APIFY_API_TOKEN` | usually unset | set — LinkedIn profile import (admin client create, profile editor) |
-| `APIFY_LINKEDIN_ACTOR_ID` | optional | optional — default `dataweave/linkedin-profile-scraper` (Apify id `etiW1XfulkpulZA4D`; requires one-time Apify Console approval) |
+| `APIFY_LINKEDIN_ACTOR_ID` | optional | optional — default `harvestapi/linkedin-profile-scraper` (Apify id `LpVuK3Zozwuipa5bp`; slug or id both work with Apify v2) |
 | `APIFY_LINKEDIN_TIMEOUT_SEC` | optional | optional — sync run timeout (default 120s) |
-| `APIFY_USD_PER_LINKEDIN_RUN` | optional | optional — admin usage cost estimate (default 0.05) |
+| `APIFY_USD_PER_LINKEDIN_RUN` | optional | optional — admin usage cost estimate (default 0.004; harvest actor is ~$4/1k profiles) |
 | `NEXT_PUBLIC_APP_URL` | dev URL | `https://app.kimchi.so` |
 
 ### Passcode (production only)
