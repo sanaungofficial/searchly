@@ -83,6 +83,10 @@ export type CoachProfileDetail = CoachListItem & {
   industryYears: number | null;
   whyCoach: string | null;
   aboutMe: string | null;
+  /** Sum of completed booking durations (minutes). */
+  totalCoachedMinutes?: number;
+  /** Distinct clients assigned to this coach. */
+  clientsCoachedCount?: number;
   isFollowing: boolean;
   isMyCoach?: boolean;
   aggregates: CoachReviewAggregates | null;
