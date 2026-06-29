@@ -1,6 +1,7 @@
-import type { JobStage } from "@prisma/client";
 import type { ClientImportPreview, ImportContact, ImportPipelineJob, ImportRow } from "@/lib/client-import/types";
 import type { ImportType } from "@/lib/client-import/import-types";
+import { detectJobTrackerColumns } from "@/lib/client-import/job-columns";
+import { mapImportJobStage, parseImportApproved } from "@/lib/client-import/job-status-map";
 import { emptyImportPreview } from "@/lib/client-import/xlsx-parser";
 import { parseRoleTitleList } from "@/lib/parse-role-title-list";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
@@ -48,15 +49,9 @@ function colIndex(headers: string[], patterns: RegExp[]): number {
   return -1;
 }
 
-function mapApplicationStatus(raw: string): JobStage {
-  const v = raw.trim().toLowerCase();
-  if (!v || v === "pending") return "APPLIED";
-  if (v.includes("reject")) return "REJECTED";
-  if (v.includes("offer")) return "OFFER";
-  if (v.includes("interview")) return "INTERVIEWING";
-  if (v.includes("screen")) return "SCREENING";
-  if (v.includes("applied")) return "APPLIED";
-  return "APPLIED";
+function normalizeSheetUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  return trimmed && /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
 function parseJobsFromPaste(text: string, source: string, inferInterview: boolean): ImportRow<ImportPipelineJob>[] {
@@ -65,27 +60,30 @@ function parseJobsFromPaste(text: string, source: string, inferInterview: boolea
   if (!headerInfo) return [];
 
   const { idx: headerIdx, headers } = headerInfo;
-  const companyCol = colIndex(headers, [/company name/, /^company/, /employer/]);
-  const roleCol = colIndex(headers, [/job title/, /^title$/, /^role$/, /position/]);
-  const urlCol = colIndex(headers, [/^url$/, /job description link/, /posting link/]);
-  const statusCol = colIndex(headers, [/application status/, /app status/, /^status$/, /stage/]);
-  const notesCol = colIndex(headers, [/^notes/]);
+  const cols = detectJobTrackerColumns(headers);
 
-  if (companyCol < 0 || roleCol < 0) return [];
+  if (cols.companyCol < 0 || cols.roleCol < 0) return [];
 
   const out: ImportRow<ImportPipelineJob>[] = [];
   for (let r = headerIdx + 1; r < rows.length; r++) {
     const row = rows[r] ?? [];
-    const company = (row[companyCol] ?? "").trim();
-    const role = (row[roleCol] ?? "").trim();
+    const company = (row[cols.companyCol] ?? "").trim();
+    const role = (row[cols.roleCol] ?? "").trim();
     if (!company || !role) continue;
 
-    const urlRaw = urlCol >= 0 ? (row[urlCol] ?? "").trim() : "";
-    const url = urlRaw && /^https?:\/\//i.test(urlRaw) ? urlRaw : null;
-    const statusRaw = statusCol >= 0 ? (row[statusCol] ?? "").trim() : "Applied";
-    const notes = notesCol >= 0 ? (row[notesCol] ?? "").trim() || null : null;
+    const urlRaw = cols.urlCol >= 0 ? (row[cols.urlCol] ?? "").trim() : "";
+    const url = normalizeSheetUrl(urlRaw);
+    const statusRaw = cols.statusCol >= 0 ? (row[cols.statusCol] ?? "").trim() : "";
+    const yesNoRaw = cols.yesNoCol >= 0 ? (row[cols.yesNoCol] ?? "").trim() : "";
+    const notes = cols.notesCol >= 0 ? (row[cols.notesCol] ?? "").trim() || null : null;
+    const appliedAtRaw = cols.dateCol >= 0 ? (row[cols.dateCol] ?? "").trim() : "";
+    const resumeRaw = cols.resumeCol >= 0 ? (row[cols.resumeCol] ?? "").trim() : "";
 
-    let stage = mapApplicationStatus(statusRaw);
+    let stage = mapImportJobStage({
+      statusRaw,
+      approved: parseImportApproved(yesNoRaw),
+      appliedAt: appliedAtRaw || null,
+    });
     if (inferInterview) {
       for (let c = 0; c < headers.length; c++) {
         const h = normHeader(headers[c] ?? "");
@@ -101,7 +99,16 @@ function parseJobsFromPaste(text: string, source: string, inferInterview: boolea
       id: nextId("job"),
       selected: true,
       source,
-      data: { company, role, url, stage, notes, appliedAt: null },
+      data: {
+        company,
+        role,
+        url,
+        stage,
+        notes,
+        appliedAt: appliedAtRaw || null,
+        approved: parseImportApproved(yesNoRaw),
+        resumeUrl: normalizeSheetUrl(resumeRaw),
+      },
     });
   }
   return out;

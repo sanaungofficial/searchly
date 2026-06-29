@@ -16,6 +16,9 @@ export type ImportPipelineJob = {
   stage: JobStage;
   notes: string | null;
   appliedAt: string | null;
+  /** Coach Yes/No approval column — no Job.approved field; influences stage on import. */
+  approved: boolean | null;
+  resumeUrl: string | null;
   hirebaseSlug?: string | null;
   apiLinked?: boolean;
 };
