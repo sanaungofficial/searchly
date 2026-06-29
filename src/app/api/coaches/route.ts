@@ -85,7 +85,7 @@ function mapCoachRow(c: {
     specialties: c.specialties ?? [],
     industries: c.industries ?? [],
     clientSpecializations: c.clientSpecializations ?? [],
-    hourlyRate: c.isInternal || c.requiresAssignment ? null : c.hourlyRate,
+    hourlyRate: c.hourlyRate,
     category: c.category,
     featured: c.featured,
     isProfessionalCoach: c.isProfessionalCoach,

@@ -17,7 +17,7 @@ export function InternalCoachBadge({ compact = false }: { compact?: boolean }) {
         borderRadius: "var(--scout-radius)",
       }}
     >
-      Kimchi coach
+      Second Ladder coach
     </span>
   );
 }

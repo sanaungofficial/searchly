@@ -155,7 +155,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     specialties: coach.specialties,
     industries: coach.industries,
     clientSpecializations: coach.clientSpecializations,
-    hourlyRate: coach.isInternal || coach.requiresAssignment ? null : coach.hourlyRate,
+    hourlyRate: coach.hourlyRate,
     category: coach.category,
     featured: coach.featured,
     isProfessionalCoach: coach.isProfessionalCoach,

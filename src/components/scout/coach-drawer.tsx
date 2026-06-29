@@ -28,8 +28,6 @@ const cardBg = surface.card;
 type Props = {
   slug: string;
   onClose: () => void;
-  isPro: boolean;
-  onSubscribe: () => void;
   preview?: CoachListItem | null;
   onFollowChange?: (coachId: string, following: boolean) => void;
   onMyCoachChange?: (coachId: string, isMyCoach: boolean, coachIds: string[]) => void;
@@ -163,7 +161,7 @@ function ReviewFormModal({
   );
 }
 
-export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange, onMyCoachChange }: Props) {
+export function CoachDrawer({ slug, onClose, preview, onFollowChange, onMyCoachChange }: Props) {
   const isMobile = useIsMobile();
   const requireAuth = useRequireAuthRedirect();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
@@ -225,10 +223,6 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
       requireAuth("login");
       return;
     }
-    if (!isPro && type === "session") {
-      onSubscribe();
-      return;
-    }
     setBookingModalType(type);
     setBookingModalOpen(true);
   };
@@ -284,8 +278,6 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
       return;
     }
     const isAssigned = coach.isMyCoach ?? false;
-    if (!isAssigned && coach.isInternal && !isAdmin) return;
-    if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {

@@ -38,7 +38,7 @@ export async function canUserAccessCoach(params: {
   if (!params.isInternal) return true;
   if (params.isAdmin) return true;
   if (!params.userId) return false;
-  // Kimchi coaches are browsable in the directory for signed-in clients; assignment is separate.
+  // Second Ladder coaches are browsable in the directory for signed-in clients; assignment is separate.
   return true;
 }
 

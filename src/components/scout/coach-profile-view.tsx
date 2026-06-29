@@ -384,7 +384,7 @@ export function CoachProfileView({
   onWriteReview,
   onPrepChat,
 }: CoachProfileViewProps) {
-  const bookingAllowed = canBookInApp && (!coach.requiresAssignment || coach.isMyCoach);
+  const bookingAllowed = canBookInApp;
   const [aboutExpanded, setAboutExpanded] = useState(false);
   const [showAllPackages, setShowAllPackages] = useState(false);
   const [companyLookup, setCompanyLookup] = useState<Record<string, CoachCompanyLookupMeta>>({});
@@ -458,7 +458,7 @@ export function CoachProfileView({
             {nextSlotLoading ? "Checking availability…" : nextSlotStart ? formatCoachNextAvailable(nextSlotStart) : "No upcoming slots in the next two weeks"}
           </p>
         )}
-        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>Protected by the Kimchi coaching guarantee</p>
+        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>Protected by the Second Ladder coaching guarantee</p>
       </ScoutBox>
       <ScoutBox padding={18} style={{ marginTop: 12 }}>
         <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, margin: "0 0 10px", lineHeight: 1.45 }}>Questions? Reach out before you get started.</p>
@@ -466,9 +466,9 @@ export function CoachProfileView({
       </ScoutBox>
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
         <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40 }}>{coach.isFollowing ? "Following ✓" : "+ Follow"}</ScoutSecondaryBtn>
-        {canSelfAssignCoach && (coach.isMyCoach || (!coach.isInternal && !coach.requiresAssignment) || isAdmin) && (
+        {canSelfAssignCoach && (
           <ScoutSecondaryBtn onClick={onToggleMyCoach} style={{ width: "100%", minHeight: 40, ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest, fontWeight: 600 } : {}) }}>
-            {coach.isMyCoach ? "Remove from my coaches" : isAdmin && (coach.isInternal || coach.requiresAssignment) ? "Assign coach" : "Add as my coach"}
+            {coach.isMyCoach ? "Remove from my coaches" : "Add as my coach"}
           </ScoutSecondaryBtn>
         )}
         <button type="button" onClick={onWriteReview} style={{ width: "100%", background: "none", border: "none", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, cursor: "pointer", textDecoration: "underline", padding: 8 }}>Write a review</button>

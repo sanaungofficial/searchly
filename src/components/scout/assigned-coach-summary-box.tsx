@@ -112,7 +112,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
             <p style={{ ...bruddleHeadingStyle("h5"), margin: 0 }}>My coaches</p>
             <SectionHelpTip
-              text="Your Kimchi coach works with you one-on-one. When someone is assigned to you, they'll show up here."
+              text="Your Second Ladder coach works with you one-on-one. When someone is assigned to you, they'll show up here."
               label="About My coaches"
             />
           </div>
@@ -132,7 +132,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
         <ScoutBox padding={padding} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <SectionHeadingWithHelp
             title="My coaches"
-            help="Your Kimchi coach works with you one-on-one."
+            help="Your Second Ladder coach works with you one-on-one."
           />
           {assignedCoaches.map((coach) => (
             <div
@@ -169,7 +169,7 @@ export function AssignedCoachSummaryBox({ isMobile = false, enabled = true }: Pr
 
       {bookedCoach && (
         <ScoutBox padding={padding} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <SectionHeadingWithHelp title="My coaches" help="Your Kimchi coach works with you one-on-one." />
+          <SectionHeadingWithHelp title="My coaches" help="Your Second Ladder coach works with you one-on-one." />
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={44} />
             <div style={{ flex: 1, minWidth: 0 }}>

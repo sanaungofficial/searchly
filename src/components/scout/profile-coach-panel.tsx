@@ -27,11 +27,10 @@ type AssignedCoach = {
 
 export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMobile?: boolean; embedded?: boolean }) {
   const router = useRouter();
-  const { openPricing, userRole, isImpersonating, withClientScope } = useWorkspace();
+  const { userRole, isImpersonating, withClientScope } = useWorkspace();
   const canSelfAssignCoach = userRole === "USER" || isImpersonating || userRole === "ADMIN";
   const [assigned, setAssigned] = useState<AssignedCoach[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isPro, setIsPro] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
 
   useEffect(() => {
@@ -40,13 +39,6 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
       .then((d) => setAssigned(d.coaches ?? []))
       .catch(() => setAssigned([]))
       .finally(() => setLoading(false));
-  }, [withClientScope]);
-
-  useEffect(() => {
-    fetch(withClientScope("/api/subscription"))
-      .then((r) => r.json())
-      .then((d) => { if (d.isPro) setIsPro(true); })
-      .catch(() => {});
   }, [withClientScope]);
 
   const openCoach = useCallback((coach: AssignedCoach) => {
@@ -101,7 +93,7 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
           <div style={{ marginBottom: isMobile ? 20 : 28 }}>
             <h2 style={{ ...displayTitleStyle(isMobile ? 22 : 26), margin: "0 0 8px" }}>Coach</h2>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55, maxWidth: 560 }}>
-              Your matched Kimchi coaches. Book intro calls, review sessions, and shared activity here.
+              Your matched Second Ladder coaches. Book intro calls, review sessions, and shared activity here.
             </p>
           </div>
         )}
@@ -116,7 +108,7 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
               No coach assigned yet
             </p>
             <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-              When your Kimchi team assigns a coach, they&apos;ll appear here with booking and session details.
+              When your Second Ladder team assigns a coach, they&apos;ll appear here with booking and session details.
             </p>
             <ScoutSecondaryBtn onClick={() => router.push("/coaching")} style={{ minHeight: 40 }}>
               Browse coaches
@@ -230,8 +222,6 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
           slug={drawerCoach.slug ?? drawerCoach.id}
           preview={drawerCoach}
           onClose={() => setDrawerCoach(null)}
-          isPro={isPro}
-          onSubscribe={openPricing}
         />
       )}
     </>

@@ -9,25 +9,20 @@ import { color, fontSans, type as T } from "@/lib/typography";
 
 type Props = {
   isMobile: boolean;
-  isPro: boolean;
 };
 
-export function DashboardSessionsSection({ isMobile, isPro }: Props) {
+export function DashboardSessionsSection({ isMobile }: Props) {
   const router = useRouter();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!isPro) {
-      setLoaded(true);
-      return;
-    }
     fetch("/api/bookings/me?upcoming=true&limit=3")
       .then((r) => (r.ok ? r.json() : { bookings: [] }))
       .then((d) => setBookings(d.bookings ?? []))
       .catch(() => {})
       .finally(() => setLoaded(true));
-  }, [isPro]);
+  }, []);
 
   if (!loaded) return null;
 
@@ -38,7 +33,7 @@ export function DashboardSessionsSection({ isMobile, isPro }: Props) {
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
           <ScoutLabel>My coaching sessions</ScoutLabel>
         </div>
-        {isPro && bookings.length > 0 && (
+        {bookings.length > 0 && (
           <button
             type="button"
             onClick={() => router.push("/coaching")}
@@ -60,23 +55,15 @@ export function DashboardSessionsSection({ isMobile, isPro }: Props) {
         )}
       </div>
 
-      {!isPro ? (
-        <ScoutBox padding={isMobile ? "20px 18px" : "24px 22px"}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6 }}>
-            Subscribe to book coaching sessions and see upcoming appointments here.
-          </p>
-        </ScoutBox>
-      ) : (
-        <ScoutBox padding={isMobile ? "16px 16px" : "18px 20px"}>
-          <BookingsList
-            bookings={bookings}
-            emptyMessage="No upcoming sessions. Browse the coaching directory to book time with a coach."
-            showCoach
-            showGuest={false}
-            onReschedule={(ref) => router.push(`/coaching/reschedule/${encodeURIComponent(ref)}`)}
-          />
-        </ScoutBox>
-      )}
+      <ScoutBox padding={isMobile ? "16px 16px" : "18px 20px"}>
+        <BookingsList
+          bookings={bookings}
+          emptyMessage="No upcoming sessions. Browse the coaching directory to book time with a coach."
+          showCoach
+          showGuest={false}
+          onReschedule={(ref) => router.push(`/coaching/reschedule/${encodeURIComponent(ref)}`)}
+        />
+      </ScoutBox>
     </div>
   );
 }

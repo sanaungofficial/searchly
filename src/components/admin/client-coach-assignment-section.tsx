@@ -177,7 +177,7 @@ export function ClientCoachAssignmentSection({
                 setCoachSearch(e.target.value);
                 setCoachId("");
               }}
-              placeholder="Name or Kimchi coach…"
+              placeholder="Name or Second Ladder coach…"
               style={{
                 display: "block",
                 width: "100%",

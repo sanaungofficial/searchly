@@ -244,7 +244,7 @@ export const LANDING_FAQ = {
     },
     {
       q: "Can I book a coach who's made my specific move?",
-      a: "Yes. Kimchi coaches are vetted for trajectory fit — MBB to tech, banking to PM, consulting to MBA, and more. Sessions sync with your pipeline so prep stays in context.",
+      a: "Yes. Second Ladder coaches are vetted for trajectory fit — MBB to tech, banking to PM, consulting to MBA, and more. Sessions sync with your pipeline so prep stays in context.",
     },
   ],
 } as const;

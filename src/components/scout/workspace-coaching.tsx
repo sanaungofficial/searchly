@@ -3,7 +3,6 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { CoachingDirectory } from "@/components/scout/coaching-directory";
 import { ProfileCoachPanel } from "@/components/scout/profile-coach-panel";
@@ -188,22 +187,13 @@ function CoachingContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [page, setPage] = useState<CoachingTab>(coachingTabFromPath(pathname));
-  const [isPro, setIsPro] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
   const [myCoachIds, setMyCoachIds] = useState<Set<string>>(new Set());
-  const { openPricing, user, authChecked } = useWorkspace();
+  const { user, authChecked } = useWorkspace();
   const requireAuth = useRequireAuthRedirect();
   const isLoggedIn = authChecked && Boolean(user);
 
   const coachParam = searchParams.get("coach");
-
-  useEffect(() => {
-    fetch("/api/subscription")
-      .then((r) => r.json())
-      .then((d) => { if (d.isPro) setIsPro(true); })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (page !== "directory") return;
@@ -294,8 +284,6 @@ function CoachingContent() {
                 {(!isLoggedIn || page === "directory") && (
                   <CoachingDirectory
                     isMobile={isMobile}
-                    isPro={isPro}
-                    onSubscribe={openPricing}
                     onOpenCoach={openCoach}
                     myCoachIds={myCoachIds}
                     onMyCoachIdsChange={setMyCoachIds}
@@ -340,17 +328,7 @@ function CoachingContent() {
           slug={drawerCoach.slug ?? drawerCoach.id}
           preview={drawerCoach}
           onClose={closeDrawer}
-          isPro={isPro}
-          onSubscribe={openPricing}
           onMyCoachChange={(_id, _assigned, coachIds) => setMyCoachIds(new Set(coachIds))}
-        />
-      )}
-
-      {showUpgrade && (
-        <GrowthUpgradeModal
-          trigger="coaching"
-          onClose={() => setShowUpgrade(false)}
-          onOpenPricing={openPricing}
         />
       )}
     </>
