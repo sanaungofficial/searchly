@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CoachHubDrawer } from "@/components/admin/coach-hub-drawer";
 import { CoachingDirectoryCard, type CoachCompanyLookupItem } from "@/components/scout/coaching-directory-card";
 import { CoachQuickFiltersBar, CoachFiltersDrawer } from "@/components/scout/coaching-directory-filters";
-import { CoachingDirectorySidebar } from "@/components/scout/coaching-directory-sidebar";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import {
   filterCoaches,
@@ -107,6 +106,20 @@ export function AdminExpertsDirectory() {
   useEffect(() => {
     setSelectedCoachId(searchParams.get("coachId"));
   }, [searchParams]);
+
+  useEffect(() => {
+    setSearchInput(searchParams.get("q") ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
+    const q = debouncedSearch.trim();
+    const current = searchParams.get("q") ?? "";
+    if (q === current) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (q) params.set("q", q);
+    else params.delete("q");
+    router.replace(`/admin/experts?${params.toString()}`, { scroll: false });
+  }, [debouncedSearch, router, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -372,23 +385,7 @@ export function AdminExpertsDirectory() {
         Browse every coach profile in Kimchi. Use search and filters to find experts, then open a profile to edit details or fill gaps from LinkedIn.
       </p>
 
-      {isMobile ? (
-        listSection
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "260px minmax(0, 1fr)", gap: 24, alignItems: "start" }}>
-          <CoachingDirectorySidebar
-            allCoaches={allCoaches}
-            filters={sidebarFilters}
-            onChange={setFilter}
-            onBatchChange={setFilters}
-            onProfessionalChange={toggleProfessionalFilter}
-            onInternalChange={toggleInternalFilter}
-            onClear={clearFilters}
-            activeCount={activeFilterCount}
-          />
-          <div>{listSection}</div>
-        </div>
-      )}
+      {listSection}
 
       {selectedCoachId && (
         <CoachHubDrawer
