@@ -12,6 +12,7 @@ import {
   type CachedJob,
 } from "@/lib/cached-job";
 import {
+  STAGE_DESCRIPTIONS,
   STAGE_LABELS,
   type KanbanCard,
   type KanbanStage,
@@ -954,7 +955,9 @@ function PipelineTab({
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           {pipelineView === "recommended"
             ? "Open roles scored against your profile — save any you want to track."
-            : `${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline.`}
+            : pipelineView === "closed"
+              ? `${STAGE_DESCRIPTIONS.closed} · ${closedCount} role${closedCount === 1 ? "" : "s"}`
+              : `${STAGE_DESCRIPTIONS[pipelineView as KanbanStage]} · ${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline`}
         </p>
       </div>
 

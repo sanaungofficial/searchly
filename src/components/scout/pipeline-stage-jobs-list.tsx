@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { JobMeta } from "@/lib/job-meta";
 import { companyLogoFromJobData } from "@/lib/cached-job";
-import { STAGE_COLORS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
+import { STAGE_COLORS, STAGE_DESCRIPTIONS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { CompanyLogo } from "./company-logo";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
@@ -108,7 +108,9 @@ export function PipelineStageJobsList({
         <div>
           <ScoutLabel>{STAGE_LABELS[stage]}</ScoutLabel>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "6px 0 0" }}>
-            {stageCards.length} role{stageCards.length === 1 ? "" : "s"} saved
+            {STAGE_DESCRIPTIONS[stage]}
+            {" · "}
+            {stageCards.length} role{stageCards.length === 1 ? "" : "s"}
           </p>
         </div>
         <button
