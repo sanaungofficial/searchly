@@ -68,12 +68,13 @@ export function useMasterResumeStatus(): MasterResumeStatus {
     setCreateError(null);
     try {
       const res = await fetch(withClientScope("/api/resume/create-from-profile"), { method: "POST" });
-      const data = await readResponseJson<{ asset?: { id?: string }; error?: string }>(res);
+      const data = await readResponseJson(res);
       if (!res.ok) {
         setCreateError(formatApiErrorMessage(data.error, "Could not create resume from profile"));
         return null;
       }
-      const assetId = data.asset?.id ?? null;
+      const asset = data.asset as { id?: string } | undefined;
+      const assetId = asset?.id ?? null;
       refresh();
       return assetId;
     } catch (e) {
