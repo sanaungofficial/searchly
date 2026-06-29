@@ -147,6 +147,17 @@ export function ImportCompleteView({ run, clientUserId, isMobile, onStartAnother
         </ScoutBox>
       )}
 
+      {result.mappingRecommendation && (
+        <ScoutBox padding={16} style={{ background: surface.inset, borderColor: border.lineStrong }}>
+          <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
+            Mapping strategy
+          </p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: 0, lineHeight: 1.55 }}>
+            {result.mappingRecommendation}
+          </p>
+        </ScoutBox>
+      )}
+
       {run.errors.length > 0 && (
         <ScoutBox padding={16}>
           <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 8px", color: "#b04040" }}>

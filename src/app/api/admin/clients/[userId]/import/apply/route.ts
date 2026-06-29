@@ -75,6 +75,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         (body.preview.applicationQa ?? []).filter((r) => r.selected).map((r) => r.id),
       applyResume: body.applyResume === true,
       jobImportOptions: body.jobImportOptions,
+      companyImportOptions: body.companyImportOptions,
     });
 
     let runId: string | undefined;

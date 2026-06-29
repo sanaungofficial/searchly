@@ -11,6 +11,16 @@ export type SuggestedTrackedCompany = {
   candidateEdge?: string | null;
 };
 
+export type CompanyApplyMatchMode = "add_missing" | "replace" | "skip";
+
+export type IntakeCompaniesApplyOptions = {
+  max?: number;
+  skipHydrate?: boolean;
+  dedupeEnabled?: boolean;
+  onMatch?: CompanyApplyMatchMode;
+  onNoMatch?: "create" | "skip";
+};
+
 export type IntakeCompaniesApplyResult = {
   added: number;
   updated: number;
@@ -164,13 +174,55 @@ async function createTrackedCompany(
   });
 }
 
+function buildLegacyCompanyPatch(
+  existing: { priority: string | null; notes: string | null; candidateEdge: string | null },
+  entry: SuggestedTrackedCompany,
+): Record<string, string | null> | null {
+  const patch: Record<string, string | null> = {};
+  const priority = normalizePriority(entry.priority);
+  if (priority && priority !== existing.priority) patch.priority = priority;
+  if (entry.notes?.trim() && entry.notes.trim() !== (existing.notes ?? "")) patch.notes = entry.notes.trim();
+  if (entry.candidateEdge?.trim() && entry.candidateEdge.trim() !== (existing.candidateEdge ?? "")) {
+    patch.candidateEdge = entry.candidateEdge.trim();
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
+function buildCompanyMatchPatch(
+  existing: { priority: string | null; notes: string | null; candidateEdge: string | null },
+  entry: SuggestedTrackedCompany,
+  onMatch: CompanyApplyMatchMode,
+): Record<string, string | null> | null {
+  if (onMatch === "skip") return null;
+
+  const patch: Record<string, string | null> = {};
+  const priority = normalizePriority(entry.priority);
+  const notes = entry.notes?.trim() || null;
+  const candidateEdge = entry.candidateEdge?.trim() || null;
+
+  if (onMatch === "replace") {
+    if (priority) patch.priority = priority;
+    if (notes) patch.notes = notes;
+    if (candidateEdge) patch.candidateEdge = candidateEdge;
+  } else {
+    if (priority && !existing.priority) patch.priority = priority;
+    if (notes && !(existing.notes ?? "").trim()) patch.notes = notes;
+    if (candidateEdge && !(existing.candidateEdge ?? "").trim()) patch.candidateEdge = candidateEdge;
+  }
+
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
 /** Upsert target companies from intake parse — creates new rows and enriches existing matches. */
 export async function applyIntakeTrackedCompanies(
   userId: string,
   companies: SuggestedTrackedCompany[],
-  options?: { max?: number; skipHydrate?: boolean },
+  options?: IntakeCompaniesApplyOptions,
 ): Promise<IntakeCompaniesApplyResult> {
   const max = options?.max ?? 40;
+  const dedupeEnabled = options?.dedupeEnabled !== false;
+  const onMatch = options?.onMatch;
+  const onNoMatch = options?.onNoMatch ?? "create";
   const result: IntakeCompaniesApplyResult = { added: 0, updated: 0, skipped: 0, errors: [] };
 
   for (const entry of companies.slice(0, max)) {
@@ -182,26 +234,34 @@ export async function applyIntakeTrackedCompanies(
 
     try {
       const intel = await resolveCompanyIntelFromInput({ name });
-      const existing = await findExistingWatchlistCompany(userId, {
-        intelId: intel?.id,
-        name: intel?.name ?? name,
-      });
+      const existing =
+        dedupeEnabled
+          ? await findExistingWatchlistCompany(userId, {
+              intelId: intel?.id,
+              name: intel?.name ?? name,
+            })
+          : null;
 
       if (existing) {
-        const patch: Record<string, string | null> = {};
-        const priority = normalizePriority(entry.priority);
-        if (priority && priority !== existing.priority) patch.priority = priority;
-        if (entry.notes?.trim() && entry.notes.trim() !== (existing.notes ?? "")) patch.notes = entry.notes.trim();
-        if (entry.candidateEdge?.trim() && entry.candidateEdge.trim() !== (existing.candidateEdge ?? "")) {
-          patch.candidateEdge = entry.candidateEdge.trim();
+        if (onMatch === "skip") {
+          result.skipped++;
+          continue;
         }
-
-        if (Object.keys(patch).length > 0) {
+        const patch =
+          onMatch === "replace" || onMatch === "add_missing"
+            ? buildCompanyMatchPatch(existing, entry, onMatch)
+            : buildLegacyCompanyPatch(existing, entry);
+        if (patch) {
           await prisma.trackedCompany.update({ where: { id: existing.id }, data: patch });
           result.updated++;
         } else {
           result.skipped++;
         }
+        continue;
+      }
+
+      if (onNoMatch === "skip") {
+        result.skipped++;
         continue;
       }
 

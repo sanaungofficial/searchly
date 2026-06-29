@@ -346,7 +346,7 @@ export async function applyClientImport(
       ...row.data,
       name: enriched?.name ?? row.data.name,
       notes: row.data.notes,
-      priority: row.data.priority ?? "MEDIUM",
+      priority: row.data.priority,
     });
   }
   for (const job of jobs) {
@@ -365,6 +365,13 @@ export async function applyClientImport(
     const companyResult = await applyIntakeTrackedCompanies(userId, companiesToApply, {
       max: 150,
       skipHydrate: true,
+      ...(payload.companyImportOptions
+        ? {
+            dedupeEnabled: payload.companyImportOptions.dedupeEnabled,
+            onMatch: payload.companyImportOptions.onMatch,
+            onNoMatch: payload.companyImportOptions.onNoMatch,
+          }
+        : {}),
     });
     result.companies.added = companyResult.added;
     result.companies.updated = companyResult.updated;
@@ -574,6 +581,10 @@ export async function applyClientImport(
         result.errors.push(`Q&A: ${row.data.question.slice(0, 40)}`);
       }
     }
+  }
+
+  if (preview.mappingRecommendation) {
+    result.mappingRecommendation = preview.mappingRecommendation;
   }
 
   return result;
