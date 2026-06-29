@@ -73,6 +73,7 @@ import { UserAssetsList } from "./user-assets-list";
 import { LibraryDocumentUploadModal } from "./library-document-upload-modal";
 import { assetTypeLabel, LIBRARY_DOCUMENT_FILTER_TYPES, type LibraryDocumentType, type UserAssetType } from "@/lib/asset-types";
 import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
+import { ApplicationQaPanel } from "./application-qa-bank";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
@@ -3835,6 +3836,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
             {page === "preferences" && profile && (
               <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
                 <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
+                <ApplicationQaPanel scopePath={api} />
               </div>
             )}
 
