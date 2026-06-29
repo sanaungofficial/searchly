@@ -14,7 +14,7 @@ vi.mock("@/lib/persist-external-image", () => ({
   persistExternalImageToAvatarsBucket: vi.fn(async () => ({ url: "https://example.com/photo.jpg" })),
 }));
 
-import { applyLinkedInImportForCoach } from "@/lib/coach-linkedin-import-apply";
+import { applyLinkedInImportForCoach, buildCoachLinkedInImportPreview } from "@/lib/coach-linkedin-import-apply";
 import { prisma } from "@/lib/prisma";
 
 const baseCoach = {
@@ -45,75 +45,64 @@ const scraped: ApifyLinkedInProfile = {
   skills: [{ skillName: "Leadership" }, { skillName: "Strategy" }],
 };
 
+describe("buildCoachLinkedInImportPreview", () => {
+  it("returns diffs for coach vs LinkedIn data", () => {
+    const preview = buildCoachLinkedInImportPreview({
+      coach: baseCoach,
+      linkedinUrl: "https://www.linkedin.com/in/jane-doe",
+      scraped,
+    });
+
+    expect(preview.diffs.find((d) => d.section === "headline")?.hasChange).toBe(true);
+    expect(preview.diffs.find((d) => d.section === "bio")?.hasChange).toBe(true);
+    expect(preview.diffs.find((d) => d.section === "firms")?.hasChange).toBe(true);
+    expect(preview.proposed.currentRole).toBe("Director");
+  });
+});
+
 describe("applyLinkedInImportForCoach", () => {
   beforeEach(() => {
     vi.mocked(prisma.coachProfile.update).mockReset();
   });
 
-  it("fills only empty fields and merges list values", async () => {
+  it("applies only selected sections", async () => {
     vi.mocked(prisma.coachProfile.update).mockResolvedValue({
       ...baseCoach,
       bio: "Coach bio from LinkedIn",
-      currentRole: "Director",
-      currentCompany: "Google",
       location: "New York, NY",
-      linkedinUrl: "https://www.linkedin.com/in/jane-doe",
-      photoUrl: "https://example.com/photo.jpg",
       firms: ["McKinsey", "Google"],
-      schools: ["Wharton — MBA"],
-      specialties: ["Leadership", "Strategy"],
     });
 
     const result = await applyLinkedInImportForCoach({
       coach: baseCoach,
       linkedinUrl: "https://www.linkedin.com/in/jane-doe",
       scraped,
+      sections: ["bio", "location", "firms"],
     });
 
     expect(prisma.coachProfile.update).toHaveBeenCalledWith({
       where: { id: "coach_1" },
       data: expect.objectContaining({
         bio: "Coach bio from LinkedIn",
-        currentRole: "Director",
-        currentCompany: "Google",
         location: "New York, NY",
-        linkedinUrl: "https://www.linkedin.com/in/jane-doe",
-        photoUrl: "https://example.com/photo.jpg",
         firms: ["McKinsey", "Google"],
-        schools: ["Wharton — MBA"],
-        specialties: ["Leadership", "Strategy"],
       }),
     });
-    expect(result.filledFields).toEqual(
-      expect.arrayContaining(["bio", "currentRole", "currentCompany", "location", "linkedinUrl", "photoUrl", "firms", "schools", "specialties"]),
-    );
-    expect(result.filledFields).not.toContain("displayName");
-    expect(result.filledFields).not.toContain("headline");
+    expect(result.appliedFields).toEqual(expect.arrayContaining(["bio", "location", "firms"]));
+    expect(result.appliedFields).not.toContain("headline");
+    expect(result.appliedFields).not.toContain("displayName");
   });
 
-  it("returns without updating when all target fields are already populated", async () => {
-    const fullCoach = {
-      ...baseCoach,
-      bio: "Already set",
-      aboutMe: "Already set",
-      currentRole: "Coach",
-      currentCompany: "Kimchi",
-      location: "Remote",
-      linkedinUrl: "https://www.linkedin.com/in/existing",
-      photoUrl: "https://example.com/existing.jpg",
-      firms: ["McKinsey", "Google"],
-      schools: ["Wharton — MBA"],
-      specialties: ["Leadership", "Strategy"],
-    } as CoachProfile;
-
+  it("returns without updating when no sections are selected", async () => {
     const result = await applyLinkedInImportForCoach({
-      coach: fullCoach,
+      coach: baseCoach,
       linkedinUrl: "https://www.linkedin.com/in/jane-doe",
       scraped,
+      sections: [],
     });
 
     expect(prisma.coachProfile.update).not.toHaveBeenCalled();
-    expect(result.filledFields).toEqual([]);
-    expect(result.coach).toBe(fullCoach);
+    expect(result.appliedFields).toEqual([]);
+    expect(result.coach).toBe(baseCoach);
   });
 });
