@@ -53,6 +53,7 @@ export async function kimchiGenerateText(params: {
   tags?: string[];
 }): Promise<{
   text: string;
+  finishReason: string | null;
   usage: { inputTokens: number; outputTokens: number };
   modelId: string;
 }> {
@@ -69,6 +70,7 @@ export async function kimchiGenerateText(params: {
 
   return {
     text: result.text,
+    finishReason: result.finishReason ?? null,
     usage: {
       inputTokens: result.usage?.inputTokens ?? 0,
       outputTokens: result.usage?.outputTokens ?? 0,
