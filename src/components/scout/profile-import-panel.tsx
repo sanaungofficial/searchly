@@ -60,7 +60,7 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
 
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(true);
 
   const [referenceFiles, setReferenceFiles] = useState<UserAssetListItem[]>([]);
   const [referenceUploading, setReferenceUploading] = useState(false);
