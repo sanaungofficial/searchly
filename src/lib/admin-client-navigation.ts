@@ -12,6 +12,12 @@ export async function navigateToAdminClientProfile(userId: string): Promise<void
   } catch {
     /* best-effort — admin review cannot run while impersonating */
   }
+  const res = await fetch("/api/admin/client-review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) throw new Error("Failed to start client profile review");
   clearClientSessionCaches();
   setActingUserScope(userId);
   setAdminReviewClient(userId);
@@ -19,6 +25,11 @@ export async function navigateToAdminClientProfile(userId: string): Promise<void
 }
 
 export async function exitAdminClientReview(): Promise<void> {
+  try {
+    await fetch("/api/admin/client-review", { method: "DELETE" });
+  } catch {
+    /* best-effort */
+  }
   clearAdminReviewClient();
   clearClientSessionCaches();
   setActingUserScope(null);

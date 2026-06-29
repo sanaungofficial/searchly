@@ -191,7 +191,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const withClientScope = useCallback(
     (path: string) => {
       if (impersonation.active) return path;
-      if (adminReviewClientId) return withClientUserId(path, adminReviewClientId);
+      const reviewId =
+        adminReviewClientId ??
+        getAdminReviewClientId() ??
+        readClientUserIdFromBrowserSearch();
+      if (reviewId) return withClientUserId(path, reviewId);
       return path;
     },
     [impersonation.active, adminReviewClientId],
@@ -306,6 +310,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setAdminReviewClient(adminReviewClientId, meta);
       })
       .catch(() => {});
+  }, [adminReviewClientId, impersonation.active]);
+
+  // Heal sessionStorage-only admin review (pre-cookie) so server-scoped writes target the client.
+  useEffect(() => {
+    if (!adminReviewClientId || impersonation.active) return;
+    void fetch("/api/admin/client-review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: adminReviewClientId }),
+    }).catch(() => {});
   }, [adminReviewClientId, impersonation.active]);
 
   useEffect(() => {
