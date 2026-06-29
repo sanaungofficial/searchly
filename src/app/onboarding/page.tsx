@@ -262,11 +262,10 @@ export default function OnboardingPage() {
     ],
   );
 
-  const applyReadbackRoles = useCallback((data: ReadBackData | null) => {
+  const storeReadbackRoleSuggestions = useCallback((data: ReadBackData | null) => {
     if (!data?.targetRoles?.length) return;
-    const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 20);
+    const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 5);
     setReadbackRoleSuggestions(roles);
-    setSelectedTitles((prev) => (prev.length ? prev : roles));
   }, []);
 
   const startBackgroundReadback = useCallback(() => {
@@ -278,12 +277,12 @@ export default function OnboardingPage() {
       if (result) {
         setReadbackData(result);
         setReadbackStatus("ready");
-        applyReadbackRoles(result);
+        storeReadbackRoleSuggestions(result);
       } else {
         setReadbackStatus("pending");
       }
     });
-  }, [applyReadbackRoles]);
+  }, [storeReadbackRoleSuggestions]);
 
   const applyResumeParsePrefill = useCallback(async (assetId: string) => {
     try {
@@ -525,22 +524,13 @@ export default function OnboardingPage() {
         honestNote: "",
       });
       setReadbackStatus("ready");
-      setReadbackRoleSuggestions(roles);
-      setSuggestedPrioritizedCategories(data.prioritizedCategories);
-      setSuggestedDeprioritizedCategories(data.deprioritizedCategories);
-      if (data.prioritizedCategories.length) {
-        setPrioritizedCategories((prev) => (prev.length ? prev : data.prioritizedCategories.slice(0, 5)));
-      }
-      if (data.deprioritizedCategories.length) {
-        setDeprioritizedCategories((prev) =>
-          prev.length ? prev : data.deprioritizedCategories.slice(0, 5),
-        );
-      }
+      setReadbackRoleSuggestions(roles.slice(0, 5));
+      setSuggestedPrioritizedCategories(data.prioritizedCategories.slice(0, 5));
+      setSuggestedDeprioritizedCategories(data.deprioritizedCategories.slice(0, 5));
       if (data.workArrangement) {
         setWorkArrangement((prev) => prev || data.workArrangement || prev);
         if (data.workArrangement === "remote_only") setFullyRemote(true);
       }
-      setSelectedTitles((prev) => (prev.length ? prev : roles.slice(0, 3)));
     },
     [],
   );
@@ -593,7 +583,7 @@ export default function OnboardingPage() {
             const payload = d as ReadBackData;
             setReadbackData(payload);
             setReadbackStatus("ready");
-            applyReadbackRoles(payload);
+            storeReadbackRoleSuggestions(payload);
           }
         })
         .catch(() => {});
@@ -601,7 +591,7 @@ export default function OnboardingPage() {
 
     const id = window.setInterval(poll, 5000);
     return () => window.clearInterval(id);
-  }, [readbackStatus, readbackData, applyReadbackRoles]);
+  }, [readbackStatus, readbackData, storeReadbackRoleSuggestions]);
 
   const onAddTargetRole = useCallback((title: string) => {
     setSelectedTitles((prev) => {
@@ -626,10 +616,10 @@ export default function OnboardingPage() {
 
   const onReadBackConfirm = useCallback(
     (data: ReadBackData | null) => {
-      applyReadbackRoles(data);
+      storeReadbackRoleSuggestions(data);
       goTo(2);
     },
-    [applyReadbackRoles, goTo],
+    [storeReadbackRoleSuggestions, goTo],
   );
 
   const onReadBackSkip = useCallback(() => goTo(2), [goTo]);
@@ -1005,6 +995,7 @@ export default function OnboardingPage() {
               onDrop={onDrop}
               onFileClick={onFileClick}
               onFileChange={onFileChange}
+              onBack={() => setIntentDone(false)}
             />
           )}
           {intentDone && !showOneLiner && !showFinalSummary && (
@@ -1016,6 +1007,7 @@ export default function OnboardingPage() {
                   onConfirm={onReadBackConfirm}
                   onRefine={onReadBackRefine}
                   onSkip={onReadBackSkip}
+                  onBack={() => goTo(0)}
                 />
               )}
               {screen === 2 && (
@@ -1031,6 +1023,11 @@ export default function OnboardingPage() {
                   onRemoveTitle={onRemoveTargetRole}
                   onContinue={onRolesContinue}
                   onSkip={onRolesSkip}
+                  onBack={() => {
+                    if (profileOneLiner.trim()) setShowOneLiner(true);
+                    else if (readbackData || readbackStatus !== "skipped") goTo(1);
+                    else goTo(0);
+                  }}
                 />
               )}
               {screen === 3 && selectedTitles.length >= 2 && (
@@ -1117,6 +1114,7 @@ export default function OnboardingPage() {
                   onRemoveCompany={onRemoveTargetCompany}
                   onContinue={onCompaniesContinue}
                   onSkip={onCompaniesSkip}
+                  onBack={() => goTo(10)}
                 />
               )}
               {screen === 12 && <ScreenSetup steps={setupSteps} />}

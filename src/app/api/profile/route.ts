@@ -16,7 +16,7 @@ import { isApifyConfigured } from "@/lib/apify-linkedin";
 export async function GET(request: Request) {
   try {
     const acting = await getActingUser(request);
-    const { authUser, isImpersonating } = acting;
+    const { authUser, isImpersonating, isAdminReviewing } = acting;
     if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const clientUserId = readClientUserIdFromRequest(request);
@@ -81,7 +81,10 @@ export async function GET(request: Request) {
       primaryResumeUpdatedAt: primaryResume?.updatedAt?.toISOString() ?? null,
       linkedInAnalysisScore,
       linkedinImportAvailable: isApifyConfigured(),
-      adminReview: clientUserId ? { clientId: dbUser.id, name: dbUser.name, email: dbUser.email } : undefined,
+      adminReview:
+        isAdminReviewing || clientUserId
+          ? { clientId: dbUser.id, name: dbUser.name, email: dbUser.email }
+          : undefined,
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,

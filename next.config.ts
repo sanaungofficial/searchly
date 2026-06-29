@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
         destination: "/inbox",
         permanent: false,
       },
+      {
+        source: "/opportunities/pipeline",
+        destination: "/opportunities",
+        permanent: false,
+      },
     ];
   },
   /* config options here */

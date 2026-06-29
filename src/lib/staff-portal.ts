@@ -4,9 +4,11 @@ export function isStaffPortalRole(role: string | null | undefined): boolean {
 }
 
 export const EXPERT_BASE = "/expert";
+export const EXPERT_DASHBOARD_PATH = "/expert/dashboard";
 
 /** Expert mode — flat top-level tabs (no nested ops/reviews in nav). */
 export const EXPERT_WORKSPACE_NAV = [
+  { id: "dashboard", label: "Dashboard", path: EXPERT_DASHBOARD_PATH },
   { id: "inbox", label: "Inbox", path: "/expert/inbox" },
   { id: "clients", label: "Clients", path: "/expert/clients" },
   { id: "offerings", label: "Offerings", path: "/expert/offerings" },
@@ -28,6 +30,9 @@ export function isExpertPortalPath(pathname: string): boolean {
 
 export function expertWorkspaceNavId(pathname: string): ExpertWorkspaceNavId | null {
   if (pathname.startsWith("/expert/reviews")) return null;
-  const match = EXPERT_WORKSPACE_NAV.find((item) => pathname.startsWith(item.path));
+  if (pathname === EXPERT_DASHBOARD_PATH) return "dashboard";
+  const match = EXPERT_WORKSPACE_NAV.find(
+    (item) => item.id !== "dashboard" && pathname.startsWith(item.path),
+  );
   return match?.id ?? null;
 }

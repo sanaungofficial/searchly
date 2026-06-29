@@ -265,6 +265,7 @@ interface WelcomeProps {
   onDrop: (e: React.DragEvent) => void;
   onFileClick: () => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBack?: () => void;
 }
 
 function ResumeReadingProgress({ filename }: { filename: string }) {
@@ -346,6 +347,7 @@ export function ScreenWelcome({
   onDrop,
   onFileClick,
   onFileChange,
+  onBack,
 }: WelcomeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [path, setPath] = useState<SetupPath | null>(null);
@@ -688,6 +690,12 @@ export function ScreenWelcome({
           </button>
         </OnboardingActions>
       )}
+
+      {onBack && (
+        <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 4 }}>
+          ← Back
+        </button>
+      )}
     </div>
   );
 }
@@ -1016,6 +1024,11 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBa
               >
                 Continue →
               </button>
+              {onBack && (
+                <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
+                  ← Back
+                </button>
+              )}
             </>
           )}
 
@@ -1031,6 +1044,11 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBa
               >
                 Continue →
               </button>
+              {onBack && (
+                <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
+                  ← Back
+                </button>
+              )}
             </>
           )}
 
@@ -1568,6 +1586,7 @@ interface TargetRolesProps {
   onRemoveTitle: (title: string) => void;
   onContinue: () => void;
   onSkip: () => void;
+  onBack?: () => void;
 }
 
 function SuggestedForYouChips({
@@ -1582,7 +1601,7 @@ function SuggestedForYouChips({
   onPick: (item: string) => void;
 }) {
   const excludeLower = new Set(exclude.map((item) => item.toLowerCase()));
-  const visible = items.filter((item) => !excludeLower.has(item.toLowerCase())).slice(0, 6);
+  const visible = items.filter((item) => !excludeLower.has(item.toLowerCase())).slice(0, 5);
   if (!visible.length) return null;
 
   return (
@@ -1766,7 +1785,7 @@ function TargetRoleAutocomplete({
             {suggestionLabel}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {readbackSuggestions.slice(0, 4).map((title) => (
+            {readbackSuggestions.slice(0, 5).map((title) => (
               <button
                 key={title}
                 type="button"
@@ -1949,6 +1968,7 @@ export function ScreenTargetRoles({
   onRemoveTitle,
   onContinue,
   onSkip,
+  onBack,
 }: TargetRolesProps) {
   const canContinue = selectedTitles.length > 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -1975,7 +1995,7 @@ export function ScreenTargetRoles({
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
         title="What roles are you targeting?"
-        body="We suggested a few based on your one-liner — add or remove as you like."
+        body="Pick the roles you want — tap a suggestion below or search for a title."
       />
 
       <div
@@ -1996,7 +2016,7 @@ export function ScreenTargetRoles({
           onDropdownOpenChange={setDropdownOpen}
         />
 
-        {(suggestedCategories.length > 0 || prioritizedCategories.length > 0) && onAddCategory && onRemoveCategory && (
+        {(suggestedCategories.length > 0 || prioritizedCategories.length > 0 || onAddCategory) && onAddCategory && onRemoveCategory && (
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: ONBOARDING_FIELD_BORDER }}>
             <p
               style={{
@@ -2114,9 +2134,16 @@ export function ScreenTargetRoles({
         )}
 
         {!canContinue && (
-          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 16 }}>
-            Skip for now
-          </button>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+              Skip for now
+            </button>
+            {onBack && (
+              <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+                ← Back
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -2131,6 +2158,11 @@ export function ScreenTargetRoles({
           >
             Continue →
           </button>
+          {onBack && (
+            <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
+              ← Back
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -2154,8 +2186,8 @@ export function ScreenOnboardingPriorityRole({
 }) {
   return (
     <ScreenOnboardingQuestion
-      title="Which role is your top priority?"
-      body="We boost this title in your recommended feed when several roles match."
+      title="Which role matters most right now?"
+      body="If a job matches several of your target roles, we'll rank it higher when it fits this one. Skip to treat all roles equally."
       onContinue={onContinue}
       onSkip={onSkip}
       onBack={onBack}
@@ -2210,6 +2242,7 @@ interface TargetCompaniesProps {
   onRemoveCompany: (catalogSlug: string) => void;
   onContinue: () => void;
   onSkip: () => void;
+  onBack?: () => void;
 }
 
 function suggestionToPick(
@@ -2681,6 +2714,7 @@ export function ScreenTargetCompanies({
   onRemoveCompany,
   onContinue,
   onSkip,
+  onBack,
 }: TargetCompaniesProps) {
   const canContinue = selectedCompanies.length > 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -2731,9 +2765,16 @@ export function ScreenTargetCompanies({
         />
 
         {!canContinue && (
-          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 16 }}>
-            Skip for now
-          </button>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+              Skip for now
+            </button>
+            {onBack && (
+              <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+                ← Back
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -2748,6 +2789,11 @@ export function ScreenTargetCompanies({
           >
             Continue →
           </button>
+          {onBack && (
+            <button type="button" onClick={onBack} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
+              ← Back
+            </button>
+          )}
         </div>
       )}
     </div>

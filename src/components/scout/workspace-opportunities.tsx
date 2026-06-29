@@ -81,7 +81,7 @@ export function WorkspaceOpportunities() {
     }
     if (searchParams.get("addJob") === "1") {
       setShowAddPanel(true);
-      router.replace(withClientReviewPath("/opportunities/pipeline"));
+      router.replace(withClientReviewPath(opportunitiesTabUrl("pipeline")));
     }
   }, [searchParams, router, pathname, withClientReviewPath]);
 
@@ -286,7 +286,7 @@ export function WorkspaceOpportunities() {
     setDrawerTool(tool);
   };
   const closeDrawer = () => {
-    go("/opportunities/pipeline");
+    go(opportunitiesTabUrl("pipeline"));
   };
   const handleDrawerToolChange = (tool: DrawerTool) => {
     setDrawerTool(tool);
@@ -301,7 +301,7 @@ export function WorkspaceOpportunities() {
     setProspectCard(null);
     setAddingProspect(false);
     setProspectDetailLoading(false);
-    go("/opportunities/pipeline");
+    go(opportunitiesTabUrl("pipeline"));
   };
 
   const openRecommendedJob = useCallback((job: VectorMatchedJob) => {
@@ -373,7 +373,7 @@ export function WorkspaceOpportunities() {
       if (created) {
         go(pipelineJobUrl(created.id));
       } else {
-        go("/opportunities/pipeline");
+        go(opportunitiesTabUrl("pipeline"));
       }
     } finally {
       setAddingProspect(false);
@@ -395,7 +395,7 @@ export function WorkspaceOpportunities() {
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
-    go("/opportunities/pipeline");
+    go(opportunitiesTabUrl("pipeline"));
   };
 
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
@@ -456,7 +456,7 @@ export function WorkspaceOpportunities() {
       if (created) {
         go(pipelineJobUrl(created.id));
       } else {
-        go("/opportunities/pipeline");
+        go(opportunitiesTabUrl("pipeline"));
       }
     } finally {
       setAddingNetworkJob(false);

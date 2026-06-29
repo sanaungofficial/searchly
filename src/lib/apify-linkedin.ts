@@ -61,6 +61,7 @@ export type ApifyLinkedInProfile = {
   publicIdentifier?: string;
   locationName?: string;
   picture?: string;
+  backgroundCoverImageUrl?: string;
   educations?: ApifyEducation[];
   positions?: ApifyPosition[];
   skills?: ApifySkill[];
@@ -274,7 +275,7 @@ export function mapApifyProfileToLinkedInDraft(raw: ApifyLinkedInProfile): Linke
     skills: parsed.skills,
     featured: [],
     profilePhotoUrl: raw.picture?.trim() || null,
-    coverPhotoUrl: null,
+    coverPhotoUrl: raw.backgroundCoverImageUrl?.trim() || null,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -514,6 +515,16 @@ function normalizeApifyProfile(raw: ApifyLinkedInProfile & Record<string, unknow
       (typeof raw.profile_pic_url === "string" ? raw.profile_pic_url.trim() : undefined) ||
       (typeof raw.photo === "string" ? raw.photo.trim() : undefined) ||
       (typeof raw.profilePicture === "string" ? raw.profilePicture.trim() : undefined) ||
+      (typeof raw.picture_url === "string" ? raw.picture_url.trim() : undefined) ||
+      undefined,
+    backgroundCoverImageUrl:
+      raw.backgroundCoverImageUrl?.trim() ||
+      (typeof raw.background_cover_image_url === "string"
+        ? raw.background_cover_image_url.trim()
+        : undefined) ||
+      (typeof raw.backgroundCoverImage === "string" ? raw.backgroundCoverImage.trim() : undefined) ||
+      (typeof raw.background_url === "string" ? raw.background_url.trim() : undefined) ||
+      (typeof raw.banner === "string" ? raw.banner.trim() : undefined) ||
       undefined,
     positions: asApifyPositions(raw),
     educations: asApifyEducations(raw),

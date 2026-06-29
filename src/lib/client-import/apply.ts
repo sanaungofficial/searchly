@@ -16,6 +16,7 @@ import type {
   ClientImportApplyResult,
   ClientImportPreview,
 } from "@/lib/client-import/types";
+import { normalizeQaQuestion, normalizeQaTags } from "@/lib/application-qa";
 
 function selectedRows<T extends { id: string; selected: boolean }>(
   preview: ClientImportPreview,
@@ -87,6 +88,7 @@ type ExistingJobRow = {
   notes: string | null;
   userNotes: string | null;
   appliedAt: Date | null;
+  resumeUrl: string | null;
 };
 
 function buildExistingJobLookups(jobs: ExistingJobRow[]) {
@@ -124,6 +126,8 @@ export async function applyClientImport(
     companies: { added: 0, updated: 0, skipped: 0 },
     contacts: { added: 0, updated: 0, skipped: 0 },
     roles: { targetSelected: 0, deprioritizedSelected: 0 },
+    categories: { prioritizedSelected: 0, deprioritizedSelected: 0 },
+    applicationQa: { added: 0, skipped: 0 },
     referenceDocumentsStored: preview.referenceDocuments.length,
     errors: [],
   };
@@ -178,6 +182,18 @@ export async function applyClientImport(
     if (payload.profile.deprioritizedRoles?.length) {
       const merged = [...new Set([...(existing?.deprioritizedRoles ?? []), ...payload.profile.deprioritizedRoles])];
       profilePatch.deprioritizedRoles = merged;
+    }
+    if (payload.profile.prioritizedCategories?.length) {
+      const merged = [...new Set([...(existing?.prioritizedCategories ?? []), ...payload.profile.prioritizedCategories])];
+      profilePatch.prioritizedCategories = merged;
+      result.categories.prioritizedSelected = payload.profile.prioritizedCategories.length;
+    }
+    if (payload.profile.deprioritizedCategories?.length) {
+      const merged = [
+        ...new Set([...(existing?.deprioritizedCategories ?? []), ...payload.profile.deprioritizedCategories]),
+      ];
+      profilePatch.deprioritizedCategories = merged;
+      result.categories.deprioritizedSelected = payload.profile.deprioritizedCategories.length;
     }
     if (payload.profile.searchDuration) {
       profilePatch.searchDuration = payload.profile.searchDuration;
@@ -254,17 +270,20 @@ export async function applyClientImport(
       notes: true,
       userNotes: true,
       appliedAt: true,
+      resumeUrl: true,
     },
   });
   const jobLookups = buildExistingJobLookups(existingUserJobs);
 
   for (const row of jobs) {
-    const { company, role, url, stage, notes, appliedAt } = row.data;
+    const { company, role, url, stage, notes, appliedAt, resumeUrl } = row.data;
     const enriched = enrichedByName.get(company.toLowerCase());
     const companyName = enriched?.name ?? company;
     const dedupeKey = importJobDedupeKey({ url, company: companyName, role });
     try {
       const existing = findExistingImportJob(jobLookups, { url, company: companyName, role });
+      const urlChanged =
+        Boolean(existing && url && normalizeImportJobUrl(url) !== normalizeImportJobUrl(existing.url));
 
       const resolvedNotes = await resolveImportJobNotes({
         company: companyName,
@@ -272,7 +291,7 @@ export async function applyClientImport(
         url,
         hirebaseSlug: enriched?.hirebaseSlug,
         sheetNotes: notes,
-        existingNotes: existing?.notes ?? null,
+        existingNotes: urlChanged ? null : (existing?.notes ?? null),
       });
       if (resolvedNotes.enriched) result.jobs.descriptionsEnriched++;
 
@@ -283,23 +302,31 @@ export async function applyClientImport(
           notes?: string | null;
           userNotes?: string | null;
           appliedAt?: Date | null;
+          resumeUrl?: string | null;
           company?: string;
           role?: string;
         } = {};
-        if (stage && stage !== existing.stage) patch.stage = stage;
+        if (stage !== existing.stage) patch.stage = stage;
         if (url && url !== existing.url) patch.url = url;
         if (resolvedNotes.notes && resolvedNotes.notes !== existing.notes) patch.notes = resolvedNotes.notes;
-        if (resolvedNotes.userNotes && resolvedNotes.userNotes !== existing.userNotes) {
+        if (resolvedNotes.userNotes !== existing.userNotes) {
           patch.userNotes = resolvedNotes.userNotes;
         }
         if (companyName !== existing.company) patch.company = companyName;
         if (role !== existing.role) patch.role = role;
         const parsedApplied = parseAppliedAt(appliedAt);
-        if (parsedApplied && !existing.appliedAt) patch.appliedAt = parsedApplied;
+        if (parsedApplied) patch.appliedAt = parsedApplied;
+        if (resumeUrl && resumeUrl !== existing.resumeUrl) patch.resumeUrl = resumeUrl;
 
         if (Object.keys(patch).length > 0) {
           const updated = await prisma.job.update({ where: { id: existing.id }, data: patch });
+          const prevUrlKey = normalizeImportJobUrl(existing.url);
           Object.assign(existing, updated);
+          if (urlChanged) {
+            if (prevUrlKey) jobLookups.byUrlKey.delete(prevUrlKey);
+            const nextUrlKey = normalizeImportJobUrl(updated.url);
+            if (nextUrlKey) jobLookups.byUrlKey.set(nextUrlKey, existing);
+          }
           result.jobs.updated++;
         } else {
           result.jobs.skipped++;
@@ -317,6 +344,7 @@ export async function applyClientImport(
           stage,
           notes: resolvedNotes.notes,
           userNotes: resolvedNotes.userNotes,
+          resumeUrl,
           appliedAt: parseAppliedAt(appliedAt) ?? (stage === "APPLIED" ? new Date() : null),
         },
       });
@@ -329,6 +357,7 @@ export async function applyClientImport(
         notes: created.notes,
         userNotes: created.userNotes,
         appliedAt: created.appliedAt,
+        resumeUrl: created.resumeUrl,
       };
       const urlKey = normalizeImportJobUrl(created.url);
       if (urlKey) jobLookups.byUrlKey.set(urlKey, createdRow);
@@ -376,6 +405,40 @@ export async function applyClientImport(
     } catch (err) {
       console.error("[applyClientImport contact]", c.email, err);
       result.errors.push(`Contact: ${c.email}`);
+    }
+  }
+
+  const qaRows = selectedRows(preview, preview.applicationQa ?? [], payload.applicationQaIds);
+  if (qaRows.length) {
+    const existingQa = await prisma.applicationQaEntry.findMany({
+      where: { userId },
+      select: { question: true },
+    });
+    const existingKeys = new Set(existingQa.map((e) => normalizeQaQuestion(e.question)));
+    const seen = new Set<string>();
+
+    for (const row of qaRows) {
+      const key = normalizeQaQuestion(row.data.question);
+      if (seen.has(key) || existingKeys.has(key)) {
+        result.applicationQa.skipped++;
+        continue;
+      }
+      seen.add(key);
+      try {
+        await prisma.applicationQaEntry.create({
+          data: {
+            userId,
+            question: row.data.question.trim(),
+            answer: row.data.answer,
+            tags: normalizeQaTags(row.data.tags?.length ? row.data.tags : ["import"]),
+          },
+        });
+        result.applicationQa.added++;
+        existingKeys.add(key);
+      } catch (err) {
+        console.error("[applyClientImport qa]", row.data.question, err);
+        result.errors.push(`Q&A: ${row.data.question.slice(0, 40)}`);
+      }
     }
   }
 

@@ -128,6 +128,7 @@ export function KimchiAssistant() {
               className="kimchi-drawer bruddle"
               style={{
                 width: DRAWER_WIDTH,
+                top: navHeight,
                 transform: visible ? "translateX(0)" : "translateX(100%)",
               }}
               role="dialog"
@@ -207,7 +208,6 @@ function KimchiAssistantStyles() {
       .kimchi-drawer {
         position: fixed;
         right: 0;
-        top: 0;
         bottom: 0;
         z-index: 201;
         background: var(--scout-page);

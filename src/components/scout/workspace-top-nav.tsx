@@ -31,7 +31,8 @@ type NavLink = {
   children?: NavChild[];
 };
 
-function buildNavLinks(isAdmin: boolean): NavLink[] {
+function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
+  const { isAdmin } = opts;
   const links: NavLink[] = [];
   links.push({
     id: "dashboard",
@@ -44,7 +45,7 @@ function buildNavLinks(isAdmin: boolean): NavLink[] {
   links.push({
     id: "opportunities",
     label: "Opportunities",
-    path: "/opportunities/pipeline",
+    path: "/opportunities",
     match: matchOpportunitiesNavPath,
   });
   links.push({
@@ -83,18 +84,20 @@ function initials(name: string | null, email: string) {
 function NavDropdownMenuItem({
   label,
   active,
+  href,
   onClick,
 }: {
   label: string;
   active: boolean;
-  onClick: () => void;
+  href: string;
+  onClick?: () => void;
 }) {
   const [hover, setHover] = useState(false);
   const highlighted = active || hover;
 
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       role="menuitem"
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
@@ -112,11 +115,12 @@ function NavDropdownMenuItem({
         fontSize: T.bodySm,
         fontWeight: active ? 600 : hover ? 600 : 500,
         cursor: "pointer",
+        textDecoration: "none",
         transition: "background 0.12s ease, color 0.12s ease",
       }}
     >
       {label}
-    </button>
+    </Link>
   );
 }
 
@@ -179,6 +183,7 @@ function UtilityPortalDropdown({
   onOpen,
   onScheduleClose,
   onToggle,
+  resolveHref,
   onNavigate,
   pathname,
 }: {
@@ -191,7 +196,8 @@ function UtilityPortalDropdown({
   onOpen: () => void;
   onScheduleClose: () => void;
   onToggle: () => void;
-  onNavigate: (path: string) => void;
+  resolveHref: (path: string) => string;
+  onNavigate?: (path: string) => void;
   pathname: string;
 }) {
   return (
@@ -204,12 +210,16 @@ function UtilityPortalDropdown({
         if (!isMobile) onScheduleClose();
       }}
     >
-      <button
-        type="button"
+      <Link
+        href={resolveHref(defaultPath)}
         className={`workspace-nav-portal-btn${active ? " is-active" : ""}${dropdownOpen ? " is-open" : ""}`}
-        onClick={() => {
-          if (isMobile) onToggle();
-          else onNavigate(defaultPath);
+        onClick={(e) => {
+          if (isMobile) {
+            e.preventDefault();
+            onToggle();
+            return;
+          }
+          onNavigate?.(defaultPath);
         }}
         aria-expanded={dropdownOpen}
         aria-haspopup="menu"
@@ -227,12 +237,13 @@ function UtilityPortalDropdown({
           fontWeight: active ? 600 : 500,
           color: active ? color.forest : color.muted,
           whiteSpace: "nowrap",
+          textDecoration: "none",
           transition: "background 0.15s, color 0.15s, border-color 0.15s",
         }}
       >
         {label}
         <NavChevron open={dropdownOpen} />
-      </button>
+      </Link>
       {dropdownOpen && (
         <div
           role="menu"
@@ -261,7 +272,8 @@ function UtilityPortalDropdown({
               key={childPath}
               label={childLabel}
               active={childMatch(pathname)}
-              onClick={() => onNavigate(childPath)}
+              href={resolveHref(childPath)}
+              onClick={() => onNavigate?.(childPath)}
             />
           ))}
         </div>
@@ -316,17 +328,19 @@ function BurgerIcon() {
 function MobileDrawerLink({
   label,
   active,
+  href,
   onClick,
   indent = false,
 }: {
   label: string;
   active: boolean;
-  onClick: () => void;
+  href: string;
+  onClick?: () => void;
   indent?: boolean;
 }) {
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       className={`workspace-nav-drawer-link${active ? " is-active" : ""}`}
       onClick={onClick}
       style={{
@@ -344,10 +358,11 @@ function MobileDrawerLink({
         fontSize: T.bodySm,
         fontWeight: active ? 600 : 500,
         cursor: "pointer",
+        textDecoration: "none",
       }}
     >
       {label}
-    </button>
+    </Link>
   );
 }
 
@@ -374,6 +389,7 @@ function MobileTopNavDrawer({
   onClose,
   navLinks,
   pathname,
+  resolveHref,
   onNavigateMain,
   showExpertModeChip,
   showExpertSection,
@@ -387,6 +403,7 @@ function MobileTopNavDrawer({
   onClose: () => void;
   navLinks: NavLink[];
   pathname: string;
+  resolveHref: (path: string) => string;
   onNavigateMain: (link: NavLink, childPath?: string) => void;
   showExpertModeChip: boolean;
   showExpertSection: boolean;
@@ -499,6 +516,7 @@ function MobileTopNavDrawer({
                       key={child.path}
                       label={child.label}
                       active={child.match(pathname)}
+                      href={resolveHref(child.path)}
                       onClick={() => onNavigateMain(link, child.path)}
                       indent
                     />
@@ -511,6 +529,7 @@ function MobileTopNavDrawer({
                 key={link.id}
                 label={link.label}
                 active={active}
+                href={resolveHref(link.path)}
                 onClick={() => onNavigateMain(link)}
               />
             );
@@ -525,6 +544,7 @@ function MobileTopNavDrawer({
                 key={item.path}
                 label={item.label}
                 active={item.match(pathname)}
+                href={resolveHref(item.path)}
                 onClick={() => onNavigateExpert(item.path)}
               />
             ))}
@@ -539,6 +559,7 @@ function MobileTopNavDrawer({
                 key={item.path}
                 label={item.label}
                 active={item.match(pathname)}
+                href={resolveHref(item.path)}
                 onClick={() => onNavigateAdmin(item.path)}
               />
             ))}
@@ -588,7 +609,6 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     authChecked,
     userRole,
     showAdminUi,
-    staffDashboardView,
     setStaffDashboardView,
     isImpersonating,
     isAdminReviewing,
@@ -598,18 +618,17 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const navLinks = buildNavLinks(showAdminUi);
+  const navLinks = buildNavLinks({ isAdmin: showAdminUi });
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
   const isLoggedOut = !user;
   const showGuestWorkspaceNav = isLoggedOut && isPublicCoachingPath(pathname);
 
-  const authGateOrNavigate = (path: string) => {
+  const resolveNavHref = (path: string) => {
     if (showGuestWorkspaceNav && !isPublicCoachingPath(path)) {
-      window.location.href = buildAuthUrl("login", path);
-      return;
+      return buildAuthUrl("login", path);
     }
-    router.push(withClientReviewPath(path));
+    return withClientReviewPath(path);
   };
 
   const expertPortalActive =
@@ -620,8 +639,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   const showExpertModeChip =
     isStaffPortal &&
     !isImpersonating &&
-    pathname === "/dashboard" &&
-    staffDashboardView === "expert";
+    isExpertPortalPath(pathname);
   const adminPortalActive = showAdminUi && pathname.startsWith("/admin");
 
   const expertNavItems: NavChild[] = STAFF_DASHBOARD_NAV.map(({ label, path }) => ({
@@ -636,23 +654,16 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     match: (p) => matchAdminNavPath(p, path),
   }));
 
-  const navigateToSeekerDashboard = () => {
-    if (showGuestWorkspaceNav) {
-      window.location.href = buildAuthUrl("login", "/dashboard");
-      return;
-    }
+  const syncSeekerWorkspaceView = () => {
     if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
-    router.push(withClientReviewPath("/dashboard"));
   };
 
-  const navigateExpertPortal = (path: string) => {
+  const navigateExpertPortal = (_path: string) => {
     if (isStaffPortal && !isImpersonating) setStaffDashboardView("expert");
-    router.push(path);
     setNavDropdownOpen(null);
   };
 
-  const navigateAdminPortal = (path: string) => {
-    router.push(path);
+  const navigateAdminPortal = (_path: string) => {
     setNavDropdownOpen(null);
   };
 
@@ -727,7 +738,20 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   useEffect(() => {
     if (!isStaffPortal || isImpersonating || isAdminReviewing) return;
-    if (isExpertPortalPath(pathname)) setStaffDashboardView("expert");
+    if (isExpertPortalPath(pathname)) {
+      setStaffDashboardView("expert");
+      return;
+    }
+    if (
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/") ||
+      pathname.startsWith("/opportunities") ||
+      matchInboxPath(pathname) ||
+      pathname.startsWith("/coaching") ||
+      pathname.startsWith("/profile")
+    ) {
+      setStaffDashboardView("seeker");
+    }
   }, [pathname, isStaffPortal, isImpersonating, isAdminReviewing, setStaffDashboardView]);
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
@@ -749,12 +773,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  const navigateMainFromDrawer = (link: NavLink, childPath?: string) => {
-    if (link.id === "dashboard") {
-      navigateToSeekerDashboard();
-    } else {
-      authGateOrNavigate(childPath ?? link.path);
-    }
+  const navigateMainFromDrawer = (_link: NavLink, _childPath?: string) => {
+    syncSeekerWorkspaceView();
     setNavDropdownOpen(null);
     closeMobileMenu();
   };
@@ -886,7 +906,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
           position: "relative",
-          zIndex: 100,
+          zIndex: 210,
         }}
       >
         <div
@@ -927,17 +947,14 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           </button>
 
           {/* Logo */}
-          <button
-            type="button"
+          <Link
+            href={showGuestWorkspaceNav ? "/coaching" : resolveNavHref("/dashboard")}
             onClick={() => {
-              if (showGuestWorkspaceNav) router.push("/coaching");
-              else navigateToSeekerDashboard();
+              if (!showGuestWorkspaceNav) syncSeekerWorkspaceView();
             }}
             style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
+              textDecoration: "none",
+              color: "inherit",
               flexShrink: 0,
             }}
             aria-label="Kimchi home"
@@ -953,7 +970,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
             >
               Kimchi
             </span>
-          </button>
+          </Link>
 
           {/* Nav links — desktop only; mobile uses burger drawer */}
           <nav
@@ -983,14 +1000,16 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                       if (!isMobile) scheduleCloseNavDropdown();
                     }}
                   >
-                    <button
-                      type="button"
+                    <Link
+                      href={resolveNavHref(path)}
                       className={`workspace-nav-link${active ? " is-active" : ""}${dropdownOpen ? " is-open" : ""}`}
-                      onClick={() => {
+                      onClick={(e) => {
                         if (isMobile) {
+                          e.preventDefault();
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
                         } else {
-                          authGateOrNavigate(path);
+                          syncSeekerWorkspaceView();
+                          setNavDropdownOpen(null);
                         }
                       }}
                       aria-expanded={dropdownOpen}
@@ -1010,13 +1029,14 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 5,
+                        textDecoration: "none",
                         transition: "color 0.15s, background 0.15s",
                         boxSizing: "border-box",
                       }}
                     >
                       {label}
                       <NavChevron open={dropdownOpen} />
-                    </button>
+                    </Link>
                     {dropdownOpen && (
                       <div
                         role="menu"
@@ -1048,8 +1068,9 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                               key={childPath}
                               label={childLabel}
                               active={childActive}
+                              href={resolveNavHref(childPath)}
                               onClick={() => {
-                                authGateOrNavigate(childPath);
+                                syncSeekerWorkspaceView();
                                 setNavDropdownOpen(null);
                               }}
                             />
@@ -1062,14 +1083,11 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               }
 
               return (
-                <button
+                <Link
                   key={id}
-                  type="button"
+                  href={resolveNavHref(path)}
                   className={`workspace-nav-link${active ? " is-active" : ""}`}
-                  onClick={() => {
-                    if (id === "dashboard") navigateToSeekerDashboard();
-                    else authGateOrNavigate(path);
-                  }}
+                  onClick={() => syncSeekerWorkspaceView()}
                   style={{
                     background: "none",
                     border: "none",
@@ -1083,12 +1101,15 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                     color: active ? color.forest : color.muted,
                     whiteSpace: "nowrap",
                     flexShrink: 0,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
                     transition: "color 0.15s",
                     boxSizing: "border-box",
                   }}
                 >
                   {label}
-                </button>
+                </Link>
               );
             })}
           </nav>
@@ -1148,12 +1169,13 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               {showExpertSection && (
                 <UtilityPortalDropdown
                   label={isMobile ? "Expert" : "Expert mode"}
-                  defaultPath="/expert/inbox"
+                  defaultPath="/expert/dashboard"
                   active={expertPortalActive}
                   items={expertNavItems}
                   dropdownOpen={navDropdownOpen === "expert-portal"}
                   isMobile={isMobile}
                   pathname={pathname}
+                  resolveHref={resolveNavHref}
                   onOpen={() => openNavDropdown("expert-portal")}
                   onScheduleClose={scheduleCloseNavDropdown}
                   onToggle={() =>
@@ -1165,12 +1187,13 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               {showAdminSection && (
                 <UtilityPortalDropdown
                   label="Admin"
-                  defaultPath="/admin"
+                  defaultPath="/admin/dashboard"
                   active={adminPortalActive}
                   items={adminNavItems}
                   dropdownOpen={navDropdownOpen === "admin-portal"}
                   isMobile={isMobile}
                   pathname={pathname}
+                  resolveHref={resolveNavHref}
                   onOpen={() => openNavDropdown("admin-portal")}
                   onScheduleClose={scheduleCloseNavDropdown}
                   onToggle={() =>
@@ -1284,6 +1307,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         onClose={closeMobileMenu}
         navLinks={navLinks}
         pathname={pathname}
+        resolveHref={resolveNavHref}
         onNavigateMain={navigateMainFromDrawer}
         showExpertModeChip={showExpertModeChip}
         showExpertSection={showExpertSection}

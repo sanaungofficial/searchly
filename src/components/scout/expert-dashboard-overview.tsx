@@ -43,7 +43,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           Expert workspace
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-          Bookings, client roster, offerings, and live webinars — switch back to job seeker view anytime from the header.
+          Bookings, client roster, offerings, and live webinars — use Dashboard in the main nav for your job search home.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {EXPERT_WORKSPACE_NAV.map((item) => (

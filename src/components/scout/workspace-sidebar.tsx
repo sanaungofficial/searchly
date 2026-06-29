@@ -25,6 +25,7 @@ import { border as citeBorder } from "@/lib/typography";
 import { BETA_FEATURES, isProductionEnv } from "@/lib/beta-features";
 import { sidebarTheme as S } from "@/lib/sidebar-theme";
 import { matchInboxPath, matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
+import { isStaffPortalRole, EXPERT_DASHBOARD_PATH, isExpertPortalPath } from "@/lib/staff-portal";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -267,12 +268,12 @@ function SidebarOpportunitiesNav({
 
   const onParentClick = () => {
     if (isRail) {
-      onNavigate("/opportunities/pipeline");
+      onNavigate("/opportunities");
       return;
     }
     if (!expanded) {
       setExpanded(true);
-      onNavigate("/opportunities/pipeline");
+      onNavigate("/opportunities");
       return;
     }
     setExpanded((prev) => !prev);
@@ -347,6 +348,7 @@ export function WorkspaceSidebar({
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
   const showAdminNav = showAdminUi;
+  const showExpertNav = isStaffPortalRole(ctxUserRole) && !isImpersonating;
 
   const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();
@@ -381,6 +383,7 @@ export function WorkspaceSidebar({
   };
 
   const isActive = (path: string) => {
+    if (path === EXPERT_DASHBOARD_PATH) return isExpertPortalPath(pathname);
     if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     if (path === "/coaching") return pathname.startsWith("/coaching");
     return pathname === path;
@@ -389,7 +392,7 @@ export function WorkspaceSidebar({
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
   const onNavigateNotif = (section: string) => {
-    const path = section === "opportunities" ? "/opportunities/pipeline" : `/${section}`;
+    const path = section === "opportunities" ? "/opportunities" : `/${section}`;
     router.push(path);
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
@@ -628,15 +631,35 @@ export function WorkspaceSidebar({
           }}
         >
         <div style={{ padding: isRail ? "0 8px" : "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {showExpertNav && (
+            <SidebarNavButton
+              active={isExpertPortalPath(pathname)}
+              onClick={() => navigate(EXPERT_DASHBOARD_PATH)}
+              label="Expert"
+              isRail={isRail}
+              Icon={() => (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  stroke={isExpertPortalPath(pathname) ? S.iconActive : S.iconMuted}
+                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <path d="M17.5 14v7M14 17.5h7" />
+                </svg>
+              )}
+            />
+          )}
+
           {showAdminNav && (
             <SidebarNavButton
-              active={pathname === "/admin"}
-              onClick={() => navigate("/admin")}
+              active={pathname === "/admin/dashboard"}
+              onClick={() => navigate("/admin/dashboard")}
               label="Admin"
               isRail={isRail}
               Icon={() => (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke={pathname === "/admin" ? S.iconActive : S.iconMuted}
+                  stroke={pathname === "/admin/dashboard" ? S.iconActive : S.iconMuted}
                   strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
                 >
                   <rect x="3" y="3" width="7" height="7" rx="0" />

@@ -16,6 +16,9 @@ export type ImportPipelineJob = {
   stage: JobStage;
   notes: string | null;
   appliedAt: string | null;
+  /** Coach Yes/No approval column — no Job.approved field; influences stage on import. */
+  approved: boolean | null;
+  resumeUrl: string | null;
   hirebaseSlug?: string | null;
   apiLinked?: boolean;
 };
@@ -36,11 +39,19 @@ export type ImportReferenceDocument = {
   reason: string;
 };
 
+export type ImportApplicationQa = {
+  question: string;
+  answer: string;
+  tags: string[];
+};
+
 export type ClientImportPreview = {
   sourceFiles: Array<{ filename: string; kind: string }>;
   profile: {
     targetRoles: ImportRow<string>[];
     deprioritizedRoles: ImportRow<string>[];
+    prioritizedCategories?: ImportRow<string>[];
+    deprioritizedCategories?: ImportRow<string>[];
     searchDuration: string | null;
     avoidNotes: string | null;
     proposed: Partial<StrategyProfileFields>;
@@ -48,6 +59,7 @@ export type ClientImportPreview = {
   pipelineJobs: ImportRow<ImportPipelineJob>[];
   companies: ImportRow<SuggestedTrackedCompany>[];
   contacts: ImportRow<ImportContact>[];
+  applicationQa?: ImportRow<ImportApplicationQa>[];
   referenceDocuments: ImportReferenceDocument[];
   resume?: {
     filename: string;
@@ -62,6 +74,8 @@ export type ClientImportApplyPayload = {
   profile?: {
     targetRoles?: string[];
     deprioritizedRoles?: string[];
+    prioritizedCategories?: string[];
+    deprioritizedCategories?: string[];
     searchDuration?: string | null;
     avoidNotes?: string | null;
     proposed?: Partial<StrategyProfileFields>;
@@ -69,6 +83,7 @@ export type ClientImportApplyPayload = {
   pipelineJobIds?: string[];
   companyIds?: string[];
   contactIds?: string[];
+  applicationQaIds?: string[];
   applyResume?: boolean;
   preview: ClientImportPreview;
 };
@@ -79,6 +94,8 @@ export type ClientImportApplyResult = {
   companies: { added: number; updated: number; skipped: number };
   contacts: { added: number; updated: number; skipped: number };
   roles: { targetSelected: number; deprioritizedSelected: number };
+  categories: { prioritizedSelected: number; deprioritizedSelected: number };
+  applicationQa: { added: number; skipped: number };
   referenceDocumentsStored: number;
   errors: string[];
 };

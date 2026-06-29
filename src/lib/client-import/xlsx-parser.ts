@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
-import type { JobStage } from "@prisma/client";
 import type { ClientImportPreview, ImportContact, ImportPipelineJob, ImportRow } from "@/lib/client-import/types";
+import { detectJobTrackerColumns } from "@/lib/client-import/job-columns";
+import { mapImportJobStage, parseImportApproved } from "@/lib/client-import/job-status-map";
 import { importJobDedupeKey } from "@/lib/client-import/job-url";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
 
@@ -68,8 +69,10 @@ function scoreHeaderRow(row: unknown[]): number {
   if (/company/.test(joined)) score += 2;
   if (/job title|^title|role/.test(joined)) score += 2;
   if (/application status|app status/.test(joined)) score += 2;
+  if (/yes no|yes\/no/.test(joined)) score += 1;
   if (/\burl\b|job description|posting link/.test(joined)) score += 1;
   if (/application date|date applied/.test(joined)) score += 1;
+  if (/resume link|resume url/.test(joined)) score += 1;
   return score;
 }
 
@@ -86,16 +89,9 @@ function findBestHeaderRow(rows: unknown[][], minScore = 4): number {
   return bestScore >= minScore ? bestIdx : -1;
 }
 
-function mapApplicationStatus(raw: string): JobStage {
-  const v = raw.trim().toLowerCase();
-  if (!v || v === "pending") return "APPLIED";
-  if (v.includes("reject")) return "REJECTED";
-  if (v.includes("offer")) return "OFFER";
-  if (v.includes("interview")) return "INTERVIEWING";
-  if (v.includes("screen")) return "SCREENING";
-  if (v.includes("applied")) return "APPLIED";
-  if (v.includes("withdraw")) return "WITHDRAWN";
-  return "APPLIED";
+function normalizeSheetUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  return trimmed && /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
 function cleanCompanyName(raw: string, jobUrl: string | null): string {
@@ -129,40 +125,36 @@ function parseJobTableFromSheet(
   if (headerIdx < 0) return [];
 
   const headers = rows[headerIdx] ?? [];
-  const companyCol = colIndex(headers, [/company name/, /^company/, /employer/]);
-  const roleCol = colIndex(headers, [/job title/, /^title$/, /^role$/, /position/]);
-  const urlCol = colIndex(headers, [/^url$/, /job description link/, /posting link/, /careers link/]);
-  const statusCol = colIndex(headers, [/application status/, /app status/]);
-  const fallbackStatusCol =
-    statusCol >= 0
-      ? statusCol
-      : colIndex(headers, [/^status$/, /stage/]);
-  const notesCol = colIndex(headers, [/^notes/]);
-  const dateCol = colIndex(headers, [/application date/, /date applied/]);
+  const cols = detectJobTrackerColumns(headers);
 
-  if (companyCol < 0 || roleCol < 0) return [];
+  if (cols.companyCol < 0 || cols.roleCol < 0) return [];
 
   const out: ImportRow<ImportPipelineJob>[] = [];
 
   for (let r = headerIdx + 1; r < rows.length; r++) {
-    let company = getCellDisplay(sheet, r, companyCol);
-    let role = getCellDisplay(sheet, r, roleCol);
+    let company = getCellDisplay(sheet, r, cols.companyCol);
+    let role = getCellDisplay(sheet, r, cols.roleCol);
     if (!company && !role) continue;
 
-    const urlRaw = urlCol >= 0 ? getCellDisplay(sheet, r, urlCol) : "";
-    const url = urlRaw && /^https?:\/\//i.test(urlRaw) ? urlRaw : null;
+    const urlRaw = cols.urlCol >= 0 ? getCellDisplay(sheet, r, cols.urlCol) : "";
+    const url = normalizeSheetUrl(urlRaw);
 
     company = cleanCompanyName(company, url);
     role = role.trim();
     if (!company || !role) continue;
     if (/^company|^job title|^title$/i.test(company)) continue;
 
-    const statusRaw =
-      fallbackStatusCol >= 0 ? getCellDisplay(sheet, r, fallbackStatusCol) : "Applied";
-    const notes = notesCol >= 0 ? getCellDisplay(sheet, r, notesCol) || null : null;
-    const appliedAtRaw = dateCol >= 0 ? getCellDisplay(sheet, r, dateCol) : "";
+    const statusRaw = cols.statusCol >= 0 ? getCellDisplay(sheet, r, cols.statusCol) : "";
+    const yesNoRaw = cols.yesNoCol >= 0 ? getCellDisplay(sheet, r, cols.yesNoCol) : "";
+    const notes = cols.notesCol >= 0 ? getCellDisplay(sheet, r, cols.notesCol) || null : null;
+    const appliedAtRaw = cols.dateCol >= 0 ? getCellDisplay(sheet, r, cols.dateCol) : "";
+    const resumeRaw = cols.resumeCol >= 0 ? getCellDisplay(sheet, r, cols.resumeCol) : "";
 
-    let stage = mapApplicationStatus(statusRaw);
+    let stage = mapImportJobStage({
+      statusRaw,
+      approved: parseImportApproved(yesNoRaw),
+      appliedAt: appliedAtRaw || null,
+    });
     if (opts?.inferInterviewStage && /interview tracker/i.test(sheetName)) {
       const roundCols = [
         /phone screen/,
@@ -195,6 +187,8 @@ function parseJobTableFromSheet(
         stage,
         notes,
         appliedAt: appliedAtRaw || null,
+        approved: parseImportApproved(yesNoRaw),
+        resumeUrl: normalizeSheetUrl(resumeRaw),
       },
     });
   }
@@ -394,6 +388,44 @@ function parseTargetJobTitlesSheet(wb: XLSX.WorkBook, sheetName: string): {
   };
 }
 
+function parseKeywordsSheet(wb: XLSX.WorkBook, sheetName: string): {
+  prioritizedCategories: ImportRow<string>[];
+  deprioritizedCategories: ImportRow<string>[];
+} {
+  const sheet = wb.Sheets[sheetName];
+  if (!sheet) return { prioritizedCategories: [], deprioritizedCategories: [] };
+  const rows = sheetRows(wb, sheetName);
+  const prioritized: ImportRow<string>[] = [];
+  const deprioritized: ImportRow<string>[] = [];
+  let mode: "use" | "avoid" | null = null;
+
+  for (let r = 0; r < rows.length; r++) {
+    const col0 = getCellDisplay(sheet, r, 0);
+    const col1 = getCellDisplay(sheet, r, 1);
+    const lower0 = col0.toLowerCase();
+
+    if (/keywords to use|to use|prioritized/i.test(lower0)) {
+      mode = "use";
+      continue;
+    }
+    if (/keywords to avoid|to avoid|deprioritized|pass on/i.test(lower0)) {
+      mode = "avoid";
+      continue;
+    }
+    if (/^keyword|^search/i.test(lower0) && !col1) continue;
+
+    for (const text of [col0, col1]) {
+      if (!text || text.length < 2) continue;
+      if (/^(use|avoid|keyword)/i.test(text)) continue;
+      const row: ImportRow<string> = { id: nextId("kw"), selected: true, source: sheetName, data: text };
+      if (mode === "avoid") deprioritized.push(row);
+      else prioritized.push(row);
+    }
+  }
+
+  return { prioritizedCategories: prioritized, deprioritizedCategories: deprioritized };
+}
+
 function parseWeeklyActivitySheet(wb: XLSX.WorkBook, sheetName: string): string | null {
   const sheet = wb.Sheets[sheetName]!;
   const rows = sheetRows(wb, sheetName);
@@ -494,6 +526,7 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
   const companiesSheet = findSheet(wb, [/target companies/]);
   const titlesSheet = findSheet(wb, [/target job titles/, /^job titles$/]);
   const weeklySheet = findSheet(wb, [/weekly activity/]);
+  const keywordsSheet = findSheet(wb, [/key word/, /keyword/]);
 
   const pipelineJobs = collectJobsFromWorkbook(wb);
   const contacts = contactSheet ? parseContactListSheet(wb, contactSheet) : [];
@@ -502,6 +535,9 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
     ? parseTargetJobTitlesSheet(wb, titlesSheet)
     : { targetRoles: [], deprioritizedRoles: [], avoidNotes: null };
   const searchDuration = weeklySheet ? parseWeeklyActivitySheet(wb, weeklySheet) : null;
+  const keywords = keywordsSheet
+    ? parseKeywordsSheet(wb, keywordsSheet)
+    : { prioritizedCategories: [], deprioritizedCategories: [] };
 
   if (!pipelineJobs.length) {
     warnings.push(
@@ -521,6 +557,8 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
     profile: {
       targetRoles: titles.targetRoles,
       deprioritizedRoles: titles.deprioritizedRoles,
+      prioritizedCategories: keywords.prioritizedCategories,
+      deprioritizedCategories: keywords.deprioritizedCategories,
       searchDuration,
       avoidNotes: titles.avoidNotes,
       proposed: {},
@@ -539,6 +577,14 @@ export function mergeImportPreviews(base: ClientImportPreview, extra: ClientImpo
     profile: {
       targetRoles: [...base.profile.targetRoles, ...extra.profile.targetRoles],
       deprioritizedRoles: [...base.profile.deprioritizedRoles, ...extra.profile.deprioritizedRoles],
+      prioritizedCategories: [
+        ...(base.profile.prioritizedCategories ?? []),
+        ...(extra.profile.prioritizedCategories ?? []),
+      ],
+      deprioritizedCategories: [
+        ...(base.profile.deprioritizedCategories ?? []),
+        ...(extra.profile.deprioritizedCategories ?? []),
+      ],
       searchDuration: extra.profile.searchDuration || base.profile.searchDuration,
       avoidNotes: [base.profile.avoidNotes, extra.profile.avoidNotes].filter(Boolean).join("\n") || null,
       proposed: { ...base.profile.proposed, ...extra.profile.proposed },
@@ -557,6 +603,8 @@ export function emptyImportPreview(): ClientImportPreview {
     profile: {
       targetRoles: [],
       deprioritizedRoles: [],
+      prioritizedCategories: [],
+      deprioritizedCategories: [],
       searchDuration: null,
       avoidNotes: null,
       proposed: {},
