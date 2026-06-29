@@ -89,6 +89,12 @@ export type ClientImportApplyPayload = {
   /** Job tracker wizard dedupe / conflict options. */
   jobImportOptions?: JobTrackerImportOptions;
   preview: ClientImportPreview;
+  /** Optional metadata for import history (type, file name, paste vs file). */
+  importMeta?: {
+    importType?: string;
+    fileName?: string | null;
+    sourceKind?: "file" | "paste";
+  };
 };
 
 export type ImportListAudit = {
@@ -132,4 +138,6 @@ export type ClientImportApplyResult = {
   referenceDocumentsStored: number;
   audit: ClientImportApplyAudit;
   errors: string[];
+  /** Set when the run was persisted to ImportRun history. */
+  runId?: string;
 };
