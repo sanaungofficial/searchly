@@ -1,3 +1,4 @@
+import { ensureAssetResumeParsed, hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, parsedResumeToText } from "@/lib/resume-parse";
 import type { Profile, UserAsset } from "@prisma/client";
@@ -7,7 +8,9 @@ export function resumeTextFromAsset(asset: Pick<UserAsset, "resumeText" | "parse
   return asset.resumeText?.trim() || (parsed ? parsedResumeToText(parsed) : "");
 }
 
-export function resumeTextFromProfile(profile: Pick<Profile, "resumeText" | "parsedData"> | null): string {
+export function resumeTextFromProfile(
+  profile: { resumeText?: string | null; parsedData?: unknown } | null,
+): string {
   const direct = profile?.resumeText?.trim() ?? "";
   if (direct) return direct;
   const parsed = normalizeParsedResumeData(profile?.parsedData);
@@ -21,11 +24,16 @@ export async function resolveResumeTextForUser(
   assetId?: string | null,
 ): Promise<string> {
   if (assetId?.trim()) {
-    const asset = await prisma.userAsset.findFirst({
-      where: { id: assetId.trim(), userId, type: "RESUME" },
-    });
-    if (!asset) return "";
-    return resumeTextFromAsset(asset);
+    const id = assetId.trim();
+    let asset = await hydrateResumeAsset(id, userId);
+    if (asset) {
+      let text = resumeTextFromAsset(asset);
+      if (!text && asset.url) {
+        asset = (await ensureAssetResumeParsed(id, userId)) ?? asset;
+        text = resumeTextFromAsset(asset);
+      }
+      if (text) return text;
+    }
   }
 
   const fromProfile = resumeTextFromProfile(profile);
@@ -40,5 +48,14 @@ export async function resolveResumeTextForUser(
       orderBy: { updatedAt: "desc" },
     }));
 
-  return primary ? resumeTextFromAsset(primary) : "";
+  if (!primary) return "";
+
+  const hydrated = await hydrateResumeAsset(primary.id, userId);
+  const asset = hydrated ?? primary;
+  let text = resumeTextFromAsset(asset);
+  if (!text && asset.url) {
+    const parsed = await ensureAssetResumeParsed(primary.id, userId);
+    if (parsed) text = resumeTextFromAsset(parsed);
+  }
+  return text;
 }
