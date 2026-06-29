@@ -1823,11 +1823,11 @@ export function ResumeMatchDrawer({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={selectedSections.size === 0 || !activeResumeId}
+              disabled={selectedSections.size === 0}
               style={{
                 flex: 1,
                 padding: "14px",
-                ...(selectedSections.size > 0 && activeResumeId ? scoutPrimaryCtaStyle : {
+                ...(selectedSections.size > 0 ? scoutPrimaryCtaStyle : {
                   background: "rgba(0,0,0,0.05)",
                   color: "var(--scout-muted)",
                   border: "none",
@@ -1836,7 +1836,7 @@ export function ResumeMatchDrawer({
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: selectedSections.size > 0 && activeResumeId ? "pointer" : "not-allowed",
+                cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
                 letterSpacing: "0.3px",
               }}
             >

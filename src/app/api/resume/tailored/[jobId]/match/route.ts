@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { resolveResumeTextForUser } from "@/lib/resolve-resume-text";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   if (!isKimchiAiConfigured()) {
@@ -15,12 +16,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
 
   const { jobId } = await params;
 
-  const [job, profile, dbUser] = await Promise.all([
-    prisma.job.findUnique({ where: { id: jobId } }),
-    prisma.profile.findFirst({ where: { user: { email: user.email! } } }),
-    prisma.user.findUnique({ where: { email: user.email! }, select: { id: true } }),
-  ]);
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true },
+  });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  const job = await prisma.job.findFirst({ where: { id: jobId, userId: dbUser.id } });
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   const jobContext = [
@@ -29,7 +31,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
     job.notes ? `Description: ${job.notes}` : "",
   ].filter(Boolean).join("\n");
 
-  const resumeText = profile?.resumeText || "";
+  const resumeText = await resolveResumeTextForUser(dbUser.id, dbUser.profile, null);
+  if (!resumeText) {
+    return NextResponse.json({ error: "No resume found" }, { status: 404 });
+  }
 
   if (!jobContext.trim()) {
     return NextResponse.json({ score: 0, matched: [], missing: [], total: 0 });
@@ -42,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
     tier: "analyze",
     prompt: promptContent,
     maxOutputTokens: 512,
-    userId: dbUser?.id,
+    userId: dbUser.id,
     tags: ["feature:resume-match"],
   });
 
