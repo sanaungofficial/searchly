@@ -438,7 +438,7 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
         )}
         <UserAssetsList
           assets={referenceFiles}
-          onRemove={handleRemoveReferenceFile}
+          onDelete={handleRemoveReferenceFile}
           emptyMessage="No strategy reference files yet."
         />
         <div style={{ marginTop: 12 }}>
