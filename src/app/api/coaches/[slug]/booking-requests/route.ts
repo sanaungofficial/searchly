@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientCoachingUser, findCoachBySlugOrId } from "@/lib/coach-api";
-import { isCoachAssignedToUser } from "@/lib/coach-client-assignment";
 import {
   createCoachBookingRequest,
   resolveCoachBookingRequestEmail,
@@ -36,13 +35,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const { slug } = await params;
   const coach = await findCoachBySlugOrId(slug, me.id);
   if (!coach) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
-
-  if (coach.requiresAssignment) {
-    const assigned = await isCoachAssignedToUser(coach.id, me.id);
-    if (!assigned) {
-      return NextResponse.json({ error: "Contact your Second Ladder team to get assigned to this coach." }, { status: 403 });
-    }
-  }
 
   const hasDirectBooking = Boolean(coach.nylasSchedulerConfigId && isNylasConfigured());
   if (hasDirectBooking) {

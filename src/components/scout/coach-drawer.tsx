@@ -214,11 +214,7 @@ export function CoachDrawer({
 
   const sessionDurationMinutes = coach?.schedulerDurationMinutes ?? 60;
   const canBookInApp = Boolean(coach?.hasNylasBooking);
-  const canRequestBooking = Boolean(
-    coach &&
-      !coach.hasNylasBooking &&
-      !(coach.requiresAssignment && !coach.isMyCoach),
-  );
+  const canRequestBooking = Boolean(coach && !coach.hasNylasBooking);
 
   useEffect(() => {
     if (!coach?.hasNylasBooking || !slug) return;

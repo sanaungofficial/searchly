@@ -9,6 +9,11 @@ import {
   buildCoachExperienceCompanies,
   type CoachCompanyLookupMeta,
 } from "@/lib/coach-experience-companies";
+import {
+  buildCoachProfileEducationEntries,
+  buildCoachProfileExperienceEntries,
+  orgNamesForCoachProfileLookups,
+} from "@/lib/coach-profile-experience";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -83,6 +88,82 @@ function CredentialRow({ icon, label }: { icon: string; label: string }) {
   );
 }
 
+function ExperienceEntryRow({
+  title,
+  company,
+  dateLabel,
+  lookup,
+}: {
+  title: string | null;
+  company: string;
+  dateLabel: string | null;
+  lookup: CoachCompanyLookupMeta | undefined;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", borderBottom: line }}>
+      <CompanyLogo
+        name={lookup?.name ?? company}
+        logoUrl={lookup?.logoUrl}
+        website={lookup?.website}
+        size={40}
+        borderRadius={8}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            {title && (
+              <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 2px", color: color.ink, lineHeight: 1.35 }}>
+                {title}
+              </p>
+            )}
+            {company && (
+              <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, margin: title ? "2px 0 0" : 0, lineHeight: 1.4 }}>
+                {company}
+              </p>
+            )}
+          </div>
+          {dateLabel && (
+            <span style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, whiteSpace: "nowrap", flexShrink: 0 }}>
+              {dateLabel}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EducationEntryRow({
+  school,
+  degree,
+  lookup,
+}: {
+  school: string;
+  degree: string | null;
+  lookup: CoachCompanyLookupMeta | undefined;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", borderBottom: line }}>
+      <CompanyLogo
+        name={lookup?.name ?? school}
+        logoUrl={lookup?.logoUrl}
+        website={lookup?.website}
+        size={40}
+        borderRadius={8}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: 0, color: color.ink, lineHeight: 1.35 }}>
+          {school}
+        </p>
+        {degree && (
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, margin: "4px 0 0", lineHeight: 1.4 }}>
+            {degree}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 function CompanyLogoRow({
   companies,
   lookup,
@@ -407,6 +488,12 @@ export function CoachProfileView({
     () => buildCoachExperienceCompanies(coach),
     [coach.currentCompany, coach.firms],
   );
+  const workExperienceEntries = useMemo(() => buildCoachProfileExperienceEntries(coach), [coach.currentRole, coach.currentCompany, coach.firms]);
+  const educationEntries = useMemo(() => buildCoachProfileEducationEntries(coach.schools), [coach.schools]);
+  const orgLookupNames = useMemo(
+    () => orgNamesForCoachProfileLookups(workExperienceEntries, educationEntries),
+    [workExperienceEntries, educationEntries],
+  );
   const coachedMinutesLabel = formatCoachedMinutes(coach.totalCoachedMinutes ?? 0);
   const statsParts = [
     coachedMinutesLabel,
@@ -429,23 +516,27 @@ export function CoachProfileView({
     Boolean(coach.currentCompany || coach.firms[0]);
 
   useEffect(() => {
-    if (!experienceCompanies.length) return;
+    if (!orgLookupNames.length) return;
     let cancelled = false;
-    fetch("/api/coaches/companies/suggest?limit=80")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((items: Array<{ catalogSlug: string; name: string; logoUrl?: string | null; website?: string | null }>) => {
-        if (cancelled || !Array.isArray(items)) return;
+    fetch(`/api/coaches/org-lookup?names=${encodeURIComponent(orgLookupNames.join(","))}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((items: Record<string, { name: string; logoUrl?: string | null; website?: string | null }>) => {
+        if (cancelled || !items || typeof items !== "object") return;
         const map: Record<string, CoachCompanyLookupMeta> = {};
-        for (const item of items) {
-          const slug = item.catalogSlug?.toLowerCase();
-          if (!slug) continue;
-          map[slug] = { name: item.name, logoUrl: item.logoUrl ?? null, website: item.website ?? null, careersUrl: null };
+        for (const [slug, item] of Object.entries(items)) {
+          if (!slug || !item?.name) continue;
+          map[slug.toLowerCase()] = {
+            name: item.name,
+            logoUrl: item.logoUrl ?? null,
+            website: item.website ?? null,
+            careersUrl: null,
+          };
         }
         setCompanyLookup(map);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [experienceCompanies.length]);
+  }, [orgLookupNames.join("|")]);
 
   const bookingSidebar = (
     <div>
@@ -479,7 +570,7 @@ export function CoachProfileView({
           </a>
         ) : (
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: 0, lineHeight: 1.45 }}>
-            {coach.requiresAssignment && !coach.isMyCoach ? "Contact your Second Ladder team to get assigned to this coach." : "Booking is not available for this coach yet."}
+            Booking is not available for this coach yet.
           </p>
         )}
         {bookingAllowed && (
@@ -582,40 +673,33 @@ export function CoachProfileView({
           <ScoutBox padding={20}><p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>{coach.whyCoach}</p></ScoutBox>
         </ContentSection>
       )}
-      {(coach.currentRole || coach.currentCompany || experienceCompanies.length > 0) && (
+      {workExperienceEntries.length > 0 && (
         <ContentSection>
           <SectionHeading title="Work experience" />
           <ScoutBox padding={20}>
-            {(coach.currentRole || coach.currentCompany) && (
-              <div style={{ marginBottom: experienceCompanies.length ? 16 : 0, paddingBottom: experienceCompanies.length ? 16 : 0, borderBottom: experienceCompanies.length ? line : undefined }}>
-                <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: "0 0 4px", color: color.ink }}>{coach.currentRole ?? "Coach"}</p>
-                {coach.currentCompany && <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, margin: "0 0 4px" }}>{coach.currentCompany}</p>}
-                <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>Current role</p>
-              </div>
-            )}
-            {experienceCompanies.map((company) => {
-              const meta = companyLookup[company.key];
-              return (
-                <div key={company.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: line }}>
-                  <CompanyLogo name={meta?.name ?? company.displayName} logoUrl={meta?.logoUrl} website={meta?.website} size={36} borderRadius={8} />
-                  <div>
-                    <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: 0, color: color.ink }}>{company.label}</p>
-                    <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "2px 0 0" }}>Previous experience</p>
-                  </div>
-                </div>
-              );
-            })}
+            {workExperienceEntries.map((entry) => (
+              <ExperienceEntryRow
+                key={entry.id}
+                title={entry.title}
+                company={entry.company}
+                dateLabel={entry.dateLabel}
+                lookup={entry.lookupKey ? companyLookup[entry.lookupKey.toLowerCase()] : undefined}
+              />
+            ))}
           </ScoutBox>
         </ContentSection>
       )}
-      {coach.schools.length > 0 && (
+      {educationEntries.length > 0 && (
         <ContentSection>
           <SectionHeading title="Education" />
           <ScoutBox padding={20}>
-            {coach.schools.map((school) => (
-              <div key={school} style={{ padding: "12px 0", borderBottom: line }}>
-                <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: 0, color: color.ink }}>{school}</p>
-              </div>
+            {educationEntries.map((entry) => (
+              <EducationEntryRow
+                key={entry.id}
+                school={entry.school}
+                degree={entry.degree}
+                lookup={entry.lookupKey ? companyLookup[entry.lookupKey.toLowerCase()] : undefined}
+              />
             ))}
           </ScoutBox>
         </ContentSection>
@@ -652,16 +736,6 @@ export function CoachProfileView({
         <ContentSection>
           <SectionHeading title="Shared with you" />
           <ScoutBox padding={20}><ClientCoachSharedDocuments coachProfileId={coach.id} coachName={coach.displayName} compact /></ScoutBox>
-        </ContentSection>
-      )}
-      {matchReasons.length > 0 && (
-        <ContentSection>
-          <SectionHeading title="Why clients work with them" />
-          <ScoutBox padding={20}>
-            <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
-              {matchReasons.slice(0, 5).map((r) => <li key={r} style={{ marginBottom: 6 }}>{r}</li>)}
-            </ul>
-          </ScoutBox>
         </ContentSection>
       )}
     </>

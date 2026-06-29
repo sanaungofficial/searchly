@@ -1,6 +1,11 @@
 import {
   type CoachSchedulerAvailabilitySettings,
+  type SchedulerDayHours,
+  DEFAULT_OPEN_DAYS,
+  DEFAULT_OPEN_HOUR_END,
+  DEFAULT_OPEN_HOUR_START,
   schedulerAvailabilityFromProfile,
+  weeklyHoursFromLegacyProfile,
   WEEKDAY_LABELS,
 } from "@/lib/coach-scheduler-settings";
 
@@ -31,12 +36,23 @@ function timezoneAbbreviation(timezone: string): string {
   }
 }
 
+/** When a coach has no hours configured, fall back to Mon–Fri 9am–5pm so request-to-book always has slots. */
+function weeklyHoursWithDefaults(weeklyHours: SchedulerDayHours[]): SchedulerDayHours[] {
+  if (weeklyHours.some((row) => row.enabled)) return weeklyHours;
+  return weeklyHoursFromLegacyProfile({
+    schedulerOpenHourStart: DEFAULT_OPEN_HOUR_START,
+    schedulerOpenHourEnd: DEFAULT_OPEN_HOUR_END,
+    schedulerOpenDays: [...DEFAULT_OPEN_DAYS],
+  });
+}
+
 /** Human-readable summary of a coach's configured weekly hours (not live calendar sync). */
 export function formatCoachAvailabilitySummary(
   profile: Parameters<typeof schedulerAvailabilityFromProfile>[0],
 ): { summary: string; timezone: string; availabilityNotes: string | null } {
   const settings = schedulerAvailabilityFromProfile(profile);
-  const enabled = settings.weeklyHours.filter((row) => row.enabled);
+  const weeklyHours = weeklyHoursWithDefaults(settings.weeklyHours);
+  const enabled = weeklyHours.filter((row) => row.enabled);
   const tz = settings.timezone;
   const tzShort = timezoneAbbreviation(tz);
 
@@ -113,7 +129,7 @@ export function generateConceptualAvailabilitySlots(
   const slotSeconds = durationMinutes * 60;
   const startDate = startOfLocalDay(options?.startDate ?? new Date());
   const dayCount = options?.days ?? 14;
-  const weeklyByDay = new Map(settings.weeklyHours.map((row) => [row.day, row]));
+  const weeklyByDay = new Map(weeklyHoursWithDefaults(settings.weeklyHours).map((row) => [row.day, row]));
   const slots: ConceptualSlot[] = [];
   const nowSec = Math.floor(Date.now() / 1000);
 
