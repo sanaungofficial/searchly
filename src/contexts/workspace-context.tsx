@@ -10,7 +10,6 @@ import { ImpersonationBanner, type ImpersonationState } from "@/components/admin
 import { AdminClientReviewBanner } from "@/components/admin/admin-client-review-banner";
 import { isStaffPortalRole } from "@/lib/staff-portal";
 import {
-  setActingUserScope,
   getActingUserScope,
   loadStaffDashboardView,
   saveStaffDashboardView,
@@ -21,6 +20,7 @@ import {
   clearAdminReviewClient,
   type AdminReviewMeta,
 } from "@/lib/client-session";
+import { commitActingUserScope } from "@/lib/commit-acting-user-scope";
 import { parseAdminClientProfilePath, readClientUserIdFromBrowserSearch, withClientUserId, withClientReviewPagePath } from "@/lib/workspace-urls";
 import { isPublicCoachingPath } from "@/lib/auth-return-url";
 
@@ -180,7 +180,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setAdminReviewClientIdState(id);
     if (id) {
       setAdminReviewClient(id, meta);
-      setActingUserScope(id);
+      commitActingUserScope(id);
       setAdminReviewClientMeta(meta ?? getAdminReviewMeta());
     } else {
       clearAdminReviewClient();
@@ -260,7 +260,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (reviewId && reviewId !== adminReviewClientId) {
       setAdminReviewClientIdState(reviewId);
       setActingUserId(reviewId);
-      setActingUserScope(reviewId);
+      commitActingUserScope(reviewId);
       const meta = getAdminReviewMeta();
       if (meta) setAdminReviewClientMeta(meta);
     }
@@ -360,7 +360,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             setAdminReviewClientId(null);
             clearAdminReviewClient();
             setActingUserId(data.impersonating.userId ?? data.userId ?? null);
-            setActingUserScope(data.impersonating.userId ?? data.userId ?? null);
+            commitActingUserScope(data.impersonating.userId ?? data.userId ?? null);
             reviewClientId = null;
           } else {
             setImpersonation({ active: false });
@@ -370,7 +370,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             if (reviewClientId) {
               setAdminReviewClientIdState(reviewClientId);
               setActingUserId(reviewClientId);
-              setActingUserScope(reviewClientId);
+              commitActingUserScope(reviewClientId);
               setAdminReviewClient(reviewClientId, {
                 name: profileName,
                 email: profileEmail,
@@ -378,7 +378,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               setAdminReviewClientMeta({ name: profileName, email: profileEmail });
             } else {
               setActingUserId(data.userId ?? null);
-              setActingUserScope(data.userId ?? null);
+              commitActingUserScope(data.userId ?? null);
             }
           }
         } else if (res.status === 401) {
@@ -403,7 +403,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               setAdminReviewClientId(null);
               clearAdminReviewClient();
               setActingUserId(imp.user.id);
-              setActingUserScope(imp.user.id);
+              commitActingUserScope(imp.user.id);
               reviewClientId = null;
             }
           }

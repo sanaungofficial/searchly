@@ -32,6 +32,45 @@ function resolveStorageKey(filtersKey: string): string {
   return `${CACHE_PREFIX}:${scopeKey()}:${filtersKey}`;
 }
 
+function storageKeyForScope(scope: string, filtersKey: string): string {
+  return `${CACHE_PREFIX}:${scope}:${filtersKey}`;
+}
+
+/** Move entries when profile resolves actingUserId (cache may have been written under "self"). */
+export function migrateRecommendedCacheScope(fromScope: string, toScope: string): void {
+  if (typeof window === "undefined" || fromScope === toScope) return;
+
+  const fromPrefix = `${CACHE_PREFIX}:${fromScope}:`;
+  for (const [key, entry] of [...memoryByStorageKey.entries()]) {
+    if (!key.startsWith(fromPrefix)) continue;
+    const filtersKey = key.slice(fromPrefix.length);
+    memoryByStorageKey.set(storageKeyForScope(toScope, filtersKey), entry);
+    memoryByStorageKey.delete(key);
+  }
+
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith(fromPrefix)) keys.push(key);
+    }
+    for (const key of keys) {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) continue;
+      const filtersKey = key.slice(fromPrefix.length);
+      sessionStorage.setItem(storageKeyForScope(toScope, filtersKey), raw);
+      sessionStorage.removeItem(key);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  if (defaultFeedLoadedScopes.has(fromScope)) {
+    defaultFeedLoadedScopes.delete(fromScope);
+    defaultFeedLoadedScopes.add(toScope);
+  }
+}
+
 export function readRecommendedCache(filtersKey: string): RecommendedCacheEntry | null {
   if (typeof window === "undefined") return null;
   const key = resolveStorageKey(filtersKey);
