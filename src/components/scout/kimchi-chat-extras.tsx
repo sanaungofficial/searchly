@@ -17,6 +17,7 @@ export function KimchiAssistantChipRow({
   onActivate,
   layout = "inline",
   emphasis,
+  bruddle = false,
 }: {
   chips: AssistantChip[];
   label?: string;
@@ -25,6 +26,8 @@ export function KimchiAssistantChipRow({
   layout?: "stack" | "inline";
   /** cta = solid colorful action buttons (Strut-style) */
   emphasis?: "default" | "cta";
+  /** Bruddle offset shadow on inline chips */
+  bruddle?: boolean;
 }) {
   if (chips.length === 0) return null;
 
@@ -32,7 +35,9 @@ export function KimchiAssistantChipRow({
   const cta = emphasis === "cta";
 
   return (
-    <div className={`kimchi-chips${inline ? " kimchi-chips--inline" : ""}${cta ? " kimchi-chips--cta" : ""}`}>
+    <div
+      className={`kimchi-chips${inline ? " kimchi-chips--inline" : ""}${cta ? " kimchi-chips--cta" : ""}${bruddle ? " kimchi-chips--bruddle" : ""}`}
+    >
       {label && <p className="kimchi-chips__label">{label}</p>}
       <div className="kimchi-chips__row">
         {chips.map((chip) => (
@@ -487,6 +492,21 @@ function KimchiChipStyles() {
         background: #fff;
         border: var(--scout-border);
         box-shadow: none;
+      }
+      .kimchi-chips--bruddle.kimchi-chips--inline .kimchi-chips__chip,
+      .kimchi-chips--bruddle.kimchi-chips--cta .kimchi-chips__chip {
+        border: 1.5px solid #161616;
+        box-shadow: 2px 2px 0 #000000;
+      }
+      .kimchi-chips--bruddle.kimchi-chips--inline .kimchi-chips__chip:hover,
+      .kimchi-chips--bruddle.kimchi-chips--cta .kimchi-chips__chip:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 3px 3px 0 #000000;
+      }
+      .kimchi-chips--bruddle.kimchi-chips--inline .kimchi-chips__chip:active,
+      .kimchi-chips--bruddle.kimchi-chips--cta .kimchi-chips__chip:active {
+        transform: translate(1px, 1px);
+        box-shadow: 1px 1px 0 #000000;
       }
     `}</style>
   );
