@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { getHirebaseProfileFromEnrichment } from "@/lib/hirebase-company-sync";
-import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutGoldBtn } from "./scout-box";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { ScoutModal } from "./scout-modal";
 import type { CachedJob } from "@/lib/cached-job";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
@@ -18,6 +18,7 @@ import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import { dedupeTrackedCompanies } from "@/lib/tracked-companies-dedupe";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
+import { MatchWhyScorePopover, filterMatchReasons } from "@/components/scout/match-why-score-ui";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
@@ -1323,6 +1324,90 @@ function CompanyDrawer({
 
 // ── Suggested companies ──────────────────────────────────────────────────────
 
+const SUGGESTED_COMPANY_LIMIT = 6;
+
+function companyRecommendationReasons(rec: CompanyRecommendation): string[] {
+  const base = filterMatchReasons(rec.reasons);
+  if (rec.aiBlurb?.trim()) {
+    const blurb = rec.aiBlurb.trim();
+    const rest = base.filter((r) => r !== blurb);
+    return [blurb, ...rest].slice(0, 4);
+  }
+  return base;
+}
+
+function CompanySuggestionChip({
+  rec,
+  adding,
+  onAdd,
+}: {
+  rec: CompanyRecommendation;
+  adding: boolean;
+  onAdd: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const reasons = companyRecommendationReasons(rec);
+
+  const chip = (
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={adding}
+      aria-label={adding ? `Adding ${rec.name}` : `Add ${rec.name} to watchlist`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: "12px 10px",
+        minHeight: 88,
+        width: "100%",
+        border: hovered ? border.lineStrong : border.line,
+        borderRadius: "var(--scout-radius)",
+        background: hovered ? "#ebe6df" : surface.inset,
+        boxShadow: hovered ? "inset 0 0 0 1px rgba(26,58,47,0.08)" : "3px 3px 0 rgba(17,17,17,0.06)",
+        cursor: adding ? "default" : "pointer",
+        opacity: adding ? 0.65 : 1,
+        transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
+      }}
+    >
+      <CompanyLogo name={rec.name} website={rec.website} careersUrl={rec.careersUrl} size={28} borderRadius={0} />
+      <span
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.caption,
+          fontWeight: 600,
+          color: color.ink,
+          textAlign: "center",
+          lineHeight: 1.25,
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          width: "100%",
+        }}
+      >
+        {adding ? "Adding…" : rec.name}
+      </span>
+    </button>
+  );
+
+  if (reasons.length === 0) return chip;
+
+  return (
+    <MatchWhyScorePopover
+      reasons={reasons}
+      matchedSkills={[]}
+      whyTitle="Why This Company Is A Good Target"
+    >
+      {chip}
+    </MatchWhyScorePopover>
+  );
+}
+
 function SuggestedForYouSection({
   recommendations,
   loading,
@@ -1344,7 +1429,10 @@ function SuggestedForYouSection({
   onRefresh: () => void;
   onRefreshWithAi: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const visible = recommendations.filter((rec) => !watchlistSlugs.has(rec.catalogSlug));
+  const hasMore = visible.length > SUGGESTED_COMPANY_LIMIT;
+  const shown = expanded ? visible : visible.slice(0, SUGGESTED_COMPANY_LIMIT);
   if (!loading && visible.length === 0) return null;
 
   return (
@@ -1353,7 +1441,7 @@ function SuggestedForYouSection({
         <div>
           <ScoutLabel>Suggested for you</ScoutLabel>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "6px 0 0", lineHeight: 1.5, maxWidth: 520 }}>
-            Picked from your roles, skills, and background — free to browse. Optional AI adds a one-line fit note (1 credit).
+            Picked from your roles, skills, and background. Hover for fit notes — click to add. Optional AI adds richer rationale (1 credit).
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1369,48 +1457,49 @@ function SuggestedForYouSection({
       {loading && visible.length === 0 ? (
         <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>Loading suggestions…</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {visible.map((rec) => (
-            <div
-              key={rec.catalogSlug}
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+              gap: 10,
+            }}
+          >
+            {shown.map((rec) => (
+              <CompanySuggestionChip
+                key={rec.catalogSlug}
+                rec={rec}
+                adding={addingSlug === rec.catalogSlug}
+                onAdd={() => onAdd(rec)}
+              />
+            ))}
+          </div>
+          {hasMore && !expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
               style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 12,
-                padding: "12px 14px",
-                border: border.line,
-                background: surface.inset,
-                flexWrap: "wrap",
+                marginTop: 12,
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                fontWeight: 600,
+                color: color.forest,
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                textDecoration: "underline",
               }}
             >
-              <CompanyLogo name={rec.name} website={rec.website} careersUrl={rec.careersUrl} size={32} borderRadius={0} />
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink }}>{rec.name}</div>
-                {rec.type && (
-                  <div style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 2 }}>{rec.type}</div>
-                )}
-                {(rec.aiBlurb || rec.reasons[0]) && (
-                  <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, marginTop: 6, lineHeight: 1.45 }}>
-                    {rec.aiBlurb ?? rec.reasons.join(" · ")}
-                  </div>
-                )}
-              </div>
-              <ScoutGoldBtn
-                type="button"
-                onClick={() => onAdd(rec)}
-                disabled={addingSlug === rec.catalogSlug}
-                style={{ flexShrink: 0, minHeight: 36 }}
-              >
-                {addingSlug === rec.catalogSlug ? "Adding…" : "Add"}
-              </ScoutGoldBtn>
-            </div>
-          ))}
-        </div>
+              Show {visible.length - SUGGESTED_COMPANY_LIMIT} more
+            </button>
+          )}
+        </>
       )}
 
       {aiEnriched && (
         <div style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12 }}>
-          AI fit notes shown for top picks.
+          AI fit notes available on hover for top picks.
         </div>
       )}
     </ScoutBox>
