@@ -14,18 +14,13 @@ export async function resolveAdminClientSubject(
   acting: ActingUserResult,
   clientUserId: string | null | undefined,
 ): Promise<{ subject: User | null; error?: NextResponse }> {
-  if (!clientUserId) {
+  // Impersonation cookie always wins — ignore stale ?clientUserId= left from admin review.
+  if (acting.isImpersonating) {
     return { subject: acting.dbUser };
   }
 
-  if (acting.isImpersonating) {
-    return {
-      subject: null,
-      error: NextResponse.json(
-        { error: "Use impersonation or admin profile review — not both" },
-        { status: 400 },
-      ),
-    };
+  if (!clientUserId) {
+    return { subject: acting.dbUser };
   }
 
   if (!canAccessAdminClientTools(acting)) {

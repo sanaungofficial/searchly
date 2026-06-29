@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ScoutBox } from "@/components/scout/scout-box";
-import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
+import { clearAdminReviewClient, clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 
 export type DrawerUser = {
@@ -132,6 +132,7 @@ export function UserDrawer({
       if (!res.ok) throw new Error("Failed");
       const body = await res.json().catch(() => ({})) as { user?: { id?: string } };
       onClose();
+      clearAdminReviewClient();
       clearClientSessionCaches();
       if (body.user?.id) setActingUserScope(body.user.id);
       window.location.href = "/profile";
