@@ -103,7 +103,7 @@ async function handleRecommended(request: Request) {
     parsedData,
   });
 
-  if (!hasSignals) {
+  if (!hasSignals && !semanticQuery) {
     return NextResponse.json(
       {
         error: "Add target roles in your profile or upload a resume to see recommendations.",

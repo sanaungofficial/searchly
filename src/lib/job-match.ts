@@ -32,6 +32,78 @@ export function buildMatchRoles(profileRoles: string[], companyTargetRoles: stri
 }
 
 /** Keywords for Hirebase `keywords` filter — broader than full job titles. */
+const EXECUTIVE_TITLE_RE =
+  /\b(chief|ceo|cfo|cto|cmo|cro|cpo|cio|president|evp|svp|vp|vice president|executive director|managing director|general manager)\b/i;
+
+/** True when the user is explicitly searching for leadership / executive titles. */
+export function searchTargetsExecutiveRoles(query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return false;
+  if (EXECUTIVE_TITLE_RE.test(q)) return true;
+  return /\b(director|head of|principal|staff engineer|distinguished)\b/i.test(q);
+}
+
+/** Drop C-suite / VP postings when the search phrase targets IC or mid-level roles. */
+export function isExecutiveJobTitle(title: string): boolean {
+  return EXECUTIVE_TITLE_RE.test(title.trim());
+}
+
+/** Build ATS-style title list for Hirebase `/v2/jobs/search` — full phrase first, then comma-separated alts. */
+export function buildActiveRoleSearchTitles(query: string, filterJobTitles?: string[]): string[] {
+  const fromFilters = (filterJobTitles ?? []).map((t) => t.trim()).filter(Boolean);
+  if (fromFilters.length) return fromFilters.slice(0, 20);
+
+  const phrase = query.trim();
+  if (!phrase) return [];
+
+  const parts = phrase
+    .split(/[,;\n|]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length >= 3);
+  if (parts.length > 1) return [...new Set(parts)].slice(0, 10);
+
+  return [phrase];
+}
+
+/** Higher score = closer title match to the user's search phrase. */
+export function roleSearchRelevanceScore(jobTitle: string, searchRoles: string[]): number {
+  const title = jobTitle.trim().toLowerCase();
+  if (!title || !searchRoles.length) return 0;
+
+  let best = 0;
+  for (const role of searchRoles) {
+    const phrase = role.trim().toLowerCase();
+    if (!phrase) continue;
+    if (title === phrase) {
+      best = Math.max(best, 100);
+      continue;
+    }
+    if (phrase.length >= 4 && title.includes(phrase)) {
+      best = Math.max(best, 92);
+      continue;
+    }
+    if (isJobMatch(jobTitle, [role])) {
+      const words = phrase.split(/\s+/).filter((w) => w.length >= 3 && !ROLE_STOP_WORDS.has(w));
+      const matched = words.filter((w) => title.includes(w)).length;
+      best = Math.max(best, 55 + Math.round((matched / Math.max(words.length, 1)) * 35));
+    }
+  }
+  return best;
+}
+
+export function compareRoleSearchRelevance(
+  titleA: string,
+  titleB: string,
+  searchQuery: string,
+  searchRoles?: string[],
+): number {
+  const roles = searchRoles?.length ? searchRoles : buildActiveRoleSearchTitles(searchQuery);
+  const scoreB = roleSearchRelevanceScore(titleB, roles);
+  const scoreA = roleSearchRelevanceScore(titleA, roles);
+  if (scoreB !== scoreA) return scoreB - scoreA;
+  return titleA.localeCompare(titleB);
+}
+
 export function roleSearchKeywords(matchRoles: string[]): string[] {
   const seen = new Set<string>();
   const keywords: string[] = [];

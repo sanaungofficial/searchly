@@ -44,6 +44,7 @@ import {
   clearPipelineNetworkMatchCache,
 } from "@/lib/pipeline-network-match-cache";
 import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
+import { compareRoleSearchRelevance } from "@/lib/job-match";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { networkAgencyDisplayName } from "@/lib/network-job-display";
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
@@ -55,6 +56,8 @@ import {
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel } from "./score-explainer-popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useHoverCapable } from "@/hooks/use-hover-capable";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
@@ -495,6 +498,85 @@ function MetadataGrid({
   );
 }
 
+function MatchWhyScorePopover({
+  reasons,
+  matchedSkills,
+  children,
+}: {
+  reasons: string[];
+  matchedSkills: string[];
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const hoverCapable = useHoverCapable();
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasContent = reasons.length > 0 || matchedSkills.length > 0;
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    if (!hoverCapable) return;
+    clearCloseTimer();
+    closeTimer.current = setTimeout(() => setOpen(false), 180);
+  }, [clearCloseTimer, hoverCapable]);
+
+  const show = useCallback(() => {
+    if (!hoverCapable || !hasContent) return;
+    clearCloseTimer();
+    setOpen(true);
+  }, [clearCloseTimer, hasContent, hoverCapable]);
+
+  if (!hasContent) return <>{children}</>;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger asChild>
+        <div
+          onMouseEnter={show}
+          onMouseLeave={scheduleClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!hoverCapable) setOpen((v) => !v);
+          }}
+          style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: hoverCapable ? "default" : "pointer" }}
+        >
+          {children}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="left"
+        sideOffset={8}
+        collisionPadding={12}
+        avoidCollisions
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onMouseEnter={show}
+        onMouseLeave={scheduleClose}
+        className="rounded-[var(--scout-radius)] border-0 bg-transparent p-0 shadow-none outline-none"
+        style={{
+          width: 320,
+          maxWidth: "min(320px, calc(100vw - 24px))",
+          maxHeight: 280,
+          overflowY: "auto",
+          zIndex: 10000,
+          background: surface.card,
+          border: border.lineStrong,
+          boxShadow: "4px 4px 0 rgba(17,17,17,0.08)",
+          padding: "14px 16px 12px",
+          borderRadius: "var(--scout-radius)",
+        }}
+      >
+        <WhyMatchPanel reasons={reasons} matchedSkills={matchedSkills} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function RecommendedJobCard({
   row,
   savingKey,
@@ -516,7 +598,6 @@ function RecommendedJobCard({
   setSavingKey: (key: string | null) => void;
   setNetworkSavingId: (id: string | null) => void;
 }) {
-  const [showWhy, setShowWhy] = useState(false);
   const isNetwork = Boolean(row._networkJob);
   const networkJob = row._networkJob;
 
@@ -548,9 +629,7 @@ function RecommendedJobCard({
   const matchLabel = row.matchLabel ?? "";
   const reasons = (row.matchReasons ?? []).filter((r) => !isLowQualityMatchReason(r)).slice(0, 4);
   const matchedSkills = (row.matchedSkills ?? []).slice(0, 6);
-  const hasWhyContent = reasons.length > 0 || matchedSkills.length > 0;
 
-  const score = matchScoreStyle(matchScore);
   const panelBg = matchScore >= 75 ? "#0D2419" : matchScore >= 60 ? "#1F1508" : "#1A1A1A";
 
   const postedDays = !isNetwork && row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
@@ -588,10 +667,7 @@ function RecommendedJobCard({
           }}
           style={{ flex: 1, padding: 18, cursor: "pointer" }}
         >
-          {showWhy && hasWhyContent ? (
-            <WhyMatchPanel reasons={reasons} matchedSkills={matchedSkills} />
-          ) : (
-            <>
+          <>
               {/* Top badge row */}
               {(isNetwork || postedText || row.isTrackedCompany) && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -679,8 +755,7 @@ function RecommendedJobCard({
                   <MetadataGrid row={row} isNetwork={isNetwork} networkJob={networkJob} />
                 </div>
               </div>
-            </>
-          )}
+          </>
         </div>
         <div
           style={{ display: "flex", gap: 8, padding: "0 18px 16px", flexWrap: "wrap", alignItems: "center" }}
@@ -722,8 +797,6 @@ function RecommendedJobCard({
       {/* Right: dark score panel — hover triggers "Why Match" in left content */}
       {matchScore > 0 && (
         <div
-          onMouseEnter={() => setShowWhy(true)}
-          onMouseLeave={() => setShowWhy(false)}
           style={{
             width: 120,
             flexShrink: 0,
@@ -732,27 +805,27 @@ function RecommendedJobCard({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: 8,
-            padding: "20px 12px",
-            cursor: "default",
             borderLeft: "1.5px solid rgba(255,255,255,0.07)",
           }}
         >
-          <CircularMatchScore score={matchScore} />
-          <p
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#FFFFFF",
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              textAlign: "center",
-              margin: 0,
-            }}
-          >
-            {matchLabel} Match
-          </p>
+          <MatchWhyScorePopover reasons={reasons} matchedSkills={matchedSkills}>
+            <CircularMatchScore score={matchScore} />
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#FFFFFF",
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                textAlign: "center",
+                margin: 0,
+                padding: "0 8px 20px",
+              }}
+            >
+              {matchLabel} Match
+            </p>
+          </MatchWhyScorePopover>
         </div>
       )}
     </div>
@@ -1205,22 +1278,22 @@ export function PipelineRecommendedSection({
       if (scoreA > scoreB) byKey.set(listing.dedupeKey, listing);
     }
     for (const nj of networkJobs) {
+      if (hasActiveSearch) break;
       const listing = networkJobToUnifiedListing(nj);
       if (byKey.has(listing.dedupeKey)) continue;
       byKey.set(listing.dedupeKey, listing);
     }
     return [...byKey.values()];
-  }, [jobs, networkJobs, savedKeys]);
+  }, [jobs, networkJobs, savedKeys, hasActiveSearch]);
 
-  const filteredListings = useMemo(
-    () =>
-      [...recommendedListings].sort((a, b) => {
-        const scoreA = a.matchScore ?? 0;
-        const scoreB = b.matchScore ?? 0;
-        return scoreB - scoreA;
-      }),
-    [recommendedListings],
-  );
+  const filteredListings = useMemo(() => {
+    const list = [...recommendedListings];
+    if (hasActiveSearch) {
+      const query = appliedForm.semanticQuery.trim();
+      return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
+    }
+    return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."

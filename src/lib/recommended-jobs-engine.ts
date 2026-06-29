@@ -23,6 +23,7 @@ import {
 } from "@/lib/profile-location";
 import { filterSourcesByRadiusMiles } from "@/lib/job-location-radius";
 import { normalizePostedDateFilters } from "@/lib/job-posted-filter";
+import { extractProfileSkills } from "@/lib/job-fit-ranking";
 import { formatProfileLocation } from "@/lib/recommended-filter-utils";
 import {
   buildProfileVSearchQuery,
@@ -49,9 +50,16 @@ import {
   fetchRecommendedViaProfileSummary,
   fetchRecommendedViaResumeVSearch,
   loadTrackedCompanyIndex,
+  tagSourcesWithLane,
   type RecommendedJobSource,
 } from "@/lib/recommended-jobs-fallback";
-import { extractProfileSkills } from "@/lib/job-fit-ranking";
+import { fetchHirebaseRoleMatchingJobs } from "@/lib/hirebase";
+import {
+  buildActiveRoleSearchTitles,
+  isExecutiveJobTitle,
+  roleSearchRelevanceScore,
+  searchTargetsExecutiveRoles,
+} from "@/lib/job-match";
 import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTokens, type ParsedResumeData } from "@/lib/resume-parse";
@@ -668,6 +676,10 @@ export async function generateRecommendedJobsForUser(
   const requestFilters = input.filters ?? {};
   const semanticQuery = trimVSearchQuery(requestFilters.semanticQuery ?? "");
 
+  if (semanticQuery) {
+    return generateActiveRoleSearchForUser(input, semanticQuery, maxJobs);
+  }
+
   const {
     targetRoles,
     resumeText,
@@ -966,6 +978,87 @@ export async function generateRecommendedJobsForUser(
     resumeVSearch,
     effectiveFilters,
   };
+}
+
+/** Active role search — Hirebase title search only; no recommendation hierarchy or supplements. */
+async function generateActiveRoleSearchForUser(
+  input: GenerateRecommendedInput,
+  semanticQuery: string,
+  maxJobs: number,
+): Promise<GenerateRecommendedResult | null> {
+  const requestFilters = input.filters ?? {};
+  const {
+    resumeText,
+    roleTitlePreferences,
+    profileSkills,
+    nameMatchExcludeTerms,
+  } = await loadUserContext(input.userId);
+
+  const searchRoles = buildActiveRoleSearchTitles(semanticQuery, requestFilters.jobTitles);
+  if (!searchRoles.length) return null;
+
+  const mergedFilters = normalizePostedDateFilters({
+    ...requestFilters,
+    semanticQuery,
+    limit: maxJobs,
+    page: requestFilters.page ?? 1,
+  });
+
+  try {
+    const result = await fetchHirebaseRoleMatchingJobs({
+      matchRoles: searchRoles,
+      semanticQuery,
+      filters: mergedFilters,
+      activeSearch: true,
+    });
+
+    let sources: RecommendedJobSource[] = [];
+    for (let i = 0; i < result.rawJobs.length; i++) {
+      const raw = result.rawJobs[i];
+      const cached = result.jobs[i];
+      if (!cached) continue;
+      sources.push({
+        cached,
+        companyName: result.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
+        raw,
+      });
+    }
+    sources = tagSourcesWithLane(sources, "profile_roles");
+
+    if (!searchTargetsExecutiveRoles(semanticQuery)) {
+      sources = sources.filter((source) => !isExecutiveJobTitle(source.cached.title));
+    }
+
+    sources.sort(
+      (a, b) =>
+        roleSearchRelevanceScore(b.cached.title, searchRoles) -
+        roleSearchRelevanceScore(a.cached.title, searchRoles),
+    );
+
+    if (!sources.length) return null;
+
+    const jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, roleTitlePreferences, {
+      filterStale: false,
+      profileSkills,
+      excludeMatchTerms: nameMatchExcludeTerms,
+    });
+
+    jobs.sort(
+      (a, b) =>
+        roleSearchRelevanceScore(b.title, searchRoles) - roleSearchRelevanceScore(a.title, searchRoles),
+    );
+
+    return {
+      jobs: jobs.slice(0, maxJobs),
+      matchMode: "profile_roles",
+      companyCount: new Set(jobs.map((j) => j.companyName.trim().toLowerCase()).filter(Boolean)).size,
+      trackedWithMatches: 0,
+      notice: undefined,
+      effectiveFilters: mergedFilters,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function hasProfileSignals(input: {
