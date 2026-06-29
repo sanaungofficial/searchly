@@ -479,7 +479,12 @@ export function CoachProfileView({
             )}
           </div>
           {!isMobile && matchScore > 0 && (
-            <CoachMatchScoreCluster score={matchScore} label={matchLabel} align="right" />
+            <CoachMatchScoreCluster
+              score={matchScore}
+              label={matchLabel}
+              align="right"
+              job={{ matchScore, matchLabel, matchReasons, matchedSkills }}
+            />
           )}
         </div>
       </div>
