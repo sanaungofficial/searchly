@@ -1,6 +1,7 @@
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { resolveAdminClientSubject, readClientUserIdFromRequest } from "@/lib/admin-client-subject";
 import { applyClientImport } from "@/lib/client-import/apply";
+import { recordImportRun } from "@/lib/client-import/import-run";
 import type { ClientImportApplyPayload } from "@/lib/client-import/types";
 import { NextResponse } from "next/server";
 
@@ -76,7 +77,23 @@ export async function POST(request: Request, { params }: RouteParams) {
       jobImportOptions: body.jobImportOptions,
     });
 
-    return NextResponse.json(result);
+    let runId: string | undefined;
+    if (acting.realDbUser) {
+      try {
+        const run = await recordImportRun({
+          clientUserId: dbUser.id,
+          importedById: acting.realDbUser.id,
+          meta: body.importMeta ?? {},
+          preview: body.preview,
+          result,
+        });
+        runId = run.id;
+      } catch (recordErr) {
+        console.error("[admin import apply] failed to record ImportRun", recordErr);
+      }
+    }
+
+    return NextResponse.json({ ...result, runId });
   } catch (err) {
     console.error("[admin import apply]", err);
     const message = err instanceof Error ? err.message : "Import apply failed";

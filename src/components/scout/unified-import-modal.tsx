@@ -7,9 +7,7 @@ import { VISIBLE_IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-i
 import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 import type { IntakeParseResult } from "@/lib/career-strategy";
 import { ImportReviewModal } from "@/components/admin/admin-client-import-panel";
-import { ImportSummaryModal } from "@/components/scout/import-summary-modal";
 import { JobTrackerImportWizard } from "@/components/scout/job-tracker-import-wizard";
-import { summarizeImportResult } from "@/lib/client-import/import-summary";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -44,9 +42,11 @@ type Props = {
   clientUserId: string;
   onPatchProfile: (patch: Record<string, unknown>) => Promise<void>;
   onSuccess?: (message: string) => void;
+  /** Navigate to import complete screen with persisted run id. */
+  onImportComplete?: (runId: string) => void;
 };
 
-export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile, onSuccess }: Props) {
+export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile, onSuccess, onImportComplete }: Props) {
   const isMobile = useIsMobile();
   const api = (path: string) => withClientUserId(path, clientUserId);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,8 +63,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const [preview, setPreview] = useState<ClientImportPreview | null>(null);
   const [applyResume, setApplyResume] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [applyResult, setApplyResult] = useState<ClientImportApplyResult | null>(null);
-  const [showSummary, setShowSummary] = useState(false);
   const [showJobTrackerWizard, setShowJobTrackerWizard] = useState(false);
   const [jobImportOptions, setJobImportOptions] = useState<JobTrackerImportOptions | undefined>();
 
@@ -81,8 +79,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
     setPreview(null);
     setShowReview(false);
-    setApplyResult(null);
-    setShowSummary(false);
     setShowJobTrackerWizard(false);
     setJobImportOptions(undefined);
     setIntakeResult(null);
@@ -100,6 +96,39 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setFiles((prev) => [...prev, ...Array.from(list)]);
     setError(null);
   }, []);
+
+  function buildImportMeta(sourceKindOverride?: "file" | "paste") {
+    const sourceKind =
+      sourceKindOverride ?? (files.length > 0 || pasteText.trim() ? (files.length > 0 ? "file" : "paste") : "paste");
+    const fileName =
+      files.length === 1
+        ? files[0]?.name ?? null
+        : files.length > 1
+          ? `${files[0]?.name ?? "file"} +${files.length - 1}`
+          : null;
+    return { importType, fileName, sourceKind };
+  }
+
+  async function recordIntakeRun(input: {
+    profileUpdated: boolean;
+    companiesAdded: number;
+    companiesUpdated: number;
+    qaAdded: number;
+    qaSkipped: number;
+    errors?: string[];
+  }): Promise<string | undefined> {
+    const res = await fetch(api(`/api/admin/clients/${clientUserId}/import/runs`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intake: input,
+        importMeta: buildImportMeta(files.length > 0 ? "file" : "paste"),
+      }),
+    });
+    const data = await readResponseJson(res);
+    if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to record import"));
+    return typeof data.runId === "string" ? data.runId : undefined;
+  }
 
   async function extractFileText(file: File): Promise<string> {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -234,16 +263,22 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
     try {
       const patch: Record<string, unknown> = { ...(intakeResult.proposed ?? {}) };
+      let profileUpdated = false;
       if (Object.keys(patch).length > 0) {
         if (patch.name) {
           await onPatchProfile({ name: patch.name });
           delete patch.name;
+          profileUpdated = true;
         }
-        if (Object.keys(patch).length > 0) await onPatchProfile(patch);
+        if (Object.keys(patch).length > 0) {
+          await onPatchProfile(patch);
+          profileUpdated = true;
+        }
       }
 
       const trackedCompanies = mergeIntakeTrackedCompanies(intakeResult);
-      const messages: string[] = [];
+      let companiesAdded = 0;
+      let companiesUpdated = 0;
 
       if (trackedCompanies.length > 0) {
         const res = await fetch(api("/api/companies/intake-apply"), {
@@ -253,20 +288,30 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
         });
         const data = await readResponseJson(res);
         if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to add target companies"));
-        messages.push(`Target companies: ${data.added ?? 0} added, ${data.updated ?? 0} updated.`);
+        companiesAdded = Number(data.added ?? 0);
+        companiesUpdated = Number(data.updated ?? 0);
       }
 
       const qaResult = await applyApplicationQa(intakeResult.suggestedApplicationQa);
-      if (qaResult.added || qaResult.skipped) {
-        messages.push(
-          `Application Q&A: ${qaResult.added} added${qaResult.skipped ? `, ${qaResult.skipped} skipped (duplicate)` : ""}.`,
-        );
-      }
+
+      const runId = await recordIntakeRun({
+        profileUpdated,
+        companiesAdded,
+        companiesUpdated,
+        qaAdded: qaResult.added,
+        qaSkipped: qaResult.skipped,
+      });
 
       setShowApplyProfile(false);
       setIntakeResult(null);
-      handleClose();
-      onSuccess?.(messages.length ? messages.join(" ") : "Profile updated from intake.");
+      resetState();
+      onClose();
+
+      if (runId && onImportComplete) {
+        onImportComplete(runId);
+      } else {
+        onSuccess?.("Profile updated from intake.");
+      }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to apply profile updates"));
     } finally {
@@ -277,6 +322,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   async function handleApplyImport(
     previewOverride?: ClientImportPreview,
     optionsOverride?: JobTrackerImportOptions,
+    metaOverride?: ReturnType<typeof buildImportMeta>,
   ) {
     const activePreview = previewOverride ?? preview;
     if (!activePreview) return;
@@ -290,21 +336,22 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           preview: activePreview,
           applyResume,
           jobImportOptions: optionsOverride ?? jobImportOptions,
+          importMeta: metaOverride ?? buildImportMeta(),
         }),
       });
-      const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string };
+      const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string; runId?: string };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
 
-      const summaryLines = summarizeImportResult(data);
       setShowReview(false);
       setPreview(null);
-      setApplyResult(data);
-      setShowSummary(true);
-      onSuccess?.(
-        summaryLines.length
-          ? `Import complete: ${summaryLines.slice(0, 4).join("; ")}. Open summary for full audit.`
-          : "Import complete. Open summary for details.",
-      );
+      resetState();
+      onClose();
+
+      if (data.runId && onImportComplete) {
+        onImportComplete(data.runId);
+      } else {
+        onSuccess?.("Import complete.");
+      }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Apply failed"));
     } finally {
@@ -319,11 +366,15 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setShowJobTrackerWizard(false);
     setJobImportOptions(result.jobImportOptions);
     setApplyResume(false);
-    await handleApplyImport(result.preview, result.jobImportOptions);
+    await handleApplyImport(result.preview, result.jobImportOptions, {
+      importType: "job_tracker",
+      fileName: result.preview.sourceFiles[0]?.filename ?? null,
+      sourceKind: result.preview.sourceFiles.length ? "file" : "paste",
+    });
   }
 
   const showMainModal =
-    open && !showReview && !showApplyProfile && !showJobTrackerWizard && !showSummary && !applying;
+    open && !showReview && !showApplyProfile && !showJobTrackerWizard && !applying;
 
   const dropBorder = isDragging ? color.forest : "rgba(26,58,47,0.25)";
   const dropBg = isDragging ? "rgba(26,58,47,0.06)" : surface.inset;
@@ -720,19 +771,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           result={intakeResult}
           onClose={() => setShowApplyProfile(false)}
           onApply={handleApplyProfile}
-        />
-      )}
-
-      {showSummary && applyResult && (
-        <ImportSummaryModal
-          open={showSummary}
-          result={applyResult}
-          clientUserId={clientUserId}
-          onClose={() => {
-            setShowSummary(false);
-            setApplyResult(null);
-            handleClose();
-          }}
         />
       )}
 

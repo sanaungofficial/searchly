@@ -64,6 +64,8 @@ model User {
   assistantThreads     AssistantThread[]
   networkJobRequests   NetworkJobRequest[]
   applicationQaEntries ApplicationQaEntry[]
+  importRunsAsClient   ImportRun[] @relation("ClientImportRuns")
+  importRunsPerformed  ImportRun[] @relation("ImportedByImportRuns")
 
   @@index([referredByUserId])
 }
@@ -1374,6 +1376,35 @@ model ApplicationQaEntry {
   updatedAt DateTime @updatedAt
 
   @@index([userId, updatedAt])
+}
+
+enum ImportRunStatus {
+  SUCCESS
+  SOME_FAILURES
+  FAILED
+}
+
+/// Persisted admin/client import runs for history and completion screens.
+model ImportRun {
+  id             String          @id @default(cuid())
+  clientUserId   String
+  clientUser     User            @relation("ClientImportRuns", fields: [clientUserId], references: [id], onDelete: Cascade)
+  importedById   String
+  importedBy     User            @relation("ImportedByImportRuns", fields: [importedById], references: [id], onDelete: Cascade)
+  importType     String
+  fileName       String?
+  sourceKind     String
+  status         ImportRunStatus
+  createdCount   Int             @default(0)
+  updatedCount   Int             @default(0)
+  skippedCount   Int             @default(0)
+  failedCount    Int             @default(0)
+  resultSnapshot Json
+  errorDetails   Json?
+  createdAt      DateTime        @default(now())
+
+  @@index([clientUserId, createdAt(sort: Desc)])
+  @@index([importedById])
 }
 
 /// Kimchi-owned Nylas Agent Account (system mailbox).
