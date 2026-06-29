@@ -12,6 +12,8 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { scoutPrimaryCtaStyle } from "./scout-box";
+import { MasterResumeGate } from "./master-resume-gate";
+import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 import {
   BigScoreGauge,
@@ -214,6 +216,7 @@ export function ResumeMatchDrawer({
   const [committing, setCommitting] = useState(false);
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
+  const masterResume = useMasterResumeStatus();
   const proUser = isPro || isAdmin;
   const kwInputRef = useRef<HTMLInputElement>(null);
 
@@ -236,6 +239,7 @@ export function ResumeMatchDrawer({
         }
       })
       .catch(() => {});
+    masterResume.refresh();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when client scope changes
   }, [withClientScope]);
 
@@ -593,6 +597,22 @@ export function ResumeMatchDrawer({
           {/* ── STEP 1 ── */}
           {step === 1 && (
             <>
+              {!masterResume.loading && !masterResume.hasMasterResume ? (
+                <MasterResumeGate
+                  canCreateFromProfile={masterResume.canCreateFromProfile}
+                  onCreateFromProfile={async () => {
+                    const assetId = await masterResume.createFromProfile();
+                    if (assetId) {
+                      setResumeAssets([{ id: assetId, name: "My Resume", isPrimary: true }]);
+                      setSelectedResumeId(assetId);
+                    }
+                  }}
+                  creating={masterResume.creating}
+                  createError={masterResume.createError}
+                  compact
+                />
+              ) : (
+              <>
               {loading && <KimchiProcessLoader preset="jobMatch" variant="centered" />}
 
               {!loading && !data && !error && !hasRequestedAnalysis && (
@@ -1104,6 +1124,8 @@ export function ResumeMatchDrawer({
                     </>
                   );
                 })()}
+              </>
+              )}
             </>
           )}
 

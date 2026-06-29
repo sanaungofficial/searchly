@@ -17,27 +17,30 @@ export function resumeTextFromProfile(
   return parsed ? parsedResumeToText(parsed) : "";
 }
 
-/** Resolve resume plain text for AI routes — prefers explicit asset, then profile, then primary asset. */
+async function resolveTextFromResumeAsset(asset: UserAsset, userId: string): Promise<string> {
+  let hydrated = await hydrateResumeAsset(asset.id, userId);
+  let row = hydrated ?? asset;
+  let text = resumeTextFromAsset(row);
+  if (!text && row.url && !row.url.startsWith("kimchi://")) {
+    row = (await ensureAssetResumeParsed(asset.id, userId)) ?? row;
+    text = resumeTextFromAsset(row);
+  }
+  return text;
+}
+
+/** Resolve resume plain text for AI routes — master RESUME UserAsset only (no profile fallback). */
 export async function resolveResumeTextForUser(
   userId: string,
-  profile: Pick<Profile, "resumeText" | "parsedData"> | null,
+  _profile: Pick<Profile, "resumeText" | "parsedData"> | null,
   assetId?: string | null,
 ): Promise<string> {
   if (assetId?.trim()) {
-    const id = assetId.trim();
-    let asset = await hydrateResumeAsset(id, userId);
-    if (asset) {
-      let text = resumeTextFromAsset(asset);
-      if (!text && asset.url) {
-        asset = (await ensureAssetResumeParsed(id, userId)) ?? asset;
-        text = resumeTextFromAsset(asset);
-      }
-      if (text) return text;
-    }
+    const asset = await prisma.userAsset.findFirst({
+      where: { id: assetId.trim(), userId, type: "RESUME" },
+    });
+    if (!asset) return "";
+    return resolveTextFromResumeAsset(asset, userId);
   }
-
-  const fromProfile = resumeTextFromProfile(profile);
-  if (fromProfile) return fromProfile;
 
   const primary =
     (await prisma.userAsset.findFirst({
@@ -49,13 +52,5 @@ export async function resolveResumeTextForUser(
     }));
 
   if (!primary) return "";
-
-  const hydrated = await hydrateResumeAsset(primary.id, userId);
-  const asset = hydrated ?? primary;
-  let text = resumeTextFromAsset(asset);
-  if (!text && asset.url) {
-    const parsed = await ensureAssetResumeParsed(primary.id, userId);
-    if (parsed) text = resumeTextFromAsset(parsed);
-  }
-  return text;
+  return resolveTextFromResumeAsset(primary, userId);
 }
