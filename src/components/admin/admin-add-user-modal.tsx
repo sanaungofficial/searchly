@@ -22,7 +22,7 @@ export function AdminAddUserModal({
   const [role, setRole] = useState<UserRole>("USER");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [sendInvite, setSendInvite] = useState(true);
+  const [sendInvite, setSendInvite] = useState(false);
   const [initialPassword, setInitialPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
