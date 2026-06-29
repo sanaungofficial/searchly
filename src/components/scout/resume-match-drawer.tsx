@@ -6,12 +6,15 @@ import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { friendlyResumeError } from "@/lib/user-facing-copy";
+import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { scoutPrimaryCtaStyle } from "./scout-box";
+import { MasterResumeGate } from "./master-resume-gate";
+import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 import {
   BigScoreGauge,
@@ -214,6 +217,7 @@ export function ResumeMatchDrawer({
   const [committing, setCommitting] = useState(false);
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
+  const masterResume = useMasterResumeStatus();
   const proUser = isPro || isAdmin;
   const kwInputRef = useRef<HTMLInputElement>(null);
 
@@ -236,6 +240,7 @@ export function ResumeMatchDrawer({
         }
       })
       .catch(() => {});
+    masterResume.refresh();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when client scope changes
   }, [withClientScope]);
 
@@ -320,23 +325,23 @@ export function ResumeMatchDrawer({
         return;
       }
       if (res.status === 503) {
-        const d = await res.json().catch(() => ({}));
+        const d = await readResponseJson(res).catch(() => ({}));
         setGenerateError(
           d.error === "AI not configured"
             ? "AI isn't available in this environment — try on production."
-            : (d.error ?? "AI isn't available right now."),
+            : formatApiErrorMessage(d.error, "AI isn't available right now."),
         );
         return;
       }
-      const json = await res.json();
+      const json = await readResponseJson(res);
       if (!res.ok || json.error) {
-        setGenerateError(json.error ?? "Something went wrong — try again.");
+        setGenerateError(formatApiErrorMessage(json.error, "Something went wrong — try again."));
         return;
       }
-      setTailoredData(json);
+      setTailoredData(json as TailoredData);
       notifyCreditsChanged();
-    } catch {
-      setGenerateError("Something went wrong — try again.");
+    } catch (err) {
+      setGenerateError(formatApiErrorMessage(err, "Something went wrong — try again."));
     } finally {
       setAligning(false);
     }
@@ -593,6 +598,22 @@ export function ResumeMatchDrawer({
           {/* ── STEP 1 ── */}
           {step === 1 && (
             <>
+              {!masterResume.loading && !masterResume.hasMasterResume ? (
+                <MasterResumeGate
+                  canCreateFromProfile={masterResume.canCreateFromProfile}
+                  onCreateFromProfile={async () => {
+                    const assetId = await masterResume.createFromProfile();
+                    if (assetId) {
+                      setResumeAssets([{ id: assetId, name: "My Resume", isPrimary: true }]);
+                      setSelectedResumeId(assetId);
+                    }
+                  }}
+                  creating={masterResume.creating}
+                  createError={masterResume.createError}
+                  compact
+                />
+              ) : (
+              <>
               {loading && <KimchiProcessLoader preset="jobMatch" variant="centered" />}
 
               {!loading && !data && !error && !hasRequestedAnalysis && (
@@ -1104,6 +1125,8 @@ export function ResumeMatchDrawer({
                     </>
                   );
                 })()}
+              </>
+              )}
             </>
           )}
 
@@ -1823,11 +1846,11 @@ export function ResumeMatchDrawer({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={selectedSections.size === 0 || !activeResumeId}
+              disabled={selectedSections.size === 0}
               style={{
                 flex: 1,
                 padding: "14px",
-                ...(selectedSections.size > 0 && activeResumeId ? scoutPrimaryCtaStyle : {
+                ...(selectedSections.size > 0 ? scoutPrimaryCtaStyle : {
                   background: "rgba(0,0,0,0.05)",
                   color: "var(--scout-muted)",
                   border: "none",
@@ -1836,7 +1859,7 @@ export function ResumeMatchDrawer({
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: selectedSections.size > 0 && activeResumeId ? "pointer" : "not-allowed",
+                cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
                 letterSpacing: "0.3px",
               }}
             >

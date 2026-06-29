@@ -9,6 +9,7 @@ import { isNylasConfigured } from "@/lib/nylas";
 import { listCoachLiveSessions, listCoachPastRecordings, toLiveSessionView } from "@/lib/live-session-db";
 import { listPublicCoachResources } from "@/lib/coach-shared-documents";
 import { enrichPackages } from "@/lib/coach-pricing";
+import { formatCoachAvailabilitySummary } from "@/lib/coach-availability-display";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -37,6 +38,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       calLink: true,
       nylasSchedulerConfigId: true,
       schedulerDurationMinutes: true,
+      schedulerTimezone: true,
+      schedulerOpenHourStart: true,
+      schedulerOpenHourEnd: true,
+      schedulerOpenDays: true,
+      schedulerWeeklyHours: true,
+      schedulerAvailabilityNotes: true,
+      introDurationMinutes: true,
       firms: true,
       schools: true,
       specialties: true,
@@ -106,6 +114,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const avgRating = aggregates?.avgRating ?? null;
   const reviewCount = aggregates?.reviewCount ?? 0;
 
+  const [completedBookings, clientsCoachedCount] = await Promise.all([
+    prisma.coachBooking.findMany({
+      where: {
+        coachProfileId: coach.id,
+        status: "CONFIRMED",
+        endAt: { lt: new Date() },
+      },
+      select: { startAt: true, endAt: true },
+    }),
+    prisma.coachClientAssignment.count({ where: { coachProfileId: coach.id } }),
+  ]);
+  const totalCoachedMinutes = completedBookings.reduce(
+    (sum, booking) => sum + Math.max(0, Math.round((booking.endAt.getTime() - booking.startAt.getTime()) / 60_000)),
+    0,
+  );
+
   const upcomingLiveRows = await listCoachLiveSessions(coach.id);
   const upcomingLiveSessions = upcomingLiveRows.map((row) =>
     toLiveSessionView(row, { registrationCount: row._count.registrations }),
@@ -115,6 +139,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     toLiveSessionView(row, { registrationCount: row._count.registrations }),
   );
   const publicResources = await listPublicCoachResources(coach.id);
+  const availabilityMeta = formatCoachAvailabilitySummary(coach);
+  const hasNylasBooking = Boolean(coach.nylasSchedulerConfigId && isNylasConfigured());
 
   return NextResponse.json({
     id: coach.id,
@@ -133,13 +159,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     calLink: coach.calLink,
     nylasSchedulerConfigId: coach.nylasSchedulerConfigId,
     schedulerDurationMinutes: coach.schedulerDurationMinutes ?? 60,
-    hasNylasBooking: Boolean(coach.nylasSchedulerConfigId && isNylasConfigured()),
+    hasNylasBooking,
+    bookingAvailability: {
+      summary: availabilityMeta.summary,
+      timezone: availabilityMeta.timezone,
+      availabilityNotes: availabilityMeta.availabilityNotes,
+      introDurationMinutes: coach.introDurationMinutes ?? 30,
+      sessionDurationMinutes: coach.schedulerDurationMinutes ?? 60,
+    },
     firms: coach.firms,
     schools: coach.schools,
     specialties: coach.specialties,
     industries: coach.industries,
     clientSpecializations: coach.clientSpecializations,
-    hourlyRate: coach.isInternal || coach.requiresAssignment ? null : coach.hourlyRate,
+    hourlyRate: coach.hourlyRate,
     category: coach.category,
     featured: coach.featured,
     isProfessionalCoach: coach.isProfessionalCoach,
@@ -148,6 +181,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     experienceLevel: coach.experienceLevel,
     clientTier: coach.clientTier,
     industryYears: coach.industryYears,
+    totalCoachedMinutes,
+    clientsCoachedCount,
     avgRating,
     reviewCount,
     followerCount: coach._count.followers,

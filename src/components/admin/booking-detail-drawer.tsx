@@ -164,7 +164,7 @@ export function BookingDetailDrawer({ bookingId, onClose, onOpenGuestHub, onOpen
                       </button>
                     )}
                     {booking.coachSlug && (
-                      <Link href={`/admin/coaches/${booking.coachProfileId}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>
+                      <Link href={`/admin/experts?coachId=${encodeURIComponent(booking.coachProfileId)}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>
                         Admin →
                       </Link>
                     )}

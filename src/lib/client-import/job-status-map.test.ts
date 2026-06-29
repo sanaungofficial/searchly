@@ -31,6 +31,24 @@ describe("mapImportJobStage", () => {
     expect(mapImportJobStage({ statusRaw: "Yes", approved: null, appliedAt: null })).toBe("APPLIED");
     expect(mapImportJobStage({ statusRaw: "No", approved: null, appliedAt: null })).toBe("SAVED");
   });
+
+  it("maps Closed status to REJECTED, not Saved", () => {
+    expect(mapImportJobStage({ statusRaw: "Closed", approved: null, appliedAt: null })).toBe("REJECTED");
+    expect(mapImportJobStage({ statusRaw: "Position closed", approved: null, appliedAt: null })).toBe("REJECTED");
+  });
+
+  it("gates APPLYING when coach approval is No", () => {
+    expect(mapImportJobStage({ statusRaw: "Applying", approved: false, appliedAt: null })).toBe("SAVED");
+  });
+
+  it("applies user status value mapping before auto rules", () => {
+    expect(
+      mapImportJobStage(
+        { statusRaw: "Position filled", approved: null, appliedAt: null },
+        { valueToStage: { "Position filled": "REJECTED" }, defaultUnmatchedStage: null },
+      ),
+    ).toBe("REJECTED");
+  });
 });
 
 describe("parseImportApproved", () => {

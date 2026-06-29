@@ -2,6 +2,9 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-import/types";
+import { CREDENTIALS_STORAGE_DISCLAIMER } from "@/lib/client-import/credentials-parser";
+import { summarizeImportResult } from "@/lib/client-import/import-summary";
+import { ImportSummaryModal } from "@/components/scout/import-summary-modal";
 import { truncateImportJobUrl } from "@/lib/client-import/job-url";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
@@ -157,6 +160,7 @@ export function ImportReviewModal({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -169,6 +173,9 @@ export function ImportReviewModal({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: "#FFFDF9",
           maxWidth: 720,
@@ -309,11 +316,23 @@ export function ImportReviewModal({
 
         {qaRows.length > 0 && onToggleQa && (
           <Section
-            title={`Passwords / Q&A (${selectedQa}/${qaRows.length})`}
+            title={`Login credentials (${selectedQa}/${qaRows.length})`}
             onSelectAll={onSelectAllQa}
             onUnselectAll={onUnselectAllQa}
             showBulk
           >
+            <div
+              style={{
+                marginBottom: 10,
+                padding: 10,
+                background: surface.inset,
+                border: "var(--scout-border)",
+              }}
+            >
+              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.stone, margin: 0, lineHeight: 1.5 }}>
+                {CREDENTIALS_STORAGE_DISCLAIMER}
+              </p>
+            </div>
             <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
               {qaRows.map((row) => (
                 <CheckRow
@@ -602,6 +621,8 @@ export function AdminClientImportPanel({
   const [preview, setPreview] = useState<ClientImportPreview | null>(null);
   const [applyResume, setApplyResume] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [applyResult, setApplyResult] = useState<ClientImportApplyResult | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
 
   const onFiles = useCallback((list: FileList | null) => {
     if (!list?.length) return;
@@ -649,32 +670,19 @@ export function AdminClientImportPanel({
       const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
 
-      const parts = [
-        data.profileUpdated ? "profile updated" : null,
-        data.roles?.targetSelected || data.roles?.deprioritizedSelected
-          ? `roles ${data.roles.targetSelected} target, ${data.roles.deprioritizedSelected} deprioritized`
-          : null,
-        data.jobs.added || data.jobs.updated
-          ? `jobs ${data.jobs.added} added, ${data.jobs.updated} updated`
-          : null,
-        data.jobs.descriptionsEnriched
-          ? `${data.jobs.descriptionsEnriched} job descriptions filled from posting links`
-          : null,
-        data.companies.added || data.companies.updated
-          ? `companies ${data.companies.added} added, ${data.companies.updated} updated`
-          : null,
-        data.contacts.added || data.contacts.updated
-          ? `contacts ${data.contacts.added} added, ${data.contacts.updated} updated`
-          : null,
-        data.referenceDocumentsStored ? `${data.referenceDocumentsStored} reference docs stored` : null,
-      ].filter(Boolean);
-
+      const summaryLines = summarizeImportResult(data);
       const errNote =
         data.errors?.length > 0
           ? ` Some rows failed (${data.errors.slice(0, 3).join("; ")}${data.errors.length > 3 ? "…" : ""}).`
           : "";
 
-      setSuccess(parts.length ? `Import complete: ${parts.join("; ")}.${errNote}` : `Import complete.${errNote}`);
+      setSuccess(
+        summaryLines.length
+          ? `Import complete: ${summaryLines.slice(0, 4).join("; ")}.${errNote}`
+          : `Import complete.${errNote}`,
+      );
+      setApplyResult(data);
+      setShowSummary(true);
       setShowReview(false);
       setPreview(null);
       setFiles([]);
@@ -789,6 +797,17 @@ export function AdminClientImportPanel({
           onClose={() => setShowReview(false)}
           onApply={handleApply}
           applying={applying}
+        />
+      )}
+      {showSummary && applyResult && (
+        <ImportSummaryModal
+          open={showSummary}
+          result={applyResult}
+          clientUserId={clientUserId}
+          onClose={() => {
+            setShowSummary(false);
+            setApplyResult(null);
+          }}
         />
       )}
     </>

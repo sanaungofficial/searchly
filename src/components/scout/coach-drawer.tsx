@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
   type FormEvent,
   type MouseEvent,
@@ -13,6 +14,10 @@ import {
   CoachBookingModal,
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
+import {
+  CoachBookingRequestModal,
+  type CoachBookingRequestSessionType,
+} from "@/components/scout/coach-booking-request-modal";
 import { ScoutPrimaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
@@ -28,11 +33,11 @@ const cardBg = surface.card;
 type Props = {
   slug: string;
   onClose: () => void;
-  isPro: boolean;
-  onSubscribe: () => void;
   preview?: CoachListItem | null;
   onFollowChange?: (coachId: string, following: boolean) => void;
   onMyCoachChange?: (coachId: string, isMyCoach: boolean, coachIds: string[]) => void;
+  /** When set, opens the booking modal once the coach profile has loaded. */
+  initialBookingType?: CoachBookingSessionType | null;
 };
 
 function ReviewFormModal({
@@ -163,7 +168,14 @@ function ReviewFormModal({
   );
 }
 
-export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange, onMyCoachChange }: Props) {
+export function CoachDrawer({
+  slug,
+  onClose,
+  preview,
+  onFollowChange,
+  onMyCoachChange,
+  initialBookingType = null,
+}: Props) {
   const isMobile = useIsMobile();
   const requireAuth = useRequireAuthRedirect();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
@@ -175,8 +187,11 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   const [showReview, setShowReview] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingModalType, setBookingModalType] = useState<CoachBookingSessionType>("intro");
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestModalType, setRequestModalType] = useState<CoachBookingRequestSessionType>("intro");
   const [nextSlotStart, setNextSlotStart] = useState<number | null>(null);
   const [nextSlotLoading, setNextSlotLoading] = useState(false);
+  const autoOpenedBooking = useRef(false);
 
   useLayoutEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -199,6 +214,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
 
   const sessionDurationMinutes = coach?.schedulerDurationMinutes ?? 60;
   const canBookInApp = Boolean(coach?.hasNylasBooking);
+  const canRequestBooking = Boolean(coach && !coach.hasNylasBooking);
 
   useEffect(() => {
     if (!coach?.hasNylasBooking || !slug) return;
@@ -220,17 +236,30 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
     };
   }, [coach?.hasNylasBooking, slug]);
 
+  useEffect(() => {
+    if (autoOpenedBooking.current || !initialBookingType || !coach?.hasNylasBooking || loading) return;
+    if (!authChecked || !user) return;
+    autoOpenedBooking.current = true;
+    setBookingModalType(initialBookingType);
+    setBookingModalOpen(true);
+  }, [initialBookingType, coach?.hasNylasBooking, loading, authChecked, user]);
+
   const openBooking = (type: CoachBookingSessionType) => {
     if (!authChecked || !user) {
       requireAuth("login");
       return;
     }
-    if (!isPro && type === "session") {
-      onSubscribe();
-      return;
-    }
     setBookingModalType(type);
     setBookingModalOpen(true);
+  };
+
+  const openRequestBooking = (type: CoachBookingRequestSessionType = "intro") => {
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
+    setRequestModalType(type);
+    setRequestModalOpen(true);
   };
 
   async function buyPackage(packageId: string) {
@@ -284,8 +313,6 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
       return;
     }
     const isAssigned = coach.isMyCoach ?? false;
-    if (!isAssigned && coach.isInternal && !isAdmin) return;
-    if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -398,6 +425,8 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
               matchedSkills={matchedSkills}
               sessionDurationMinutes={sessionDurationMinutes}
               canBookInApp={canBookInApp}
+              canRequestBooking={canRequestBooking}
+              bookingAvailability={coach.bookingAvailability ?? null}
               bookUrl={coach.calLink}
               nextSlotStart={nextSlotStart}
               nextSlotLoading={nextSlotLoading}
@@ -405,6 +434,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
               isAdmin={isAdmin}
               onBookIntro={() => openBooking("intro")}
               onBookSession={() => openBooking("session")}
+              onRequestBooking={() => openRequestBooking("intro")}
               onBuyPackage={buyPackage}
               onToggleFollow={toggleFollow}
               onToggleMyCoach={toggleMyCoach}
@@ -419,7 +449,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
         <ReviewFormModal coach={coach} slug={slug} onClose={() => setShowReview(false)} onSubmitted={load} />
       )}
 
-      {coach && (
+      {coach && canBookInApp && (
         <CoachBookingModal
           open={bookingModalOpen}
           onClose={() => setBookingModalOpen(false)}
@@ -431,6 +461,21 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
           initialSessionType={bookingModalType}
           guestName={user?.name ?? undefined}
           onBooked={load}
+        />
+      )}
+
+      {coach && canRequestBooking && (
+        <CoachBookingRequestModal
+          open={requestModalOpen}
+          onClose={() => setRequestModalOpen(false)}
+          slug={slug}
+          coachDisplayName={coach.displayName}
+          coachPhotoUrl={coach.photoUrl}
+          sessionDurationMinutes={sessionDurationMinutes}
+          availability={coach.bookingAvailability ?? null}
+          initialSessionType={requestModalType}
+          guestName={user?.name ?? undefined}
+          onSubmitted={load}
         />
       )}
     </>

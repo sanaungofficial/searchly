@@ -1,15 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { fontSans, drawerType as DT } from "@/lib/typography";
+import { fontSans } from "@/lib/typography";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
-import { scoutPrimaryCtaStyle } from "@/components/scout/scout-box";
+import { scoutPrimaryCtaStyle, ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutLabel } from "@/components/scout/scout-box";
+import { MasterResumeGate } from "@/components/scout/master-resume-gate";
+import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
+import { CoverLetterPreview } from "@/components/scout/cover-letter-preview";
+import {
+  type CoverLetterContext,
+  type CoverLetterTone,
+  coverLetterToPrintHtml,
+  parseCoverLetter,
+} from "@/lib/cover-letter-format";
+import { color, surface, type as T } from "@/lib/typography";
 
 interface CoverLetterDrawerProps {
   jobTitle: string;
@@ -21,6 +31,30 @@ interface CoverLetterDrawerProps {
   onClose: () => void;
   onLetterSaved?: (letter: string) => void;
 }
+
+const DEFAULT_CONTEXT: CoverLetterContext = {
+  motivation: "",
+  achievements: "",
+  tone: "conversational",
+  notes: "",
+};
+
+const questionFieldStyle: CSSProperties = {
+  width: "100%",
+  marginTop: 8,
+  padding: "10px 12px",
+  border: "var(--scout-border)",
+  borderRadius: "var(--scout-radius)",
+  fontFamily: fontSans,
+  fontSize: T.bodySm,
+  color: color.ink,
+  resize: "vertical",
+  background: surface.card,
+  lineHeight: 1.5,
+  boxSizing: "border-box",
+};
+
+type DrawerPhase = "idle" | "questions" | "letter";
 
 const QUICK_ACTIONS = [
   "Make the tone more confident and direct",
@@ -48,7 +82,10 @@ async function streamInto(
 
 export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, resumeAssetId, onClose, onLetterSaved }: CoverLetterDrawerProps) {
   const { user, openPricing, withClientScope } = useWorkspace();
+  const masterResume = useMasterResumeStatus();
   const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
+  const [phase, setPhase] = useState<DrawerPhase>(initialLetter?.trim() ? "letter" : "idle");
+  const [letterContext, setLetterContext] = useState<CoverLetterContext>(DEFAULT_CONTEXT);
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +93,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
   const [chatInput, setChatInput] = useState("");
   const [refining, setRefining] = useState(false);
   const [manualDesc, setManualDesc] = useState("");
+  const [descOverride, setDescOverride] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
@@ -113,7 +151,8 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
     setMounted(true);
   }, []);
 
-  async function generate(overrideDesc?: string) {
+  async function generate(overrideDesc?: string, context: CoverLetterContext = letterContext) {
+    setPhase("letter");
     setLoading(true);
     setStreaming(false);
     setError(null);
@@ -130,6 +169,12 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
           description: desc,
           jobId,
           assetId: selectedAssetId ?? undefined,
+          context: {
+            motivation: context.motivation,
+            achievements: context.achievements,
+            tone: context.tone,
+            notes: context.notes,
+          },
         }),
         signal: abortRef.current.signal,
       });
@@ -140,6 +185,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
           setShowUpgrade(true);
         }
         setError(d.error ?? "Couldn't generate a cover letter — try again.");
+        setPhase("questions");
         setLoading(false);
         return;
       }
@@ -153,7 +199,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
       setStreaming(false);
       notifyCreditsChanged();
     } catch (e: unknown) {
-      if (e instanceof Error && e.name !== "AbortError") setError("Something went wrong — try again.");
+      if (e instanceof Error && e.name !== "AbortError") {
+        setError("Something went wrong — try again.");
+        setPhase("questions");
+      }
     } finally {
       setLoading(false);
       setStreaming(false);
@@ -214,6 +263,23 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
     setTimeout(onClose, 280);
   }
 
+  function startQuestions() {
+    setError(null);
+    setPhase("questions");
+  }
+
+  function submitQuestions() {
+    if (!letterContext.motivation.trim()) return;
+    void generate(descOverride, letterContext);
+  }
+
+  function beginWithManualDesc() {
+    if (!manualDesc.trim()) return;
+    setDescOverride(manualDesc.trim());
+    setError(null);
+    setPhase("questions");
+  }
+
   function handleCopy() {
     if (!letter) return;
     navigator.clipboard.writeText(letter).then(() => {
@@ -248,20 +314,14 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
     setShowDownloadMenu(false);
     const win = window.open("", "_blank");
     if (!win) return;
-    const paras = (letter ?? "")
-      .split("\n\n").filter(Boolean)
-      .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
-      .join("");
-    const html = "<!DOCTYPE html><html><head><title>Cover Letter</title>"
-      + "<style>body{font-family:Georgia,serif;max-width:680px;margin:60px auto;"
-      + "color:#1A1A1A;line-height:1.75;font-size:14px}p{margin-bottom:18px}"
-      + "@media print{body{margin:40px}}</style></head>"
-      + "<body>" + paras + "<script>window.onload=function(){window.print()}<\/script></body></html>";
+    const html = coverLetterToPrintHtml(parseCoverLetter(letter), {
+      senderName: user?.name ?? undefined,
+      senderEmail: user?.email ?? undefined,
+    });
     win.document.write(html);
     win.document.close();
   }
 
-  const letterParas = (letter ?? "").split("\n\n").filter(Boolean);
   const isReady = !loading && !streaming && !!letter;
 
   if (!mounted) return null;
@@ -385,21 +445,115 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
             <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
               {loading ? (
                 <KimchiProcessLoader preset="coverLetter" variant="centered" />
+              ) : !masterResume.loading && !masterResume.hasMasterResume ? (
+                <MasterResumeGate
+                  canCreateFromProfile={masterResume.canCreateFromProfile}
+                  onCreateFromProfile={() => void masterResume.createFromProfile()}
+                  creating={masterResume.creating}
+                  createError={masterResume.createError}
+                />
+              ) : phase === "questions" ? (
+                <div style={{ maxWidth: 520, margin: "0 auto", paddingTop: 24 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>
+                    A few quick questions
+                  </p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 24px", lineHeight: 1.55 }}>
+                    Your answers shape the draft — nothing runs until you hit generate.
+                  </p>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                    <div>
+                      <ScoutLabel>Why are you interested in this role or company?</ScoutLabel>
+                      <textarea
+                        value={letterContext.motivation}
+                        onChange={(e) => setLetterContext((c) => ({ ...c, motivation: e.target.value }))}
+                        placeholder="What drew you to this team, product, or mission?"
+                        rows={3}
+                        style={questionFieldStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <ScoutLabel>What 1–2 achievements should we highlight?</ScoutLabel>
+                      <textarea
+                        value={letterContext.achievements}
+                        onChange={(e) => setLetterContext((c) => ({ ...c, achievements: e.target.value }))}
+                        placeholder="Specific wins, metrics, or projects from your background"
+                        rows={3}
+                        style={questionFieldStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <ScoutLabel>Tone</ScoutLabel>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        {(["conversational", "formal"] as CoverLetterTone[]).map((tone) => (
+                          <button
+                            key={tone}
+                            type="button"
+                            onClick={() => setLetterContext((c) => ({ ...c, tone }))}
+                            style={{
+                              flex: 1,
+                              padding: "10px 12px",
+                              border: letterContext.tone === tone ? `1.5px solid ${color.forest}` : "var(--scout-border)",
+                              borderRadius: "var(--scout-radius)",
+                              background: letterContext.tone === tone ? "rgba(74,139,106,0.1)" : surface.card,
+                              fontFamily: fontSans,
+                              fontSize: T.bodySm,
+                              fontWeight: letterContext.tone === tone ? 600 : 500,
+                              color: color.ink,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {tone === "formal" ? "Formal" : "Conversational"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <ScoutLabel>Anything to mention or avoid? (optional)</ScoutLabel>
+                      <textarea
+                        value={letterContext.notes}
+                        onChange={(e) => setLetterContext((c) => ({ ...c, notes: e.target.value }))}
+                        placeholder="Referrals, relocation, gaps to address, topics to skip…"
+                        rows={2}
+                        style={questionFieldStyle}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 28 }}>
+                    <ScoutSecondaryBtn
+                      onClick={() => setPhase(letter ? "letter" : "idle")}
+                      style={{ minHeight: 44 }}
+                    >
+                      Back
+                    </ScoutSecondaryBtn>
+                    <ScoutPrimaryBtn
+                      onClick={submitQuestions}
+                      disabled={!letterContext.motivation.trim()}
+                      style={{ flex: 1, minHeight: 44 }}
+                    >
+                      Generate draft →
+                    </ScoutPrimaryBtn>
+                  </div>
+                </div>
               ) : !letter ? (
                 <div style={{ paddingTop: 48, textAlign: "center", maxWidth: 360, margin: "0 auto" }}>
                   <p style={{ fontFamily: fontSans, fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 20 }}>
                     {error
                       ? error === "No resume found"
-                        ? "Upload a resume under Profile first."
+                        ? "Add a master resume under Profile first — upload a file or create one from your profile."
                         : error === "No job description provided"
                           ? "No job description on file — paste it in the panel on the right."
                           : "Couldn't generate a cover letter — try again."
-                      : "Hit the button when you want a draft — we won't run it automatically."}
+                      : "Answer a few questions first — we won't generate until you're ready."}
                   </p>
                   {error !== "No resume found" && (
                     <button
                       type="button"
-                      onClick={() => generate()}
+                      onClick={startQuestions}
                       style={{
                         padding: "12px 20px",
                         ...scoutPrimaryCtaStyle,
@@ -409,55 +563,17 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                         cursor: "pointer",
                       }}
                     >
-                      Generate cover letter →
+                      Start cover letter →
                     </button>
                   )}
                 </div>
               ) : (
-                <div
-                  style={{
-                    background: "#FFFFFF",
-                    borderRadius: "var(--scout-radius)",
-                    boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
-                    padding: "48px 52px",
-                    minHeight: "100%",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                  }}
-                >
-                  {/* Letterhead */}
-                  <div style={{ marginBottom: 36, textAlign: "right" }}>
-                    <div style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", letterSpacing: "-0.01em" }}>
-                      {user?.name ?? ""}
-                    </div>
-                    <div style={{ fontFamily: fontSans, fontSize: 14, color: "#6B7280", marginTop: 3 }}>
-                      {user?.email ?? ""}
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  {letterParas.map((para, i) => (
-                    <p
-                      key={i}
-                      style={{
-                        fontSize: 13.5,
-                        lineHeight: 1.75,
-                        color: "#1A1A1A",
-                        marginBottom: i < letterParas.length - 1 ? 18 : 0,
-                      }}
-                    >
-                      {para}
-                      {streaming && i === letterParas.length - 1 && (
-                        <span style={{
-                          display: "inline-block", width: 2, height: "1em",
-                          background: "#1C3A2F", marginLeft: 2,
-                          verticalAlign: "text-bottom",
-                          animation: "blink 1s step-end infinite",
-                        }} />
-                      )}
-                    </p>
-                  ))}
-                  <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
-                </div>
+                <CoverLetterPreview
+                  letter={letter}
+                  senderName={user?.name ?? undefined}
+                  senderEmail={user?.email ?? undefined}
+                  streaming={streaming}
+                />
               )}
             </div>
           </div>
@@ -529,8 +645,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                         ? "Rewriting from your note…"
                         : error
                         ? "Generation failed — try again below."
+                        : phase === "questions"
+                        ? "Fill in the questions on the left, then generate."
                         : !letter
-                        ? "Generate when you're ready — it won't run on its own."
+                        ? "Start with a few questions — generation won't run on its own."
                         : "Draft's ready. Use a suggestion below or type your own edit."}
                     </div>
 
@@ -551,7 +669,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                           }}
                         />
                         <button
-                          onClick={() => { if (manualDesc.trim()) { setError(null); generate(manualDesc.trim()); } }}
+                          onClick={beginWithManualDesc}
                           disabled={!manualDesc.trim()}
                           style={{
                             marginTop: 8, width: "100%", padding: "10px",
@@ -566,7 +684,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                             cursor: manualDesc.trim() ? "pointer" : "not-allowed",
                           }}
                         >
-                          Generate →
+                          Continue to questions →
                         </button>
                       </div>
                     )}
@@ -602,7 +720,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                           </button>
                         ))}
                         <button
-                          onClick={() => generate()}
+                          onClick={startQuestions}
                           style={{
                             marginTop: 4,
                             textAlign: "left",
@@ -781,7 +899,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                 ↓ {downloading ? "Downloading…" : "Download"}
               </button>
               <button
-                onClick={() => { if (!streaming) generate(); }}
+                onClick={() => { if (!streaming) startQuestions(); }}
                 disabled={streaming}
                 style={{
                   flex: 1, padding: "11px 14px",

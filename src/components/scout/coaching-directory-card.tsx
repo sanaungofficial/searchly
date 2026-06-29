@@ -3,8 +3,8 @@
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CompanyLogo } from "@/components/scout/company-logo";
-import { CoachFitAssessment } from "@/components/scout/match-score-ui";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { CoachMatchScoreColumn } from "@/components/scout/match-score-ui";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { bioSnippet } from "@/lib/coach-directory";
 import {
   buildCoachExperienceCompanies,
@@ -158,18 +158,40 @@ function FavoriteBadge() {
   );
 }
 
-function RateDisplay({ rate, isPro, onSubscribe }: { rate: number; isPro: boolean; onSubscribe: () => void }) {
-  if (isPro) {
-    return (
-      <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: color.ink }}>
-        ${rate}<span style={{ fontWeight: 500, color: color.muted, fontSize: 14 }}>/hr</span>
-      </span>
-    );
-  }
+function RateDisplay({ rate }: { rate: number }) {
   return (
-    <span onClick={onSubscribe} title="Subscribe to see rate" style={{ cursor: "pointer", userSelect: "none" }}>
-      <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, filter: "blur(5px)", pointerEvents: "none" }}>${rate}</span>
-      <span style={{ fontSize: 14, color: color.muted, filter: "blur(5px)", pointerEvents: "none" }}>/hr</span>
+    <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: color.ink }}>
+      ${rate}<span style={{ fontWeight: 500, color: color.muted, fontSize: 14 }}>/hr</span>
+    </span>
+  );
+}
+
+function CoachStatusBadge({ status }: { status: string }) {
+  const tones: Record<string, { bg: string; color: string; border: string }> = {
+    ACTIVE: { bg: "rgba(74,139,106,0.12)", color: "#2A5A45", border: "rgba(74,139,106,0.25)" },
+    PENDING: { bg: "rgba(196,168,106,0.14)", color: "#7A6020", border: "rgba(196,168,106,0.35)" },
+    INACTIVE: { bg: surface.inset, color: color.muted, border: "var(--scout-border)" },
+  };
+  const tone = tones[status] ?? tones.INACTIVE;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "5px 10px",
+        background: tone.bg,
+        border: `1px solid ${tone.border}`,
+        borderRadius: 999,
+        fontFamily: fontSans,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        color: tone.color,
+        lineHeight: 1.3,
+      }}
+    >
+      {status.toLowerCase()}
     </span>
   );
 }
@@ -177,31 +199,32 @@ function RateDisplay({ rate, isPro, onSubscribe }: { rate: number; isPro: boolea
 export function CoachingDirectoryCard({
   coach,
   isMobile,
-  isPro,
-  onSubscribe,
   onFollow,
   following,
   onOpenCoach,
   isMyCoach = false,
   canSelfAssignCoach = false,
-  canAdminAssignCoach = false,
   onToggleMyCoach,
   companyLookup = {},
+  variant = "client",
+  adminStatus,
+  adminAssignedClientCount,
 }: {
   coach: CoachListItem;
   isMobile: boolean;
-  isPro: boolean;
-  onSubscribe: () => void;
   onFollow: (coach: CoachListItem) => void;
   following: boolean;
   onOpenCoach: (coach: CoachListItem) => void;
   isMyCoach?: boolean;
   canSelfAssignCoach?: boolean;
-  canAdminAssignCoach?: boolean;
   onToggleMyCoach?: (coach: CoachListItem) => void;
   companyLookup?: Record<string, CoachCompanyLookupItem>;
+  variant?: "client" | "admin";
+  adminStatus?: string;
+  adminAssignedClientCount?: number;
 }) {
-  const matchScore = coach.matchScore ?? 0;
+  const isAdminView = variant === "admin";
+  const matchScore = isAdminView ? 0 : (coach.matchScore ?? 0);
   const tier = matchScore > 0 ? matchScoreTier(matchScore) : null;
   const showTopBorder = tier === "excellent" || tier === "strong" || tier === "good";
 
@@ -221,15 +244,16 @@ export function CoachingDirectoryCard({
           onOpenCoach(coach);
         }
       }}
-      style={{ cursor: "pointer" }}
+      style={{
+        cursor: "pointer",
+        display: "flex",
+        border: "1.5px solid #161616",
+        background: surface.card,
+        overflow: "hidden",
+        ...(showTopBorder ? { borderTop: `2px solid ${color.forest}` } : {}),
+      }}
     >
-      <ScoutBox
-        padding={isMobile ? "14px 16px" : "16px 20px"}
-        style={{
-          ...(showTopBorder ? { borderTop: `2px solid ${color.forest}` } : {}),
-          transition: "box-shadow 0.15s ease",
-        }}
-      >
+      <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "14px 16px" : "16px 20px" }}>
         <div style={{ display: "flex", gap: isMobile ? 12 : 16, alignItems: "flex-start" }}>
           <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 56 : 64} rounded />
 
@@ -253,6 +277,13 @@ export function CoachingDirectoryCard({
               {isFavorite && <FavoriteBadge />}
               {coach.featured && <CoachBadgePill label="Featured" tone="gold" />}
               {coach.isProfessionalCoach && <CoachBadgePill label="Top expert" tone="gold" />}
+              {isAdminView && adminStatus && <CoachStatusBadge status={adminStatus} />}
+              {isAdminView && adminAssignedClientCount != null && adminAssignedClientCount > 0 && (
+                <CoachBadgePill
+                  label={`${adminAssignedClientCount} client${adminAssignedClientCount === 1 ? "" : "s"}`}
+                  tone="neutral"
+                />
+              )}
             </div>
 
             {primaryLine && (
@@ -302,21 +333,6 @@ export function CoachingDirectoryCard({
               ))}
             </div>
 
-            {matchScore > 0 && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <CoachFitAssessment
-                  compact
-                  showScore
-                  job={{
-                    matchScore,
-                    matchLabel: coach.matchLabel ?? "",
-                    matchReasons: coach.matchReasons ?? [],
-                    matchedSkills: coach.matchedSkills,
-                  }}
-                />
-              </div>
-            )}
-
             <div
               style={{
                 display: "flex",
@@ -332,7 +348,7 @@ export function CoachingDirectoryCard({
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                 {coach.hourlyRate ? (
-                  <RateDisplay rate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} />
+                  <RateDisplay rate={coach.hourlyRate} />
                 ) : coach.requiresAssignment ? (
                   <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest }}>Included</span>
                 ) : null}
@@ -341,50 +357,42 @@ export function CoachingDirectoryCard({
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                {canSelfAssignCoach && onToggleMyCoach && (
-                  isMyCoach || (!coach.isInternal && !coach.requiresAssignment) || canAdminAssignCoach ? (
-                    <ScoutSecondaryBtn
-                      onClick={() => onToggleMyCoach(coach)}
-                      style={{
-                        minHeight: 38,
-                        fontSize: 13,
-                        padding: "8px 14px",
-                        ...(isMyCoach
-                          ? { borderColor: color.forest, color: color.forest, fontWeight: 600 }
-                          : {}),
-                      }}
-                    >
-                      {isMyCoach
-                        ? "Remove from my coaches"
-                        : canAdminAssignCoach && (coach.isInternal || coach.requiresAssignment)
-                          ? "Assign coach"
-                          : "Add as my coach"}
-                    </ScoutSecondaryBtn>
-                  ) : (
-                    <span
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: 12,
-                        color: color.muted,
-                        padding: "8px 4px",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      Assigned by your team
-                    </span>
-                  )
+                {!isAdminView && canSelfAssignCoach && onToggleMyCoach && (
+                  <ScoutSecondaryBtn
+                    onClick={() => onToggleMyCoach(coach)}
+                    style={{
+                      minHeight: 38,
+                      fontSize: 13,
+                      padding: "8px 14px",
+                      ...(isMyCoach
+                        ? { borderColor: color.forest, color: color.forest, fontWeight: 600 }
+                        : {}),
+                    }}
+                  >
+                    {isMyCoach ? "Remove from my coaches" : "Add as my coach"}
+                  </ScoutSecondaryBtn>
                 )}
-                <ScoutSecondaryBtn onClick={() => onFollow(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 14px" }}>
-                  {following ? "Following" : "+ Follow"}
-                </ScoutSecondaryBtn>
+                {!isAdminView && (
+                  <ScoutSecondaryBtn onClick={() => onFollow(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 14px" }}>
+                    {following ? "Following" : "+ Follow"}
+                  </ScoutSecondaryBtn>
+                )}
                 <ScoutPrimaryBtn onClick={() => onOpenCoach(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 16px" }}>
-                  {isPro ? "Free intro call" : "View profile"}
+                  {isAdminView ? "Manage" : "Free intro call"}
                 </ScoutPrimaryBtn>
               </div>
             </div>
           </div>
         </div>
-      </ScoutBox>
+      </div>
+      {matchScore > 0 && (
+        <CoachMatchScoreColumn
+          score={matchScore}
+          label={coach.matchLabel ?? ""}
+          reasons={coach.matchReasons ?? []}
+          matchedSkills={coach.matchedSkills}
+        />
+      )}
     </div>
   );
 }

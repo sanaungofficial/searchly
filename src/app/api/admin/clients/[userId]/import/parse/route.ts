@@ -52,6 +52,16 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
+  if (importType === "job_tracker" || importType === "target_companies") {
+    return NextResponse.json(
+      {
+        error:
+          "Jobs and companies imports use the field-mapping wizard — upload from the import modal, not legacy parse.",
+      },
+      { status: 400 },
+    );
+  }
+
   await ensureProfileRow(dbUser.id);
 
   let preview = emptyImportPreview();

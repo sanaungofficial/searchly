@@ -326,10 +326,10 @@ export function CoachingDirectorySidebar({
         )}
       </div>
 
-      <FilterSection title="Kimchi team" defaultOpen={kimchiCoachCount > 0}>
+      <FilterSection title="Second Ladder team" defaultOpen={kimchiCoachCount > 0}>
         <CheckRow
           checked={filters.internal}
-          label={`Kimchi coaches (${kimchiCoachCount})`}
+          label={`Second Ladder coaches (${kimchiCoachCount})`}
           onChange={() => onInternalChange(!filters.internal)}
         />
         <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>

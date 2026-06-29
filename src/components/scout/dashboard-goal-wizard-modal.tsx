@@ -2,24 +2,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  GOAL_WIZARD_CATEGORIES,
-  goalOptionsForCategory,
+  GOAL_WIZARD_ENTRIES,
+  GOALS_MATCHING_TAGLINE,
+  getGoalFollowUp,
+  goalOptionsForWizardEntry,
+  rankGoalOptionsForProfile,
+  rankWizardEntries,
   type DashboardGoal,
-  type DashboardGoalCategory,
-  type DashboardGoalOption,
+  type GoalProfileContext,
+  type GoalWizardEntry,
+  wizardEntryDisplay,
 } from "@/lib/dashboard-goals";
 import { dismissGoalsWizard } from "@/lib/recommendation-tuning";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
-import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
-type WizardStep = "intro" | "category" | "subcategory" | "targetMonth";
+type WizardStep = "intro" | "category" | "subcategory" | "followUp" | "targetMonth";
 
 type Props = {
   open: boolean;
   showIntro: boolean;
   onClose: () => void;
   onSave: (goal: Omit<DashboardGoal, "id" | "createdAt">) => void | Promise<void>;
-  availableOptions: DashboardGoalOption[];
+  availableValues: Set<string>;
+  profileContext: GoalProfileContext;
   saving: boolean;
 };
 
@@ -47,20 +53,23 @@ export function DashboardGoalWizardModal({
   showIntro,
   onClose,
   onSave,
-  availableOptions,
+  availableValues,
+  profileContext,
   saving,
 }: Props) {
   const [step, setStep] = useState<WizardStep>(showIntro ? "intro" : "category");
-  const [category, setCategory] = useState<DashboardGoalCategory | "">("");
+  const [wizardEntry, setWizardEntry] = useState<GoalWizardEntry | null>(null);
   const [pickValue, setPickValue] = useState("");
+  const [followUpChoice, setFollowUpChoice] = useState("");
   const [targetMonth, setTargetMonth] = useState("");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setStep(showIntro ? "intro" : "category");
-    setCategory("");
+    setWizardEntry(null);
     setPickValue("");
+    setFollowUpChoice("");
     setTargetMonth("");
     setSearch("");
   }, [open, showIntro]);
@@ -74,29 +83,62 @@ export function DashboardGoalWizardModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const rankedEntries = useMemo(
+    () => rankWizardEntries(GOAL_WIZARD_ENTRIES, profileContext, availableValues),
+    [profileContext, availableValues],
+  );
+
   const subcategoryOptions = useMemo(() => {
-    if (!category) return [];
-    const opts = goalOptionsForCategory(category).filter((o) =>
-      availableOptions.some((a) => a.value === o.value),
+    if (!wizardEntry) return [];
+    const opts = rankGoalOptionsForProfile(
+      goalOptionsForWizardEntry(wizardEntry, availableValues),
+      profileContext,
     );
     const q = search.trim().toLowerCase();
     if (!q) return opts;
     return opts.filter((o) => o.label.toLowerCase().includes(q));
-  }, [category, availableOptions, search]);
+  }, [wizardEntry, availableValues, profileContext, search]);
 
-  const selectedOption = availableOptions.find((o) => o.value === pickValue);
+  const selectedOption = pickValue
+    ? subcategoryOptions.find((o) => o.value === pickValue) ??
+      goalOptionsForWizardEntry(wizardEntry ?? GOAL_WIZARD_ENTRIES[0], availableValues).find(
+        (o) => o.value === pickValue,
+      )
+    : undefined;
+
+  const followUp = pickValue ? getGoalFollowUp(pickValue, profileContext) : null;
 
   const progressIndex =
-    step === "intro" ? 0 : step === "category" ? 1 : step === "subcategory" ? 2 : 3;
-  const progressTotal = showIntro ? 4 : 3;
+    step === "intro"
+      ? 0
+      : step === "category"
+        ? 1
+        : step === "subcategory"
+          ? 2
+          : step === "followUp"
+            ? 3
+            : followUp
+              ? 4
+              : 3;
+  const progressTotal = showIntro ? (followUp ? 5 : 4) : followUp ? 4 : 3;
+
+  const goAfterSubcategory = (value: string) => {
+    setPickValue(value);
+    const nextFollowUp = getGoalFollowUp(value, profileContext);
+    setStep(nextFollowUp ? "followUp" : "targetMonth");
+  };
 
   const finish = async (month: string) => {
     if (!selectedOption) return;
+    const followUpNote = followUp && followUpChoice
+      ? followUp.choices.find((c) => c.value === followUpChoice)?.label ?? followUpChoice
+      : null;
     await onSave({
       category: selectedOption.category,
       value: selectedOption.value,
       label: selectedOption.label,
       ...(month.trim() ? { targetDate: month.trim().slice(0, 7) } : {}),
+      ...(followUpNote ? { followUpNote } : {}),
     });
   };
 
@@ -154,7 +196,7 @@ export function DashboardGoalWizardModal({
           {step === "intro" && (
             <>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 24px" }}>
-                This helps us match you with the right jobs and coaches. Pick one primary goal — you can add more later from your dashboard.
+                {GOALS_MATCHING_TAGLINE} Pick one primary goal — you can add more later from your dashboard.
               </p>
               <ScoutPrimaryBtn
                 onClick={() => setStep("category")}
@@ -190,22 +232,20 @@ export function DashboardGoalWizardModal({
           {step === "category" && (
             <>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 16px", lineHeight: 1.55 }}>
-                What are you trying to achieve?
+                What kind of match are you looking for?
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                {GOAL_WIZARD_CATEGORIES.map((cat) => {
-                  const hasOpts = goalOptionsForCategory(cat.id).some((o) =>
-                    availableOptions.some((a) => a.value === o.value),
-                  );
-                  if (!hasOpts) return null;
-                  const selected = category === cat.id;
+                {rankedEntries.map((entry) => {
+                  const display = wizardEntryDisplay(entry, profileContext);
+                  const selected = wizardEntry?.key === entry.key;
                   return (
                     <button
-                      key={cat.id}
+                      key={entry.key}
                       type="button"
                       onClick={() => {
-                        setCategory(cat.id);
+                        setWizardEntry(entry);
                         setPickValue("");
+                        setFollowUpChoice("");
                         setSearch("");
                         setStep("subcategory");
                       }}
@@ -214,14 +254,29 @@ export function DashboardGoalWizardModal({
                         padding: "14px 16px",
                         border: selected ? `1.5px solid ${color.forest}` : "var(--scout-border)",
                         borderRadius: "var(--scout-radius)",
-                        background: selected ? "rgba(74,139,106,0.1)" : surface.inset,
+                        background: display.suggested ? "rgba(74,139,106,0.12)" : selected ? "rgba(74,139,106,0.1)" : surface.inset,
                         cursor: "pointer",
                         fontFamily: fontSans,
                       }}
                     >
-                      <span style={{ display: "block", fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>{cat.title}</span>
+                      {display.suggested && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            fontSize: T.label,
+                            fontWeight: 700,
+                            color: color.forest,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Suggested for you
+                        </span>
+                      )}
+                      <span style={{ display: "block", fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>{display.title}</span>
                       <span style={{ display: "block", fontSize: T.caption, color: color.muted, marginTop: 4, lineHeight: 1.45 }}>
-                        {cat.description}
+                        {display.description}
                       </span>
                     </button>
                   );
@@ -233,7 +288,7 @@ export function DashboardGoalWizardModal({
             </>
           )}
 
-          {step === "subcategory" && category && (
+          {step === "subcategory" && wizardEntry && (
             <>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 12px", lineHeight: 1.55 }}>
                 Pick the outcome that fits best.
@@ -255,20 +310,17 @@ export function DashboardGoalWizardModal({
                 }}
               />
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20, maxHeight: 240, overflow: "auto" }}>
-                {subcategoryOptions.map((opt) => (
+                {subcategoryOptions.map((opt, index) => (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => {
-                      setPickValue(opt.value);
-                      setStep("targetMonth");
-                    }}
+                    onClick={() => goAfterSubcategory(opt.value)}
                     style={{
                       textAlign: "left",
                       padding: "12px 14px",
                       border: pickValue === opt.value ? `1.5px solid ${color.forest}` : "var(--scout-border)",
                       borderRadius: "var(--scout-radius)",
-                      background: pickValue === opt.value ? "rgba(74,139,106,0.1)" : surface.card,
+                      background: index === 0 && subcategoryOptions.length > 1 ? "rgba(74,139,106,0.08)" : surface.card,
                       cursor: "pointer",
                       fontFamily: fontSans,
                       fontSize: T.bodySm,
@@ -288,10 +340,66 @@ export function DashboardGoalWizardModal({
             </>
           )}
 
+          {step === "followUp" && followUp && selectedOption && (
+            <>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 16px", lineHeight: 1.55 }}>
+                {followUp.prompt}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+                {followUp.choices.map((choice) => {
+                  const selected = followUpChoice === choice.value;
+                  return (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      onClick={() => setFollowUpChoice(choice.value)}
+                      style={{
+                        textAlign: "left",
+                        padding: "12px 14px",
+                        border: selected ? `1.5px solid ${color.forest}` : "var(--scout-border)",
+                        borderRadius: "var(--scout-radius)",
+                        background: selected ? "rgba(74,139,106,0.1)" : surface.card,
+                        cursor: "pointer",
+                        fontFamily: fontSans,
+                        fontSize: T.bodySm,
+                        color: color.ink,
+                      }}
+                    >
+                      {choice.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <ScoutPrimaryBtn
+                  onClick={() => setStep("targetMonth")}
+                  disabled={!followUp.optional && !followUpChoice}
+                  style={{ minHeight: 44 }}
+                >
+                  Continue
+                </ScoutPrimaryBtn>
+                {followUp.optional && (
+                  <ScoutSecondaryBtn
+                    onClick={() => {
+                      setFollowUpChoice("");
+                      setStep("targetMonth");
+                    }}
+                    style={{ minHeight: 40 }}
+                  >
+                    Skip this step
+                  </ScoutSecondaryBtn>
+                )}
+                <ScoutSecondaryBtn onClick={() => setStep("subcategory")} style={{ minHeight: 40 }}>
+                  ← Back
+                </ScoutSecondaryBtn>
+              </div>
+            </>
+          )}
+
           {step === "targetMonth" && selectedOption && (
             <>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 16px", lineHeight: 1.55 }}>
-                When do you want to achieve this? Optional — helps us prioritize coaches and timelines.
+                When do you want to achieve this? Optional — helps us prioritize matches and timelines.
               </p>
               <input
                 type="month"
@@ -318,7 +426,11 @@ export function DashboardGoalWizardModal({
                 <ScoutSecondaryBtn onClick={() => void finish("")} disabled={saving} style={{ minHeight: 40 }}>
                   Skip this step
                 </ScoutSecondaryBtn>
-                <ScoutSecondaryBtn onClick={() => setStep("subcategory")} disabled={saving} style={{ minHeight: 40 }}>
+                <ScoutSecondaryBtn
+                  onClick={() => setStep(followUp ? "followUp" : "subcategory")}
+                  disabled={saving}
+                  style={{ minHeight: 40 }}
+                >
                   ← Back
                 </ScoutSecondaryBtn>
               </div>

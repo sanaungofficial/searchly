@@ -12,11 +12,16 @@ import {
   CoachBookingModal,
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
+import {
+  CoachBookingRequestModal,
+  type CoachBookingRequestSessionType,
+} from "@/components/scout/coach-booking-request-modal";
 import { ScoutPrimaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachProfileDetail } from "@/lib/coach-types";
+import { categoryToSlug } from "@/lib/coach-categories";
 import { bruddleHeadingStyle, color, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 const line = "var(--scout-border)";
@@ -152,6 +157,8 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
   const [showReview, setShowReview] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingModalType, setBookingModalType] = useState<CoachBookingSessionType>("intro");
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestModalType, setRequestModalType] = useState<CoachBookingRequestSessionType>("intro");
   const [nextSlotStart, setNextSlotStart] = useState<number | null>(null);
   const [nextSlotLoading, setNextSlotLoading] = useState(false);
 
@@ -172,6 +179,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
 
   const sessionDurationMinutes = coach?.schedulerDurationMinutes ?? 60;
   const canBookInApp = Boolean(coach?.hasNylasBooking);
+  const canRequestBooking = Boolean(coach && !coach.hasNylasBooking);
 
   useEffect(() => {
     if (!coach?.hasNylasBooking || !slug) return;
@@ -200,6 +208,15 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
     }
     setBookingModalType(type);
     setBookingModalOpen(true);
+  };
+
+  const openRequestBooking = (type: CoachBookingRequestSessionType = "intro") => {
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
+    setRequestModalType(type);
+    setRequestModalOpen(true);
   };
 
   async function buyPackage(packageId: string) {
@@ -241,8 +258,6 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
       return;
     }
     const isAssigned = coach.isMyCoach ?? false;
-    if (!isAssigned && coach.isInternal && !isAdmin) return;
-    if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -303,6 +318,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
           display: "flex",
           alignItems: "center",
           gap: 12,
+          flexWrap: "wrap",
         }}
       >
         <Link
@@ -315,8 +331,38 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
             fontWeight: 600,
           }}
         >
-          ← Back to coaching
+          Coaching
         </Link>
+        {coach.category && (
+          <>
+            <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>/</span>
+            <Link
+              href={`/coaching/c/${categoryToSlug(coach.category)}`}
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.bodySm,
+                color: color.forest,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              {coach.category}
+            </Link>
+          </>
+        )}
+        <span style={{ marginLeft: "auto" }}>
+          <Link
+            href="/coaching"
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              color: color.muted,
+              textDecoration: "none",
+            }}
+          >
+            ← Back
+          </Link>
+        </span>
       </div>
 
       <CoachProfileView
@@ -324,6 +370,8 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
         isMobile={isMobile}
         sessionDurationMinutes={sessionDurationMinutes}
         canBookInApp={canBookInApp}
+        canRequestBooking={canRequestBooking}
+        bookingAvailability={coach.bookingAvailability ?? null}
         bookUrl={coach.calLink}
         nextSlotStart={nextSlotStart}
         nextSlotLoading={nextSlotLoading}
@@ -331,6 +379,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
         isAdmin={isAdmin}
         onBookIntro={() => openBooking("intro")}
         onBookSession={() => openBooking("session")}
+        onRequestBooking={() => openRequestBooking("intro")}
         onBuyPackage={buyPackage}
         onToggleFollow={toggleFollow}
         onToggleMyCoach={toggleMyCoach}
@@ -347,7 +396,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
         />
       )}
 
-      {bookingModalOpen && coach && (
+      {bookingModalOpen && coach && canBookInApp && (
         <CoachBookingModal
           open={bookingModalOpen}
           onClose={() => setBookingModalOpen(false)}
@@ -359,6 +408,21 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
           initialSessionType={bookingModalType}
           guestName={user?.name ?? undefined}
           onBooked={load}
+        />
+      )}
+
+      {requestModalOpen && coach && canRequestBooking && (
+        <CoachBookingRequestModal
+          open={requestModalOpen}
+          onClose={() => setRequestModalOpen(false)}
+          slug={slug}
+          coachDisplayName={coach.displayName}
+          coachPhotoUrl={coach.photoUrl}
+          sessionDurationMinutes={sessionDurationMinutes}
+          availability={coach.bookingAvailability ?? null}
+          initialSessionType={requestModalType}
+          guestName={user?.name ?? undefined}
+          onSubmitted={load}
         />
       )}
     </div>

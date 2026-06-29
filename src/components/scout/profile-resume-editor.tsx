@@ -29,6 +29,7 @@ import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobr
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
@@ -215,7 +216,7 @@ export function ProfileResumeEditor({
     setImprovePreview(null);
     void fetch(withClientScope(`/api/assets/${assetId}/improve`), { method: "POST" })
       .then(async (res) => {
-        const data = await res.json();
+        const data = await readResponseJson(res);
         if (res.status === 402) {
           notifyCreditsChanged();
           setImproveError("Monthly AI limit reached — upgrade for more.");
@@ -225,22 +226,22 @@ export function ProfileResumeEditor({
           setImproveError(
             data.error === "AI not configured"
               ? "AI isn't available in this environment — try on production."
-              : (data.error ?? "AI isn't available right now."),
+              : formatApiErrorMessage(data.error, "AI isn't available right now."),
           );
           return;
         }
         if (!res.ok) {
-          setImproveError(data.error ?? "Could not generate improvements — try on production.");
+          setImproveError(formatApiErrorMessage(data.error, "Could not generate improvements."));
           return;
         }
-        setImprovePreview(data.parsedData ?? null);
-        setImproveChanges(Array.isArray(data.changes) ? data.changes : []);
-        setImproveHighlights(Array.isArray(data.highlights) ? data.highlights : []);
-        setImproveNewScore(data.newScore);
-        setImprovePreviousScore(data.previousScore);
+        setImprovePreview((data.parsedData as ParsedResumeData | undefined) ?? null);
+        setImproveChanges(Array.isArray(data.changes) ? (data.changes as string[]) : []);
+        setImproveHighlights(Array.isArray(data.highlights) ? (data.highlights as typeof improveHighlights) : []);
+        setImproveNewScore(data.newScore as number | undefined);
+        setImprovePreviousScore(data.previousScore as number | undefined);
         notifyCreditsChanged();
       })
-      .catch(() => setImproveError("Could not generate improvements"))
+      .catch((err) => setImproveError(formatApiErrorMessage(err, "Could not generate improvements.")))
       .finally(() => setImproveLoading(false));
   }
 

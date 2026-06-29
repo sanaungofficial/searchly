@@ -72,7 +72,7 @@ function SubmittedModal({ onClose }: { onClose: () => void }) {
           Your profile has been submitted!
         </h2>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, lineHeight: 1.65, color: "#52493F", margin: "0 0 20px" }}>
-          Time to start collecting vouches. While the Kimchi team reviews your profile, send your unique vouch link to
+          Time to start collecting vouches. While the Second Ladder team reviews your profile, send your unique vouch link to
           friends, past clients, and colleagues — vouches help us approve coaches faster.
         </p>
         <div style={{ textAlign: "center", fontSize: 48, marginBottom: 16 }} aria-hidden="true">
@@ -160,7 +160,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
         <div className="onboarding-shell">
           <CoachOnboardingHeader screen={8} />
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#78716c", textAlign: "center", margin: "8px 0 0" }}>
-            Step 2 of 3 · The Kimchi team is reviewing your profile
+            Step 2 of 3 · The Second Ladder team is reviewing your profile
           </p>
 
           <div className="onboarding-content" style={{ maxWidth: 720 }}>

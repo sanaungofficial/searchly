@@ -163,6 +163,7 @@ export async function createCoachBookingRecord(params: {
   guestEmail: string;
   title?: string;
   timezone?: string;
+  guestNotes?: string | null;
   /** When false, skip Resend emails (webhook path sends separately). Default true for API bookings. */
   sendEmails?: boolean;
 }) {
@@ -175,8 +176,10 @@ export async function createCoachBookingRecord(params: {
     guestName: params.guestName,
     guestEmail: params.guestEmail,
     timezone: params.timezone,
+    guestNotes: params.guestNotes,
   });
 
+  const notes = params.guestNotes?.trim() || null;
   const { startAt, endAt, bookingRowId, userId } = await persistBookingRecord({
     coachProfileId: params.coachProfileId,
     configurationId: params.configurationId,
@@ -185,7 +188,7 @@ export async function createCoachBookingRecord(params: {
     guestName: params.guestName,
     guestEmail: params.guestEmail,
     title: params.title,
-    created,
+    created: notes ? { ...created, guestNotes: notes } : created,
   });
 
   if (params.sendEmails !== false) {

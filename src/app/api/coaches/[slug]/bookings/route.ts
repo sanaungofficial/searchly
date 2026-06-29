@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientCoachingUser, findCoachBySlugOrId } from "@/lib/coach-api";
-import { isCoachAssignedToUser } from "@/lib/coach-client-assignment";
 import { createCoachBookingRecord } from "@/lib/coach-booking-nylas";
 import {
   introDurationForCoach,
@@ -15,6 +14,7 @@ type BookBody = {
   sessionType?: "intro" | "session";
   guestName?: string;
   timezone?: string;
+  guestNotes?: string;
 };
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -33,16 +33,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   if (coach.nylasGrantStatus === "expired") {
     return NextResponse.json({ error: "Coach calendar connection expired" }, { status: 503 });
-  }
-
-  if (coach.requiresAssignment) {
-    const assigned = await isCoachAssignedToUser(coach.id, me.id);
-    if (!assigned) {
-      return NextResponse.json(
-        { error: "This coach requires assignment before booking. Contact your team." },
-        { status: 403 },
-      );
-    }
   }
 
   let body: BookBody;
@@ -77,6 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   const guestName = (body.guestName?.trim() || me.name || me.email.split("@")[0]).slice(0, 120);
   const guestEmail = me.email;
+  const guestNotes = body.guestNotes?.trim().slice(0, 2000) || null;
   const title =
     body.sessionType === "intro"
       ? `Intro call with ${coach.displayName}`
@@ -92,6 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       guestEmail,
       title,
       timezone: body.timezone,
+      guestNotes,
       sendEmails: true,
     });
 

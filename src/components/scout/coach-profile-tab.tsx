@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { ApifyLinkedInProfile } from "@/lib/apify-linkedin";
+import type { CoachLinkedInImportMergeDiff, CoachLinkedInImportSection } from "@/lib/coach-linkedin-import-merge";
+import { CoachLinkedInImportMergeModal } from "@/components/scout/coach-linkedin-import-merge-modal";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
 import { CoachResourcesLibrary } from "@/components/scout/coach-resources-library";
 import { coachPublicProfilePath } from "@/lib/coach-slug";
-import { ScoutBox, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -164,6 +167,7 @@ type CoachProfileTabProps = {
   /** Admin mode: edit any coach by id via /api/admin/coaches/[id] */
   mode?: "coach" | "admin";
   coachId?: string;
+  onProfileSaved?: () => void;
 };
 
 export function CoachProfileTab({
@@ -171,6 +175,7 @@ export function CoachProfileTab({
   emptyMessage = "No coach profile found linked to your account. Contact an admin to get set up.",
   mode = "coach",
   coachId,
+  onProfileSaved,
 }: CoachProfileTabProps) {
   const isAdminEdit = mode === "admin" && Boolean(coachId);
   const searchParams = useSearchParams();
@@ -188,6 +193,17 @@ export function CoachProfileTab({
   const [nylasNotice, setNylasNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [retryingScheduler, setRetryingScheduler] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [linkedInImportUrl, setLinkedInImportUrl] = useState("");
+  const [linkedInImporting, setLinkedInImporting] = useState(false);
+  const [linkedInImportNotice, setLinkedInImportNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [linkedInMergeOpen, setLinkedInMergeOpen] = useState(false);
+  const [linkedInMergeApplying, setLinkedInMergeApplying] = useState(false);
+  const [linkedInMergeError, setLinkedInMergeError] = useState<string | null>(null);
+  const [linkedInMergeDiffs, setLinkedInMergeDiffs] = useState<CoachLinkedInImportMergeDiff[]>([]);
+  const [pendingLinkedInImport, setPendingLinkedInImport] = useState<{
+    linkedinUrl: string;
+    scraped: ApifyLinkedInProfile;
+  } | null>(null);
 
   async function loadProfile() {
     const url = isAdminEdit ? `/api/admin/coaches/${coachId}` : "/api/coach/profile";
@@ -324,9 +340,91 @@ export function CoachProfileTab({
       setProfile(updated);
       setForm(updated);
       setSaved(true);
+      onProfileSaved?.();
       setTimeout(() => setSaved(false), 3000);
     }
     setSaving(false);
+  }
+
+  async function importFromLinkedIn() {
+    if (!isAdminEdit || !coachId) return;
+    const url = linkedInImportUrl.trim() || form.linkedinUrl?.trim() || "";
+    if (!url) {
+      setLinkedInImportNotice({ type: "error", message: "Enter a LinkedIn profile URL to import." });
+      return;
+    }
+
+    setLinkedInImporting(true);
+    setLinkedInMergeOpen(true);
+    setLinkedInMergeError(null);
+    setLinkedInImportNotice(null);
+    setPendingLinkedInImport(null);
+    try {
+      const response = await fetch(`/api/admin/coaches/${coachId}/linkedin-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: url }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "LinkedIn import failed.");
+      }
+      if (!data.scraped || typeof data.linkedinUrl !== "string") {
+        throw new Error("Import preview was incomplete. Try again.");
+      }
+      setLinkedInMergeDiffs(Array.isArray(data.diffs) ? data.diffs : []);
+      setPendingLinkedInImport({
+        linkedinUrl: data.linkedinUrl,
+        scraped: data.scraped as ApifyLinkedInProfile,
+      });
+      setLinkedInImportUrl("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "LinkedIn import failed. Please try again.";
+      setLinkedInMergeError(message);
+      setLinkedInImportNotice({ type: "error", message });
+    } finally {
+      setLinkedInImporting(false);
+    }
+  }
+
+  async function applyLinkedInImport(sections: CoachLinkedInImportSection[]) {
+    if (!isAdminEdit || !coachId || !pendingLinkedInImport) return;
+    setLinkedInMergeApplying(true);
+    setLinkedInMergeError(null);
+    try {
+      const response = await fetch(`/api/admin/coaches/${coachId}/linkedin-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          linkedinUrl: pendingLinkedInImport.linkedinUrl,
+          sections,
+          scraped: pendingLinkedInImport.scraped,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "LinkedIn import apply failed.");
+      }
+      setProfile(data.coach);
+      setForm(data.coach);
+      setLinkedInMergeOpen(false);
+      setPendingLinkedInImport(null);
+      onProfileSaved?.();
+      setLinkedInImportNotice({
+        type: "success",
+        message:
+          data.message ??
+          (Array.isArray(data.appliedFields) && data.appliedFields.length > 0
+            ? `Applied ${data.appliedFields.join(", ")} from LinkedIn.`
+            : "Import completed — no changes were needed for the selected sections."),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "LinkedIn import apply failed.";
+      setLinkedInMergeError(message);
+      setLinkedInImportNotice({ type: "error", message });
+    } finally {
+      setLinkedInMergeApplying(false);
+    }
   }
 
   if (loading || settingUp) {
@@ -438,7 +536,7 @@ export function CoachProfileTab({
                 style={{ width: 14, height: 14, cursor: "pointer" }}
               />
               <label htmlFor="internal-coach" style={{ fontSize: 13, color: color.stone, cursor: "pointer", fontFamily: fontSans }}>
-                Internal Kimchi coach
+                Internal Second Ladder coach
               </label>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
@@ -811,6 +909,45 @@ export function CoachProfileTab({
             />
           </div>
         </div>
+
+        {isAdminEdit && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid rgba(26,58,47,0.08)" }}>
+            <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink }}>
+              Import from LinkedIn
+            </p>
+            <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
+              Fetches public LinkedIn profile data via Apify, then lets you review and choose which sections to apply — nothing is overwritten until you confirm.
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                value={linkedInImportUrl}
+                onChange={(event) => setLinkedInImportUrl(event.target.value)}
+                placeholder={form.linkedinUrl?.trim() ? "Uses saved LinkedIn URL" : "Paste LinkedIn profile URL"}
+                style={{ ...inputStyle, flex: "1 1 280px" }}
+              />
+              <ScoutPrimaryBtn
+                onClick={() => void importFromLinkedIn()}
+                disabled={linkedInImporting || (!linkedInImportUrl.trim() && !form.linkedinUrl?.trim())}
+                style={{ minHeight: 40, fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}
+              >
+                {linkedInImporting ? "Importing…" : "Import from LinkedIn"}
+              </ScoutPrimaryBtn>
+            </div>
+            {linkedInImportNotice && (
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  fontFamily: fontSans,
+                  fontSize: 13,
+                  color: linkedInImportNotice.type === "success" ? color.forest : "#b45309",
+                  lineHeight: 1.5,
+                }}
+              >
+                {linkedInImportNotice.message}
+              </p>
+            )}
+          </div>
+        )}
       </ScoutBox>
 
       <ScoutBox padding="20px 24px">
@@ -938,6 +1075,23 @@ export function CoachProfileTab({
             setPricingOpen(false);
             loadProfile().catch(() => {});
           }}
+        />
+      )}
+
+      {isAdminEdit && (
+        <CoachLinkedInImportMergeModal
+          open={linkedInMergeOpen}
+          loading={linkedInImporting}
+          applying={linkedInMergeApplying}
+          error={linkedInMergeError}
+          diffs={linkedInMergeDiffs}
+          onClose={() => {
+            if (!linkedInMergeApplying && !linkedInImporting) {
+              setLinkedInMergeOpen(false);
+              setPendingLinkedInImport(null);
+            }
+          }}
+          onApply={(sections) => void applyLinkedInImport(sections)}
         />
       )}
     </div>

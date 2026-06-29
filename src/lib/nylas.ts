@@ -342,6 +342,9 @@ export async function revokeNylasGrant(grantId: string): Promise<void> {
   await nylasFetch(`/v3/grants/${grantId}`, { method: "DELETE", grantId });
 }
 
+/** Stable key for optional guest notes on Kimchi scheduler configs and API bookings. */
+export const NYLAS_BOOKING_NOTES_FIELD_KEY = "meeting_notes";
+
 export type CoachSchedulerParams = {
   grantId: string;
   coachName: string;
@@ -385,6 +388,7 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
   const sessionKind = params.sessionLabel === "intro" ? "intro call" : "coaching session";
   const descriptionParts = [`Book a 1:1 ${sessionKind} via Kimchi.`];
   if (params.availabilityNotes) descriptionParts.push(params.availabilityNotes);
+  descriptionParts.push(`Guest notes: \${${NYLAS_BOOKING_NOTES_FIELD_KEY}}`);
 
   const eventTitle =
     params.sessionLabel === "intro"
@@ -432,6 +436,14 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
       cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
       min_booking_notice: params.minBookingNoticeMinutes ?? 1440,
       available_days_in_future: 60,
+    },
+    additional_fields: {
+      [NYLAS_BOOKING_NOTES_FIELD_KEY]: {
+        label: "Notes for your coach (optional)",
+        type: "multi_line_text",
+        required: false,
+        order: 1,
+      },
     },
   };
 }
@@ -784,12 +796,14 @@ export async function createSchedulerBooking(params: {
   guestName: string;
   guestEmail: string;
   timezone?: string;
+  guestNotes?: string | null;
 }): Promise<{
   bookingId?: string;
   bookingRef?: string;
   eventId?: string;
   title?: string;
 }> {
+  const notes = params.guestNotes?.trim().slice(0, 2000);
   const query = new URLSearchParams({ configuration_id: params.configurationId });
   const res = await nylasFetch<NylasBookingCreateResponse>(`/v3/scheduling/bookings?${query.toString()}`, {
     method: "POST",
@@ -798,6 +812,9 @@ export async function createSchedulerBooking(params: {
       end_time: params.endTime,
       guest: { name: params.guestName, email: params.guestEmail },
       ...(params.timezone ? { timezone: params.timezone } : {}),
+      ...(notes
+        ? { additional_fields: { [NYLAS_BOOKING_NOTES_FIELD_KEY]: notes } }
+        : {}),
     },
   });
 

@@ -5,6 +5,8 @@ import { parseJsonFromModel } from "@/lib/resume-parse";
 import { resolveResumeTextForUser } from "@/lib/resolve-resume-text";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 120;
+
 const TAILOR_MAX_TOKENS = 8192;
 
 type TailorResult = {
@@ -55,12 +57,12 @@ function normalizeTailorResult(raw: unknown): TailorResult | null {
   };
 }
 
-function parseTailorResponse(text: string, stopReason: string | null): TailorResult | { error: string } {
+function parseTailorResponse(text: string, finishReason: string | null): TailorResult | { error: string } {
   const parsed = parseJsonFromModel(text);
   const result = normalizeTailorResult(parsed);
   if (result) return result;
 
-  if (stopReason === "max_tokens") {
+  if (finishReason === "length" || finishReason === "max_tokens") {
     return {
       error:
         "Resume generation was cut off before finishing. Try selecting fewer sections or use Quick edit mode, then try again.",
@@ -68,10 +70,10 @@ function parseTailorResponse(text: string, stopReason: string | null): TailorRes
   }
 
   console.error("[tailor-resume] parse failed", {
-    stopReason,
+    finishReason,
     preview: text.slice(0, 400),
   });
-  return { error: "Failed to parse response. Please try again." };
+  return { error: "Failed to parse AI response — try Quick edit mode with fewer sections." };
 }
 
 export async function POST(req: NextRequest) {
@@ -142,14 +144,14 @@ Return ONLY valid JSON:
 }`;
 
     try {
-      const { text } = await kimchiGenerateText({
+      const { text, finishReason } = await kimchiGenerateText({
         tier: "create",
         prompt: tweakPrompt,
         maxOutputTokens: TAILOR_MAX_TOKENS,
         userId: dbUser.id,
         tags: ["feature:tailor-resume-tweak"],
       });
-      const parsed = parseTailorResponse(text, null);
+      const parsed = parseTailorResponse(text, finishReason);
       if ("error" in parsed) {
         return NextResponse.json({ error: parsed.error }, { status: 500 });
       }
@@ -222,7 +224,7 @@ Rules:
 - injectedKeywords: list only keywords from the provided missing list that were actually added`;
 
   try {
-    const { text } = await kimchiGenerateText({
+    const { text, finishReason } = await kimchiGenerateText({
       tier: "create",
       prompt,
       maxOutputTokens: TAILOR_MAX_TOKENS,
@@ -230,7 +232,7 @@ Rules:
       tags: ["feature:tailor-resume"],
     });
 
-    const parsed = parseTailorResponse(text, null);
+    const parsed = parseTailorResponse(text, finishReason);
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 500 });
     }

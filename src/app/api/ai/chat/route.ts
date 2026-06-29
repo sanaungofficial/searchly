@@ -1,5 +1,6 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
+import { formatThreadForFollowUps } from "@/lib/kimchi-assistant/chat-chips";
 import { buildAssistantContext, formatAssistantContextForPrompt } from "@/lib/kimchi-assistant/context";
 import { buildKimchiMailTools, wantsMailTools } from "@/lib/kimchi-assistant/mail/chat-tools";
 import { isKimchiAiConfigured, kimchiStreamText, kimchiStreamTextWithTools } from "@/lib/llm";
@@ -122,6 +123,11 @@ export async function POST(request: Request) {
     tags: ["feature:scout-chat"],
     onUsage: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => {
       logAiUsage(dbUser.id, "CHAT", modelId, usage.inputTokens, usage.outputTokens);
+    },
+    followUpContext: {
+      userMessage: cleanMessages.filter((m) => m.role === "user").at(-1)?.content ?? "",
+      threadContext: formatThreadForFollowUps(cleanMessages.slice(0, -1)),
+      userId: dbUser.id,
     },
   };
 

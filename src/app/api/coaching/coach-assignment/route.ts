@@ -48,18 +48,6 @@ export async function POST(req: NextRequest) {
   if (!coach || coach.status !== "ACTIVE") {
     return NextResponse.json({ error: "Coach not found" }, { status: 404 });
   }
-  if (coach.isInternal && !adminAssigning) {
-    return NextResponse.json(
-      { error: "Kimchi coaches are assigned by your team. Contact support if you need a change." },
-      { status: 400 },
-    );
-  }
-  if (coach.requiresAssignment && !adminAssigning) {
-    return NextResponse.json(
-      { error: "This coach requires assignment by an admin." },
-      { status: 400 },
-    );
-  }
 
   await assignCoachToClient({
     userId: me.id,

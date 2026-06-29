@@ -18,12 +18,18 @@ export async function POST(req: NextRequest) {
   if (quotaError) return quotaError;
 
   const body = await req.json();
-  const { jobTitle, company, description, jobId, assetId } = body as {
+  const { jobTitle, company, description, jobId, assetId, context } = body as {
     jobTitle?: string;
     company?: string;
     description?: string;
     jobId?: string;
     assetId?: string;
+    context?: {
+      motivation?: string;
+      achievements?: string;
+      tone?: string;
+      notes?: string;
+    };
   };
 
   const resumeText = await resolveResumeTextForUser(dbUser.id, dbUser.profile, assetId);
@@ -42,6 +48,12 @@ export async function POST(req: NextRequest) {
 
   const candidateName = dbUser?.name || "the candidate";
 
+  const motivation = context?.motivation?.trim() || "Not specified — infer from resume and job description.";
+  const achievements = context?.achievements?.trim() || "Not specified — pick the 2 strongest relevant wins from the resume.";
+  const tone =
+    context?.tone === "formal" ? "formal" : "conversational";
+  const notes = context?.notes?.trim() || "None — use standard professional language.";
+
   const template = await getPrompt("COVER_LETTER_FULL");
   const prompt = interpolate(template, {
     jobTitle: jobTitle || "Unknown",
@@ -49,12 +61,16 @@ export async function POST(req: NextRequest) {
     description: finalDescription.slice(0, 3000),
     resumeSlice: resumeText.slice(0, 3000),
     candidateName,
+    motivation,
+    achievements,
+    tone,
+    notes,
   });
 
   return await kimchiStreamText({
     tier: "create",
     messages: [{ role: "user", content: prompt }],
-    maxOutputTokens: 800,
+    maxOutputTokens: 900,
     userId: dbUser.id,
     tags: ["feature:cover-letter"],
   });

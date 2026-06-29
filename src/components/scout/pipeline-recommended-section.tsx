@@ -36,6 +36,9 @@ import {
   writeRecommendedCache,
   clearRecommendedCacheForKey,
   clearRecommendedCache,
+  migrateRecommendedCacheScope,
+  markDefaultRecommendedFeedLoaded,
+  hasDefaultRecommendedFeedLoaded,
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import {
@@ -44,6 +47,7 @@ import {
   clearPipelineNetworkMatchCache,
 } from "@/lib/pipeline-network-match-cache";
 import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
+import { compareRoleSearchRelevance } from "@/lib/job-match";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { networkAgencyDisplayName } from "@/lib/network-job-display";
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
@@ -55,11 +59,11 @@ import {
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel } from "./score-explainer-popover";
-import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
+import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
-import { matchScoreStyle, isLowQualityMatchReason } from "@/lib/match-score";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
@@ -348,75 +352,6 @@ function recommendedDedupeKey(job: VectorMatchedJob): string {
   });
 }
 
-function CircularMatchScore({ score }: { score: number }) {
-  const radius = 30;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference - (score / 100) * circumference;
-  return (
-    <div style={{ position: "relative", width: 80, height: 80 }}>
-      <svg width="80" height="80" viewBox="0 0 80 80" style={{ display: "block" }}>
-        <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="#44E8A4"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          transform="rotate(-90 40 40)"
-        />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontFamily: fontMono, fontSize: 17, fontWeight: 700, color: "#FFFFFF", lineHeight: 1 }}>
-          {score}<span style={{ fontSize: 11 }}>%</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function WhyMatchPanel({ reasons, matchedSkills }: { reasons: string[]; matchedSkills: string[] }) {
-  return (
-    <div style={{ padding: "4px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
-          <path d="M7.5 1L9 6H14.5L10 9.5L11.5 14.5L7.5 11.5L3.5 14.5L5 9.5L0.5 6H6L7.5 1Z" fill="#44E8A4" stroke="#44E8A4" strokeWidth="0.5" strokeLinejoin="round"/>
-        </svg>
-        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
-          Why This Job Is A Match
-        </span>
-      </div>
-      {reasons.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: matchedSkills.length > 0 ? 14 : 0 }}>
-          {reasons.map((r, i) => (
-            <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-              <span style={{ color: "#44E8A4", fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>✓</span>
-              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.45 }}>{r}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {matchedSkills.length > 0 && (
-        <div>
-          <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 7px" }}>
-            Matched Skills
-          </p>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {matchedSkills.map((skill) => (
-              <span key={skill} style={{ display: "inline-block", padding: "3px 10px", fontSize: T.label, fontWeight: 600, color: "#44E8A4", background: "rgba(68,232,164,0.12)", border: "1px solid rgba(68,232,164,0.35)", borderRadius: 4 }}>
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function IconBriefcase() {
   return (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -516,7 +451,6 @@ function RecommendedJobCard({
   setSavingKey: (key: string | null) => void;
   setNetworkSavingId: (id: string | null) => void;
 }) {
-  const [showWhy, setShowWhy] = useState(false);
   const isNetwork = Boolean(row._networkJob);
   const networkJob = row._networkJob;
 
@@ -546,12 +480,6 @@ function RecommendedJobCard({
 
   const matchScore = row.matchScore ?? 0;
   const matchLabel = row.matchLabel ?? "";
-  const reasons = (row.matchReasons ?? []).filter((r) => !isLowQualityMatchReason(r)).slice(0, 4);
-  const matchedSkills = (row.matchedSkills ?? []).slice(0, 6);
-  const hasWhyContent = reasons.length > 0 || matchedSkills.length > 0;
-
-  const score = matchScoreStyle(matchScore);
-  const panelBg = matchScore >= 75 ? "#0D2419" : matchScore >= 60 ? "#1F1508" : "#1A1A1A";
 
   const postedDays = !isNetwork && row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
   const postedText =
@@ -588,10 +516,7 @@ function RecommendedJobCard({
           }}
           style={{ flex: 1, padding: 18, cursor: "pointer" }}
         >
-          {showWhy && hasWhyContent ? (
-            <WhyMatchPanel reasons={reasons} matchedSkills={matchedSkills} />
-          ) : (
-            <>
+          <>
               {/* Top badge row */}
               {(isNetwork || postedText || row.isTrackedCompany) && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -679,8 +604,7 @@ function RecommendedJobCard({
                   <MetadataGrid row={row} isNetwork={isNetwork} networkJob={networkJob} />
                 </div>
               </div>
-            </>
-          )}
+          </>
         </div>
         <div
           style={{ display: "flex", gap: 8, padding: "0 18px 16px", flexWrap: "wrap", alignItems: "center" }}
@@ -719,41 +643,13 @@ function RecommendedJobCard({
           )}
         </div>
       </div>
-      {/* Right: dark score panel — hover triggers "Why Match" in left content */}
       {matchScore > 0 && (
-        <div
-          onMouseEnter={() => setShowWhy(true)}
-          onMouseLeave={() => setShowWhy(false)}
-          style={{
-            width: 120,
-            flexShrink: 0,
-            background: panelBg,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            padding: "20px 12px",
-            cursor: "default",
-            borderLeft: "1.5px solid rgba(255,255,255,0.07)",
-          }}
-        >
-          <CircularMatchScore score={matchScore} />
-          <p
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#FFFFFF",
-              letterSpacing: "0.07em",
-              textTransform: "uppercase",
-              textAlign: "center",
-              margin: 0,
-            }}
-          >
-            {matchLabel} Match
-          </p>
-        </div>
+        <MatchScoreColumn
+          score={matchScore}
+          label={matchLabel}
+          reasons={row.matchReasons ?? []}
+          matchedSkills={row.matchedSkills ?? []}
+        />
       )}
     </div>
   );
@@ -856,10 +752,20 @@ export function PipelineRecommendedSection({
   const [networkJobs, setNetworkJobs] = useState<NetworkMatchedJob[]>(() => readPipelineNetworkMatchCache()?.jobs ?? []);
   const [networkSavingId, setNetworkSavingId] = useState<string | null>(null);
 
-  const mountedRef = useRef(false);
+  const initialFetchAttemptedRef = useRef(false);
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
   const fetchGenRef = useRef(0);
   const defaultFormRef = useRef<FilterForm | null>(null);
+
+  const hydrateFromCache = useCallback((filtersKey: string) => {
+    const cached = readRecommendedCache(filtersKey);
+    if (!cached) return false;
+    setJobs(cached.jobs);
+    setError(cached.error ?? null);
+    setHasLoadedOnce(true);
+    setLoading(false);
+    return true;
+  }, []);
 
   const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
   const appliedFilters = useMemo(() => formToFilters(appliedForm, 1), [appliedForm]);
@@ -953,6 +859,9 @@ export function PipelineRecommendedSection({
             matchMode: data.matchMode,
             error: null,
           });
+          if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
+            markDefaultRecommendedFeedLoaded();
+          }
         }
         setHasLoadedOnce(true);
       } catch (err) {
@@ -1030,10 +939,19 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     const prev = prevActingUserIdRef.current;
-    prevActingUserIdRef.current = actingUserId ?? null;
+    const next = actingUserId ?? null;
+    prevActingUserIdRef.current = next;
     if (prev === undefined) return;
+    if (prev === next) return;
 
-    mountedRef.current = false;
+    // Profile resolves actingUserId after first paint — not an admin/client switch.
+    if (prev === null && next !== null) {
+      migrateRecommendedCacheScope("self", next);
+      hydrateFromCache(defaultFeedCacheKey());
+      return;
+    }
+
+    initialFetchAttemptedRef.current = false;
     setDefaultsLoaded(false);
     defaultFormRef.current = null;
     clearRecommendedCache();
@@ -1049,30 +967,33 @@ export function PipelineRecommendedSection({
     const empty = filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS);
     setForm({ ...empty, semanticQuery: loadScopedSemanticQuery() });
     setAppliedForm({ ...empty, semanticQuery: "" });
-  }, [actingUserId]);
+  }, [actingUserId, hydrateFromCache]);
 
   useEffect(() => {
-    if (mountedRef.current || !defaultsLoaded) return;
-    mountedRef.current = true;
+    if (initialFetchAttemptedRef.current || !defaultsLoaded) return;
+    // Fetching before profile resolves actingUserId writes cache under scope "self", which remounts miss.
+    if (!isAdminReviewing && actingUserId == null) return;
+
+    initialFetchAttemptedRef.current = true;
 
     const feedForm = defaultFeedForm();
+    const defaultKey = defaultFeedCacheKey();
 
     if (isAdminReviewing) {
       void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
       return;
     }
 
-    const cached = readRecommendedCache(defaultFeedCacheKey());
-    if (cached) {
-      setJobs(cached.jobs);
-      setError(cached.error ?? null);
+    if (hydrateFromCache(defaultKey)) return;
+
+    if (hasDefaultRecommendedFeedLoaded()) {
       setHasLoadedOnce(true);
       setLoading(false);
       return;
     }
 
-    void fetchRecommended(feedForm, { preferCache: false });
-  }, [fetchRecommended, actingUserId, defaultsLoaded, isAdminReviewing]);
+    void fetchRecommended(feedForm, { preferCache: true });
+  }, [fetchRecommended, defaultsLoaded, isAdminReviewing, hydrateFromCache, actingUserId]);
 
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
     const location = profileLocationFromForm(filtersForm);
@@ -1205,22 +1126,22 @@ export function PipelineRecommendedSection({
       if (scoreA > scoreB) byKey.set(listing.dedupeKey, listing);
     }
     for (const nj of networkJobs) {
+      if (hasActiveSearch) break;
       const listing = networkJobToUnifiedListing(nj);
       if (byKey.has(listing.dedupeKey)) continue;
       byKey.set(listing.dedupeKey, listing);
     }
     return [...byKey.values()];
-  }, [jobs, networkJobs, savedKeys]);
+  }, [jobs, networkJobs, savedKeys, hasActiveSearch]);
 
-  const filteredListings = useMemo(
-    () =>
-      [...recommendedListings].sort((a, b) => {
-        const scoreA = a.matchScore ?? 0;
-        const scoreB = b.matchScore ?? 0;
-        return scoreB - scoreA;
-      }),
-    [recommendedListings],
-  );
+  const filteredListings = useMemo(() => {
+    const list = [...recommendedListings];
+    if (hasActiveSearch) {
+      const query = appliedForm.semanticQuery.trim();
+      return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
+    }
+    return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."

@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
-import type { ClientImportPreview } from "@/lib/client-import/types";
-import type { ImportType } from "@/lib/client-import/import-types";
-import { IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-import/types";
+import type { VisibleImportType } from "@/lib/client-import/import-types";
+import { VISIBLE_IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
+import type { CompanyImportOptions } from "@/lib/client-import/company-field-mapping";
+import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 import type { IntakeParseResult } from "@/lib/career-strategy";
-import { ImportReviewModal } from "@/components/admin/admin-client-import-panel";
+import { JobTrackerImportWizard } from "@/components/scout/job-tracker-import-wizard";
+import { CompaniesImportWizard } from "@/components/scout/companies-import-wizard";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -32,20 +35,25 @@ function DocumentUploadIcon() {
   );
 }
 
+type FlowStep = "pick" | "input";
+
 type Props = {
   open: boolean;
   onClose: () => void;
   clientUserId: string;
   onPatchProfile: (patch: Record<string, unknown>) => Promise<void>;
   onSuccess?: (message: string) => void;
+  /** Navigate to import complete screen with persisted run id. */
+  onImportComplete?: (runId: string) => void;
 };
 
-export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile, onSuccess }: Props) {
+export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile, onSuccess, onImportComplete }: Props) {
   const isMobile = useIsMobile();
   const api = (path: string) => withClientUserId(path, clientUserId);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [importType, setImportType] = useState<ImportType>("job_tracker");
+  const [flowStep, setFlowStep] = useState<FlowStep>("pick");
+  const [importType, setImportType] = useState<VisibleImportType>("job_tracker");
   const [files, setFiles] = useState<File[]>([]);
   const [pasteText, setPasteText] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -53,9 +61,10 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [preview, setPreview] = useState<ClientImportPreview | null>(null);
-  const [applyResume, setApplyResume] = useState(false);
-  const [showReview, setShowReview] = useState(false);
+  const [showJobTrackerWizard, setShowJobTrackerWizard] = useState(false);
+  const [showCompaniesWizard, setShowCompaniesWizard] = useState(false);
+  const [jobImportOptions, setJobImportOptions] = useState<JobTrackerImportOptions | undefined>();
+  const [companyImportOptions, setCompanyImportOptions] = useState<CompanyImportOptions | undefined>();
 
   const [intakeResult, setIntakeResult] = useState<IntakeParseResult | null>(null);
   const [showApplyProfile, setShowApplyProfile] = useState(false);
@@ -64,15 +73,21 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const config = getImportTypeConfig(importType);
 
   const resetState = useCallback(() => {
+    setFlowStep("pick");
     setFiles([]);
     setPasteText("");
     setError(null);
-    setPreview(null);
-    setShowReview(false);
+    setShowJobTrackerWizard(false);
+    setShowCompaniesWizard(false);
+    setJobImportOptions(undefined);
+    setCompanyImportOptions(undefined);
     setIntakeResult(null);
     setShowApplyProfile(false);
-    setApplyResume(false);
   }, []);
+
+  useEffect(() => {
+    if (!open) resetState();
+  }, [open, resetState]);
 
   const handleClose = useCallback(() => {
     resetState();
@@ -84,6 +99,39 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setFiles((prev) => [...prev, ...Array.from(list)]);
     setError(null);
   }, []);
+
+  function buildImportMeta(sourceKindOverride?: "file" | "paste") {
+    const sourceKind =
+      sourceKindOverride ?? (files.length > 0 || pasteText.trim() ? (files.length > 0 ? "file" : "paste") : "paste");
+    const fileName =
+      files.length === 1
+        ? files[0]?.name ?? null
+        : files.length > 1
+          ? `${files[0]?.name ?? "file"} +${files.length - 1}`
+          : null;
+    return { importType, fileName, sourceKind };
+  }
+
+  async function recordIntakeRun(input: {
+    profileUpdated: boolean;
+    companiesAdded: number;
+    companiesUpdated: number;
+    qaAdded: number;
+    qaSkipped: number;
+    errors?: string[];
+  }): Promise<string | undefined> {
+    const res = await fetch(api(`/api/admin/clients/${clientUserId}/import/runs`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intake: input,
+        importMeta: buildImportMeta(files.length > 0 ? "file" : "paste"),
+      }),
+    });
+    const data = await readResponseJson(res);
+    if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to record import"));
+    return typeof data.runId === "string" ? data.runId : undefined;
+  }
 
   async function extractFileText(file: File): Promise<string> {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
@@ -125,7 +173,28 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     notifyCreditsChanged();
   }
 
+  function handleContinueFromPick() {
+    setError(null);
+    if (importType === "job_tracker") {
+      setShowJobTrackerWizard(true);
+    } else if (importType === "target_companies") {
+      setShowCompaniesWizard(true);
+    } else {
+      setFlowStep("input");
+    }
+  }
+
   async function handleParse() {
+    if (importType === "job_tracker") {
+      setShowJobTrackerWizard(true);
+      return;
+    }
+    if (importType === "target_companies") {
+      setShowCompaniesWizard(true);
+      return;
+    }
+    if (importType !== "application_info") return;
+
     const hasPaste = pasteText.trim().length > 0;
     const hasFiles = files.length > 0;
     if (!hasPaste && !hasFiles) {
@@ -137,36 +206,17 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
 
     try {
-      if (importType === "application_info") {
-        let notes = pasteText.trim();
-        if (!notes && files.length) {
-          const parts: string[] = [];
-          for (const file of files) {
-            const text = await extractFileText(file);
-            if (text) parts.push(text);
-          }
-          notes = parts.join("\n\n");
+      let notes = pasteText.trim();
+      if (!notes && files.length) {
+        const parts: string[] = [];
+        for (const file of files) {
+          const text = await extractFileText(file);
+          if (text) parts.push(text);
         }
-        if (!notes) throw new Error("No text found to parse.");
-        await handleParseApplicationInfo(notes);
-        return;
+        notes = parts.join("\n\n");
       }
-
-      const form = new FormData();
-      form.append("importType", importType);
-      if (hasPaste) form.append("pasteText", pasteText.trim());
-      for (const f of files) form.append("files", f);
-
-      const res = await fetch(`/api/admin/clients/${clientUserId}/import/parse`, {
-        method: "POST",
-        body: form,
-      });
-      const data = await readResponseJson(res);
-      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Parse failed"));
-
-      setPreview(data.preview as ClientImportPreview);
-      setApplyResume(false);
-      setShowReview(true);
+      if (!notes) throw new Error("No text found to parse.");
+      await handleParseApplicationInfo(notes);
     } catch (e) {
       setError(formatApiErrorMessage(e, "Parse failed"));
     } finally {
@@ -209,16 +259,22 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
     try {
       const patch: Record<string, unknown> = { ...(intakeResult.proposed ?? {}) };
+      let profileUpdated = false;
       if (Object.keys(patch).length > 0) {
         if (patch.name) {
           await onPatchProfile({ name: patch.name });
           delete patch.name;
+          profileUpdated = true;
         }
-        if (Object.keys(patch).length > 0) await onPatchProfile(patch);
+        if (Object.keys(patch).length > 0) {
+          await onPatchProfile(patch);
+          profileUpdated = true;
+        }
       }
 
       const trackedCompanies = mergeIntakeTrackedCompanies(intakeResult);
-      const messages: string[] = [];
+      let companiesAdded = 0;
+      let companiesUpdated = 0;
 
       if (trackedCompanies.length > 0) {
         const res = await fetch(api("/api/companies/intake-apply"), {
@@ -228,20 +284,30 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
         });
         const data = await readResponseJson(res);
         if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to add target companies"));
-        messages.push(`Target companies: ${data.added ?? 0} added, ${data.updated ?? 0} updated.`);
+        companiesAdded = Number(data.added ?? 0);
+        companiesUpdated = Number(data.updated ?? 0);
       }
 
       const qaResult = await applyApplicationQa(intakeResult.suggestedApplicationQa);
-      if (qaResult.added || qaResult.skipped) {
-        messages.push(
-          `Application Q&A: ${qaResult.added} added${qaResult.skipped ? `, ${qaResult.skipped} skipped (duplicate)` : ""}.`,
-        );
-      }
+
+      const runId = await recordIntakeRun({
+        profileUpdated,
+        companiesAdded,
+        companiesUpdated,
+        qaAdded: qaResult.added,
+        qaSkipped: qaResult.skipped,
+      });
 
       setShowApplyProfile(false);
       setIntakeResult(null);
-      handleClose();
-      onSuccess?.(messages.length ? messages.join(" ") : "Profile updated from intake.");
+      resetState();
+      onClose();
+
+      if (runId && onImportComplete) {
+        onImportComplete(runId);
+      } else {
+        onSuccess?.("Profile updated from intake.");
+      }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to apply profile updates"));
     } finally {
@@ -249,50 +315,38 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     }
   }
 
-  async function handleApplyImport() {
-    if (!preview) return;
+  async function handleApplyImport(
+    activePreview: ClientImportPreview,
+    jobOptionsOverride?: JobTrackerImportOptions,
+    metaOverride?: ReturnType<typeof buildImportMeta>,
+    companyOptionsOverride?: CompanyImportOptions,
+  ) {
+    if (!activePreview) return;
     setApplying(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/clients/${clientUserId}/import/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preview, applyResume }),
+        body: JSON.stringify({
+          preview: activePreview,
+          applyResume: false,
+          jobImportOptions: jobOptionsOverride ?? jobImportOptions,
+          companyImportOptions: companyOptionsOverride ?? companyImportOptions,
+          importMeta: metaOverride ?? buildImportMeta(),
+        }),
       });
-      const data = (await readResponseJson(res)) as {
-        error?: string;
-        profileUpdated?: boolean;
-        jobs?: { added: number; updated: number };
-        companies?: { added: number; updated: number };
-        contacts?: { added: number; updated: number };
-        roles?: { targetSelected: number; deprioritizedSelected: number };
-        categories?: { prioritizedSelected: number; deprioritizedSelected: number };
-        applicationQa?: { added: number; skipped: number };
-      };
+      const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string; runId?: string };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
 
-      const parts = [
-        data.jobs?.added || data.jobs?.updated ? `jobs ${data.jobs.added} added, ${data.jobs.updated} updated` : null,
-        data.companies?.added || data.companies?.updated
-          ? `companies ${data.companies.added} added, ${data.companies.updated} updated`
-          : null,
-        data.contacts?.added || data.contacts?.updated
-          ? `contacts ${data.contacts.added} added, ${data.contacts.updated} updated`
-          : null,
-        data.roles?.targetSelected || data.roles?.deprioritizedSelected
-          ? `roles ${data.roles.targetSelected} target, ${data.roles.deprioritizedSelected} deprioritized`
-          : null,
-        data.categories?.prioritizedSelected || data.categories?.deprioritizedSelected
-          ? `keywords ${data.categories.prioritizedSelected} use, ${data.categories.deprioritizedSelected} avoid`
-          : null,
-        data.applicationQa?.added ? `${data.applicationQa.added} passwords saved` : null,
-        data.profileUpdated ? "profile updated" : null,
-      ].filter(Boolean);
+      resetState();
+      onClose();
 
-      setShowReview(false);
-      setPreview(null);
-      handleClose();
-      onSuccess?.(parts.length ? `Import complete: ${parts.join("; ")}.` : "Import complete.");
+      if (data.runId && onImportComplete) {
+        onImportComplete(data.runId);
+      } else {
+        onSuccess?.("Import complete.");
+      }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Apply failed"));
     } finally {
@@ -300,295 +354,336 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     }
   }
 
+  async function handleJobWizardComplete(result: {
+    preview: ClientImportPreview;
+    jobImportOptions: JobTrackerImportOptions;
+  }) {
+    setShowJobTrackerWizard(false);
+    setJobImportOptions(result.jobImportOptions);
+    await handleApplyImport(result.preview, result.jobImportOptions, {
+      importType: "job_tracker",
+      fileName: result.preview.sourceFiles[0]?.filename ?? null,
+      sourceKind: result.preview.sourceFiles.length ? "file" : "paste",
+    });
+  }
+
+  async function handleCompaniesWizardComplete(result: {
+    preview: ClientImportPreview;
+    companyImportOptions: CompanyImportOptions;
+  }) {
+    setShowCompaniesWizard(false);
+    setCompanyImportOptions(result.companyImportOptions);
+    await handleApplyImport(result.preview, undefined, {
+      importType: "target_companies",
+      fileName: result.preview.sourceFiles[0]?.filename ?? null,
+      sourceKind: result.preview.sourceFiles.length ? "file" : "paste",
+    }, result.companyImportOptions);
+  }
+
+  const showMainModal = open && !showApplyProfile && !showJobTrackerWizard && !showCompaniesWizard && !applying;
+
   const dropBorder = isDragging ? color.forest : "rgba(26,58,47,0.25)";
   const dropBg = isDragging ? "rgba(26,58,47,0.06)" : surface.inset;
 
   return (
     <>
-      <ScoutModal open={open && !showReview && !showApplyProfile} onClose={handleClose} maxWidth={760} bruddle>
-        <ScoutLabel>Import</ScoutLabel>
-        <ScoutDisplayTitle size={22} style={{ margin: "8px 0 20px" }}>
-          What are you importing?
-        </ScoutDisplayTitle>
+      <ScoutModal open={showMainModal} onClose={handleClose} maxWidth={760} bruddle>
+        {flowStep === "pick" ? (
+          <>
+            <ScoutLabel>Import</ScoutLabel>
+            <ScoutDisplayTitle size={22} style={{ margin: "8px 0 20px" }}>
+              What are you importing?
+            </ScoutDisplayTitle>
 
-        <label style={{ display: "block", marginBottom: 20 }}>
-          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, fontWeight: 600 }}>
-            Import type
-          </span>
-          <select
-            value={importType}
-            onChange={(e) => {
-              setImportType(e.target.value as ImportType);
-              setFiles([]);
-              setError(null);
-            }}
-            style={{
-              display: "block",
-              width: "100%",
-              marginTop: 6,
-              padding: "10px 12px",
-              border: border.lineStrong,
-              borderRadius: radius.box,
-              fontFamily: fontSans,
-              fontSize: T.bodySm,
-              background: "#fff",
-              color: color.forest,
-            }}
-          >
-            {IMPORT_TYPE_CONFIGS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0", lineHeight: 1.5 }}>
-            {config.description}
-            {config.usesAi ? " Uses 1 AI credit." : ""}
-          </p>
-        </label>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-            gap: 16,
-            marginBottom: 20,
-          }}
-        >
-          {config.supportsFile && (
-            <div>
-              <p
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.muted,
-                  margin: "0 0 8px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                File upload
-              </p>
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  onFiles(e.dataTransfer.files);
-                }}
-                onClick={() => inputRef.current?.click()}
-                style={{
-                  minHeight: isMobile ? 140 : 200,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  padding: 16,
-                  border: `2px dashed ${dropBorder}`,
-                  borderRadius: radius.box,
-                  background: dropBg,
-                  cursor: parsing ? "not-allowed" : "pointer",
-                }}
-              >
-                <DocumentUploadIcon />
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0, textAlign: "center" }}>
-                  Drop files or click to browse
-                </p>
-                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, textAlign: "center" }}>
-                  {config.accept}
-                </p>
-              </div>
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept={config.accept}
-                style={{ display: "none" }}
+            <label style={{ display: "block", marginBottom: 20 }}>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, fontWeight: 600 }}>
+                Import type
+              </span>
+              <select
+                value={importType}
                 onChange={(e) => {
-                  onFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-              {files.length > 0 && (
-                <ul style={{ fontFamily: fontSans, fontSize: T.caption, margin: "8px 0 0", paddingLeft: 18, color: color.stone }}>
-                  {files.map((f) => (
-                    <li key={`${f.name}-${f.size}`}>{f.name}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {config.supportsPaste && (
-            <div>
-              <p
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.muted,
-                  margin: "0 0 8px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Paste text
-              </p>
-              <textarea
-                value={pasteText}
-                onChange={(e) => {
-                  setPasteText(e.target.value);
+                  setImportType(e.target.value as VisibleImportType);
                   setError(null);
                 }}
-                placeholder={config.pastePlaceholder}
                 style={{
+                  display: "block",
                   width: "100%",
-                  minHeight: isMobile ? 140 : 200,
-                  padding: "12px 14px",
+                  marginTop: 6,
+                  padding: "10px 12px",
                   border: border.lineStrong,
                   borderRadius: radius.box,
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
-                  lineHeight: 1.55,
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                  background: surface.inset,
+                  background: "#fff",
                   color: color.forest,
                 }}
-              />
+              >
+                {VISIBLE_IMPORT_TYPE_CONFIGS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  color: color.muted,
+                  margin: "8px 0 0",
+                  lineHeight: 1.5,
+                }}
+              >
+                {config.description}
+                {config.usesAi ? " Uses 1 AI credit." : ""}
+              </p>
+            </label>
+
+            {error && (
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#b04040", margin: "0 0 12px" }}>{error}</p>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <ScoutSecondaryBtn onClick={handleClose}>Cancel</ScoutSecondaryBtn>
+              <ScoutPrimaryBtn onClick={handleContinueFromPick}>Continue</ScoutPrimaryBtn>
             </div>
-          )}
-        </div>
-
-        {parsing && (
-          <div style={{ marginBottom: 16 }}>
-            <KimchiProcessLoader
-              preset={importType === "application_info" ? "strategyIntake" : undefined}
-              title="Parsing import…"
-              variant="inline"
-            />
-          </div>
-        )}
-
-        {error && (
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#b04040", margin: "0 0 12px" }}>{error}</p>
-        )}
-
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <ScoutSecondaryBtn onClick={handleClose} disabled={parsing || applying}>
-            Cancel
-          </ScoutSecondaryBtn>
-          {(files.length > 0 || pasteText.trim()) && (
-            <ScoutSecondaryBtn
-              onClick={() => {
-                setFiles([]);
-                setPasteText("");
+          </>
+        ) : (
+          <>
+            <ScoutLabel>Import</ScoutLabel>
+            <ScoutDisplayTitle size={22} style={{ margin: "8px 0 8px" }}>
+              {config.label}
+            </ScoutDisplayTitle>
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.bodySm,
+                color: color.muted,
+                margin: "0 0 20px",
+                lineHeight: 1.5,
               }}
-              disabled={parsing}
             >
-              Clear
-            </ScoutSecondaryBtn>
-          )}
-          <ScoutPrimaryBtn onClick={handleParse} disabled={parsing || applying || (!files.length && !pasteText.trim())}>
-            {parsing ? "Parsing…" : importType === "application_info" ? "Parse & review" : "Parse / Import"}
-          </ScoutPrimaryBtn>
-        </div>
+              {config.description}
+              {config.usesAi ? " Uses 1 AI credit." : ""}
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              {config.supportsFile && (
+                <div>
+                  <p
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: T.caption,
+                      fontWeight: 600,
+                      color: color.muted,
+                      margin: "0 0 8px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    File upload
+                  </p>
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      onFiles(e.dataTransfer.files);
+                    }}
+                    onClick={() => inputRef.current?.click()}
+                    style={{
+                      minHeight: isMobile ? 140 : 200,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 10,
+                      padding: 16,
+                      border: `2px dashed ${dropBorder}`,
+                      borderRadius: radius.box,
+                      background: dropBg,
+                      cursor: parsing ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <DocumentUploadIcon />
+                    <p
+                      style={{
+                        fontFamily: fontSans,
+                        fontSize: T.bodySm,
+                        fontWeight: 600,
+                        color: color.ink,
+                        margin: 0,
+                        textAlign: "center",
+                      }}
+                    >
+                      Drop files or click to browse
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        color: color.muted,
+                        margin: 0,
+                        textAlign: "center",
+                      }}
+                    >
+                      {config.accept}
+                    </p>
+                  </div>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    multiple
+                    accept={config.accept}
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      onFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  {files.length > 0 && (
+                    <ul
+                      style={{
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        margin: "8px 0 0",
+                        paddingLeft: 18,
+                        color: color.stone,
+                      }}
+                    >
+                      {files.map((f) => (
+                        <li key={`${f.name}-${f.size}`}>{f.name}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {config.supportsPaste && (
+                <div>
+                  <p
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: T.caption,
+                      fontWeight: 600,
+                      color: color.muted,
+                      margin: "0 0 8px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Paste text
+                  </p>
+                  <textarea
+                    value={pasteText}
+                    onChange={(e) => {
+                      setPasteText(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder={config.pastePlaceholder}
+                    style={{
+                      width: "100%",
+                      minHeight: isMobile ? 140 : 200,
+                      padding: "12px 14px",
+                      border: border.lineStrong,
+                      borderRadius: radius.box,
+                      fontFamily: fontSans,
+                      fontSize: T.bodySm,
+                      lineHeight: 1.55,
+                      resize: "vertical",
+                      boxSizing: "border-box",
+                      background: surface.inset,
+                      color: color.forest,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {parsing && (
+              <div style={{ marginBottom: 16 }}>
+                <KimchiProcessLoader
+                  preset={importType === "application_info" ? "strategyIntake" : undefined}
+                  title="Parsing import…"
+                  variant="inline"
+                />
+              </div>
+            )}
+
+            {error && (
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#b04040", margin: "0 0 12px" }}>{error}</p>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <ScoutSecondaryBtn
+                onClick={() => {
+                  setFlowStep("pick");
+                  setFiles([]);
+                  setPasteText("");
+                  setError(null);
+                }}
+                disabled={parsing}
+              >
+                Back
+              </ScoutSecondaryBtn>
+              <ScoutSecondaryBtn onClick={handleClose} disabled={parsing || applying}>
+                Cancel
+              </ScoutSecondaryBtn>
+              {(files.length > 0 || pasteText.trim()) && (
+                <ScoutSecondaryBtn
+                  onClick={() => {
+                    setFiles([]);
+                    setPasteText("");
+                  }}
+                  disabled={parsing}
+                >
+                  Clear
+                </ScoutSecondaryBtn>
+              )}
+              <ScoutPrimaryBtn
+                onClick={handleParse}
+                disabled={parsing || applying || (!files.length && !pasteText.trim())}
+              >
+                {parsing ? "Parsing…" : "Parse & review"}
+              </ScoutPrimaryBtn>
+            </div>
+          </>
+        )}
       </ScoutModal>
 
-      {showReview && preview && (
-        <ImportReviewModal
-          preview={preview}
-          applyResume={applyResume}
-          onApplyResumeChange={setApplyResume}
-          onToggle={(bucket, id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = p[bucket].map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, [bucket]: rows };
-            })
-          }
-          onToggleRole={(kind, id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = p.profile[kind].map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, profile: { ...p.profile, [kind]: rows } };
-            })
-          }
-          onToggleCategory={(kind, id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = (p.profile[kind] ?? []).map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, profile: { ...p.profile, [kind]: rows } };
-            })
-          }
-          onToggleQa={(id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = (p.applicationQa ?? []).map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, applicationQa: rows };
-            })
-          }
-          onSelectAll={(bucket) =>
-            setPreview((p) => (p ? { ...p, [bucket]: p[bucket].map((row) => ({ ...row, selected: true })) } : p))
-          }
-          onUnselectAll={(bucket) =>
-            setPreview((p) => (p ? { ...p, [bucket]: p[bucket].map((row) => ({ ...row, selected: false })) } : p))
-          }
-          onSelectAllRoles={(kind) =>
-            setPreview((p) =>
-              p ? { ...p, profile: { ...p.profile, [kind]: p.profile[kind].map((row) => ({ ...row, selected: true })) } } : p,
-            )
-          }
-          onUnselectAllRoles={(kind) =>
-            setPreview((p) =>
-              p ? { ...p, profile: { ...p.profile, [kind]: p.profile[kind].map((row) => ({ ...row, selected: false })) } } : p,
-            )
-          }
-          onSelectAllCategories={(kind) =>
-            setPreview((p) =>
-              p
-                ? {
-                    ...p,
-                    profile: {
-                      ...p.profile,
-                      [kind]: (p.profile[kind] ?? []).map((row) => ({ ...row, selected: true })),
-                    },
-                  }
-                : p,
-            )
-          }
-          onUnselectAllCategories={(kind) =>
-            setPreview((p) =>
-              p
-                ? {
-                    ...p,
-                    profile: {
-                      ...p.profile,
-                      [kind]: (p.profile[kind] ?? []).map((row) => ({ ...row, selected: false })),
-                    },
-                  }
-                : p,
-            )
-          }
-          onSelectAllQa={() =>
-            setPreview((p) =>
-              p ? { ...p, applicationQa: (p.applicationQa ?? []).map((row) => ({ ...row, selected: true })) } : p,
-            )
-          }
-          onUnselectAllQa={() =>
-            setPreview((p) =>
-              p ? { ...p, applicationQa: (p.applicationQa ?? []).map((row) => ({ ...row, selected: false })) } : p,
-            )
-          }
-          onClose={() => setShowReview(false)}
-          onApply={handleApplyImport}
-          applying={applying}
+      {applying && (
+        <ScoutModal open maxWidth={480} bruddle onClose={() => {}}>
+          <KimchiProcessLoader title="Applying import…" variant="inline" />
+        </ScoutModal>
+      )}
+
+      {showJobTrackerWizard && (
+        <JobTrackerImportWizard
+          open={showJobTrackerWizard}
+          onClose={() => setShowJobTrackerWizard(false)}
+          clientUserId={clientUserId}
+          title="Import jobs list"
+          onComplete={handleJobWizardComplete}
+        />
+      )}
+
+      {showCompaniesWizard && (
+        <CompaniesImportWizard
+          open={showCompaniesWizard}
+          onClose={() => setShowCompaniesWizard(false)}
+          clientUserId={clientUserId}
+          title="Import companies list"
+          onComplete={handleCompaniesWizardComplete}
         />
       )}
 

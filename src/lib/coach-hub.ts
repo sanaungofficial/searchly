@@ -6,7 +6,7 @@ import {
   type CoachProfile,
   type User,
 } from "@prisma/client";
-import { getAssignedCoachesForUser } from "@/lib/coach-client-assignment";
+import { getAssignedClientsForCoach, getAssignedCoachesForUser } from "@/lib/coach-client-assignment";
 import { prisma } from "@/lib/prisma";
 
 export type CoachHubStats = {
@@ -26,6 +26,8 @@ export type CoachClientSummary = {
   upcomingCount: number;
   lastSessionAt: string | null;
   nextSessionAt: string | null;
+  isAssigned?: boolean;
+  assignmentNotes?: string | null;
 };
 
 export type ClientCoachSummary = {
@@ -130,14 +132,23 @@ export function mapHubBooking(
 
 export async function getCoachHubStats(coachProfileId: string): Promise<CoachHubStats> {
   const now = new Date();
-  const bookings = await prisma.coachBooking.findMany({
-    where: { coachProfileId },
-    select: { guestEmail: true, startAt: true, status: true },
-  });
+  const [bookings, assignedClients] = await Promise.all([
+    prisma.coachBooking.findMany({
+      where: { coachProfileId },
+      select: { userId: true, guestEmail: true, startAt: true, status: true },
+    }),
+    getAssignedClientsForCoach(coachProfileId),
+  ]);
 
-  const guestEmails = new Set(
-    bookings.map((b) => b.guestEmail?.trim().toLowerCase()).filter(Boolean) as string[],
-  );
+  const clientKeys = new Set<string>();
+  for (const b of bookings) {
+    const email = b.guestEmail?.trim().toLowerCase();
+    clientKeys.add(b.userId ?? email ?? "");
+  }
+  for (const client of assignedClients) {
+    clientKeys.add(client.userId);
+  }
+  clientKeys.delete("");
 
   return {
     totalSessions: bookings.length,
@@ -147,7 +158,7 @@ export async function getCoachHubStats(coachProfileId: string): Promise<CoachHub
     upcomingSessions: bookings.filter(
       (b) => b.startAt >= now && ACTIVE_STATUSES.includes(b.status),
     ).length,
-    uniqueClients: guestEmails.size,
+    uniqueClients: clientKeys.size,
     cancelledSessions: bookings.filter((b) => b.status === CoachBookingStatus.CANCELLED).length,
   };
 }
@@ -205,19 +216,54 @@ function aggregateClientRows(
 }
 
 export async function getCoachClientSummaries(coachProfileId: string): Promise<CoachClientSummary[]> {
-  const bookings = await prisma.coachBooking.findMany({
-    where: { coachProfileId },
-    select: {
-      userId: true,
-      guestEmail: true,
-      guestName: true,
-      startAt: true,
-      status: true,
-      user: { select: { id: true, email: true, name: true } },
-    },
-    orderBy: { startAt: "desc" },
+  const [bookings, assignedClients] = await Promise.all([
+    prisma.coachBooking.findMany({
+      where: { coachProfileId },
+      select: {
+        userId: true,
+        guestEmail: true,
+        guestName: true,
+        startAt: true,
+        status: true,
+        user: { select: { id: true, email: true, name: true } },
+      },
+      orderBy: { startAt: "desc" },
+    }),
+    getAssignedClientsForCoach(coachProfileId),
+  ]);
+
+  const summaries = aggregateClientRows(bookings);
+  const byKey = new Map(summaries.map((client) => [client.userId ?? client.email, client]));
+
+  for (const assignment of assignedClients) {
+    const existing = byKey.get(assignment.userId);
+    if (existing) {
+      existing.isAssigned = true;
+      existing.assignmentNotes = assignment.notes;
+      if (!existing.name && assignment.name) existing.name = assignment.name;
+      continue;
+    }
+
+    byKey.set(assignment.userId, {
+      userId: assignment.userId,
+      email: assignment.email,
+      name: assignment.name,
+      sessionCount: 0,
+      completedCount: 0,
+      upcomingCount: 0,
+      lastSessionAt: null,
+      nextSessionAt: null,
+      isAssigned: true,
+      assignmentNotes: assignment.notes,
+    });
+  }
+
+  return Array.from(byKey.values()).sort((a, b) => {
+    if (a.isAssigned !== b.isAssigned) return a.isAssigned ? -1 : 1;
+    const aTime = a.nextSessionAt ?? a.lastSessionAt ?? "";
+    const bTime = b.nextSessionAt ?? b.lastSessionAt ?? "";
+    return bTime.localeCompare(aTime);
   });
-  return aggregateClientRows(bookings);
 }
 
 export async function getClientCoachSummaries(

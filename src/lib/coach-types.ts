@@ -72,17 +72,31 @@ export type CoachReviewAggregates = {
   supportiveness: number;
 };
 
+/** Coach-configured typical hours (not live Nylas sync). */
+export type CoachBookingAvailability = {
+  summary: string;
+  timezone: string;
+  availabilityNotes: string | null;
+  introDurationMinutes: number;
+  sessionDurationMinutes: number;
+};
+
 export type CoachProfileDetail = CoachListItem & {
   linkedinUrl: string | null;
   calLink: string | null;
   nylasSchedulerConfigId: string | null;
   hasNylasBooking: boolean;
+  bookingAvailability?: CoachBookingAvailability | null;
   schedulerDurationMinutes?: number;
   experienceLevel: string | null;
   clientTier: string | null;
   industryYears: number | null;
   whyCoach: string | null;
   aboutMe: string | null;
+  /** Sum of completed booking durations (minutes). */
+  totalCoachedMinutes?: number;
+  /** Distinct clients assigned to this coach. */
+  clientsCoachedCount?: number;
   isFollowing: boolean;
   isMyCoach?: boolean;
   aggregates: CoachReviewAggregates | null;

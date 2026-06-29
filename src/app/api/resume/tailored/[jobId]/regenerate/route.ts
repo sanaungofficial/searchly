@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { resolveResumeTextForUser } from "@/lib/resolve-resume-text";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   if (!isKimchiAiConfigured()) {
@@ -15,28 +16,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ job
 
   const { jobId } = await params;
 
-  const [job, profile] = await Promise.all([
-    prisma.job.findUnique({ where: { id: jobId } }),
-    prisma.profile.findFirst({ where: { user: { email: user.email! } } }),
-  ]);
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true },
+  });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  const job = await prisma.job.findFirst({ where: { id: jobId, userId: dbUser.id } });
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  const resumeText = profile?.resumeText || "";
+  const resumeText = await resolveResumeTextForUser(dbUser.id, dbUser.profile, null);
+  if (!resumeText) {
+    return NextResponse.json({ error: "No resume found" }, { status: 404 });
+  }
 
   const template = await getPrompt("RESUME_TAILOR_REGEN");
   const promptContent = interpolate(template, {
     company: job.company || "",
     role: job.role || "",
     jobNotes: job.notes || "",
-    resumeText: resumeText || "(no resume provided)",
+    resumeText,
   });
 
   const { text } = await kimchiGenerateText({
     tier: "create",
     prompt: promptContent,
     maxOutputTokens: 4096,
-    userId: (await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true } }))?.id,
+    userId: dbUser.id,
     tags: ["feature:resume-tailor-regen"],
   });
 

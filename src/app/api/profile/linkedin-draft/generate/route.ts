@@ -1,108 +1,42 @@
-import { prisma } from "@/lib/prisma";
-import { logAiUsage } from "@/lib/ai-usage";
-import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
-import { getPrompt, interpolate } from "@/lib/prompts";
-import {
-  normalizeLinkedInDraft,
-  parseLinkedInDraftFromModel,
-} from "@/lib/linkedin-profile";
-import { syncLinkedInDraftFromAbout } from "@/lib/profile-linkedin-sync";
-import { aboutProfileFingerprint, withAboutFingerprint } from "@/lib/linkedin-about-fingerprint";
-import { normalizeParsedResumeData } from "@/lib/resume-parse";
-import { loadParsedForSync } from "@/lib/profile-linkedin-sync";
 import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
+import { buildProposedLinkedInDraftFromAbout } from "@/lib/linkedin-about-propose";
+import {
+  applyAboutMergeSections,
+  LINKEDIN_ABOUT_MERGE_SECTIONS,
+} from "@/lib/linkedin-about-merge";
+import { aboutProfileFingerprint, withAboutFingerprint } from "@/lib/linkedin-about-fingerprint";
+import { normalizeLinkedInDraft } from "@/lib/linkedin-profile";
+import { loadParsedForSync } from "@/lib/profile-linkedin-sync";
+import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+/** Legacy full replace — prefer POST /apply-about with explicit sections. */
 export async function POST(request: Request) {
   const resolved = await resolveProfileApiSubject(request);
   if ("error" in resolved) return resolved.error;
-  const { authUser, dbUser } = resolved;
+  const { dbUser } = resolved;
 
-  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-
-  const primary = await prisma.userAsset.findFirst({
-    where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
-  });
-
-  const resume =
-    normalizeParsedResumeData(primary?.parsedData ?? profile?.parsedData ?? null);
-
-  if (!resume || (!resume.workExperience.length && !resume.summary && !resume.skills.length)) {
+  const proposedResult = await buildProposedLinkedInDraftFromAbout(dbUser.id);
+  if (!proposedResult) {
     return NextResponse.json(
       { error: "Upload and parse a resume first — Kimchi needs structured experience to build your LinkedIn preview." },
       { status: 422 },
     );
   }
 
-  const name = dbUser.name || authUser.email.split("@")[0] || "You";
-  const targetRoles = profile?.targetRoles ?? [];
-  const sourceAssetId = primary?.id ?? null;
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const existingDraft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
-
-  let aiDraft = null as ReturnType<typeof normalizeLinkedInDraft>;
-  let provider: "claude" | "heuristic" = "heuristic";
-
-  if (isKimchiAiConfigured()) {
-    try {
-      const template = await getPrompt("LINKEDIN_DRAFT");
-      const prompt = interpolate(template, {
-        name,
-        targetRoles: targetRoles.length ? targetRoles.join(", ") : "Not specified",
-        resumeJson: JSON.stringify(resume).slice(0, 12000),
-      });
-
-      const { text, usage, modelId } = await kimchiGenerateText({
-        tier: "create",
-        prompt,
-        maxOutputTokens: 4096,
-        userId: dbUser.id,
-        tags: ["feature:linkedin-draft"],
-      });
-
-      aiDraft = parseLinkedInDraftFromModel(text);
-      if (aiDraft) {
-        provider = "claude";
-        logAiUsage(dbUser.id, "FIT_ANALYSIS", modelId, usage.inputTokens, usage.outputTokens);
-      }
-    } catch (err) {
-      console.error("[linkedin-draft] AI generation failed:", err);
-    }
-  }
-
-  let draft = syncLinkedInDraftFromAbout({
-    parsed: resume,
-    name,
-    targetRoles,
-    headline: aiDraft?.headline || profile?.headline,
-    summary: aiDraft?.about || profile?.summary || resume.summary,
-    existingDraft,
-    sourceAssetId,
-  });
-
-  if (aiDraft) {
-    draft = {
-      ...draft,
-      headline: aiDraft.headline || draft.headline,
-      about: aiDraft.about || draft.about,
-      generatedAt: new Date().toISOString(),
-    };
-  }
-
-  const parsed = loadParsedForSync(profile?.parsedData);
-  draft = withAboutFingerprint(
-    {
-      ...draft,
-      profilePhotoUrl:
-        existingDraft?.profilePhotoUrl ??
-        dbUser.avatarUrl ??
-        null,
-      coverPhotoUrl: existingDraft?.coverPhotoUrl ?? null,
-    },
+  const draft = withAboutFingerprint(
+    applyAboutMergeSections({
+      current: existingDraft,
+      proposed: proposedResult.draft,
+      sections: [...LINKEDIN_ABOUT_MERGE_SECTIONS],
+    }),
     aboutProfileFingerprint({
-      parsed,
+      parsed: loadParsedForSync(profile?.parsedData),
       headline: profile?.headline,
-      summary: profile?.summary ?? resume.summary,
+      summary: profile?.summary,
     }),
   );
 
@@ -111,22 +45,22 @@ export async function POST(request: Request) {
     update: {
       linkedInDraft: draft as unknown as Prisma.InputJsonValue,
       linkedInDraftUpdatedAt: new Date(),
-      linkedInDraftSourceAssetId: sourceAssetId,
+      linkedInDraftSourceAssetId: proposedResult.sourceAssetId,
     },
     create: {
       userId: dbUser.id,
-      targetRoles: targetRoles.length ? targetRoles : [],
+      targetRoles: profile?.targetRoles?.length ? profile.targetRoles : [],
       priorities: [],
       linkedInDraft: draft as unknown as Prisma.InputJsonValue,
       linkedInDraftUpdatedAt: new Date(),
-      linkedInDraftSourceAssetId: sourceAssetId,
+      linkedInDraftSourceAssetId: proposedResult.sourceAssetId,
     },
   });
 
   return NextResponse.json({
     draft,
-    provider,
-    sourceAssetId,
+    provider: proposedResult.provider,
+    sourceAssetId: proposedResult.sourceAssetId,
     updatedAt: new Date().toISOString(),
   });
 }

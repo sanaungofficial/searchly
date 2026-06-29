@@ -3,30 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import type { JobMeta } from "@/lib/job-meta";
+import { dbStageToKanban, KANBAN_TO_DB } from "@/lib/pipeline-kanban-stage";
 import { withClientUserId } from "@/lib/workspace-urls";
 
 export type { JobMeta };
-
-// Map DB stage enum → KanbanStage
-const DB_TO_KANBAN: Record<string, KanbanStage> = {
-  SAVED: "saved",
-  APPLYING: "saved",
-  APPLIED: "applied",
-  SCREENING: "applied",
-  INTERVIEWING: "interview",
-  OFFER: "offer",
-  REJECTED: "closed",
-  WITHDRAWN: "closed",
-};
-
-// Map KanbanStage → DB stage enum
-const KANBAN_TO_DB: Record<KanbanStage, string> = {
-  saved: "SAVED",
-  applied: "APPLIED",
-  interview: "INTERVIEWING",
-  offer: "OFFER",
-  closed: "WITHDRAWN",
-};
 
 interface DbJob {
   id: string;
@@ -59,7 +39,7 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     company: job.company,
     initials: job.company.slice(0, 2).toUpperCase(),
     role: job.role,
-    stage: DB_TO_KANBAN[job.stage] ?? "saved",
+    stage: dbStageToKanban(job.stage),
     fit,
     jobRef: null,
     days: Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000),

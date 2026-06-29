@@ -36,7 +36,7 @@ export function PublicLiveCatalog() {
           Live webinars
         </h1>
         <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55 }}>
-          Free career workshops and live sessions from Kimchi coaches — register with your email, no account needed.
+          Free career workshops and live sessions from Second Ladder coaches — register with your email, no account needed.
         </p>
       </header>
 

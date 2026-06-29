@@ -38,7 +38,7 @@ export async function canUserAccessCoach(params: {
   if (!params.isInternal) return true;
   if (params.isAdmin) return true;
   if (!params.userId) return false;
-  // Kimchi coaches are browsable in the directory for signed-in clients; assignment is separate.
+  // Second Ladder coaches are browsable in the directory for signed-in clients; assignment is separate.
   return true;
 }
 
@@ -108,4 +108,36 @@ export async function removeCoachAssignment(userId: string, coachProfileId: stri
   await prisma.coachClientAssignment.deleteMany({
     where: { userId, coachProfileId },
   });
+}
+
+export type AssignedClientSummary = {
+  assignmentId: string;
+  userId: string;
+  email: string;
+  name: string | null;
+  assignedAt: string;
+  notes: string | null;
+};
+
+export async function getAssignedClientCountForCoach(coachProfileId: string): Promise<number> {
+  return prisma.coachClientAssignment.count({ where: { coachProfileId } });
+}
+
+export async function getAssignedClientsForCoach(coachProfileId: string): Promise<AssignedClientSummary[]> {
+  const rows = await prisma.coachClientAssignment.findMany({
+    where: { coachProfileId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: { select: { id: true, email: true, name: true } },
+    },
+  });
+
+  return rows.map((r) => ({
+    assignmentId: r.id,
+    userId: r.user.id,
+    email: r.user.email,
+    name: r.user.name,
+    assignedAt: r.createdAt.toISOString(),
+    notes: r.notes,
+  }));
 }

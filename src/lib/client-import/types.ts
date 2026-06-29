@@ -1,6 +1,8 @@
 import type { JobStage } from "@prisma/client";
 import type { StrategyProfileFields } from "@/lib/career-strategy";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
+import type { CompanyImportOptions } from "@/lib/client-import/company-field-mapping";
+import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 
 export type ImportRow<T> = {
   id: string;
@@ -68,6 +70,8 @@ export type ClientImportPreview = {
     summary: string | null;
   } | null;
   warnings: string[];
+  /** User-facing explanation of how columns were mapped (companies import). */
+  mappingRecommendation?: string | null;
 };
 
 export type ClientImportApplyPayload = {
@@ -85,7 +89,47 @@ export type ClientImportApplyPayload = {
   contactIds?: string[];
   applicationQaIds?: string[];
   applyResume?: boolean;
+  /** Job tracker wizard dedupe / conflict options. */
+  jobImportOptions?: JobTrackerImportOptions;
+  /** Target companies wizard dedupe / conflict options. */
+  companyImportOptions?: CompanyImportOptions;
   preview: ClientImportPreview;
+  /** Optional metadata for import history (type, file name, paste vs file). */
+  importMeta?: {
+    importType?: string;
+    fileName?: string | null;
+    sourceKind?: "file" | "paste";
+  };
+};
+
+export type ImportListAudit = {
+  added: string[];
+  skipped: string[];
+};
+
+export type ImportJobAuditItem = {
+  company: string;
+  role: string;
+  fields?: string[];
+};
+
+export type ClientImportApplyAudit = {
+  targetRoles: ImportListAudit;
+  deprioritizedRoles: ImportListAudit;
+  prioritizedCategories: ImportListAudit;
+  deprioritizedCategories: ImportListAudit;
+  searchDuration: { set: boolean; value: string | null };
+  avoidNotes: { appended: boolean; preview: string | null };
+  applicationQa: {
+    added: Array<{ question: string }>;
+    skipped: Array<{ question: string; reason: string }>;
+  };
+  jobs: {
+    added: ImportJobAuditItem[];
+    updated: ImportJobAuditItem[];
+    skipped: ImportJobAuditItem[];
+  };
+  resume: { applied: boolean; filename: string | null };
 };
 
 export type ClientImportApplyResult = {
@@ -97,5 +141,10 @@ export type ClientImportApplyResult = {
   categories: { prioritizedSelected: number; deprioritizedSelected: number };
   applicationQa: { added: number; skipped: number };
   referenceDocumentsStored: number;
+  audit: ClientImportApplyAudit;
   errors: string[];
+  /** Set when the run was persisted to ImportRun history. */
+  runId?: string;
+  /** How descriptive spreadsheet columns were mapped (companies import). */
+  mappingRecommendation?: string | null;
 };

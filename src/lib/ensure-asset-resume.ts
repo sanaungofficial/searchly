@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import {
+  buildParsedDataFromProfile,
+  profileHasResumeMaterial,
+} from "@/lib/master-resume-shared";
+import {
   fetchResumeBytes,
   fileExtFromUrl,
   parseResumeFile,
 } from "@/lib/resume-extract";
 import { hasLegacyAnthropicClient, getLegacyAnthropicClient, isKimchiAiConfigured } from "@/lib/llm";
-import { hasResumeBodyContent, normalizeParsedResumeData } from "@/lib/resume-parse";
+import { hasResumeBodyContent, normalizeParsedResumeData, parsedResumeToText } from "@/lib/resume-parse";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { createClient } from "@/utils/supabase/server";
 import type { UserAsset } from "@prisma/client";
@@ -52,6 +56,28 @@ async function fetchAssetBytes(asset: UserAsset): Promise<Buffer | null> {
   }
 }
 
+async function rebuildKimchiAssetFromProfile(asset: UserAsset, userId: string): Promise<UserAsset | null> {
+  const profile = await prisma.profile.findUnique({ where: { userId } });
+  if (!profile || !profileHasResumeMaterial(profile)) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const parsed = buildParsedDataFromProfile({ profile, user });
+  if (!hasResumeBodyContent(parsed)) return null;
+
+  const resumeText = profile.resumeText?.trim() || parsedResumeToText(parsed);
+  if (!resumeText) return null;
+
+  return prisma.userAsset.update({
+    where: { id: asset.id },
+    data: {
+      resumeText,
+      parsedData: parsed as unknown as Prisma.InputJsonValue,
+      parseStatus: "complete",
+      parseCompletedAt: new Date(),
+    },
+  });
+}
+
 export async function hydrateResumeAsset(assetId: string, userId: string): Promise<UserAsset | null> {
   const asset = await prisma.userAsset.findFirst({
     where: { id: assetId, userId, type: "RESUME" },
@@ -95,11 +121,14 @@ export async function ensureAssetResumeParsed(
   if (!asset) return null;
 
   const parsed = normalizeParsedResumeData(asset.parsedData);
-  if (asset.resumeText?.trim()) {
+  if (asset.resumeText?.trim() && hasResumeBodyContent(parsed)) {
     return asset;
   }
 
-  if (!asset.url) {
+  if (!asset.url || asset.url.startsWith("kimchi://")) {
+    if (asset.resumeText?.trim() && hasResumeBodyContent(parsed)) return asset;
+    const rebuilt = await rebuildKimchiAssetFromProfile(asset, userId);
+    if (rebuilt) return rebuilt;
     return asset.resumeText?.trim() ? asset : null;
   }
 

@@ -12,6 +12,7 @@ import {
   type CachedJob,
 } from "@/lib/cached-job";
 import {
+  STAGE_DESCRIPTIONS,
   STAGE_LABELS,
   type KanbanCard,
   type KanbanStage,
@@ -265,11 +266,16 @@ export function WorkspaceOpportunities() {
     const company = (jobAnalysis.company as string | null) ?? "Unknown Company";
     const role = (jobAnalysis.role as string | null) ?? "Unknown Role";
     const meta: JobMeta = parsedJobToMeta(jobAnalysis);
-    await addJob(company, role, addJobUrl.trim() || undefined, meta);
+    const created = await addJob(company, role, addJobUrl.trim() || undefined, meta);
     setShowAddPanel(false);
     setJobAnalysis(null);
     setAddJobUrl("");
     setAddJobError(null);
+    if (created) {
+      setDrawerCardId(created.cardId);
+      setDrawerTool(null);
+      go(pipelineJobUrl(created.id));
+    }
   };
 
   const moveCard = (cardId: number, stage: KanbanStage) => {
@@ -333,9 +339,11 @@ export function WorkspaceOpportunities() {
     const meta = buildRecommendedProspectCard(job, 0)._meta;
     const created = await addJob(job.companyName, job.title, job.url ?? undefined, meta);
     if (created) {
+      setDrawerCardId(created.cardId);
+      setDrawerTool(null);
       go(pipelineJobUrl(created.id));
     }
-  }, [addJob, router]);
+  }, [addJob, go, setDrawerCardId, setDrawerTool]);
 
   const openProspectJob = useCallback((companyName: string, job: CachedJob) => {
     const prospectId = prospectPathId(job);
@@ -820,7 +828,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         </button>
       </div>
       {loading && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 8, maxWidth: 480 }}>
           <KimchiProcessLoader preset="jobParse" variant="inline" />
         </div>
       )}
@@ -947,7 +955,9 @@ function PipelineTab({
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           {pipelineView === "recommended"
             ? "Open roles scored against your profile — save any you want to track."
-            : `${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline.`}
+            : pipelineView === "closed"
+              ? `${STAGE_DESCRIPTIONS.closed} · ${closedCount} role${closedCount === 1 ? "" : "s"}`
+              : `${STAGE_DESCRIPTIONS[pipelineView as KanbanStage]} · ${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline`}
         </p>
       </div>
 

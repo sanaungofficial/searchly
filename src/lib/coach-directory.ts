@@ -68,7 +68,11 @@ export function featuredPresetFilters(preset: CoachFeaturedPreset): Partial<Coac
   }
 }
 
-export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDirectoryFilters): T[] {
+export function filterCoaches<T extends CoachRow>(
+  coaches: T[],
+  filters: CoachDirectoryFilters,
+  options?: { includeInternal?: boolean },
+): T[] {
   let list = [...coaches];
 
   if (filters.category) {
@@ -102,7 +106,7 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
 
   if (filters.internalOnly) {
     list = list.filter((c) => c.isInternal);
-  } else {
+  } else if (!options?.includeInternal) {
     list = list.filter((c) => {
       if (!c.isInternal) return true;
       if (!q) return false;

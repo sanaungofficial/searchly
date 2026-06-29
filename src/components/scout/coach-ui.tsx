@@ -2,38 +2,17 @@
 
 import Link from "next/link";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachFitAssessment, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { CoachMatchScoreColumn } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { CoachListItem } from "@/lib/coach-types";
 import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
-export function CoachRate({
-  hourlyRate,
-  isPro,
-  onSubscribe,
-}: {
-  hourlyRate: number | null;
-  isPro: boolean;
-  onSubscribe: () => void;
-}) {
+export function CoachRate({ hourlyRate }: { hourlyRate: number | null }) {
   if (!hourlyRate) return null;
-  if (isPro) {
-    return (
-      <span style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
-        ${hourlyRate}<span style={{ fontWeight: 400, color: color.muted }}>/hr</span>
-      </span>
-    );
-  }
   return (
-    <span
-      onClick={onSubscribe}
-      title="Subscribe to see rate"
-      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", userSelect: "none" }}
-    >
-      <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, filter: "blur(4px)", pointerEvents: "none" }}>
-        ${hourlyRate}/hr
-      </span>
+    <span style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
+      ${hourlyRate}<span style={{ fontWeight: 400, color: color.muted }}>/hr</span>
     </span>
   );
 }
@@ -91,17 +70,13 @@ export function ProfileMyCoachCard({
   loading,
   needsProfile,
   profileHint,
-  isPro,
   isMobile,
-  onSubscribe,
 }: {
   coach: CoachListItem | null;
   loading: boolean;
   needsProfile: boolean;
   profileHint: string | null;
-  isPro: boolean;
   isMobile: boolean;
-  onSubscribe: () => void;
 }) {
   if (loading) {
     return (
@@ -130,7 +105,9 @@ export function ProfileMyCoachCard({
   }
 
   return (
-    <ScoutBox padding={isMobile ? 18 : 22} style={{ marginBottom: 24 }}>
+    <ScoutBox padding={0} style={{ marginBottom: 24, overflow: "hidden" }}>
+      <div style={{ display: "flex" }}>
+        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 18 : 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
         <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: color.muted, margin: 0 }}>
           My Coach
@@ -149,7 +126,7 @@ export function ProfileMyCoachCard({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
         <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={56} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 8 }}>
+          <div style={{ marginBottom: 8 }}>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, color: color.ink, margin: 0 }}>
                 {coach.displayName}
@@ -163,26 +140,13 @@ export function ProfileMyCoachCard({
                 </p>
               )}
             </div>
-            {(coach.matchScore ?? 0) > 0 && (
-              <CoachMatchScoreCluster
-                score={coach.matchScore!}
-                label={coach.matchLabel ?? ""}
-                align="right"
-                job={{
-                  matchScore: coach.matchScore!,
-                  matchLabel: coach.matchLabel ?? "",
-                  matchReasons: coach.matchReasons ?? [],
-                  matchedSkills: coach.matchedSkills,
-                }}
-              />
-            )}
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: coach.bio ? 12 : 0, alignItems: "center" }}>
             {coach.firms.slice(0, 2).map((f) => (
               <span key={f} style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 500 }}>{f}</span>
             ))}
-            <CoachRate hourlyRate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} />
+            <CoachRate hourlyRate={coach.hourlyRate} />
             {coach.location && (
               <span style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>{coach.location}</span>
             )}
@@ -204,26 +168,15 @@ export function ProfileMyCoachCard({
             </div>
           )}
 
-          {(coach.matchScore ?? 0) > 0 && (
-            <CoachFitAssessment
-              job={{
-                matchScore: coach.matchScore!,
-                matchLabel: coach.matchLabel ?? "",
-                matchReasons: coach.matchReasons ?? [],
-                matchedSkills: coach.matchedSkills,
-              }}
-            />
-          )}
-
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
-            {isPro && coach.calLink ? (
+            {coach.calLink ? (
               <a href={coach.calLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                 <ScoutPrimaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Book a session →</ScoutPrimaryBtn>
               </a>
             ) : (
-              <ScoutSecondaryBtn onClick={onSubscribe} style={{ minHeight: isMobile ? 44 : undefined }}>
-                Subscribe to book
-              </ScoutSecondaryBtn>
+              <Link href="/coaching" style={{ textDecoration: "none" }}>
+                <ScoutSecondaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Browse coaches</ScoutSecondaryBtn>
+              </Link>
             )}
             {coach.linkedinUrl && (
               <a
@@ -249,6 +202,16 @@ export function ProfileMyCoachCard({
             )}
           </div>
         </div>
+      </div>
+        </div>
+        {(coach.matchScore ?? 0) > 0 && (
+          <CoachMatchScoreColumn
+            score={coach.matchScore!}
+            label={coach.matchLabel ?? ""}
+            reasons={coach.matchReasons ?? []}
+            matchedSkills={coach.matchedSkills}
+          />
+        )}
       </div>
     </ScoutBox>
   );

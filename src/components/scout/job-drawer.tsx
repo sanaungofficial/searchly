@@ -26,6 +26,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
+import { MasterResumeGate } from "./master-resume-gate";
+import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { JobMatchScorePanel } from "./job-match-score-panel";
 import type { MatchData } from "./job-match-ui";
@@ -776,6 +778,7 @@ export function JobDrawer({
   detailLoading = false,
 }: JobDrawerProps) {
   const { openFitChat, withClientScope } = useWorkspace();
+  const masterResume = useMasterResumeStatus();
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [requestModal, setRequestModal] = useState<NetworkJobRequestModalKind | null>(null);
@@ -1599,6 +1602,19 @@ export function JobDrawer({
               <p style={displayTitleStyle(15, { margin: "0 0 14px", lineHeight: 1.3 })}>
                 Boost your interview chances
               </p>
+              {!masterResume.loading && !masterResume.hasMasterResume ? (
+                <ScoutBox padding={16}>
+                  <MasterResumeGate
+                    compact
+                    canCreateFromProfile={masterResume.canCreateFromProfile}
+                    onCreateFromProfile={() => void masterResume.createFromProfile()}
+                    creating={masterResume.creating}
+                    createError={masterResume.createError}
+                    body="Upload a resume or create one from your profile to unlock fit analysis, tailoring, and cover letters for this job."
+                  />
+                </ScoutBox>
+              ) : (
+              <>
               <CreditsStatusBar />
               <AiToolCard
                 creditCost={1}
@@ -1647,6 +1663,8 @@ export function JobDrawer({
                 buttonLabel="Build cover letter"
                 onClick={() => setCoverDrawerOpen(true)}
               />
+              </>
+              )}
             </div>
             )}
           </div>

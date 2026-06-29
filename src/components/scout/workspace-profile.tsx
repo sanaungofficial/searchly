@@ -46,6 +46,7 @@ import {
   type UpskillProgressMap,
 } from "@/lib/upskill-programs";
 import { allMatchableSkills, reconcileSkillsToolsFields } from "@/lib/skills-tools";
+import { profileHasResumeMaterial } from "@/lib/master-resume-shared";
 import {
   buildResumeFingerprint,
   getStoredRoleAnalysis,
@@ -2356,7 +2357,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
           margin: "0 0 24px",
           lineHeight: 1.5,
         }}>
-          PDF or Word format · max 10MB
+          PDF or Word format · max 10MB · we&apos;ll scan and parse it into your profile
         </p>
 
         <ScoutPrimaryBtn
@@ -2371,7 +2372,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   );
 }
 
-function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing, onUploadDocument, documentUploading, targetRoles, onMakePrimary, onUpdateTargetRole }: {
+function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing, onUploadDocument, documentUploading, targetRoles, onMakePrimary, onUpdateTargetRole, canCreateFromProfile, onCreateFromProfile, creatingFromProfile }: {
   assets: UserAssetRow[];
   uploading: boolean;
   onUpload: (file: File) => void;
@@ -2386,6 +2387,9 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
   targetRoles: string[];
   onMakePrimary: (id: string) => void;
   onUpdateTargetRole: (id: string, role: string | null) => void;
+  canCreateFromProfile?: boolean;
+  onCreateFromProfile?: () => void;
+  creatingFromProfile?: boolean;
 }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -2399,6 +2403,36 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
   const filteredOther =
     docFilter === "all" ? otherDocs : otherDocs.filter((a) => a.type === docFilter);
 
+  const emptyResumeCopy = canCreateFromProfile
+    ? "No master resume yet — upload a file and we'll scan it, or create one from your profile data."
+    : "No resume yet — upload one to unlock fit scores and tailoring.";
+
+  const emptyResumeActions = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 12 }}>
+      {canCreateFromProfile && onCreateFromProfile && (
+        <ScoutPrimaryBtn
+          onClick={onCreateFromProfile}
+          disabled={creatingFromProfile || uploading}
+          style={{ minHeight: 44, opacity: creatingFromProfile ? 0.7 : 1 }}
+        >
+          {creatingFromProfile ? "Creating…" : "Create as a resume"}
+        </ScoutPrimaryBtn>
+      )}
+      <ScoutPrimaryBtn
+        onClick={() => setShowUploadModal(true)}
+        disabled={uploading || creatingFromProfile}
+        style={{
+          minHeight: 44,
+          opacity: uploading ? 0.6 : 1,
+          ...(canCreateFromProfile
+            ? { background: surface.card, color: color.forest, border: "var(--scout-border)" }
+            : {}),
+        }}
+      >
+        {uploading ? "Uploading…" : "+ Upload resume"}
+      </ScoutPrimaryBtn>
+    </div>
+  );
   const primaryBadge = (
     <span style={{ padding: "2px 8px", background: "rgba(196,168,106,0.18)", border: `1px solid ${color.gold}`, fontSize: T.caption, fontWeight: 700, color: "#7A6020" }}>
       ★ Primary
@@ -2521,14 +2555,8 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
         <ScoutBox padding={0} style={{ overflow: "hidden" }}>
           {resumes.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center" }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No resume yet — upload one to unlock fit scores and tailoring.</p>
-              <ScoutPrimaryBtn
-                onClick={() => setShowUploadModal(true)}
-                disabled={uploading}
-                style={{ marginTop: 12, minHeight: 44 }}
-              >
-                + Upload resume
-              </ScoutPrimaryBtn>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>{emptyResumeCopy}</p>
+              {emptyResumeActions}
             </div>
           ) : (
             resumes.map((r, index) => (
@@ -2617,14 +2645,8 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
 
         {resumes.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No resume yet — upload one to unlock fit scores and tailoring.</p>
-            <ScoutPrimaryBtn
-              onClick={() => setShowUploadModal(true)}
-              disabled={uploading}
-              style={{ marginTop: 12 }}
-            >
-              + Upload resume
-            </ScoutPrimaryBtn>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>{emptyResumeCopy}</p>
+            {emptyResumeActions}
           </div>
         ) : (
           resumes.map((r) => (
@@ -2985,6 +3007,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [resumeUploading, setResumeUploading] = useState(false);
   const [documentUploading, setDocumentUploading] = useState(false);
   const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
+  const [creatingFromProfile, setCreatingFromProfile] = useState(false);
   const [assets, setAssets] = useState<UserAssetRow[]>([]);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
   const [readbackLoading, setReadbackLoading] = useState(false);
@@ -3461,6 +3484,27 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     }
   };
 
+  const handleCreateFromProfile = async () => {
+    setCreatingFromProfile(true);
+    setResumeUploadError(null);
+    try {
+      const res = await fetch(api("/api/resume/create-from-profile"), { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setResumeUploadError(data.error || "Could not create resume from profile.");
+        return;
+      }
+      if (data.asset?.id) {
+        refreshProfileAfterResume();
+        openResumeEditor(data.asset.id);
+      }
+    } catch {
+      setResumeUploadError("Could not create resume from profile — try again.");
+    } finally {
+      setCreatingFromProfile(false);
+    }
+  };
+
   const goToSection = (section: AboutSection) => {
     router.push(profileTabPath(profileBase, "about", { aboutSection: section }));
     setActiveSection(section);
@@ -3483,6 +3527,10 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const matchableSkills = allMatchableSkills({ skills, tools });
   const highlightSkill = searchParams.get("skill");
   const resumeAssets = assets.filter((a) => a.type === "RESUME");
+  const canCreateFromProfile =
+    resumeAssets.length === 0 &&
+    !!profile &&
+    profileHasResumeMaterial(profile, { name: profile.name, email: profile.email });
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
@@ -3960,6 +4008,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 targetRoles={targetRolesForResumes}
                 onMakePrimary={handleMakePrimary}
                 onUpdateTargetRole={handleUpdateTargetRole}
+                canCreateFromProfile={canCreateFromProfile}
+                onCreateFromProfile={handleCreateFromProfile}
+                creatingFromProfile={creatingFromProfile}
               />
             )}
 

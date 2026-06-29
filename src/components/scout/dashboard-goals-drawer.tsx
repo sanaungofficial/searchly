@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { DashboardGoal } from "@/lib/dashboard-goals";
-import { DASHBOARD_GOAL_MAX } from "@/lib/dashboard-goals";
+import { DASHBOARD_GOAL_MAX, GOALS_MATCHING_TAGLINE } from "@/lib/dashboard-goals";
 import { DashboardGoalItem } from "@/components/scout/dashboard-goal-item";
 import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -112,8 +112,8 @@ export function DashboardGoalsDrawer({
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ ...bruddleHeadingStyle("h5"), margin: 0 }}>Your goals</p>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "2px 0 0" }}>
-              Up to {DASHBOARD_GOAL_MAX} active goals
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "2px 0 0", lineHeight: 1.45 }}>
+              {GOALS_MATCHING_TAGLINE} Up to {DASHBOARD_GOAL_MAX} active.
             </p>
           </div>
         </div>
@@ -121,7 +121,7 @@ export function DashboardGoalsDrawer({
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: isMobile ? "16px" : "18px 20px" }}>
           {goals.length === 0 ? (
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0 }}>
-              No goals yet — add one to personalize your dashboard.
+              No goals yet — add one so we can match you with coaches, roles, and resources.
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

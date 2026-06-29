@@ -17,7 +17,8 @@ import { getActingUser } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { allMatchableSkills } from "@/lib/skills-tools";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
-import { normalizeParsedResumeData } from "@/lib/resume-parse";
+import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
+import { resumeTextFromAsset, resumeTextFromProfile } from "@/lib/resolve-resume-text";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -44,29 +45,31 @@ async function resolveResumeSource(
   try {
     if (assetId) {
       const asset = await ensureAssetResumeParsed(assetId, userId);
-      if (!asset?.resumeText?.trim()) {
+      const resumeText = asset ? resumeTextFromAsset(asset) : "";
+      if (!resumeText) {
         return { source: null, parseError: "Could not parse this resume file. Try re-uploading or use Reparse in Resumes." };
       }
-      const parsed = normalizeParsedResumeData(asset.parsedData ?? null);
+      const parsed = normalizeParsedResumeData(asset!.parsedData ?? null);
       return {
         source: {
-          resumeText: asset.resumeText,
-          resumeUrl: asset.url,
+          resumeText,
+          resumeUrl: asset!.url,
           skills: parsed ? allMatchableSkills(parsed) : [],
-          resumeAssetId: asset.id,
+          resumeAssetId: asset!.id,
         },
         parseError: null as string | null,
       };
     }
 
-    if (!profile?.resumeText?.trim()) {
+    const resumeText = resumeTextFromProfile(profile);
+    if (!resumeText) {
       return { source: null, parseError: "No resume found for this selection" };
     }
-    const parsed = normalizeParsedResumeData(profile.parsedData ?? null);
+    const parsed = normalizeParsedResumeData(profile?.parsedData ?? null);
     return {
       source: {
-        resumeText: profile.resumeText,
-        resumeUrl: profile.resumeUrl,
+        resumeText,
+        resumeUrl: profile?.resumeUrl ?? null,
         skills: parsed ? allMatchableSkills(parsed) : [],
         resumeAssetId: null as string | null,
       },

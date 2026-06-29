@@ -1,40 +1,273 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachExperienceCompanies } from "@/components/scout/coach-experience-companies";
-import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { CompanyLogo } from "@/components/scout/company-logo";
+import { CoachMatchScoreColumn } from "@/components/scout/match-score-ui";
+import {
+  buildCoachExperienceCompanies,
+  type CoachCompanyLookupMeta,
+} from "@/lib/coach-experience-companies";
+import {
+  buildCoachProfileEducationEntries,
+  buildCoachProfileExperienceEntries,
+  orgNamesForCoachProfileLookups,
+} from "@/lib/coach-profile-experience";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { formatCoachNextAvailable } from "@/components/scout/coach-booking-modal";
-import { bioSnippet } from "@/lib/coach-directory";
-import type { CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
+import type { CoachProfileDetail, CoachReviewItem, CoachBookingAvailability } from "@/lib/coach-types";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { bruddleHeadingStyle, color, fontMono, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 const line = "var(--scout-border)";
 const cardBg = surface.card;
+const SECTION_GAP = 32;
 
-function Section({
+const PACKAGE_GRADIENTS = [
+  "linear-gradient(145deg, rgba(26,58,47,0.95) 0%, rgba(74,139,106,0.82) 100%)",
+  "linear-gradient(145deg, #1A3A2F 0%, #2F5A48 100%)",
+  "linear-gradient(145deg, rgba(26,58,47,0.88) 0%, rgba(196,168,106,0.55) 100%)",
+  "linear-gradient(145deg, #163028 0%, #3A6B52 100%)",
+];
+
+function formatCoachedMinutes(minutes: number): string {
+  if (minutes >= 60) return `${minutes.toLocaleString()} min coached`;
+  if (minutes > 0) return `${minutes} min coached`;
+  return "";
+}
+
+function packageSaveLabel(
+  pkg: { hours: number; displayPriceCents: number | null },
+  hourlyRate: number | null,
+): string | null {
+  if (!hourlyRate || !pkg.displayPriceCents) return null;
+  const fullPriceCents = hourlyRate * 100 * pkg.hours;
+  const savedCents = fullPriceCents - pkg.displayPriceCents;
+  if (savedCents < 100) return null;
+  return `Save $${Math.round(savedCents / 100).toLocaleString()}`;
+}
+
+function SectionHeading({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+      <h2 style={{ ...bruddleHeadingStyle("h4"), margin: 0, color: color.ink }}>{title}</h2>
+      {action}
+    </div>
+  );
+}
+
+function ContentSection({ children }: { children: ReactNode }) {
+  return <section style={{ marginBottom: SECTION_GAP }}>{children}</section>;
+}
+
+function CredentialRow({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+      <span
+        aria-hidden
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: "rgba(26,58,47,0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 14,
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </span>
+      <span style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.4 }}>{label}</span>
+    </div>
+  );
+}
+
+function ExperienceEntryRow({
   title,
-  children,
-  action,
+  company,
+  dateLabel,
+  lookup,
 }: {
-  title: string;
-  children: ReactNode;
-  action?: ReactNode;
+  title: string | null;
+  company: string;
+  dateLabel: string | null;
+  lookup: CoachCompanyLookupMeta | undefined;
 }) {
   return (
-    <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <h3 style={{ ...bruddleHeadingStyle("h5"), margin: 0, color: color.ink }}>{title}</h3>
-        {action}
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", borderBottom: line }}>
+      <CompanyLogo
+        name={lookup?.name ?? company}
+        logoUrl={lookup?.logoUrl}
+        website={lookup?.website}
+        size={40}
+        borderRadius={8}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            {title && (
+              <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 2px", color: color.ink, lineHeight: 1.35 }}>
+                {title}
+              </p>
+            )}
+            {company && (
+              <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, margin: title ? "2px 0 0" : 0, lineHeight: 1.4 }}>
+                {company}
+              </p>
+            )}
+          </div>
+          {dateLabel && (
+            <span style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, whiteSpace: "nowrap", flexShrink: 0 }}>
+              {dateLabel}
+            </span>
+          )}
+        </div>
       </div>
-      {children}
-    </ScoutBox>
+    </div>
+  );
+}
+
+function EducationEntryRow({
+  school,
+  degree,
+  lookup,
+}: {
+  school: string;
+  degree: string | null;
+  lookup: CoachCompanyLookupMeta | undefined;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0", borderBottom: line }}>
+      <CompanyLogo
+        name={lookup?.name ?? school}
+        logoUrl={lookup?.logoUrl}
+        website={lookup?.website}
+        size={40}
+        borderRadius={8}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: 0, color: color.ink, lineHeight: 1.35 }}>
+          {school}
+        </p>
+        {degree && (
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, margin: "4px 0 0", lineHeight: 1.4 }}>
+            {degree}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+function CompanyLogoRow({
+  companies,
+  lookup,
+  label,
+}: {
+  companies: ReturnType<typeof buildCoachExperienceCompanies>;
+  lookup: Record<string, CoachCompanyLookupMeta>;
+  label: string;
+}) {
+  if (!companies.length) return null;
+  return (
+    <div style={{ marginTop: 16 }}>
+      <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>{label}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+        {companies.slice(0, 8).map((company) => {
+          const meta = lookup[company.key];
+          return (
+            <CompanyLogo
+              key={company.key}
+              name={meta?.name ?? company.displayName}
+              logoUrl={meta?.logoUrl}
+              website={meta?.website}
+              size={32}
+              borderRadius={8}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PackageOfferingCard({
+  title,
+  priceLabel,
+  hoursLabel,
+  saveLabel,
+  gradient,
+  onBuy,
+  isMobile,
+}: {
+  title: string;
+  priceLabel: string;
+  hoursLabel: string;
+  saveLabel?: string | null;
+  gradient: string;
+  onBuy?: () => void;
+  isMobile: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onBuy}
+      disabled={!onBuy}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        textAlign: "left",
+        border: line,
+        borderRadius: radius.px,
+        overflow: "hidden",
+        background: cardBg,
+        cursor: onBuy ? "pointer" : "default",
+        padding: 0,
+        minWidth: isMobile ? 260 : 0,
+        flex: isMobile ? "0 0 auto" : "1 1 0",
+      }}
+    >
+      <div
+        style={{
+          background: gradient,
+          padding: "20px 16px 18px",
+          minHeight: 120,
+          display: "flex",
+          alignItems: "flex-end",
+        }}
+      >
+        <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: "#fff", margin: 0, lineHeight: 1.35 }}>
+          {title}
+        </p>
+      </div>
+      <div style={{ padding: "14px 16px 16px" }}>
+        <p style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 700, color: color.ink, margin: "0 0 2px" }}>{priceLabel}</p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>{hoursLabel} of coaching</p>
+        {saveLabel && (
+          <span
+            style={{
+              display: "inline-block",
+              marginTop: 10,
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: "rgba(74,139,106,0.14)",
+              border: "1px solid rgba(74,139,106,0.28)",
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#2A5A45",
+            }}
+          >
+            {saveLabel}
+          </span>
+        )}
+      </div>
+    </button>
   );
 }
 
@@ -130,70 +363,6 @@ function EventCard({ session, variant }: { session: LiveSessionView; variant: "u
   );
 }
 
-function OfferingRow({
-  title,
-  subtitle,
-  priceLabel,
-  secondaryPrice,
-  onBook,
-  bookLabel,
-  style,
-}: {
-  title: string;
-  subtitle: string;
-  priceLabel: string;
-  secondaryPrice?: string;
-  onBook?: () => void;
-  bookLabel?: string;
-  style?: CSSProperties;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        padding: 14,
-        border: line,
-        borderRadius: radius.px,
-        background: surface.inset,
-        ...style,
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{title}</p>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>{subtitle}</p>
-      </div>
-      <div style={{ textAlign: "right", flexShrink: 0 }}>
-        <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.forest, margin: 0 }}>{priceLabel}</p>
-        {secondaryPrice && (
-          <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, margin: "4px 0 0" }}>{secondaryPrice}</p>
-        )}
-        {onBook && bookLabel && (
-          <button
-            type="button"
-            onClick={onBook}
-            style={{
-              marginTop: 8,
-              background: "none",
-              border: "none",
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 600,
-              color: color.forest,
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
-          >
-            {bookLabel}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function GoldBookBtn({ children, onClick, style }: { children: ReactNode; onClick?: () => void; style?: CSSProperties }) {
   return (
     <button
@@ -259,6 +428,8 @@ export type CoachProfileViewProps = {
   matchedSkills?: string[];
   sessionDurationMinutes: number;
   canBookInApp: boolean;
+  canRequestBooking?: boolean;
+  bookingAvailability?: CoachBookingAvailability | null;
   bookUrl?: string | null;
   nextSlotStart: number | null;
   nextSlotLoading: boolean;
@@ -266,6 +437,7 @@ export type CoachProfileViewProps = {
   isAdmin?: boolean;
   onBookIntro: () => void;
   onBookSession: () => void;
+  onRequestBooking?: () => void;
   onBuyPackage: (packageId: string) => void;
   onToggleFollow: () => void;
   onToggleMyCoach: () => void;
@@ -282,6 +454,8 @@ export function CoachProfileView({
   matchedSkills = [],
   sessionDurationMinutes,
   canBookInApp,
+  canRequestBooking = false,
+  bookingAvailability,
   bookUrl,
   nextSlotStart,
   nextSlotLoading,
@@ -289,453 +463,340 @@ export function CoachProfileView({
   isAdmin,
   onBookIntro,
   onBookSession,
+  onRequestBooking,
   onBuyPackage,
   onToggleFollow,
   onToggleMyCoach,
   onWriteReview,
   onPrepChat,
 }: CoachProfileViewProps) {
-  const bookingAllowed = canBookInApp && (!coach.requiresAssignment || coach.isMyCoach);
+  const bookingAllowed = canBookInApp;
+  const requestAllowed = canRequestBooking && !canBookInApp;
   const [aboutExpanded, setAboutExpanded] = useState(false);
+  const [showAllPackages, setShowAllPackages] = useState(false);
+  const [companyLookup, setCompanyLookup] = useState<Record<string, CoachCompanyLookupMeta>>({});
+
+  const firstName = coach.displayName.split(" ")[0];
   const aboutText = coach.aboutMe || coach.bio || "";
-  const introText = bioSnippet(coach.bio ?? coach.aboutMe ?? "", 280) || aboutText.slice(0, 280);
+  const heroHeadline = coach.headline?.trim() || coach.category || coach.currentRole?.trim() || null;
   const upcoming = coach.upcomingLiveSessions ?? [];
   const recordings = coach.pastRecordings ?? [];
-  const categoryPills = [
-    coach.category,
-    ...coach.specialties.slice(0, 4),
-    ...coach.clientSpecializations.slice(0, 2),
+  const packages = coach.purchasablePackages ?? [];
+  const visiblePackages = showAllPackages ? packages : packages.slice(0, 3);
+  const hiddenPackageCount = Math.max(0, packages.length - 3);
+  const experienceCompanies = useMemo(
+    () => buildCoachExperienceCompanies(coach),
+    [coach.currentCompany, coach.firms],
+  );
+  const workExperienceEntries = useMemo(() => buildCoachProfileExperienceEntries(coach), [coach.currentRole, coach.currentCompany, coach.firms]);
+  const educationEntries = useMemo(() => buildCoachProfileEducationEntries(coach.schools), [coach.schools]);
+  const orgLookupNames = useMemo(
+    () => orgNamesForCoachProfileLookups(workExperienceEntries, educationEntries),
+    [workExperienceEntries, educationEntries],
+  );
+  const coachedMinutesLabel = formatCoachedMinutes(coach.totalCoachedMinutes ?? 0);
+  const statsParts = [
+    coachedMinutesLabel,
+    coach.followerCount > 0
+      ? `${coach.followerCount.toLocaleString()} follower${coach.followerCount !== 1 ? "s" : ""}`
+      : "",
   ].filter(Boolean);
+  const hasQualifications =
+    coach.isProfessionalCoach ||
+    Boolean(coach.experienceLevel) ||
+    ((coach.clientsCoachedCount ?? 0) > 0 && Boolean(coach.category)) ||
+    (coach.industryYears != null && coach.industryYears > 0) ||
+    experienceCompanies.length > 0 ||
+    coach.specialties.length > 0;
+  const hasReviews = coach.reviewCount > 0 || coach.reviews.length > 0;
+  const hasHeroCredentials =
+    coach.featured ||
+    coach.spotlightBadge === "top-rated" ||
+    coach.schools.length > 0 ||
+    Boolean(coach.currentCompany || coach.firms[0]);
+
+  useEffect(() => {
+    if (!orgLookupNames.length) return;
+    let cancelled = false;
+    fetch(`/api/coaches/org-lookup?names=${encodeURIComponent(orgLookupNames.join(","))}`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((items: Record<string, { name: string; logoUrl?: string | null; website?: string | null }>) => {
+        if (cancelled || !items || typeof items !== "object") return;
+        const map: Record<string, CoachCompanyLookupMeta> = {};
+        for (const [slug, item] of Object.entries(items)) {
+          if (!slug || !item?.name) continue;
+          map[slug.toLowerCase()] = {
+            name: item.name,
+            logoUrl: item.logoUrl ?? null,
+            website: item.website ?? null,
+            careersUrl: null,
+          };
+        }
+        setCompanyLookup(map);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [orgLookupNames.join("|")]);
 
   const bookingSidebar = (
-    <ScoutBox padding={20}>
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, margin: "0 0 14px", textAlign: "center" }}>
-        Book a session
-      </p>
-      <OfferingRow
-        title="Free intro call"
-        subtitle="30 minutes · Get to know your coach"
-        priceLabel="Free"
-        onBook={bookingAllowed ? onBookIntro : undefined}
-        bookLabel="Book intro"
-      />
-      <OfferingRow
-        title="1:1 coaching session"
-        subtitle={`${sessionDurationMinutes} minutes · Tailored to your goals`}
-        priceLabel={coach.isInternal || coach.requiresAssignment ? "Included" : coach.hourlyRate ? `$${coach.hourlyRate}/hr` : "See rate"}
-        secondaryPrice={!coach.isInternal && !coach.requiresAssignment && coach.hourlyRate ? "after intro" : undefined}
-        onBook={bookingAllowed ? onBookSession : undefined}
-        bookLabel="Book session"
-        style={{ marginTop: 10 }}
-      />
-      {coach.purchasablePackages?.map((pkg) => (
-        <OfferingRow
-          key={pkg.id}
-          title={pkg.displayTitle}
-          subtitle={`${pkg.displayHoursLabel} · Coaching package`}
-          priceLabel={pkg.displayPriceLabel ?? "—"}
-          onBook={() => onBuyPackage(pkg.id)}
-          bookLabel="Buy package"
-          style={{ marginTop: 10 }}
-        />
-      ))}
-      {bookingAllowed && (
-        <div
-          style={{
-            marginTop: 14,
-            padding: "12px 14px",
-            border: line,
-            background: "rgba(26,58,47,0.04)",
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
-          }}
-        >
-          <span
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              border: "2px solid #1A3A2F",
-              flexShrink: 0,
-              marginTop: 2,
-              background: "#1A3A2F",
-              boxShadow: "inset 0 0 0 3px #fff",
-            }}
-          />
-          <p style={{ fontFamily: fontSans, fontSize: 13, margin: 0, lineHeight: 1.45, color: color.stone }}>
-            {nextSlotLoading
-              ? "Checking availability…"
-              : nextSlotStart
-                ? formatCoachNextAvailable(nextSlotStart)
-                : "No upcoming slots in the next two weeks"}
+    <div>
+      <ScoutBox padding={20}>
+        {bookingAllowed ? (
+          <>
+            <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 10, borderRadius: 999, minHeight: 48 }}>Schedule a free intro call</GoldBookBtn>
+            <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 48, borderRadius: 999 }}>Book a session</ScoutSecondaryBtn>
+          </>
+        ) : requestAllowed ? (
+          <>
+            <GoldBookBtn onClick={onRequestBooking} style={{ marginBottom: 10, borderRadius: 999, minHeight: 48 }}>Request to book</GoldBookBtn>
+            <ScoutSecondaryBtn onClick={onRequestBooking} style={{ width: "100%", minHeight: 48, borderRadius: 999 }}>Request intro call</ScoutSecondaryBtn>
+            {bookingAvailability?.summary && (
+              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>
+                Typically available {bookingAvailability.summary.toLowerCase()}
+              </p>
+            )}
+            {bookingAvailability?.availabilityNotes && (
+              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.stone, textAlign: "center", margin: "8px 0 0", lineHeight: 1.45 }}>
+                {bookingAvailability.availabilityNotes}
+              </p>
+            )}
+            <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, textAlign: "center", margin: "10px 0 0", lineHeight: 1.45 }}>
+              Your coach confirms availability — not instant booking
+            </p>
+          </>
+        ) : bookUrl ? (
+          <a href={bookUrl} target="_blank" rel="noreferrer" style={{ display: "block", textDecoration: "none" }}>
+            <GoldBookBtn style={{ borderRadius: 999 }}>Schedule via calendar</GoldBookBtn>
+          </a>
+        ) : (
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: 0, lineHeight: 1.45 }}>
+            Booking is not available for this coach yet.
           </p>
-        </div>
-      )}
-      {bookingAllowed ? (
-        <div style={{ marginTop: 14 }}>
-          <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 8 }}>Schedule a free intro call</GoldBookBtn>
-          <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 44, marginBottom: 8 }}>
-            Book a session
+        )}
+        {bookingAllowed && (
+          <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>
+            {nextSlotLoading ? "Checking availability…" : nextSlotStart ? formatCoachNextAvailable(nextSlotStart) : "No upcoming slots in the next two weeks"}
+          </p>
+        )}
+      </ScoutBox>
+      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+        <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40 }}>{coach.isFollowing ? "Following ✓" : "+ Follow"}</ScoutSecondaryBtn>
+        {canSelfAssignCoach && (
+          <ScoutSecondaryBtn onClick={onToggleMyCoach} style={{ width: "100%", minHeight: 40, ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest, fontWeight: 600 } : {}) }}>
+            {coach.isMyCoach ? "Remove from my coaches" : "Add as my coach"}
           </ScoutSecondaryBtn>
+        )}
+        <button type="button" onClick={onWriteReview} style={{ width: "100%", background: "none", border: "none", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, cursor: "pointer", textDecoration: "underline", padding: 8 }}>Write a review</button>
+      </div>
+      {!isMobile && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 14px" }}>Before your session</p>
+          <CreditsStatusBar />
+          <AiToolCard creditCost={1} title="Prepare for your session" subtitle="Questions to ask, what to share about your goals, and how this coach's background fits you." buttonLabel="Prep with Scout" onClick={onPrepChat} />
         </div>
-      ) : bookUrl ? (
-        <a href={bookUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 14, textDecoration: "none" }}>
-          <GoldBookBtn>Schedule via calendar</GoldBookBtn>
-        </a>
-      ) : null}
-      <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "12px 0 8px" }}>
-        {coach.followerCount} follower{coach.followerCount !== 1 ? "s" : ""}
-      </p>
-      <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
-        {coach.isFollowing ? "Following ✓" : "+ Follow"}
-      </ScoutSecondaryBtn>
-      {coach.requiresAssignment && !coach.isMyCoach && !isAdmin && (
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: "8px 0", lineHeight: 1.45 }}>
-          This coach is available through Second Ladder. Contact your team to get assigned.
-        </p>
       )}
-      {canSelfAssignCoach && (coach.isMyCoach || (!coach.isInternal && !coach.requiresAssignment) || isAdmin) && (
-        <ScoutSecondaryBtn
-          onClick={onToggleMyCoach}
-          style={{
-            width: "100%",
-            minHeight: 40,
-            marginBottom: 8,
-            ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest, fontWeight: 600 } : {}),
-          }}
-        >
-          {coach.isMyCoach
-            ? "Remove from my coaches"
-            : isAdmin && (coach.isInternal || coach.requiresAssignment)
-              ? "Assign coach"
-              : "Add as my coach"}
-        </ScoutSecondaryBtn>
-      )}
-      <button
-        type="button"
-        onClick={onWriteReview}
-        style={{
-          width: "100%",
-          background: "none",
-          border: "none",
-          fontFamily: fontSans,
-          fontSize: T.bodySm,
-          color: color.forest,
-          cursor: "pointer",
-          textDecoration: "underline",
-          padding: 8,
-        }}
-      >
-        Write a review
-      </button>
-    </ScoutBox>
+    </div>
   );
 
-  return (
-    <div>
-      {/* Hero */}
-      <div
-        style={{
-          padding: isMobile ? "20px 16px" : "28px 32px",
-          background: cardBg,
-          borderBottom: line,
-        }}
-      >
-        <div style={{ display: "flex", gap: isMobile ? 16 : 24, alignItems: "flex-start" }}>
-          <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 88 : 120} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
-              <h1 style={bruddleHeadingStyle(isMobile ? "h4" : "h3", { lineHeight: 1.15 })}>{coach.displayName}</h1>
-              {coach.isProfessionalCoach && (
-                <span style={{ fontFamily: fontSans, fontSize: 12, color: color.forest, fontWeight: 600 }}>✓ Verified</span>
-              )}
-              {coach.isInternal && <InternalCoachBadge />}
-            </div>
-            <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
-            {coach.headline && (
-              <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.stone, lineHeight: 1.5, margin: "10px 0 0" }}>
-                {coach.headline}
-              </p>
-            )}
-            {categoryPills.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                {categoryPills.map((pill) => (
-                  <span
-                    key={pill}
-                    style={{
-                      ...scoutInsetChipStyle,
-                      color: color.forest,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {pill}
-                  </span>
-                ))}
-              </div>
-            )}
-            {coach.location && (
-              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "10px 0 0" }}>{coach.location}</p>
-            )}
+  const mainColumn = (
+    <>
+      {packages.length > 0 && (
+        <ContentSection>
+          <SectionHeading title={`${firstName}'s offerings`} />
+          <div style={{ display: "flex", gap: 12, overflowX: isMobile ? "auto" : undefined, flexWrap: isMobile ? "nowrap" : "wrap", paddingBottom: isMobile ? 4 : 0 }}>
+            {visiblePackages.map((pkg, index) => (
+              <PackageOfferingCard key={pkg.id} title={pkg.displayTitle} priceLabel={pkg.displayPriceLabel ?? "—"} hoursLabel={pkg.displayHoursLabel} saveLabel={packageSaveLabel(pkg, coach.hourlyRate)} gradient={PACKAGE_GRADIENTS[index % PACKAGE_GRADIENTS.length]} onBuy={bookingAllowed ? () => onBuyPackage(pkg.id) : undefined} isMobile={isMobile} />
+            ))}
           </div>
-          {!isMobile && matchScore > 0 && (
-            <CoachMatchScoreCluster
-              score={matchScore}
-              label={matchLabel}
-              align="right"
-              job={{ matchScore, matchLabel, matchReasons, matchedSkills }}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Body */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: "flex-start",
-          gap: 0,
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
-          {matchScore > 0 && (
-            <CoachMatchSection job={{ matchScore, matchLabel, matchReasons, matchedSkills }} />
-          )}
-
-          {introText && (
-            <Section title={`Message from ${coach.displayName.split(" ")[0]}`}>
-              <p style={{ fontFamily: fontSans, fontSize: T.body, lineHeight: 1.7, color: color.stone, margin: 0 }}>
-                {introText}{introText.length < (coach.bio?.length ?? 0) ? "…" : ""}
-              </p>
-            </Section>
-          )}
-
-          {isMobile && bookingSidebar}
-
-          {aboutText && (
-            <Section title="About">
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
-                {aboutExpanded ? aboutText : `${aboutText.slice(0, 600)}${aboutText.length > 600 ? "…" : ""}`}
-              </p>
-              {aboutText.length > 600 && (
-                <button
-                  type="button"
-                  onClick={() => setAboutExpanded((v) => !v)}
-                  style={{
-                    marginTop: 10,
-                    background: "none",
-                    border: "none",
-                    color: color.forest,
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                    cursor: "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  {aboutExpanded ? "Show less" : "View more"}
+          {(coach.hourlyRate || hiddenPackageCount > 0) && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+              {coach.hourlyRate ? <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.ink, margin: 0 }}>Custom hourly · ${coach.hourlyRate}/hr</p> : <span />}
+              {hiddenPackageCount > 0 && (
+                <button type="button" onClick={() => setShowAllPackages((v) => !v)} style={{ background: "none", border: "none", fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, cursor: "pointer", textDecoration: "underline" }}>
+                  {showAllPackages ? "Show fewer packages" : `View ${hiddenPackageCount} more package${hiddenPackageCount === 1 ? "" : "s"}`}
                 </button>
               )}
-            </Section>
+              {coach.hourlyRate && bookingAllowed && <ScoutSecondaryBtn onClick={onBookSession} style={{ minHeight: 40 }}>Buy coaching</ScoutSecondaryBtn>}
+            </div>
           )}
-
-          {matchReasons.length > 0 && (
-            <Section title="Why clients work with them">
-              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
-                {matchReasons.slice(0, 5).map((r) => (
-                  <li key={r} style={{ marginBottom: 6 }}>{r}</li>
-                ))}
-              </ul>
-            </Section>
+        </ContentSection>
+      )}
+      {(recordings.length > 0 || (coach.publicResources?.length ?? 0) > 0 || upcoming.length > 0) && (
+        <ContentSection>
+          <SectionHeading title={`${firstName}'s resources`} />
+          {upcoming.map((s) => <EventCard key={s.id} session={s} variant="upcoming" />)}
+          {recordings.map((s) => <EventCard key={s.id} session={s} variant="recording" />)}
+          {(coach.publicResources?.length ?? 0) > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: recordings.length ? 12 : 0 }}>
+              {coach.publicResources!.map((doc) => (
+                <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", border: line, borderRadius: radius.px, background: surface.inset, textDecoration: "none", color: "inherit" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px", color: color.ink }}>{doc.name}</p>
+                    <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: 0 }}>{doc.typeLabel}</p>
+                  </div>
+                  <span style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest, flexShrink: 0 }}>Download →</span>
+                </a>
+              ))}
+            </div>
           )}
-
-          {(coach.clientWins?.length ?? 0) > 0 && (
-            <Section title="Client results">
-              <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
-                {coach.clientWins!.map((win) => (
-                  <li key={win} style={{ marginBottom: 8 }}>{win}</li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          <Section
-            title="Reviews"
-            action={<CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />}
-          >
+        </ContentSection>
+      )}
+      {hasQualifications && (
+        <ContentSection>
+          <SectionHeading title={`${firstName}'s ${coach.category ?? "coaching"} qualifications`} />
+          <ScoutBox padding={20}>
+            {coach.isProfessionalCoach && <CredentialRow icon="🏆" label="Coaches professionally" />}
+            {coach.experienceLevel && <CredentialRow icon="📊" label={`Experience level: ${coach.experienceLevel}`} />}
+            {(coach.clientsCoachedCount ?? 0) > 0 && coach.category && <CredentialRow icon="👥" label={`${coach.clientsCoachedCount}+ people coached for ${coach.category}`} />}
+            {coach.industryYears != null && coach.industryYears > 0 && <CredentialRow icon="⏱" label={`${coach.industryYears}+ years in industry`} />}
+            <CompanyLogoRow companies={experienceCompanies} lookup={companyLookup} label={`${firstName} has helped clients at`} />
+            {coach.specialties.length > 0 && (
+              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: experienceCompanies.length ? "14px 0 0" : 0, lineHeight: 1.55 }}>
+                {firstName} also coaches for {coach.specialties.slice(0, 6).map((s, i) => (<span key={s}>{i > 0 ? ", " : ""}<span style={{ color: color.forest, fontWeight: 600 }}>{s}</span></span>))}{coach.specialties.length > 6 ? " and more." : "."}
+              </p>
+            )}
+          </ScoutBox>
+        </ContentSection>
+      )}
+      {aboutText && (
+        <ContentSection>
+          <SectionHeading title={`About ${firstName}`} />
+          <ScoutBox padding={20}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>{aboutExpanded ? aboutText : `${aboutText.slice(0, 800)}${aboutText.length > 800 ? "…" : ""}`}</p>
+            {aboutText.length > 800 && <button type="button" onClick={() => setAboutExpanded((v) => !v)} style={{ marginTop: 10, background: "none", border: "none", color: color.forest, fontFamily: fontSans, fontSize: T.bodySm, cursor: "pointer", fontWeight: 600 }}>{aboutExpanded ? "Show less" : "View more"}</button>}
+          </ScoutBox>
+        </ContentSection>
+      )}
+      {coach.whyCoach && (
+        <ContentSection>
+          <SectionHeading title="Why do I coach?" />
+          <ScoutBox padding={20}><p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>{coach.whyCoach}</p></ScoutBox>
+        </ContentSection>
+      )}
+      {workExperienceEntries.length > 0 && (
+        <ContentSection>
+          <SectionHeading title="Work experience" />
+          <ScoutBox padding={20}>
+            {workExperienceEntries.map((entry) => (
+              <ExperienceEntryRow
+                key={entry.id}
+                title={entry.title}
+                company={entry.company}
+                dateLabel={entry.dateLabel}
+                lookup={entry.lookupKey ? companyLookup[entry.lookupKey.toLowerCase()] : undefined}
+              />
+            ))}
+          </ScoutBox>
+        </ContentSection>
+      )}
+      {educationEntries.length > 0 && (
+        <ContentSection>
+          <SectionHeading title="Education" />
+          <ScoutBox padding={20}>
+            {educationEntries.map((entry) => (
+              <EducationEntryRow
+                key={entry.id}
+                school={entry.school}
+                degree={entry.degree}
+                lookup={entry.lookupKey ? companyLookup[entry.lookupKey.toLowerCase()] : undefined}
+              />
+            ))}
+          </ScoutBox>
+        </ContentSection>
+      )}
+      {(coach.clientWins?.length ?? 0) > 0 && (
+        <ContentSection>
+          <SectionHeading title="Client results" />
+          <ScoutBox padding={20}>
+            <ul style={{ margin: 0, paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
+              {coach.clientWins!.map((win) => <li key={win} style={{ marginBottom: 8 }}>{win}</li>)}
+            </ul>
+          </ScoutBox>
+        </ContentSection>
+      )}
+      {hasReviews && (
+        <ContentSection>
+          <SectionHeading title={`${coach.reviewCount} review${coach.reviewCount === 1 ? "" : "s"}`} action={<CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />} />
+          <ScoutBox padding={20}>
             {coach.aggregates && (
-              <div style={{ marginBottom: 16, maxWidth: 360 }}>
+              <div style={{ marginBottom: 20, maxWidth: 420 }}>
+                <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 12px" }}>Overall rating</p>
+                <p style={{ ...bruddleHeadingStyle("h3"), margin: "0 0 16px", color: color.ink }}>{coach.aggregates.avgRating.toFixed(1)}</p>
                 <DimensionBar label="Knowledge" value={coach.aggregates.knowledge} />
                 <DimensionBar label="Value" value={coach.aggregates.value} />
                 <DimensionBar label="Responsiveness" value={coach.aggregates.responsiveness} />
                 <DimensionBar label="Supportiveness" value={coach.aggregates.supportiveness} />
               </div>
             )}
-            {coach.reviews.length === 0 ? (
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No reviews yet.</p>
-            ) : (
-              coach.reviews.map((r) => <ReviewCard key={r.id} review={r} />)
-            )}
-          </Section>
+            {coach.reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
+          </ScoutBox>
+        </ContentSection>
+      )}
+      {coach.isMyCoach && (
+        <ContentSection>
+          <SectionHeading title="Shared with you" />
+          <ScoutBox padding={20}><ClientCoachSharedDocuments coachProfileId={coach.id} coachName={coach.displayName} compact /></ScoutBox>
+        </ContentSection>
+      )}
+    </>
+  );
 
-          {coach.whyCoach && (
-            <Section title="Coaching philosophy">
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: 0, whiteSpace: "pre-wrap" }}>
-                {coach.whyCoach}
-              </p>
-            </Section>
-          )}
-
-          <CoachExperienceCompanies coach={coach} isMobile={isMobile} embedded />
-
-          {coach.schools.length > 0 && (
-            <Section title="Education">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {coach.schools.map((s) => (
-                  <span
-                    key={s}
-                    style={{
-                      padding: "8px 14px",
-                      border: line,
-                      borderRadius: radius.px,
-                      fontFamily: fontSans,
-                      fontSize: T.bodySm,
-                      color: color.stone,
-                      background: surface.inset,
-                    }}
-                  >
-                    {s}
-                  </span>
-                ))}
+  return (
+    <div>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "stretch", borderBottom: line, background: cardBg }}>
+        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "20px 16px" : "28px 32px 24px" }}>
+          <div style={{ display: "flex", gap: isMobile ? 16 : 24, alignItems: "flex-start" }}>
+            <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 96 : 120} rounded />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                <h1 style={bruddleHeadingStyle(isMobile ? "h4" : "h3", { lineHeight: 1.15 })}>{coach.displayName}</h1>
+                {coach.isInternal && <InternalCoachBadge />}
               </div>
-            </Section>
-          )}
-
-          {upcoming.length > 0 && (
-            <Section title="Upcoming events">
-              {upcoming.map((s) => <EventCard key={s.id} session={s} variant="upcoming" />)}
-            </Section>
-          )}
-
-          {(recordings.length > 0 || (coach.publicResources?.length ?? 0) > 0 || coach.isMyCoach) && (
-            <Section title="Resources & recordings">
-              {recordings.map((s) => <EventCard key={s.id} session={s} variant="recording" />)}
-              {(coach.publicResources?.length ?? 0) > 0 && (
-                <div style={{ marginTop: recordings.length ? 16 : 0 }}>
-                  {recordings.length === 0 && (
-                    <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.ink, margin: "0 0 10px" }}>
-                      Resources
-                    </p>
-                  )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {coach.publicResources!.map((doc) => (
-                      <a
-                        key={doc.id}
-                        href={doc.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          padding: "12px 14px",
-                          border: line,
-                          borderRadius: radius.px,
-                          background: surface.inset,
-                          textDecoration: "none",
-                          color: "inherit",
-                        }}
-                      >
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px", color: color.ink }}>
-                            {doc.name}
-                          </p>
-                          <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: 0 }}>
-                            {doc.typeLabel}
-                          </p>
-                        </div>
-                        <span style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest, flexShrink: 0 }}>
-                          Download →
-                        </span>
-                      </a>
-                    ))}
-                  </div>
+              <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
+              {heroHeadline && (
+                <h2 style={{ ...bruddleHeadingStyle(isMobile ? "h5" : "h4"), margin: "12px 0 0", lineHeight: 1.25, color: color.ink }}>{heroHeadline}</h2>
+              )}
+              {statsParts.length > 0 && <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "10px 0 0" }}>{statsParts.join(" · ")}</p>}
+              {hasHeroCredentials && (
+                <div style={{ marginTop: 14 }}>
+                  {coach.featured && <CredentialRow icon="⭐" label="Featured coach" />}
+                  {coach.spotlightBadge === "top-rated" && <CredentialRow icon="🏆" label="Top rated" />}
+                  {coach.schools[0] && <CredentialRow icon="🎓" label={`Studied at ${coach.schools[0]}`} />}
+                  {(coach.currentCompany || coach.firms[0]) && <CredentialRow icon="💼" label={`Worked at ${coach.currentCompany ?? coach.firms[0]}`} />}
                 </div>
               )}
-              {coach.isMyCoach && (
-                <div style={{ marginTop: recordings.length ? 16 : 0 }}>
-                  <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.ink, margin: "0 0 10px" }}>
-                    Shared with you
-                  </p>
-                  <ClientCoachSharedDocuments
-                    coachProfileId={coach.id}
-                    coachName={coach.displayName}
-                    compact
-                  />
-                </div>
-              )}
-              {recordings.length === 0 && !coach.isMyCoach && (
-                <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0, lineHeight: 1.55 }}>
-                  No public recordings yet. When this coach hosts Live sessions, replays will appear here.
-                </p>
-              )}
-            </Section>
-          )}
-
-          {coach.specialties.length > 0 && (
-            <Section title="Can help with">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {coach.specialties.map((s) => (
-                  <span
-                    key={s}
-                    style={{ ...scoutInsetChipStyle, color: color.forest, fontSize: T.bodySm }}
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </Section>
-          )}
-        </div>
-
-        {!isMobile && (
-          <aside
-            style={{
-              width: 340,
-              flexShrink: 0,
-              borderLeft: line,
-              background: surface.inset,
-              padding: "24px 20px 32px",
-              position: "sticky",
-              top: 0,
-              alignSelf: "flex-start",
-              maxHeight: "100%",
-              overflowY: "auto",
-            }}
-          >
-            {bookingSidebar}
-            <div style={{ marginTop: 20 }}>
-              <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 14px" }}>Before your session</p>
-              <CreditsStatusBar />
-              <AiToolCard
-                creditCost={1}
-                title="Prepare for your session"
-                subtitle="Questions to ask, what to share about your goals, and how this coach's background fits you."
-                buttonLabel="Prep with Scout"
-                onClick={onPrepChat}
-              />
-              <AiToolCard
-                creditCost={1}
-                title="Interview prep"
-                subtitle="Practice questions and talking points tailored to your target roles."
-                buttonLabel="Start interview prep"
-                onClick={onPrepChat}
-              />
+              <CompanyLogoRow companies={experienceCompanies} lookup={companyLookup} label="Successful clients at" />
+              {coach.location && <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "12px 0 0" }}>{coach.location}</p>}
             </div>
+          </div>
+        </div>
+        {matchScore > 0 && <CoachMatchScoreColumn score={matchScore} label={matchLabel} reasons={matchReasons} matchedSkills={matchedSkills} width={isMobile ? 96 : 120} />}
+      </div>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? "24px 16px 88px" : "28px 32px 40px" }}>
+          {isMobile && <div style={{ marginBottom: 28 }}>{bookingSidebar}</div>}
+          {mainColumn}
+        </div>
+        {!isMobile && (
+          <aside style={{ width: 340, flexShrink: 0, borderLeft: line, background: surface.inset, padding: "24px 20px 32px", position: "sticky", top: 0, alignSelf: "flex-start", maxHeight: "100vh", overflowY: "auto" }}>
+            {bookingSidebar}
           </aside>
         )}
       </div>
+      {isMobile && (bookingAllowed || requestAllowed) && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, background: cardBg, borderTop: line, padding: "12px 16px calc(12px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -4px 20px rgba(0,0,0,0.08)" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 700, margin: 0, color: color.ink }}>{coach.displayName}</p>
+            <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
+          </div>
+          <GoldBookBtn
+            onClick={bookingAllowed ? onBookIntro : onRequestBooking}
+            style={{ width: "auto", minWidth: 140, padding: "12px 20px", borderRadius: 999 }}
+          >
+            {bookingAllowed ? "Schedule" : "Request"}
+          </GoldBookBtn>
+        </div>
+      )}
     </div>
   );
 }

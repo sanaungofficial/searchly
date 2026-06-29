@@ -1,10 +1,13 @@
+/** Types exposed in the client import UI — only these three. */
+export type VisibleImportType = "job_tracker" | "target_companies" | "application_info";
+
+/** All import types supported by the parse API (legacy / admin). */
 export type ImportType =
-  | "job_tracker"
+  | VisibleImportType
+  | "client_packet"
   | "contacts"
-  | "application_info"
   | "interview_tracker"
   | "job_titles"
-  | "target_companies"
   | "keywords"
   | "passwords";
 
@@ -19,15 +22,51 @@ export type ImportTypeConfig = {
   usesAi: boolean;
 };
 
-export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
+/** Three-option picker shown in UnifiedImportModal step 0. */
+export const VISIBLE_IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
   {
     id: "job_tracker",
-    label: "Job tracker",
-    description: "Pipeline jobs from Google Sheet export (.xlsx) or pasted rows.",
+    label: "Jobs list",
+    description: "Pipeline jobs from a spreadsheet export — map columns and status values before import.",
     accept: ".xlsx,.xls,.csv,.txt",
     pastePlaceholder: "Paste rows copied from Excel — include a header row with Company and Job Title columns.",
     supportsFile: true,
     supportsPaste: true,
+    usesAi: false,
+  },
+  {
+    id: "target_companies",
+    label: "Companies list",
+    description: "Target companies to watch or prioritize — map columns and fold descriptive fields into notes.",
+    accept: ".xlsx,.xls,.csv,.txt",
+    pastePlaceholder: "One company per line, or paste from Target Companies tab.",
+    supportsFile: true,
+    supportsPaste: true,
+    usesAi: false,
+  },
+  {
+    id: "application_info",
+    label: "Onboarding questionnaire",
+    description: "Parse questionnaire responses into profile fields and preferences.",
+    accept: ".pdf,.doc,.docx,.txt",
+    pastePlaceholder: "Paste questionnaire responses or intake notes…",
+    supportsFile: true,
+    supportsPaste: true,
+    usesAi: true,
+  },
+];
+
+export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
+  ...VISIBLE_IMPORT_TYPE_CONFIGS,
+  {
+    id: "client_packet",
+    label: "Full client packet (.xlsx)",
+    description:
+      "Complete Google Sheet export — jobs, contacts, target companies, roles, keywords, and login credentials (if present). Review all tabs before apply.",
+    accept: ".xlsx,.xls,.csv,.docx,.doc,.pdf,.txt",
+    pastePlaceholder: "For full packet import, upload the .xlsx export. Paste is for single-type imports below.",
+    supportsFile: true,
+    supportsPaste: false,
     usesAi: false,
   },
   {
@@ -39,16 +78,6 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
     supportsFile: true,
     supportsPaste: true,
     usesAi: false,
-  },
-  {
-    id: "application_info",
-    label: "Application info",
-    description: "Onboarding questionnaire → profile, preferences, and Application Q&A.",
-    accept: ".pdf,.doc,.docx,.txt",
-    pastePlaceholder: "Paste questionnaire responses or intake notes…",
-    supportsFile: true,
-    supportsPaste: true,
-    usesAi: true,
   },
   {
     id: "interview_tracker",
@@ -71,16 +100,6 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
     usesAi: false,
   },
   {
-    id: "target_companies",
-    label: "Target companies list",
-    description: "Companies to watch or prioritize.",
-    accept: ".xlsx,.xls,.csv,.txt",
-    pastePlaceholder: "One company per line, or paste from Target Companies tab.",
-    supportsFile: true,
-    supportsPaste: true,
-    usesAi: false,
-  },
-  {
     id: "keywords",
     label: "Keywords to use or avoid",
     description: "Search keyword categories — prioritized (use) and deprioritized (avoid).",
@@ -92,10 +111,12 @@ export const IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
   },
   {
     id: "passwords",
-    label: "Passwords",
-    description: "Application portal passwords — stored in Application Q&A (admin-only, tagged passwords).",
-    accept: ".txt,.csv",
-    pastePlaceholder: "Site name and password — one per line: Site\\tPassword or Site: Password",
+    label: "Login credentials",
+    description:
+      "Portal logins and passwords — stored in Application Q&A (plain text, not encrypted). Only import if the client accepts that.",
+    accept: ".txt,.csv,.xlsx,.xls",
+    pastePlaceholder:
+      "Site, login, and password — one per line: Site\\tLogin\\tPassword, Site: login / password, or Site\\tPassword",
     supportsFile: true,
     supportsPaste: true,
     usesAi: false,

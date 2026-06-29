@@ -6,7 +6,7 @@ import { fontSans, color, surface, type as T } from "@/lib/typography";
 export type CoachingTab =
   | "directory"
   | "my-coaches"
-  | "sessions"
+  | "bookings"
   | "notes"
   | "resources";
 

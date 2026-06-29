@@ -12,7 +12,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useKimchiThreads } from "@/hooks/use-kimchi-threads";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { fontSans } from "@/lib/typography";
-import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
+import { ScoutDrawerBackdrop } from "@/components/scout/scout-drawer-shell";
+import { DRAWER_Z } from "@/lib/z-layers";
 import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 
 const sans = fontSans;
@@ -119,11 +120,16 @@ export function KimchiAssistant() {
         panelOpen &&
         createPortal(
           <>
-            <div
-              className={`kimchi-drawer-backdrop${isMobile ? "" : " kimchi-drawer-backdrop--companion"}`}
-              style={{ opacity: visible ? 1 : 0, top: navHeight }}
-              onClick={isMobile ? closePanel : undefined}
-              aria-hidden
+            <ScoutDrawerBackdrop
+              onClose={closePanel}
+              variant={isMobile ? "default" : "transparent"}
+              className="kimchi-drawer-backdrop"
+              style={{
+                opacity: visible ? 1 : 0,
+                top: navHeight,
+                background: isMobile ? "rgba(15, 24, 20, 0.2)" : undefined,
+                transition: "opacity 0.28s ease",
+              }}
             />
             <div
               className="kimchi-drawer bruddle"
@@ -192,19 +198,9 @@ function KimchiAssistantStyles() {
         50% { transform: scale(1.06); }
       }
       .kimchi-drawer-backdrop {
-        position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
-        z-index: ${DRAWER_BACKDROP_Z};
-        background: rgba(15, 24, 20, 0.2);
-        transition: opacity 0.28s ease;
-        cursor: pointer;
-      }
-      .kimchi-drawer-backdrop--companion {
-        background: transparent;
-        pointer-events: none;
-        cursor: default;
       }
       .kimchi-drawer {
         position: fixed;

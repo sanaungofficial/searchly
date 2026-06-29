@@ -5,12 +5,18 @@ import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout
 import { UserAssetsList, type UserAssetListItem } from "@/components/scout/user-assets-list";
 import { UploadDocumentModal } from "@/components/scout/upload-document-modal";
 import { UnifiedImportModal } from "@/components/scout/unified-import-modal";
+import { ImportCompleteView } from "@/components/scout/import-complete-view";
+import { ImportHistoryTable } from "@/components/scout/import-history-table";
+import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs";
+import type { ImportRunDetail, ImportRunListItem } from "@/lib/client-import/import-run";
 import { withClientUserId } from "@/lib/workspace-urls";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { color, fontSans } from "@/lib/typography";
 
 const STRATEGY_FILE_ACCEPT =
   ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+type ImportTab = "new" | "history";
 
 function sectionHeading(title: string, subtitle?: string) {
   return (
@@ -56,11 +62,14 @@ type Props = {
 };
 
 export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: Props) {
-  const api = (path: string) => withClientUserId(path, clientUserId);
+  const api = useCallback((path: string) => withClientUserId(path, clientUserId), [clientUserId]);
 
-  const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showImportModal, setShowImportModal] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<ImportTab>("new");
+  const [selectedRun, setSelectedRun] = useState<ImportRunDetail | null>(null);
+  const [historyRuns, setHistoryRuns] = useState<ImportRunListItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [referenceFiles, setReferenceFiles] = useState<UserAssetListItem[]>([]);
   const [referenceUploading, setReferenceUploading] = useState(false);
@@ -86,9 +95,43 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
       .catch(() => {});
   }, [clientUserId]);
 
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(api(`/api/admin/clients/${clientUserId}/import/history`));
+      const data = await readResponseJson(res);
+      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to load import history"));
+      setHistoryRuns(Array.isArray(data.runs) ? data.runs : []);
+    } catch (e) {
+      setError(formatApiErrorMessage(e, "Failed to load import history"));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [api, clientUserId]);
+
+  const loadRunDetail = useCallback(
+    async (runId: string) => {
+      setError(null);
+      try {
+        const res = await fetch(api(`/api/admin/clients/${clientUserId}/import/runs/${runId}`));
+        const data = await readResponseJson(res);
+        if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to load import details"));
+        setSelectedRun(data.run as ImportRunDetail);
+      } catch (e) {
+        setError(formatApiErrorMessage(e, "Failed to load import details"));
+      }
+    },
+    [api, clientUserId],
+  );
+
   useEffect(() => {
     refreshReferenceFiles();
   }, [clientUserId, refreshReferenceFiles]);
+
+  useEffect(() => {
+    if (activeTab === "history") loadHistory();
+  }, [activeTab, loadHistory]);
 
   async function handleReferenceUpload(file: File) {
     setReferenceUploading(true);
@@ -131,63 +174,111 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
     }
   }
 
+  function handleImportComplete(runId: string) {
+    setShowImportModal(false);
+    void loadRunDetail(runId);
+  }
+
+  function handleStartAnother() {
+    setSelectedRun(null);
+    setActiveTab("new");
+    setShowImportModal(true);
+  }
+
+  if (selectedRun) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
+        <ImportCompleteView
+          run={selectedRun}
+          clientUserId={clientUserId}
+          isMobile={isMobile}
+          onStartAnother={handleStartAnother}
+          onBackToHistory={() => {
+            setSelectedRun(null);
+            setActiveTab("history");
+            void loadHistory();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
+    <div className="bruddle" style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
       <div>
         <h2 style={{ fontFamily: fontSans, fontSize: isMobile ? 20 : 22, fontWeight: 700, color: color.forest, margin: "0 0 6px" }}>
           Import
         </h2>
         <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-          Load trackers, onboarding questionnaires, contacts, and more for this client — review before anything is written.
+          Import jobs, companies, or onboarding questionnaires for this client — review before anything is written.
         </p>
       </div>
 
-      {applySuccess && (
-        <ScoutBox padding={16} style={{ background: "rgba(74,139,106,0.08)", borderColor: "rgba(74,139,106,0.35)" }}>
-          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, margin: 0 }}>{applySuccess}</p>
-        </ScoutBox>
-      )}
+      <WorkspaceSegmentTabs
+        tabs={[
+          { id: "new", label: "New import" },
+          { id: "history", label: "History" },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+        isMobile={isMobile}
+        variant="bruddle"
+      />
 
-      {error && (
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", margin: 0 }}>{error}</p>
-      )}
+      {error && <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", margin: 0 }}>{error}</p>}
 
-      <ScoutBox padding={isMobile ? 16 : 22}>
-        {sectionHeading(
-          "Client data",
-          "Import job trackers, contacts, questionnaires, passwords, and more. Choose the type, upload a file or paste copied rows, then review before apply.",
-        )}
-        <ScoutPrimaryBtn type="button" onClick={() => setShowImportModal(true)}>
-          Import
-        </ScoutPrimaryBtn>
-      </ScoutBox>
+      {activeTab === "new" ? (
+        <>
+          <ScoutBox padding={isMobile ? 16 : 22}>
+            {sectionHeading(
+              "Client data",
+              "Import a jobs list, companies list, or onboarding questionnaire. Choose the type first, then upload or paste on the next step.",
+            )}
+            <ScoutPrimaryBtn type="button" onClick={() => setShowImportModal(true)}>
+              Import
+            </ScoutPrimaryBtn>
+          </ScoutBox>
 
-      <ScoutBox padding={isMobile ? 16 : 22}>
-        {sectionHeading(
-          "Files (reference)",
-          "Store strategy PDFs or Word docs for reference. No content extraction — files appear in the client asset library.",
-        )}
-        <UserAssetsList
-          assets={referenceFiles}
-          onDelete={handleRemoveReferenceFile}
-          emptyMessage="No strategy reference files yet."
-        />
-        <div style={{ marginTop: 12 }}>
-          <ScoutSecondaryBtn type="button" onClick={() => setShowReferenceUpload(true)} disabled={referenceUploading}>
-            {referenceUploading ? "Uploading…" : "Upload strategy file"}
-          </ScoutSecondaryBtn>
+          <ScoutBox padding={isMobile ? 16 : 22}>
+            {sectionHeading(
+              "Files (reference)",
+              "Store strategy PDFs or Word docs for reference. No content extraction — files appear in the client asset library.",
+            )}
+            <UserAssetsList
+              assets={referenceFiles}
+              onDelete={handleRemoveReferenceFile}
+              emptyMessage="No strategy reference files yet."
+            />
+            <div style={{ marginTop: 12 }}>
+              <ScoutSecondaryBtn type="button" onClick={() => setShowReferenceUpload(true)} disabled={referenceUploading}>
+                {referenceUploading ? "Uploading…" : "Upload strategy file"}
+              </ScoutSecondaryBtn>
+            </div>
+          </ScoutBox>
+        </>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <ScoutSecondaryBtn type="button" onClick={() => void loadHistory()} disabled={historyLoading}>
+              {historyLoading ? "Refreshing…" : "Refresh"}
+            </ScoutSecondaryBtn>
+          </div>
+          <ImportHistoryTable
+            runs={historyRuns}
+            loading={historyLoading}
+            isMobile={isMobile}
+            onDetails={(runId) => void loadRunDetail(runId)}
+            onRefresh={() => void loadHistory()}
+          />
         </div>
-      </ScoutBox>
+      )}
 
       <UnifiedImportModal
         open={showImportModal}
         onClose={() => setShowImportModal(false)}
         clientUserId={clientUserId}
         onPatchProfile={onPatchProfile}
-        onSuccess={(msg) => {
-          setApplySuccess(msg);
-          window.setTimeout(() => setApplySuccess(null), 12000);
-        }}
+        onImportComplete={handleImportComplete}
       />
 
       {showReferenceUpload && (

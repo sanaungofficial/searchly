@@ -1,17 +1,24 @@
 import { getActingUser } from "@/lib/acting-user";
 import { requireAiQuota } from "@/lib/ai-guard";
+import { ensureAssetResumeParsed } from "@/lib/ensure-asset-resume";
 import { getOwnedAssetForActingUser } from "@/lib/owned-asset";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
-import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
+import { isKimchiAiConfigured, kimchiGenerateText, kimchiModelId } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { parseResumeFromText } from "@/lib/resume-extract";
 import {
+  hasResumeBodyContent,
   normalizeParsedResumeData,
   parseJsonFromModel,
   type ParsedResumeData,
 } from "@/lib/resume-parse";
+import { resumeTextFromAsset } from "@/lib/resolve-resume-text";
 import { normalizeQualityScore } from "@/components/scout/profile-resume-analysis-report";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+
+export const maxDuration = 120;
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isKimchiAiConfigured()) {
@@ -29,11 +36,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const quotaError = await requireAiQuota(dbUser, "TAILOR");
   if (quotaError) return quotaError;
 
-  const parsed = normalizeParsedResumeData(asset.parsedData);
-  if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
+  let workingAsset = asset;
+  let parsed = normalizeParsedResumeData(workingAsset.parsedData);
+  if (!parsed || !hasResumeBodyContent(parsed)) {
+    const ensured = await ensureAssetResumeParsed(id, dbUser.id);
+    if (ensured) {
+      workingAsset = ensured;
+      parsed = normalizeParsedResumeData(workingAsset.parsedData);
+    }
+  }
+  if (!parsed || !hasResumeBodyContent(parsed)) {
+    const resumeText = resumeTextFromAsset(workingAsset);
+    if (resumeText) {
+      const structuredPrompt = isKimchiAiConfigured() ? await getPrompt("RESUME_PARSE") : "";
+      const { parsed: fromText, tokensIn, tokensOut, modelId } = await parseResumeFromText(
+        resumeText,
+        structuredPrompt,
+        dbUser.id,
+      );
+      if (fromText && hasResumeBodyContent(fromText)) {
+        parsed = fromText;
+        workingAsset = await prisma.userAsset.update({
+          where: { id },
+          data: { parsedData: fromText as unknown as Prisma.InputJsonValue },
+        });
+        if (tokensIn > 0) {
+          logAiUsage(dbUser.id, "RESUME_PARSE", modelId || (await kimchiModelId("parse")), tokensIn, tokensOut);
+        }
+      }
+    }
+  }
+  if (!parsed || !hasResumeBodyContent(parsed)) {
+    return NextResponse.json({ error: "No resume data — try Reparse in the resume editor" }, { status: 404 });
+  }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const analysis = (asset.analysisData ?? {}) as Record<string, unknown>;
+  const analysis = (workingAsset.analysisData ?? {}) as Record<string, unknown>;
   const improvements = Array.isArray(analysis.improvements) ? analysis.improvements : [];
   const gaps = Array.isArray(analysis.gaps) ? analysis.gaps : [];
   const tips = Array.isArray(analysis.tips) ? analysis.tips : [];
@@ -59,8 +97,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   let text: string;
   let usage: { inputTokens: number; outputTokens: number };
   let modelId: string;
+  let finishReason: string | null;
   try {
-    ({ text, usage, modelId } = await kimchiGenerateText({
+    ({ text, usage, modelId, finishReason } = await kimchiGenerateText({
       tier: "create",
       prompt,
       maxOutputTokens: 8192,
@@ -89,7 +128,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   } | null;
 
   if (!result?.parsedData) {
-    return NextResponse.json({ error: "Failed to parse improved resume" }, { status: 500 });
+    const truncated = finishReason === "length" || finishReason === "max_tokens";
+    return NextResponse.json(
+      {
+        error: truncated
+          ? "Improvement generation was cut off before finishing — try again."
+          : "Failed to parse improved resume — try Reparse in the resume editor, then try again.",
+      },
+      { status: 500 },
+    );
   }
 
   const improved = normalizeParsedResumeData(result.parsedData);

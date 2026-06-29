@@ -7,7 +7,6 @@ import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { CoachingDirectory } from "@/components/scout/coaching-directory";
 import { WorkspacePageShell } from "@/components/scout/workspace-page-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useWorkspace } from "@/contexts/workspace-context";
 import { categoryToSlug } from "@/lib/coach-categories";
 import { color, fontSans } from "@/lib/typography";
 import type { CoachListItem } from "@/lib/coach-types";
@@ -20,18 +19,9 @@ function CategoryInner({
   const isMobile = useIsMobile();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isPro, setIsPro] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
-  const { openPricing } = useWorkspace();
 
   const coachParam = searchParams.get("coach");
-
-  useEffect(() => {
-    fetch("/api/subscription")
-      .then((r) => r.json())
-      .then((d) => { if (d.isPro) setIsPro(true); })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!coachParam) {
@@ -75,10 +65,10 @@ function CategoryInner({
           </Link>
         }
       >
-        <CoachingDirectory category={category} isMobile={isMobile} isPro={isPro} onSubscribe={openPricing} onOpenCoach={openCoach} />
+        <CoachingDirectory category={category} isMobile={isMobile} onOpenCoach={openCoach} />
       </WorkspacePageShell>
       {drawerCoach && (
-        <CoachDrawer slug={drawerCoach.slug ?? drawerCoach.id} preview={drawerCoach} onClose={closeDrawer} isPro={isPro} onSubscribe={openPricing} />
+        <CoachDrawer slug={drawerCoach.slug ?? drawerCoach.id} preview={drawerCoach} onClose={closeDrawer} />
       )}
     </>
   );
