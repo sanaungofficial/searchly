@@ -37,7 +37,7 @@ export const VISIBLE_IMPORT_TYPE_CONFIGS: ImportTypeConfig[] = [
   {
     id: "target_companies",
     label: "Companies list",
-    description: "Target companies to watch or prioritize.",
+    description: "Target companies to watch or prioritize — map columns and fold descriptive fields into notes.",
     accept: ".xlsx,.xls,.csv,.txt",
     pastePlaceholder: "One company per line, or paste from Target Companies tab.",
     supportsFile: true,

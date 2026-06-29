@@ -1,6 +1,7 @@
 import type { JobStage } from "@prisma/client";
 import type { StrategyProfileFields } from "@/lib/career-strategy";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
+import type { CompanyImportOptions } from "@/lib/client-import/company-field-mapping";
 import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 
 export type ImportRow<T> = {
@@ -69,6 +70,8 @@ export type ClientImportPreview = {
     summary: string | null;
   } | null;
   warnings: string[];
+  /** User-facing explanation of how columns were mapped (companies import). */
+  mappingRecommendation?: string | null;
 };
 
 export type ClientImportApplyPayload = {
@@ -88,6 +91,8 @@ export type ClientImportApplyPayload = {
   applyResume?: boolean;
   /** Job tracker wizard dedupe / conflict options. */
   jobImportOptions?: JobTrackerImportOptions;
+  /** Target companies wizard dedupe / conflict options. */
+  companyImportOptions?: CompanyImportOptions;
   preview: ClientImportPreview;
   /** Optional metadata for import history (type, file name, paste vs file). */
   importMeta?: {
@@ -140,4 +145,6 @@ export type ClientImportApplyResult = {
   errors: string[];
   /** Set when the run was persisted to ImportRun history. */
   runId?: string;
+  /** How descriptive spreadsheet columns were mapped (companies import). */
+  mappingRecommendation?: string | null;
 };

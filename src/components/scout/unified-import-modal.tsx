@@ -4,10 +4,12 @@ import React, { useCallback, useRef, useState } from "react";
 import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-import/types";
 import type { VisibleImportType } from "@/lib/client-import/import-types";
 import { VISIBLE_IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
+import type { CompanyImportOptions } from "@/lib/client-import/company-field-mapping";
 import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 import type { IntakeParseResult } from "@/lib/career-strategy";
 import { ImportReviewModal } from "@/components/admin/admin-client-import-panel";
 import { JobTrackerImportWizard } from "@/components/scout/job-tracker-import-wizard";
+import { CompaniesImportWizard } from "@/components/scout/companies-import-wizard";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -64,7 +66,9 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const [applyResume, setApplyResume] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showJobTrackerWizard, setShowJobTrackerWizard] = useState(false);
+  const [showCompaniesWizard, setShowCompaniesWizard] = useState(false);
   const [jobImportOptions, setJobImportOptions] = useState<JobTrackerImportOptions | undefined>();
+  const [companyImportOptions, setCompanyImportOptions] = useState<CompanyImportOptions | undefined>();
 
   const [intakeResult, setIntakeResult] = useState<IntakeParseResult | null>(null);
   const [showApplyProfile, setShowApplyProfile] = useState(false);
@@ -80,7 +84,9 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setPreview(null);
     setShowReview(false);
     setShowJobTrackerWizard(false);
+    setShowCompaniesWizard(false);
     setJobImportOptions(undefined);
+    setCompanyImportOptions(undefined);
     setIntakeResult(null);
     setShowApplyProfile(false);
     setApplyResume(false);
@@ -174,6 +180,8 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
     if (importType === "job_tracker") {
       setShowJobTrackerWizard(true);
+    } else if (importType === "target_companies") {
+      setShowCompaniesWizard(true);
     } else {
       setFlowStep("input");
     }
@@ -321,8 +329,9 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
 
   async function handleApplyImport(
     previewOverride?: ClientImportPreview,
-    optionsOverride?: JobTrackerImportOptions,
+    jobOptionsOverride?: JobTrackerImportOptions,
     metaOverride?: ReturnType<typeof buildImportMeta>,
+    companyOptionsOverride?: CompanyImportOptions,
   ) {
     const activePreview = previewOverride ?? preview;
     if (!activePreview) return;
@@ -335,7 +344,8 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
         body: JSON.stringify({
           preview: activePreview,
           applyResume,
-          jobImportOptions: optionsOverride ?? jobImportOptions,
+          jobImportOptions: jobOptionsOverride ?? jobImportOptions,
+          companyImportOptions: companyOptionsOverride ?? companyImportOptions,
           importMeta: metaOverride ?? buildImportMeta(),
         }),
       });
@@ -373,8 +383,22 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     });
   }
 
+  async function handleCompaniesWizardComplete(result: {
+    preview: ClientImportPreview;
+    companyImportOptions: CompanyImportOptions;
+  }) {
+    setShowCompaniesWizard(false);
+    setCompanyImportOptions(result.companyImportOptions);
+    setApplyResume(false);
+    await handleApplyImport(result.preview, undefined, {
+      importType: "target_companies",
+      fileName: result.preview.sourceFiles[0]?.filename ?? null,
+      sourceKind: result.preview.sourceFiles.length ? "file" : "paste",
+    }, result.companyImportOptions);
+  }
+
   const showMainModal =
-    open && !showReview && !showApplyProfile && !showJobTrackerWizard && !applying;
+    open && !showReview && !showApplyProfile && !showJobTrackerWizard && !showCompaniesWizard && !applying;
 
   const dropBorder = isDragging ? color.forest : "rgba(26,58,47,0.25)";
   const dropBg = isDragging ? "rgba(26,58,47,0.06)" : surface.inset;
@@ -672,6 +696,16 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           clientUserId={clientUserId}
           title="Import jobs list"
           onComplete={handleJobWizardComplete}
+        />
+      )}
+
+      {showCompaniesWizard && (
+        <CompaniesImportWizard
+          open={showCompaniesWizard}
+          onClose={() => setShowCompaniesWizard(false)}
+          clientUserId={clientUserId}
+          title="Import companies list"
+          onComplete={handleCompaniesWizardComplete}
         />
       )}
 
