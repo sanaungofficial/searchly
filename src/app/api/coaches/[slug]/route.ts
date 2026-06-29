@@ -106,6 +106,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const avgRating = aggregates?.avgRating ?? null;
   const reviewCount = aggregates?.reviewCount ?? 0;
 
+  const [completedBookings, clientsCoachedCount] = await Promise.all([
+    prisma.coachBooking.findMany({
+      where: {
+        coachProfileId: coach.id,
+        status: "CONFIRMED",
+        endAt: { lt: new Date() },
+      },
+      select: { startAt: true, endAt: true },
+    }),
+    prisma.coachClientAssignment.count({ where: { coachProfileId: coach.id } }),
+  ]);
+  const totalCoachedMinutes = completedBookings.reduce(
+    (sum, booking) => sum + Math.max(0, Math.round((booking.endAt.getTime() - booking.startAt.getTime()) / 60_000)),
+    0,
+  );
+
   const upcomingLiveRows = await listCoachLiveSessions(coach.id);
   const upcomingLiveSessions = upcomingLiveRows.map((row) =>
     toLiveSessionView(row, { registrationCount: row._count.registrations }),
@@ -148,6 +164,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     experienceLevel: coach.experienceLevel,
     clientTier: coach.clientTier,
     industryYears: coach.industryYears,
+    totalCoachedMinutes,
+    clientsCoachedCount,
     avgRating,
     reviewCount,
     followerCount: coach._count.followers,

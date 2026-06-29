@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachProfileDetail } from "@/lib/coach-types";
+import { categoryToSlug } from "@/lib/coach-categories";
 import { bruddleHeadingStyle, color, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 const line = "var(--scout-border)";
@@ -303,6 +304,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
           display: "flex",
           alignItems: "center",
           gap: 12,
+          flexWrap: "wrap",
         }}
       >
         <Link
@@ -315,8 +317,38 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
             fontWeight: 600,
           }}
         >
-          ← Back to coaching
+          Coaching
         </Link>
+        {coach.category && (
+          <>
+            <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>/</span>
+            <Link
+              href={`/coaching/c/${categoryToSlug(coach.category)}`}
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.bodySm,
+                color: color.forest,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              {coach.category}
+            </Link>
+          </>
+        )}
+        <span style={{ marginLeft: "auto" }}>
+          <Link
+            href="/coaching"
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              color: color.muted,
+              textDecoration: "none",
+            }}
+          >
+            ← Back
+          </Link>
+        </span>
       </div>
 
       <CoachProfileView
