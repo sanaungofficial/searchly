@@ -1,9 +1,22 @@
+import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { logApifyLinkedInRun } from "@/lib/external-api-usage";
 import type { LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import type { ParsedResumeData } from "@/lib/resume-parse";
 
-const DEFAULT_ACTOR = "dataweave/linkedin-profile-scraper";
+/**
+ * LinkedIn scrape via Apify.
+ *
+ * Env:
+ * - APIFY_API_TOKEN — required for LinkedIn import
+ * - APIFY_LINKEDIN_ACTOR_ID — optional; default `dataweave/linkedin-profile-scraper` (Apify id etiW1XfulkpulZA4D)
+ * - APIFY_LINKEDIN_TIMEOUT_SEC — optional sync run timeout (default 120, max 300)
+ * - APIFY_USD_PER_LINKEDIN_RUN — optional cost estimate for admin usage stats (default 0.05)
+ */
+export const DEFAULT_LINKEDIN_ACTOR = "dataweave/linkedin-profile-scraper";
+export const DEFAULT_LINKEDIN_ACTOR_ID = "etiW1XfulkpulZA4D";
+
+const DEFAULT_ACTOR = DEFAULT_LINKEDIN_ACTOR;
 
 type ApifyCertification = {
   name?: string;
@@ -58,9 +71,39 @@ export function isApifyConfigured(): boolean {
   return !!process.env.APIFY_API_TOKEN?.trim();
 }
 
+export function getLinkedInActorSlug(): string {
+  return process.env.APIFY_LINKEDIN_ACTOR_ID?.trim() || DEFAULT_ACTOR;
+}
+
 function actorPath(): string {
-  const raw = process.env.APIFY_LINKEDIN_ACTOR_ID?.trim() || DEFAULT_ACTOR;
+  const raw = getLinkedInActorSlug();
   return raw.includes("~") ? raw : raw.replace("/", "~");
+}
+
+export function formatApifyErrorBody(body: string, status: number): string {
+  const trimmed = body.trim();
+  if (!trimmed) return `Apify request failed (${status})`;
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const errorObj = parsed.error as Record<string, unknown> | undefined;
+    if (errorObj && typeof errorObj === "object") {
+      const type = typeof errorObj.type === "string" ? errorObj.type : "";
+      if (type === "full-permission-actor-not-approved") {
+        const data = errorObj.data as Record<string, unknown> | undefined;
+        const approvalUrl = typeof data?.approvalUrl === "string" ? data.approvalUrl.trim() : "";
+        const actor = getLinkedInActorSlug();
+        const base = `LinkedIn import needs Apify approval: approve the ${actor} actor in Apify Console, then retry import.`;
+        return approvalUrl ? `${base} (${approvalUrl})` : base;
+      }
+      if (typeof errorObj.message === "string" && errorObj.message.trim()) {
+        return errorObj.message.trim();
+      }
+    }
+    return formatApiErrorMessage(parsed, `Apify request failed (${status})`);
+  } catch {
+    return trimmed;
+  }
 }
 
 function formatYearMonth(year?: number, month?: number): string | null {
@@ -210,7 +253,7 @@ export async function scrapeLinkedInProfile(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `Apify request failed (${res.status})`);
+    throw new Error(formatApifyErrorBody(text, res.status));
   }
 
   const items = (await res.json()) as ApifyLinkedInProfile[];
