@@ -394,6 +394,44 @@ function parseTargetJobTitlesSheet(wb: XLSX.WorkBook, sheetName: string): {
   };
 }
 
+function parseKeywordsSheet(wb: XLSX.WorkBook, sheetName: string): {
+  prioritizedCategories: ImportRow<string>[];
+  deprioritizedCategories: ImportRow<string>[];
+} {
+  const sheet = wb.Sheets[sheetName];
+  if (!sheet) return { prioritizedCategories: [], deprioritizedCategories: [] };
+  const rows = sheetRows(wb, sheetName);
+  const prioritized: ImportRow<string>[] = [];
+  const deprioritized: ImportRow<string>[] = [];
+  let mode: "use" | "avoid" | null = null;
+
+  for (let r = 0; r < rows.length; r++) {
+    const col0 = getCellDisplay(sheet, r, 0);
+    const col1 = getCellDisplay(sheet, r, 1);
+    const lower0 = col0.toLowerCase();
+
+    if (/keywords to use|to use|prioritized/i.test(lower0)) {
+      mode = "use";
+      continue;
+    }
+    if (/keywords to avoid|to avoid|deprioritized|pass on/i.test(lower0)) {
+      mode = "avoid";
+      continue;
+    }
+    if (/^keyword|^search/i.test(lower0) && !col1) continue;
+
+    for (const text of [col0, col1]) {
+      if (!text || text.length < 2) continue;
+      if (/^(use|avoid|keyword)/i.test(text)) continue;
+      const row: ImportRow<string> = { id: nextId("kw"), selected: true, source: sheetName, data: text };
+      if (mode === "avoid") deprioritized.push(row);
+      else prioritized.push(row);
+    }
+  }
+
+  return { prioritizedCategories: prioritized, deprioritizedCategories: deprioritized };
+}
+
 function parseWeeklyActivitySheet(wb: XLSX.WorkBook, sheetName: string): string | null {
   const sheet = wb.Sheets[sheetName]!;
   const rows = sheetRows(wb, sheetName);
@@ -494,6 +532,7 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
   const companiesSheet = findSheet(wb, [/target companies/]);
   const titlesSheet = findSheet(wb, [/target job titles/, /^job titles$/]);
   const weeklySheet = findSheet(wb, [/weekly activity/]);
+  const keywordsSheet = findSheet(wb, [/key word/, /keyword/]);
 
   const pipelineJobs = collectJobsFromWorkbook(wb);
   const contacts = contactSheet ? parseContactListSheet(wb, contactSheet) : [];
@@ -502,6 +541,9 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
     ? parseTargetJobTitlesSheet(wb, titlesSheet)
     : { targetRoles: [], deprioritizedRoles: [], avoidNotes: null };
   const searchDuration = weeklySheet ? parseWeeklyActivitySheet(wb, weeklySheet) : null;
+  const keywords = keywordsSheet
+    ? parseKeywordsSheet(wb, keywordsSheet)
+    : { prioritizedCategories: [], deprioritizedCategories: [] };
 
   if (!pipelineJobs.length) {
     warnings.push(
@@ -521,6 +563,8 @@ export function parseClientImportWorkbook(buffer: Buffer, filename: string): Cli
     profile: {
       targetRoles: titles.targetRoles,
       deprioritizedRoles: titles.deprioritizedRoles,
+      prioritizedCategories: keywords.prioritizedCategories,
+      deprioritizedCategories: keywords.deprioritizedCategories,
       searchDuration,
       avoidNotes: titles.avoidNotes,
       proposed: {},
@@ -539,6 +583,14 @@ export function mergeImportPreviews(base: ClientImportPreview, extra: ClientImpo
     profile: {
       targetRoles: [...base.profile.targetRoles, ...extra.profile.targetRoles],
       deprioritizedRoles: [...base.profile.deprioritizedRoles, ...extra.profile.deprioritizedRoles],
+      prioritizedCategories: [
+        ...(base.profile.prioritizedCategories ?? []),
+        ...(extra.profile.prioritizedCategories ?? []),
+      ],
+      deprioritizedCategories: [
+        ...(base.profile.deprioritizedCategories ?? []),
+        ...(extra.profile.deprioritizedCategories ?? []),
+      ],
       searchDuration: extra.profile.searchDuration || base.profile.searchDuration,
       avoidNotes: [base.profile.avoidNotes, extra.profile.avoidNotes].filter(Boolean).join("\n") || null,
       proposed: { ...base.profile.proposed, ...extra.profile.proposed },
@@ -557,6 +609,8 @@ export function emptyImportPreview(): ClientImportPreview {
     profile: {
       targetRoles: [],
       deprioritizedRoles: [],
+      prioritizedCategories: [],
+      deprioritizedCategories: [],
       searchDuration: null,
       avoidNotes: null,
       proposed: {},

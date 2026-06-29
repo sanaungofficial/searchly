@@ -16,6 +16,7 @@ import type {
   ClientImportApplyResult,
   ClientImportPreview,
 } from "@/lib/client-import/types";
+import { normalizeQaQuestion, normalizeQaTags } from "@/lib/application-qa";
 
 function selectedRows<T extends { id: string; selected: boolean }>(
   preview: ClientImportPreview,
@@ -124,6 +125,8 @@ export async function applyClientImport(
     companies: { added: 0, updated: 0, skipped: 0 },
     contacts: { added: 0, updated: 0, skipped: 0 },
     roles: { targetSelected: 0, deprioritizedSelected: 0 },
+    categories: { prioritizedSelected: 0, deprioritizedSelected: 0 },
+    applicationQa: { added: 0, skipped: 0 },
     referenceDocumentsStored: preview.referenceDocuments.length,
     errors: [],
   };
@@ -178,6 +181,18 @@ export async function applyClientImport(
     if (payload.profile.deprioritizedRoles?.length) {
       const merged = [...new Set([...(existing?.deprioritizedRoles ?? []), ...payload.profile.deprioritizedRoles])];
       profilePatch.deprioritizedRoles = merged;
+    }
+    if (payload.profile.prioritizedCategories?.length) {
+      const merged = [...new Set([...(existing?.prioritizedCategories ?? []), ...payload.profile.prioritizedCategories])];
+      profilePatch.prioritizedCategories = merged;
+      result.categories.prioritizedSelected = payload.profile.prioritizedCategories.length;
+    }
+    if (payload.profile.deprioritizedCategories?.length) {
+      const merged = [
+        ...new Set([...(existing?.deprioritizedCategories ?? []), ...payload.profile.deprioritizedCategories]),
+      ];
+      profilePatch.deprioritizedCategories = merged;
+      result.categories.deprioritizedSelected = payload.profile.deprioritizedCategories.length;
     }
     if (payload.profile.searchDuration) {
       profilePatch.searchDuration = payload.profile.searchDuration;
@@ -376,6 +391,40 @@ export async function applyClientImport(
     } catch (err) {
       console.error("[applyClientImport contact]", c.email, err);
       result.errors.push(`Contact: ${c.email}`);
+    }
+  }
+
+  const qaRows = selectedRows(preview, preview.applicationQa ?? [], payload.applicationQaIds);
+  if (qaRows.length) {
+    const existingQa = await prisma.applicationQaEntry.findMany({
+      where: { userId },
+      select: { question: true },
+    });
+    const existingKeys = new Set(existingQa.map((e) => normalizeQaQuestion(e.question)));
+    const seen = new Set<string>();
+
+    for (const row of qaRows) {
+      const key = normalizeQaQuestion(row.data.question);
+      if (seen.has(key) || existingKeys.has(key)) {
+        result.applicationQa.skipped++;
+        continue;
+      }
+      seen.add(key);
+      try {
+        await prisma.applicationQaEntry.create({
+          data: {
+            userId,
+            question: row.data.question.trim(),
+            answer: row.data.answer,
+            tags: normalizeQaTags(row.data.tags?.length ? row.data.tags : ["import"]),
+          },
+        });
+        result.applicationQa.added++;
+        existingKeys.add(key);
+      } catch (err) {
+        console.error("[applyClientImport qa]", row.data.question, err);
+        result.errors.push(`Q&A: ${row.data.question.slice(0, 40)}`);
+      }
     }
   }
 
