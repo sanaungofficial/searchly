@@ -3,7 +3,7 @@ import type { CachedJob } from "@/lib/cached-job";
 import { jobListingUrlDedupeKey } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX, HIREBASE_SEARCH_PAGE_MAX } from "@/lib/vector-matched-job";
-import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
+import { roleSearchKeywords, isJobMatch, searchTargetsExecutiveRoles } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { resolveDatePostedFrom } from "@/lib/job-posted-filter";
 import { parseJobDescriptionSections, hasParsedJobSections } from "@/lib/job-description-parse";
@@ -645,6 +645,8 @@ export async function fetchHirebaseRoleMatchingJobs(input: {
   matchRoles: string[];
   semanticQuery?: string;
   filters: VectorSearchFilters;
+  /** When true, prioritize keyword/title relevance over recency. */
+  activeSearch?: boolean;
 }): Promise<{
   jobs: CachedJob[];
   rawJobs: HirebaseJob[];
@@ -681,11 +683,20 @@ export async function fetchHirebaseRoleMatchingJobs(input: {
     keywords: keywords.slice(0, 12),
     page,
     limit,
-    sort_by: "date_posted",
+    sort_by: input.activeSearch ? "relevance" : "date_posted",
     sort_order: "desc",
   };
 
   assignJobSearchFilters(body, input.filters);
+
+  if (
+    input.activeSearch &&
+    input.semanticQuery?.trim() &&
+    !searchTargetsExecutiveRoles(input.semanticQuery) &&
+    !input.filters.experienceLevels?.length
+  ) {
+    body.experience = ["Entry", "Junior", "Mid", "Senior"];
+  }
 
   const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
     method: "POST",

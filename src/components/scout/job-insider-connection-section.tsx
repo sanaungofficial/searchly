@@ -73,6 +73,41 @@ const PLACEHOLDER_BUCKETS: PlaceholderBucket[] = [
   },
 ];
 
+const CONNECTION_SLOTS: { id: string; placeholder: PlaceholderBucket }[] = [
+  { id: "beyond", placeholder: PLACEHOLDER_BUCKETS[0]! },
+  { id: "past_companies", placeholder: PLACEHOLDER_BUCKETS[1]! },
+  { id: "school", placeholder: PLACEHOLDER_BUCKETS[2]! },
+];
+
+function bucketForSlot(
+  slotId: string,
+  displayBuckets: InsiderConnectionBucket[],
+): InsiderConnectionBucket | null {
+  if (slotId === "beyond") {
+    return (
+      displayBuckets.find(
+        (b) => b.id === "decision_makers" || b.title === "Beyond Your Network",
+      ) ?? null
+    );
+  }
+  return displayBuckets.find((b) => b.id === slotId) ?? null;
+}
+
+function emptyBucketForSlot(
+  slotId: string,
+  placeholder: PlaceholderBucket,
+): InsiderConnectionBucket {
+  return {
+    id: slotId as InsiderConnectionBucket["id"],
+    title: placeholder.title,
+    subtitle: placeholder.description,
+    theme: placeholder.theme,
+    people: [],
+    linkedinSearchUrl: "",
+    totalCount: 0,
+  };
+}
+
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
@@ -924,22 +959,32 @@ export function JobInsiderConnectionSection({
           flexDirection: isMobile ? "column" : "row",
         }}
       >
-        {fetched
-          ? displayBuckets.map((bucket) => (
-              <ConnectionCard
-                key={bucket.id}
-                bucket={bucket}
-                onView={() => setActiveBucket(bucket)}
-              />
-            ))
-          : PLACEHOLDER_BUCKETS.map((pb) => (
+        {CONNECTION_SLOTS.map(({ id, placeholder }) => {
+          if (!fetched) {
+            return (
               <PlaceholderCard
-                key={pb.id}
-                bucket={pb}
-                loading={loading && pendingBucketId === pb.id}
-                onView={() => void handleView(pb.id)}
+                key={id}
+                bucket={placeholder}
+                loading={loading && pendingBucketId === id}
+                onView={() => void handleView(id)}
               />
-            ))}
+            );
+          }
+
+          const bucket =
+            bucketForSlot(id, displayBuckets) ?? emptyBucketForSlot(id, placeholder);
+
+          return (
+            <ConnectionCard
+              key={id}
+              bucket={bucket}
+              onView={() => {
+                if (bucket.people.length > 0) setActiveBucket(bucket);
+                else void handleView(id);
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Find any email — always visible */}

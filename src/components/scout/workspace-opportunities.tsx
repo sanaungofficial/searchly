@@ -265,11 +265,16 @@ export function WorkspaceOpportunities() {
     const company = (jobAnalysis.company as string | null) ?? "Unknown Company";
     const role = (jobAnalysis.role as string | null) ?? "Unknown Role";
     const meta: JobMeta = parsedJobToMeta(jobAnalysis);
-    await addJob(company, role, addJobUrl.trim() || undefined, meta);
+    const created = await addJob(company, role, addJobUrl.trim() || undefined, meta);
     setShowAddPanel(false);
     setJobAnalysis(null);
     setAddJobUrl("");
     setAddJobError(null);
+    if (created) {
+      setDrawerCardId(created.cardId);
+      setDrawerTool(null);
+      go(pipelineJobUrl(created.id));
+    }
   };
 
   const moveCard = (cardId: number, stage: KanbanStage) => {
@@ -333,9 +338,11 @@ export function WorkspaceOpportunities() {
     const meta = buildRecommendedProspectCard(job, 0)._meta;
     const created = await addJob(job.companyName, job.title, job.url ?? undefined, meta);
     if (created) {
+      setDrawerCardId(created.cardId);
+      setDrawerTool(null);
       go(pipelineJobUrl(created.id));
     }
-  }, [addJob, router]);
+  }, [addJob, go, setDrawerCardId, setDrawerTool]);
 
   const openProspectJob = useCallback((companyName: string, job: CachedJob) => {
     const prospectId = prospectPathId(job);
@@ -820,7 +827,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         </button>
       </div>
       {loading && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 8, maxWidth: 480 }}>
           <KimchiProcessLoader preset="jobParse" variant="inline" />
         </div>
       )}

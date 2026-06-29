@@ -148,6 +148,8 @@ export function ScoreExplainerPopover({
           style={{
             width: 320,
             maxWidth: "min(320px, calc(100vw - 24px))",
+            maxHeight: 280,
+            overflowY: "auto",
             zIndex: 10000,
             background: surface.card,
             border: border.lineStrong,

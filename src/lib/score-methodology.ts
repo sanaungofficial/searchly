@@ -46,8 +46,8 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     scaleNote: "Excellent ≥ 8.5 · Strong ≥ 7 · Good ≥ 6 · Fair ≥ 4",
   },
   "vector-match": {
-    title: "Recommended role match",
-    subtitle: "Here's how we rank roles from your watchlist against your profile.",
+    title: "Discovery score",
+    subtitle: "Ranks this role against your profile and the candidate pool — hover the score for why it ranks where it does.",
     bullets: [
       {
         title: "Where roles come from",
@@ -69,8 +69,8 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
   },
   "coach-match": {
-    title: "Coach profile match",
-    subtitle: "Here's how we score coach fit against your goals and profile — not a job posting.",
+    title: "Alignment check",
+    subtitle: "Fit for this specific role or coach — separate from discovery score, which ranks against the broader candidate pool.",
     bullets: [
       {
         title: "What we compare",
