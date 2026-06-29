@@ -120,7 +120,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
     abortRef.current = new AbortController();
     const desc = overrideDesc !== undefined ? overrideDesc : description;
     try {
-      const res = await fetch("/api/ai/generate-cover-letter", {
+      const res = await fetch(withClientScope("/api/ai/generate-cover-letter"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -165,7 +165,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
     setStreaming(true);
     abortRef.current = new AbortController();
     try {
-      const res = await fetch("/api/ai/refine-cover-letter", {
+      const res = await fetch(withClientScope("/api/ai/refine-cover-letter"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentLetter: letter, prompt, jobTitle, company, description }),

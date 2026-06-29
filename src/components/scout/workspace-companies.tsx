@@ -15,6 +15,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
+import { dedupeTrackedCompanies } from "@/lib/tracked-companies-dedupe";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
@@ -1288,7 +1289,8 @@ export function WorkspaceCompanies({
     try {
       const res = await fetch(withClientScope("/api/companies"));
       if (res.ok) {
-        setCompanies(await res.json());
+        const rows = await res.json();
+        setCompanies(Array.isArray(rows) ? dedupeTrackedCompanies(rows) : []);
       } else if (res.status === 401) {
         setLoadError("Sign in to view your dream companies watchlist.");
       } else {

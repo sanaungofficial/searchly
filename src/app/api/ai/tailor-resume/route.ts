@@ -1,8 +1,8 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { loadJobDescriptionForUser } from "@/lib/job-description-server";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
-import { prisma } from "@/lib/prisma";
-import { normalizeParsedResumeData, parseJsonFromModel, parsedResumeToText } from "@/lib/resume-parse";
+import { parseJsonFromModel } from "@/lib/resume-parse";
+import { resolveResumeTextForUser } from "@/lib/resolve-resume-text";
 import { NextRequest, NextResponse } from "next/server";
 
 const TAILOR_MAX_TOKENS = 8192;
@@ -111,18 +111,11 @@ export async function POST(req: NextRequest) {
     baseTailoredText?: string;
   };
 
-  let resumeText = dbUser.profile?.resumeText?.trim() ?? "";
-  if (assetId?.trim()) {
-    const asset = await prisma.userAsset.findFirst({
-      where: { id: assetId.trim(), userId: dbUser.id, type: "RESUME" },
-    });
-    if (!asset) {
+  const resumeText = await resolveResumeTextForUser(dbUser.id, dbUser.profile, assetId);
+  if (!resumeText) {
+    if (assetId?.trim()) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 });
     }
-    const parsed = normalizeParsedResumeData(asset.parsedData);
-    resumeText = asset.resumeText?.trim() || (parsed ? parsedResumeToText(parsed) : "");
-  }
-  if (!resumeText) {
     return NextResponse.json({ error: "No resume found" }, { status: 404 });
   }
 

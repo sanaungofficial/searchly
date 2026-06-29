@@ -1,4 +1,5 @@
 import { getActingUser } from "@/lib/acting-user";
+import { requireAiQuota } from "@/lib/ai-guard";
 import { getOwnedAssetForActingUser } from "@/lib/owned-asset";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
@@ -25,6 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { dbUser, asset } = owned;
+  const quotaError = await requireAiQuota(dbUser, "TAILOR");
+  if (quotaError) return quotaError;
+
   const parsed = normalizeParsedResumeData(asset.parsedData);
   if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
 
@@ -52,13 +56,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     targetRoles,
   });
 
-  const { text, usage, modelId } = await kimchiGenerateText({
-    tier: "create",
-    prompt,
-    maxOutputTokens: 8192,
-    userId: dbUser.id,
-    tags: ["feature:resume-bulk-improve"],
-  });
+  let text: string;
+  let usage: { inputTokens: number; outputTokens: number };
+  let modelId: string;
+  try {
+    ({ text, usage, modelId } = await kimchiGenerateText({
+      tier: "create",
+      prompt,
+      maxOutputTokens: 8192,
+      userId: dbUser.id,
+      tags: ["feature:resume-bulk-improve"],
+    }));
+  } catch (err) {
+    console.error("[assets/improve POST]", err);
+    const message = err instanceof Error ? err.message : "AI request failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   logAiUsage(dbUser.id, "TAILOR", modelId, usage.inputTokens, usage.outputTokens);
 
