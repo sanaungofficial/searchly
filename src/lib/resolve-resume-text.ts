@@ -1,6 +1,11 @@
 import { ensureAssetResumeParsed, hydrateResumeAsset } from "@/lib/ensure-asset-resume";
+import {
+  buildParsedDataFromProfile,
+  profileHasResumeMaterial,
+  PROFILE_MASTER_RESUME_URL,
+} from "@/lib/master-resume-shared";
 import { prisma } from "@/lib/prisma";
-import { normalizeParsedResumeData, parsedResumeToText } from "@/lib/resume-parse";
+import { hasResumeBodyContent, normalizeParsedResumeData, parsedResumeToText } from "@/lib/resume-parse";
 import type { Profile, UserAsset } from "@prisma/client";
 
 export function resumeTextFromAsset(asset: Pick<UserAsset, "resumeText" | "parsedData">): string {
@@ -17,6 +22,25 @@ export function resumeTextFromProfile(
   return parsed ? parsedResumeToText(parsed) : "";
 }
 
+async function resolveTextFromProfileFallback(
+  userId: string,
+  asset: UserAsset,
+): Promise<string> {
+  const profile = await prisma.profile.findUnique({ where: { userId } });
+  if (!profile || !profileHasResumeMaterial(profile)) return "";
+
+  const fromProfile = resumeTextFromProfile(profile);
+  if (fromProfile) return fromProfile;
+
+  if (asset.url?.startsWith(PROFILE_MASTER_RESUME_URL) || asset.isPrimary) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const parsed = buildParsedDataFromProfile({ profile, user });
+    if (hasResumeBodyContent(parsed)) return parsedResumeToText(parsed);
+  }
+
+  return "";
+}
+
 async function resolveTextFromResumeAsset(asset: UserAsset, userId: string): Promise<string> {
   let hydrated = await hydrateResumeAsset(asset.id, userId);
   let row = hydrated ?? asset;
@@ -24,6 +48,13 @@ async function resolveTextFromResumeAsset(asset: UserAsset, userId: string): Pro
   if (!text && row.url && !row.url.startsWith("kimchi://")) {
     row = (await ensureAssetResumeParsed(asset.id, userId)) ?? row;
     text = resumeTextFromAsset(row);
+  }
+  if (!text) {
+    row = (await ensureAssetResumeParsed(asset.id, userId)) ?? row;
+    text = resumeTextFromAsset(row);
+  }
+  if (!text) {
+    text = await resolveTextFromProfileFallback(userId, row);
   }
   return text;
 }

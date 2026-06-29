@@ -8,23 +8,74 @@ export const RESUME_MISSING_BODY =
 export const RESUME_MISSING_SHORT =
   "Upload a resume or create one from your profile under Profile → Resumes, then try again.";
 
+function isMissingResumeError(raw: string): boolean {
+  if (!raw) return true;
+  if (/^no resume found$/i.test(raw)) return true;
+  return /couldn't find.*resume|don't have a resume|no master resume/i.test(raw);
+}
+
 export function friendlyResumeError(error: string | null | undefined): {
   headline: string;
   body: string;
   isMissingResume: boolean;
 } {
   const raw = (error ?? "").trim();
-  if (!raw || raw === "No resume found" || raw.toLowerCase().includes("no resume")) {
+  if (isMissingResumeError(raw)) {
     return {
       headline: RESUME_MISSING_HEADLINE,
       body: RESUME_MISSING_BODY,
       isMissingResume: true,
     };
   }
+  if (/resume not found/i.test(raw)) {
+    return {
+      headline: "Couldn't load that resume",
+      body: "The selected resume may be missing or still processing. Open Profile → Resumes, re-upload or reparse, then try again.",
+      isMissingResume: false,
+    };
+  }
   if (raw === "No job description provided") {
     return {
       headline: "This job is missing a description",
       body: "Paste the job description below so we can compare it to your resume.",
+      isMissingResume: false,
+    };
+  }
+  if (/no resume data|reparse/i.test(raw)) {
+    return {
+      headline: "Resume needs to be parsed first",
+      body: raw,
+      isMissingResume: false,
+    };
+  }
+  if (/cut off before finishing|failed to parse|truncated|ran out of room/i.test(raw)) {
+    return {
+      headline: "Generation ran out of room",
+      body: raw.includes("Try") ? raw : `${raw} Try Quick edit mode with fewer sections.`,
+      isMissingResume: false,
+    };
+  }
+  if (/monthly ai limit|credit balance|quota/i.test(raw)) {
+    return {
+      headline: "AI limit reached",
+      body: raw,
+      isMissingResume: false,
+    };
+  }
+  if (/ai not configured|isn't available/i.test(raw)) {
+    return {
+      headline: "AI isn't available here",
+      body: raw,
+      isMissingResume: false,
+    };
+  }
+  if (raw) {
+    const shortHeadline = raw.length <= 72;
+    return {
+      headline: shortHeadline ? raw : "Something went wrong",
+      body: shortHeadline
+        ? "Try again in a moment, or update your resume under Profile."
+        : raw,
       isMissingResume: false,
     };
   }

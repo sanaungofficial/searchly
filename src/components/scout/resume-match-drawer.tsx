@@ -6,6 +6,7 @@ import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { friendlyResumeError } from "@/lib/user-facing-copy";
+import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -324,23 +325,23 @@ export function ResumeMatchDrawer({
         return;
       }
       if (res.status === 503) {
-        const d = await res.json().catch(() => ({}));
+        const d = await readResponseJson(res).catch(() => ({}));
         setGenerateError(
           d.error === "AI not configured"
             ? "AI isn't available in this environment — try on production."
-            : (d.error ?? "AI isn't available right now."),
+            : formatApiErrorMessage(d.error, "AI isn't available right now."),
         );
         return;
       }
-      const json = await res.json();
+      const json = await readResponseJson(res);
       if (!res.ok || json.error) {
-        setGenerateError(json.error ?? "Something went wrong — try again.");
+        setGenerateError(formatApiErrorMessage(json.error, "Something went wrong — try again."));
         return;
       }
-      setTailoredData(json);
+      setTailoredData(json as TailoredData);
       notifyCreditsChanged();
-    } catch {
-      setGenerateError("Something went wrong — try again.");
+    } catch (err) {
+      setGenerateError(formatApiErrorMessage(err, "Something went wrong — try again."));
     } finally {
       setAligning(false);
     }
