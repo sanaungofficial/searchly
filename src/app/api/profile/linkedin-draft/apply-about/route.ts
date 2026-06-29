@@ -3,6 +3,7 @@ import { buildProposedLinkedInDraftFromAbout } from "@/lib/linkedin-about-propos
 import {
   applyAboutMergeSections,
   LINKEDIN_ABOUT_MERGE_SECTIONS,
+  type LinkedInAboutMergeSection,
 } from "@/lib/linkedin-about-merge";
 import { aboutProfileFingerprint, withAboutFingerprint } from "@/lib/linkedin-about-fingerprint";
 import { normalizeLinkedInDraft } from "@/lib/linkedin-profile";
@@ -11,32 +12,49 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-/** Legacy full replace — prefer POST /apply-about with explicit sections. */
+function parseSections(raw: unknown): LinkedInAboutMergeSection[] {
+  if (!Array.isArray(raw)) return [];
+  const allowed = new Set<string>(LINKEDIN_ABOUT_MERGE_SECTIONS);
+  return raw.filter((s): s is LinkedInAboutMergeSection => typeof s === "string" && allowed.has(s));
+}
+
 export async function POST(request: Request) {
   const resolved = await resolveProfileApiSubject(request);
   if ("error" in resolved) return resolved.error;
   const { dbUser } = resolved;
 
+  const body = await request.json().catch(() => ({}));
+  const sections = parseSections(body.sections);
+  if (!sections.length) {
+    return NextResponse.json({ error: "Select at least one section to apply." }, { status: 400 });
+  }
+
   const proposedResult = await buildProposedLinkedInDraftFromAbout(dbUser.id);
   if (!proposedResult) {
     return NextResponse.json(
-      { error: "Upload and parse a resume first — Kimchi needs structured experience to build your LinkedIn preview." },
+      {
+        error:
+          "Upload and parse a resume first — Kimchi needs structured experience in About to build a LinkedIn preview.",
+      },
       { status: 422 },
     );
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const existingDraft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
+  const currentDraft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
+  const merged = applyAboutMergeSections({
+    current: currentDraft,
+    proposed: proposedResult.draft,
+    sections,
+  });
+
+  const parsed = loadParsedForSync(profile?.parsedData);
   const draft = withAboutFingerprint(
-    applyAboutMergeSections({
-      current: existingDraft,
-      proposed: proposedResult.draft,
-      sections: [...LINKEDIN_ABOUT_MERGE_SECTIONS],
-    }),
+    merged,
     aboutProfileFingerprint({
-      parsed: loadParsedForSync(profile?.parsedData),
+      parsed,
       headline: profile?.headline,
-      summary: profile?.summary,
+      summary: profile?.summary ?? parsed.summary,
     }),
   );
 
@@ -61,6 +79,7 @@ export async function POST(request: Request) {
     draft,
     provider: proposedResult.provider,
     sourceAssetId: proposedResult.sourceAssetId,
+    appliedSections: sections,
     updatedAt: new Date().toISOString(),
   });
 }
