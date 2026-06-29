@@ -16,6 +16,7 @@ import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
+import { TOP_NAV_Z } from "@/lib/z-layers";
 import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
 
 export const TOP_NAV_HEIGHT = 64;
@@ -906,7 +907,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
           position: "relative",
-          zIndex: 210,
+          zIndex: TOP_NAV_Z,
         }}
       >
         <div

@@ -7,6 +7,7 @@ import { HIREBASE_JOB_TYPES, HIREBASE_LOCATION_TYPES } from "@/lib/vector-matche
 import type { NetworkJobFilterForm, NetworkJobFilterSuggestions } from "@/lib/network-job-filters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import {
   ChipToggle,
   DatalistInput,
@@ -248,8 +249,8 @@ export function NetworkFiltersDrawer({
   if (!open) return null;
   return (
     <>
-      <div role="presentation" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 60 }} />
-      <div role="dialog" aria-modal="true" aria-label="All filters" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(480px, 100vw)", background: surface.card, borderLeft: border.line, zIndex: 61, display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)" }}>
+      <div role="presentation" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div role="dialog" aria-modal="true" aria-label="All filters" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(480px, 100vw)", background: surface.card, borderLeft: border.line, zIndex: DRAWER_Z, display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: border.line, flexShrink: 0 }}>
           <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 700, color: color.ink, margin: 0 }}>All filters</p>
           <button type="button" onClick={onClose} aria-label="Close filters" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4, color: color.muted, display: "flex" }}><X size={20} /></button>

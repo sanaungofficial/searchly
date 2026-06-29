@@ -6,6 +6,7 @@ import { DASHBOARD_GOAL_MAX } from "@/lib/dashboard-goals";
 import { DashboardGoalItem } from "@/components/scout/dashboard-goal-item";
 import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
 
 const line = "var(--scout-border)";
@@ -63,7 +64,7 @@ export function DashboardGoalsDrawer({
     <>
       <div
         onClick={close}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200 }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <aside
         className="bruddle"
@@ -75,7 +76,7 @@ export function DashboardGoalsDrawer({
           width: isMobile ? "100vw" : "min(440px, calc(100vw - 16px))",
           background: surface.card,
           border: isMobile ? "none" : line,
-          zIndex: 201,
+          zIndex: DRAWER_Z,
           display: "flex",
           flexDirection: "column",
           boxShadow: isMobile ? "none" : "-4px 4px 0 #161616",

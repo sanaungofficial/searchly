@@ -156,12 +156,12 @@ export function CompanyIntelDrawer({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[200]"
+        className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[220]"
         onClick={onClose}
         aria-hidden
       />
       <aside
-        className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-[var(--scout-surface)] z-[201] shadow-2xl flex flex-col overflow-hidden"
+        className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-[var(--scout-surface)] z-[221] shadow-2xl flex flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-label={company?.name ?? "Company intel"}

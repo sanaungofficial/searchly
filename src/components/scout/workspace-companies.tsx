@@ -16,6 +16,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import { dedupeTrackedCompanies } from "@/lib/tracked-companies-dedupe";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
@@ -917,7 +918,7 @@ function CompanyDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200, backdropFilter: isMobile ? "none" : "blur(1px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z, backdropFilter: isMobile ? "none" : "blur(1px)" }} />
 
       {/* Drawer — full screen on mobile, wide panel on desktop (matches JobDrawer) */}
       <div
@@ -931,7 +932,7 @@ function CompanyDrawer({
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,
           border: isMobile ? "none" : border.lineStrong,
-          zIndex: 201,
+          zIndex: DRAWER_Z,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
           display: "flex",
           flexDirection: "column",
