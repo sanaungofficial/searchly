@@ -268,12 +268,12 @@ function SidebarOpportunitiesNav({
 
   const onParentClick = () => {
     if (isRail) {
-      onNavigate("/opportunities/pipeline");
+      onNavigate("/opportunities");
       return;
     }
     if (!expanded) {
       setExpanded(true);
-      onNavigate("/opportunities/pipeline");
+      onNavigate("/opportunities");
       return;
     }
     setExpanded((prev) => !prev);
@@ -392,7 +392,7 @@ export function WorkspaceSidebar({
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
   const onNavigateNotif = (section: string) => {
-    const path = section === "opportunities" ? "/opportunities/pipeline" : `/${section}`;
+    const path = section === "opportunities" ? "/opportunities" : `/${section}`;
     router.push(path);
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));

@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-
+/** Pipeline kanban shell is rendered by opportunities layout; this is the canonical URL. */
 export default function OpportunitiesPage() {
-  redirect("/opportunities/pipeline");
+  return null;
 }

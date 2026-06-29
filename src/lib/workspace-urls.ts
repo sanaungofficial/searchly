@@ -18,8 +18,8 @@ export const OPPORTUNITIES_NAV: OpportunitiesNavItem[] = [
   {
     id: "pipeline",
     label: "Open Roles",
-    path: "/opportunities/pipeline",
-    match: (p) => p.startsWith("/opportunities/pipeline") || p === "/opportunities",
+    path: "/opportunities",
+    match: (p) => p === "/opportunities" || p.startsWith("/opportunities/pipeline"),
   },
   {
     id: "network",
@@ -101,7 +101,7 @@ export function networkJobUrl(jobId: string): string {
 
 export function opportunitiesTabUrl(tab: OppTab): string {
   if (tab === "network") return "/opportunities/network";
-  return "/opportunities/pipeline";
+  return "/opportunities";
 }
 
 export function profileAssetsUrl(assetId?: string | null): string {
