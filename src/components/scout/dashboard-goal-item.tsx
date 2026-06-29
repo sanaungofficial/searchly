@@ -62,6 +62,11 @@ export function DashboardGoalItem({
       >
         {goal.label}
       </p>
+      {goal.followUpNote && (
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>
+          {goal.followUpNote}
+        </p>
+      )}
       {isEditingTarget && (
         <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
           <input

@@ -9,6 +9,8 @@ import {
   DASHBOARD_GOAL_OPTIONS,
   type DashboardGoal,
   findDashboardGoalOption,
+  goalProfileContextFromProfile,
+  GOALS_MATCHING_TAGLINE,
   profileNeedsSyncForGoal,
   recommendationLabelForGoals,
   recommendationPathForGoals,
@@ -52,6 +54,8 @@ type ProfileData = {
   dashboardGoals: DashboardGoal[];
   targetRoles: string[];
   prioritizedRoles: string[];
+  prioritizedCategories: string[];
+  deprioritizedCategories: string[];
   targetMarket: string | null;
   priorities: string[];
   relocationOpenness: string | null;
@@ -161,6 +165,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
           dashboardGoals: data.dashboardGoals ?? [],
           targetRoles: data.targetRoles ?? [],
           prioritizedRoles: data.prioritizedRoles ?? [],
+          prioritizedCategories: data.prioritizedCategories ?? [],
+          deprioritizedCategories: data.deprioritizedCategories ?? [],
           targetMarket: data.targetMarket ?? null,
           priorities: data.priorities ?? [],
           relocationOpenness: data.relocationOpenness ?? null,
@@ -204,7 +210,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
     () => (profile ? matchingPrefFromProfile(profile) : matchingPrefFromProfile({
       name: "", avatarUrl: null, headline: null, summary: null, jobTimeline: null,
       careerMotivation: null, employmentStatus: null, dashboardGoals: [], targetRoles: [],
-      prioritizedRoles: [], targetMarket: null, priorities: [], relocationOpenness: null,
+      prioritizedRoles: [], prioritizedCategories: [], deprioritizedCategories: [],
+      targetMarket: null, priorities: [], relocationOpenness: null,
       workAuthorization: null, targetSalary: null, resumeUrl: null, linkedinUrl: null,
       parsedData: null, email: null, hasStrategy: false,
     })),
@@ -215,6 +222,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const hasMoreGoals = goals.length > DASHBOARD_GOALS_CARD_PREVIEW;
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
   const availableOptions = DASHBOARD_GOAL_OPTIONS.filter((o) => !usedValues.has(o.value));
+  const availableValues = useMemo(() => new Set(availableOptions.map((o) => o.value)), [availableOptions]);
+  const goalProfileContext = useMemo(
+    () => (profile ? goalProfileContextFromProfile(profile) : goalProfileContextFromProfile({})),
+    [profile],
+  );
   const canAdd = goals.length < DASHBOARD_GOAL_MAX && availableOptions.length > 0;
 
   const eventSessions = useMemo(() => {
@@ -270,6 +282,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       id: crypto.randomUUID(), category: partial.category, value: partial.value,
       label: partial.label, createdAt: new Date().toISOString(),
       ...(partial.targetDate ? { targetDate: partial.targetDate } : {}),
+      ...(partial.followUpNote ? { followUpNote: partial.followUpNote } : {}),
     };
     await persistGoals([...goals, next]);
     setGoalModalOpen(false);
@@ -315,7 +328,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
     router.push(recommendationPathForGoals(goals));
   };
 
-  const recommendationLabel = goals.length > 0 ? recommendationLabelForGoals(goals) : "Show me roles to explore";
+  const recommendationLabel = goals.length > 0 ? recommendationLabelForGoals(goals) : "Explore matching roles";
 
   const confirmProfileSync = async () => {
     if (!pendingSync) return;
@@ -545,7 +558,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           </span>
           <p style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 8px" }}>Discover opportunities</p>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55, maxWidth: 420 }}>
-            {recommendationLabel} — browse roles matched to your goals and profile.
+            {recommendationLabel} — matched to your goals and profile.
           </p>
           <ScoutPrimaryBtn onClick={handleRecommendation} style={{ ...pillBtnStyle, alignSelf: "flex-start" }}>
             {recommendationLabel}
@@ -613,7 +626,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8, flexShrink: 0 }}>
         <SectionHeadingWithHelp
           title="Your goals"
-          help="What you're working toward right now — landing a role, prepping for interviews, leveling up, and so on."
+          help={GOALS_MATCHING_TAGLINE}
           trailing={
             canAdd ? (
               <button
@@ -638,7 +651,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       ) : goals.length === 0 ? (
         <div style={{ flex: isMobile ? undefined : 1, display: "flex", flexDirection: "column" }}>
           <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
-            What are you trying to achieve? You can add up to {DASHBOARD_GOAL_MAX} goals.
+            {GOALS_MATCHING_TAGLINE} You can add up to {DASHBOARD_GOAL_MAX} goals.
           </p>
           {canAdd && (
             <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42 }}>
@@ -831,7 +844,15 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {pendingSync && <ProfileSyncPromptModal sync={pendingSync} onConfirm={confirmProfileSync} onSkip={() => setPendingSync(null)} saving={syncSaving} />}
       {scheduleOpen && <GrowthDiscoveryModal trigger="dashboard_schedule" onClose={() => setScheduleOpen(false)} />}
       {interestOpen && <EventInterestModal onClose={() => setInterestOpen(false)} />}
-      <DashboardGoalWizardModal open={goalModalOpen} showIntro={goalWizardIntro} onClose={closeGoalModal} onSave={saveGoalFromWizard} availableOptions={availableOptions} saving={saving} />
+      <DashboardGoalWizardModal
+        open={goalModalOpen}
+        showIntro={goalWizardIntro}
+        onClose={closeGoalModal}
+        onSave={saveGoalFromWizard}
+        availableValues={availableValues}
+        profileContext={goalProfileContext}
+        saving={saving}
+      />
       <DashboardGoalsDrawer
         open={goalsDrawerOpen}
         goals={goals}
