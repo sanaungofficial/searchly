@@ -1157,47 +1157,49 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         )}
       </div>
 
-      <div className="kimchi-chips-below">
-        {showWelcomeStarters && (welcomeChips.length > 0 || welcomeChipsLoading) && (
-          <KimchiAssistantChipRow
-            chips={welcomeChips.slice(0, 6)}
-            onActivate={handleChipActivate}
-            layout="inline"
-            emphasis="cta"
-          />
-        )}
-        {!welcomeOnly && !suggestionsVisible && contextSuggestionChips.length > 0 && (
-          <button
-            type="button"
-            className="kimchi-suggest-trigger"
-            disabled={forYouLoading}
-            onClick={() => {
-              if (forYouChips.length === 0) void loadForYou();
-              setSuggestionsVisible(true);
-            }}
-          >
-            {forYouLoading ? "Personalizing for you…" : "✦ What to focus on"}
-          </button>
-        )}
-        {!welcomeOnly && suggestionsVisible && contextSuggestionChips.length > 0 && (
-          <KimchiAssistantChipRow
-            chips={contextSuggestionChips}
-            onActivate={handleChipActivate}
-            layout="inline"
-            emphasis="cta"
-          />
-        )}
-        {!welcomeOnly && assistantCtx?.inbox?.emailConnected && (
-          <button
-            type="button"
-            className="kimchi-suggest-trigger"
-            disabled={inboxScanning}
-            onClick={() => void scanInboxWithAi()}
-          >
-            {inboxScanning ? "Checking email…" : "✦ Check email for job updates"}
-          </button>
-        )}
-      </div>
+      {!hasUserMessages && (
+        <div className="kimchi-chips-below">
+          {showWelcomeStarters && (welcomeChips.length > 0 || welcomeChipsLoading) && (
+            <KimchiAssistantChipRow
+              chips={welcomeChips.slice(0, 6)}
+              onActivate={handleChipActivate}
+              layout="inline"
+              emphasis="cta"
+            />
+          )}
+          {!welcomeOnly && !suggestionsVisible && contextSuggestionChips.length > 0 && (
+            <button
+              type="button"
+              className="kimchi-suggest-trigger"
+              disabled={forYouLoading}
+              onClick={() => {
+                if (forYouChips.length === 0) void loadForYou();
+                setSuggestionsVisible(true);
+              }}
+            >
+              {forYouLoading ? "Personalizing for you…" : "✦ What to focus on"}
+            </button>
+          )}
+          {!welcomeOnly && suggestionsVisible && contextSuggestionChips.length > 0 && (
+            <KimchiAssistantChipRow
+              chips={contextSuggestionChips}
+              onActivate={handleChipActivate}
+              layout="inline"
+              emphasis="cta"
+            />
+          )}
+          {!welcomeOnly && assistantCtx?.inbox?.emailConnected && (
+            <button
+              type="button"
+              className="kimchi-suggest-trigger"
+              disabled={inboxScanning}
+              onClick={() => void scanInboxWithAi()}
+            >
+              {inboxScanning ? "Checking email…" : "✦ Check email for job updates"}
+            </button>
+          )}
+        </div>
+      )}
 
       <CreditsInlineHint />
 
