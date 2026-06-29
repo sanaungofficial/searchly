@@ -315,14 +315,25 @@ export function ResumeMatchDrawer({
         notifyCreditsChanged();
         setShowUpgrade(true);
         setGenerateError("Monthly AI limit reached");
+        setStep(3);
+        return;
+      }
+      if (res.status === 503) {
+        const d = await res.json().catch(() => ({}));
+        setGenerateError(
+          d.error === "AI not configured"
+            ? "AI isn't available in this environment — try on production."
+            : (d.error ?? "AI isn't available right now."),
+        );
         return;
       }
       const json = await res.json();
-      if (json.error) setGenerateError(json.error);
-      else {
-        setTailoredData(json);
-        notifyCreditsChanged();
+      if (!res.ok || json.error) {
+        setGenerateError(json.error ?? "Something went wrong — try again.");
+        return;
       }
+      setTailoredData(json);
+      notifyCreditsChanged();
     } catch {
       setGenerateError("Something went wrong — try again.");
     } finally {
@@ -1811,11 +1822,11 @@ export function ResumeMatchDrawer({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={selectedSections.size === 0}
+              disabled={selectedSections.size === 0 || !activeResumeId}
               style={{
                 flex: 1,
                 padding: "14px",
-                ...(selectedSections.size > 0 ? scoutPrimaryCtaStyle : {
+                ...(selectedSections.size > 0 && activeResumeId ? scoutPrimaryCtaStyle : {
                   background: "rgba(0,0,0,0.05)",
                   color: "var(--scout-muted)",
                   border: "none",
@@ -1824,7 +1835,7 @@ export function ResumeMatchDrawer({
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
+                cursor: selectedSections.size > 0 && activeResumeId ? "pointer" : "not-allowed",
                 letterSpacing: "0.3px",
               }}
             >

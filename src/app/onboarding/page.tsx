@@ -40,7 +40,7 @@ import {
   type SetupStepStatus,
   type OnboardingCompanyPick,
 } from "@/components/scout/screens";
-import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
+import { ONBOARDING_MAX_TARGET_COMPANIES, normalizeCompanySlug } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
 import type { OnelinerAnalysisResponse } from "@/lib/onboarding-oneliner-suggestions";
@@ -216,6 +216,8 @@ export default function OnboardingPage() {
   const [linkedinImporting, setLinkedinImporting] = useState(false);
   const [onelinerImportBanner, setOnelinerImportBanner] = useState<OnelinerImportBanner | null>(null);
   const linkedinImportedRef = useRef(false);
+  const finishInProgressRef = useRef(false);
+  const [finishing, setFinishing] = useState(false);
   const resumeParsePollRef = useRef<number | null>(null);
   const [setupSteps, setSetupSteps] = useState<SetupStep[]>(() => buildInitialSetupSteps(false));
 
@@ -742,7 +744,16 @@ export default function OnboardingPage() {
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
     setSelectedCompanies((prev) => {
-      if (prev.some((c) => c.catalogSlug === company.catalogSlug) || prev.length >= ONBOARDING_MAX_TARGET_COMPANIES) {
+      const slugKey = company.catalogSlug || normalizeCompanySlug(company.name);
+      if (
+        prev.some(
+          (c) =>
+            c.catalogSlug === company.catalogSlug ||
+            normalizeCompanySlug(c.name) === normalizeCompanySlug(company.name) ||
+            (slugKey && (c.catalogSlug === slugKey || normalizeCompanySlug(c.name) === slugKey)),
+        ) ||
+        prev.length >= ONBOARDING_MAX_TARGET_COMPANIES
+      ) {
         return prev;
       }
       return [...prev, company];
@@ -754,6 +765,11 @@ export default function OnboardingPage() {
   }, []);
 
   const runFinishSetup = useCallback(async () => {
+    if (finishInProgressRef.current) return;
+    finishInProgressRef.current = true;
+    setFinishing(true);
+    setShowFinalSummary(false);
+
     const importAvailable = linkedinImportAvailable === true;
     setSetupSteps(buildInitialSetupSteps(importAvailable).map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
     goTo(12);
@@ -966,6 +982,7 @@ export default function OnboardingPage() {
               } satisfies FinalSummaryProfile}
               onConfirm={onFinalSummaryConfirm}
               onBack={onFinalSummaryBack}
+              confirming={finishing}
             />
           )}
           {/* Main onboarding screens */}
