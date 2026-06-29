@@ -4,9 +4,11 @@ import React, { useCallback, useRef, useState } from "react";
 import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-import/types";
 import type { ImportType } from "@/lib/client-import/import-types";
 import { IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
+import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 import type { IntakeParseResult } from "@/lib/career-strategy";
 import { ImportReviewModal } from "@/components/admin/admin-client-import-panel";
 import { ImportSummaryModal } from "@/components/scout/import-summary-modal";
+import { JobTrackerImportWizard } from "@/components/scout/job-tracker-import-wizard";
 import { summarizeImportResult } from "@/lib/client-import/import-summary";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
 import { ScoutModal } from "@/components/scout/scout-modal";
@@ -60,12 +62,15 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const [showReview, setShowReview] = useState(false);
   const [applyResult, setApplyResult] = useState<ClientImportApplyResult | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [showJobTrackerWizard, setShowJobTrackerWizard] = useState(false);
+  const [jobImportOptions, setJobImportOptions] = useState<JobTrackerImportOptions | undefined>();
 
   const [intakeResult, setIntakeResult] = useState<IntakeParseResult | null>(null);
   const [showApplyProfile, setShowApplyProfile] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const config = getImportTypeConfig(importType);
+  const usesJobTrackerWizard = importType === "job_tracker" || importType === "interview_tracker";
 
   const resetState = useCallback(() => {
     setFiles([]);
@@ -75,6 +80,8 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setShowReview(false);
     setApplyResult(null);
     setShowSummary(false);
+    setShowJobTrackerWizard(false);
+    setJobImportOptions(undefined);
     setIntakeResult(null);
     setShowApplyProfile(false);
     setApplyResume(false);
@@ -131,7 +138,13 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     notifyCreditsChanged();
   }
 
+
   async function handleParse() {
+    if (usesJobTrackerWizard) {
+      setShowJobTrackerWizard(true);
+      return;
+    }
+
     const hasPaste = pasteText.trim().length > 0;
     const hasFiles = files.length > 0;
     if (!hasPaste && !hasFiles) {
@@ -263,7 +276,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
       const res = await fetch(`/api/admin/clients/${clientUserId}/import/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preview, applyResume }),
+        body: JSON.stringify({ preview, applyResume, jobImportOptions }),
       });
       const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
@@ -290,7 +303,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
 
   return (
     <>
-      <ScoutModal open={open && !showReview && !showApplyProfile} onClose={handleClose} maxWidth={760} bruddle>
+      <ScoutModal open={open && !showReview && !showApplyProfile && !showJobTrackerWizard} onClose={handleClose} maxWidth={760} bruddle>
         <ScoutLabel>Import</ScoutLabel>
         <ScoutDisplayTitle size={22} style={{ margin: "8px 0 20px" }}>
           What are you importing?
@@ -480,11 +493,37 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
               Clear
             </ScoutSecondaryBtn>
           )}
-          <ScoutPrimaryBtn onClick={handleParse} disabled={parsing || applying || (!files.length && !pasteText.trim())}>
-            {parsing ? "Parsing…" : importType === "application_info" ? "Parse & review" : "Parse / Import"}
+          <ScoutPrimaryBtn
+            onClick={handleParse}
+            disabled={parsing || applying || (!usesJobTrackerWizard && !files.length && !pasteText.trim())}
+          >
+            {parsing
+              ? "Parsing…"
+              : usesJobTrackerWizard
+                ? "Start mapping wizard"
+                : importType === "application_info"
+                  ? "Parse & review"
+                  : "Parse / Import"}
           </ScoutPrimaryBtn>
         </div>
       </ScoutModal>
+
+      {showJobTrackerWizard && (
+        <JobTrackerImportWizard
+          open={showJobTrackerWizard}
+          onClose={() => setShowJobTrackerWizard(false)}
+          clientUserId={clientUserId}
+          inferInterviewStage={importType === "interview_tracker"}
+          title={importType === "interview_tracker" ? "Import interview tracker" : "Import job tracker"}
+          onComplete={({ preview: jobPreview, jobImportOptions: options }) => {
+            setPreview(jobPreview);
+            setJobImportOptions(options);
+            setShowJobTrackerWizard(false);
+            setApplyResume(false);
+            setShowReview(true);
+          }}
+        />
+      )}
 
       {showReview && preview && (
         <ImportReviewModal
