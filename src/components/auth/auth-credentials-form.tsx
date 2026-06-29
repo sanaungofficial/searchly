@@ -97,8 +97,8 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
           email: trimmedEmail,
           password,
           options: {
-            emailRedirectTo: returnNext
-              ? `${window.location.origin}/auth/callback?type=email&next=${encodeURIComponent(returnNext)}`
+            emailRedirectTo: next
+              ? `${window.location.origin}/auth/callback?type=email&next=${encodeURIComponent(next)}`
               : `${window.location.origin}/auth/callback?type=email`,
             data: { name: trimmedEmail.split("@")[0] },
           },
