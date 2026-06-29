@@ -5,6 +5,7 @@ import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { getHirebaseProfileFromEnrichment } from "@/lib/hirebase-company-sync";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutGoldBtn } from "./scout-box";
+import { ScoutModal } from "./scout-modal";
 import type { CachedJob } from "@/lib/cached-job";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import type { CompanyRecommendation } from "@/lib/company-recommendations";
@@ -459,6 +460,185 @@ function CompanyUrlCell({
   return <CompanyUrlLink href={url} title={title} onClick={onClick} />;
 }
 
+const checkboxStyle: React.CSSProperties = {
+  width: 16,
+  height: 16,
+  accentColor: color.forest,
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+function CompanyCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !!indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={ariaLabel}
+      style={checkboxStyle}
+    />
+  );
+}
+
+function BulkActionsToolbar({
+  count,
+  total,
+  busy,
+  onSelectAll,
+  onDeselectAll,
+  onDelete,
+  onPriorityChange,
+}: {
+  count: number;
+  total: number;
+  busy: boolean;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+  onDelete: () => void;
+  onPriorityChange: (priority: string) => void;
+}) {
+  const [priorityOpen, setPriorityOpen] = useState(false);
+  const priorityRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!priorityOpen) return;
+    function handler(e: MouseEvent) {
+      if (priorityRef.current && !priorityRef.current.contains(e.target as Node)) {
+        setPriorityOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [priorityOpen]);
+
+  return (
+    <ScoutBox
+      style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}
+      padding="12px 16px"
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>
+          {count} selected{count < total ? ` of ${total}` : ""}
+        </span>
+        <div style={{ display: "flex", gap: 10 }}>
+          {count < total && (
+            <button
+              type="button"
+              onClick={onSelectAll}
+              disabled={busy}
+              style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, background: "none", border: "none", padding: 0, cursor: busy ? "default" : "pointer", textDecoration: "underline" }}
+            >
+              Select all
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDeselectAll}
+            disabled={busy}
+            style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, background: "none", border: "none", padding: 0, cursor: busy ? "default" : "pointer", textDecoration: "underline" }}
+          >
+            Deselect all
+          </button>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div ref={priorityRef} style={{ position: "relative" }}>
+          <ScoutSecondaryBtn
+            type="button"
+            disabled={busy}
+            onClick={() => setPriorityOpen((o) => !o)}
+            style={{ minHeight: 36 }}
+          >
+            {busy ? "Updating…" : "Update priority"}
+          </ScoutSecondaryBtn>
+          {priorityOpen && !busy && (
+            <div
+              style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: surface.card, border: border.line, borderRadius: "var(--scout-radius)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 50, minWidth: 120, overflow: "hidden" }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              {["HIGH", "MEDIUM", "LOW", ""].map((opt) => (
+                <button
+                  key={opt || "none"}
+                  type="button"
+                  onClick={() => {
+                    onPriorityChange(opt);
+                    setPriorityOpen(false);
+                  }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, fontWeight: opt ? 600 : 400, color: opt === "HIGH" ? "#dc2626" : opt === "MEDIUM" ? "#d97706" : opt === "LOW" ? color.forest : color.muted, fontFamily: fontSans }}
+                >
+                  {opt || "None"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={busy}
+          style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: "var(--scout-radius)", padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
+        >
+          Delete selected
+        </button>
+      </div>
+    </ScoutBox>
+  );
+}
+
+function BulkDeleteConfirmModal({
+  open,
+  count,
+  busy,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  count: number;
+  busy: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ScoutModal open={open} onClose={busy ? () => {} : onClose} ariaLabelledBy="bulk-delete-title" maxWidth={420} bruddle>
+      <h2 id="bulk-delete-title" style={displayTitleStyle(20, { marginBottom: 10 })}>
+        Remove {count} {count === 1 ? "company" : "companies"}?
+      </h2>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 20px", lineHeight: 1.5 }}>
+        This removes {count === 1 ? "the company" : "these companies"} from your watchlist. Notes and scan history for {count === 1 ? "it" : "them"} will be deleted.
+      </p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <ScoutSecondaryBtn type="button" onClick={onClose} disabled={busy}>
+          Cancel
+        </ScoutSecondaryBtn>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={busy}
+          style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: "#fff", background: "#dc2626", border: "none", borderRadius: "var(--scout-radius)", padding: "10px 18px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}
+        >
+          {busy ? "Removing…" : "Remove"}
+        </button>
+      </div>
+    </ScoutModal>
+  );
+}
+
 function companyRowSurface(selected: boolean, hovered: boolean): { background: string; borderLeft: string; boxShadow: string } {
   if (selected) {
     return { background: surface.inset, borderLeft: `3px solid ${color.forest}`, boxShadow: "none" };
@@ -552,21 +732,25 @@ function OpenRolesSummary({
 function CompanyTableRow({
   company,
   selected,
+  checked,
   scanning,
   userHasResume,
   isLast,
   onOpen,
   onRemove,
   onPriorityChange,
+  onCheckChange,
 }: {
   company: TrackedCompany;
   selected: boolean;
+  checked: boolean;
   scanning: boolean;
   userHasResume: boolean;
   isLast: boolean;
   onOpen: () => void;
   onRemove: () => void;
   onPriorityChange: (value: string) => void;
+  onCheckChange: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const row = companyRowSurface(selected, hovered);
@@ -589,7 +773,19 @@ function CompanyTableRow({
       <td
         style={{
           ...rowTd,
+          width: 40,
+          padding: "10px 8px 10px 12px",
           borderLeft: row.borderLeft,
+          boxShadow: row.boxShadow,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <CompanyCheckbox checked={checked} onChange={onCheckChange} ariaLabel={`Select ${company.name}`} />
+      </td>
+      <td
+        style={{
+          ...rowTd,
+          borderLeft: "none",
           boxShadow: row.boxShadow,
         }}
       >
@@ -652,20 +848,24 @@ function CompanyTableRow({
 function MobileCompanyCard({
   company,
   selected,
+  checked,
   scanning,
   userHasResume,
   onOpen,
   onRemove,
   onPriorityChange,
+  onCheckChange,
   isLast,
 }: {
   company: TrackedCompany;
   selected: boolean;
+  checked: boolean;
   scanning: boolean;
   userHasResume: boolean;
   onOpen: () => void;
   onRemove: () => void;
   onPriorityChange: (value: string) => void;
+  onCheckChange: () => void;
   isLast: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -698,6 +898,9 @@ function MobileCompanyCard({
       }}
     >
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ paddingTop: 4 }}>
+          <CompanyCheckbox checked={checked} onChange={onCheckChange} ariaLabel={`Select ${company.name}`} />
+        </div>
         <CompanyLogo
           name={company.name}
           website={company.website}
@@ -1256,6 +1459,10 @@ export function WorkspaceCompanies({
   const [recsAiEnriched, setRecsAiEnriched] = useState(false);
   const [addingRecSlug, setAddingRecSlug] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const loadRecommendations = useCallback(async (opts?: { force?: boolean; ai?: boolean }) => {
     setRecsLoading(true);
@@ -1452,6 +1659,11 @@ export function WorkspaceCompanies({
       const res = await fetch(withClientScope(`/api/companies/${id}`), { method: "DELETE" });
       if (res.ok) {
         setCompanies((prev) => prev.filter((c) => c.id !== id));
+        setCheckedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         if (selectedId === id) selectCompany(null);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -1459,6 +1671,80 @@ export function WorkspaceCompanies({
       }
     } catch {
       setRemoveError("Network error — company may still be on your watchlist.");
+    }
+  }
+
+  function toggleCompanyChecked(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllCompanies(ids: string[]) {
+    setCheckedIds(new Set(ids));
+  }
+
+  function deselectAllCompanies() {
+    setCheckedIds(new Set());
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...checkedIds];
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    setBulkError(null);
+    try {
+      const res = await fetch(withClientScope("/api/companies/bulk"), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { deleted?: number; ids?: string[] };
+        const removed = new Set(data.ids ?? ids);
+        setCompanies((prev) => prev.filter((c) => !removed.has(c.id)));
+        setCheckedIds(new Set());
+        if (selectedId && removed.has(selectedId)) selectCompany(null);
+        setShowDeleteConfirm(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setBulkError(data.error ?? "Couldn't delete selected companies.");
+      }
+    } catch {
+      setBulkError("Network error — companies may still be on your watchlist.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function handleBulkPriority(priority: string) {
+    const ids = [...checkedIds];
+    if (ids.length === 0) return;
+    const nextPriority = priority || null;
+    setBulkBusy(true);
+    setBulkError(null);
+    setCompanies((prev) =>
+      prev.map((c) => (checkedIds.has(c.id) ? { ...c, priority: nextPriority } : c)),
+    );
+    try {
+      const res = await fetch(withClientScope("/api/companies/bulk"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, priority: nextPriority }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setBulkError(data.error ?? "Couldn't update priorities.");
+        await load();
+      }
+    } catch {
+      setBulkError("Network error — priorities may not have saved.");
+      await load();
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -1473,6 +1759,10 @@ export function WorkspaceCompanies({
     ? "0 0 40px 0"
     : isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sortedCompanies = sortCompanies(companies);
+  const allCompanyIds = sortedCompanies.map((c) => c.id);
+  const checkedCount = checkedIds.size;
+  const allChecked = sortedCompanies.length > 0 && checkedCount === sortedCompanies.length;
+  const someChecked = checkedCount > 0 && checkedCount < sortedCompanies.length;
   const watchlistSlugSet = new Set(
     companies.flatMap((c) => {
       const slugs = [normalizeCompanySlug(c.name)];
@@ -1520,6 +1810,19 @@ export function WorkspaceCompanies({
       {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError(null)} />}
       {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
       {removeError && <ErrorBanner message={removeError} onDismiss={() => setRemoveError(null)} />}
+      {bulkError && <ErrorBanner message={bulkError} onDismiss={() => setBulkError(null)} />}
+
+      {checkedCount > 0 && (
+        <BulkActionsToolbar
+          count={checkedCount}
+          total={sortedCompanies.length}
+          busy={bulkBusy}
+          onSelectAll={() => selectAllCompanies(allCompanyIds)}
+          onDeselectAll={deselectAllCompanies}
+          onDelete={() => setShowDeleteConfirm(true)}
+          onPriorityChange={handleBulkPriority}
+        />
+      )}
 
       <SuggestedForYouSection
         recommendations={recommendations}
@@ -1582,11 +1885,13 @@ export function WorkspaceCompanies({
                   key={c.id}
                   company={c}
                   selected={selectedId === c.id}
+                  checked={checkedIds.has(c.id)}
                   scanning={scanning}
                   userHasResume={userHasResume}
                   onOpen={() => selectCompany(c.id)}
                   onRemove={() => handleRemove(c.id)}
                   onPriorityChange={(v) => patchField(c.id, "priority", v)}
+                  onCheckChange={() => toggleCompanyChecked(c.id)}
                   isLast={i === sortedCompanies.length - 1}
                 />
               );
@@ -1597,7 +1902,15 @@ export function WorkspaceCompanies({
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: "22%", borderLeft: "3px solid transparent" }}>Company</th>
+                <th style={{ ...thStyle, width: 40, padding: "8px 8px 8px 12px", borderLeft: "3px solid transparent" }}>
+                  <CompanyCheckbox
+                    checked={allChecked}
+                    indeterminate={someChecked}
+                    onChange={() => (allChecked ? deselectAllCompanies() : selectAllCompanies(allCompanyIds))}
+                    ariaLabel={allChecked ? "Deselect all companies" : "Select all companies"}
+                  />
+                </th>
+                <th style={{ ...thStyle, width: "22%" }}>Company</th>
                 <th style={{ ...thStyle, width: "14%" }}>Website</th>
                 <th style={{ ...thStyle, width: "14%" }}>Careers</th>
                 <th style={{ ...thStyle, width: "12%" }}>Matches</th>
@@ -1612,12 +1925,14 @@ export function WorkspaceCompanies({
                   key={c.id}
                   company={c}
                   selected={selectedId === c.id}
+                  checked={checkedIds.has(c.id)}
                   scanning={pendingScanIds.includes(c.id)}
                   userHasResume={userHasResume}
                   isLast={i === sortedCompanies.length - 1}
                   onOpen={() => selectCompany(c.id)}
                   onRemove={() => handleRemove(c.id)}
                   onPriorityChange={(v) => patchField(c.id, "priority", v)}
+                  onCheckChange={() => toggleCompanyChecked(c.id)}
                 />
               ))}
             </tbody>
@@ -1644,6 +1959,14 @@ export function WorkspaceCompanies({
       {showUpgrade && (
         <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
       )}
+
+      <BulkDeleteConfirmModal
+        open={showDeleteConfirm}
+        count={checkedCount}
+        busy={bulkBusy}
+        onConfirm={handleBulkDelete}
+        onClose={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
