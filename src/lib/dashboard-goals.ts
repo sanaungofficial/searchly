@@ -154,7 +154,7 @@ export function recommendationPathForGoals(goals: DashboardGoal[]): string {
   if (goals.some((g) => g.category === "coaching")) return "/coaching";
   if (goals.some((g) => g.category === "applications")) return "/profile";
   if (goals.some((g) => g.category === "career")) return "/profile/career-strategy";
-  return "/opportunities/pipeline";
+  return "/opportunities";
 }
 
 export function recommendationLabelForGoals(goals: DashboardGoal[]): string {
