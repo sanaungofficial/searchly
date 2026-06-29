@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useKimchiThreads } from "@/hooks/use-kimchi-threads";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { fontSans } from "@/lib/typography";
+import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 
 const sans = fontSans;
 const DRAWER_WIDTH = "min(980px, calc(100vw - 24px))";
@@ -71,6 +72,7 @@ export function KimchiAssistant() {
 
   const bottom = launcherBottom(isMobile);
   const right = isMobile ? "16px" : "24px";
+  const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
 
   const closePanel = () => {
     setVisible(false);
@@ -117,9 +119,9 @@ export function KimchiAssistant() {
         createPortal(
           <>
             <div
-              className="kimchi-drawer-backdrop"
-              style={{ opacity: visible ? 1 : 0 }}
-              onClick={closePanel}
+              className={`kimchi-drawer-backdrop${isMobile ? "" : " kimchi-drawer-backdrop--companion"}`}
+              style={{ opacity: visible ? 1 : 0, top: navHeight }}
+              onClick={isMobile ? closePanel : undefined}
               aria-hidden
             />
             <div
@@ -189,11 +191,18 @@ function KimchiAssistantStyles() {
       }
       .kimchi-drawer-backdrop {
         position: fixed;
-        inset: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 200;
         background: rgba(15, 24, 20, 0.2);
         transition: opacity 0.28s ease;
         cursor: pointer;
+      }
+      .kimchi-drawer-backdrop--companion {
+        background: transparent;
+        pointer-events: none;
+        cursor: default;
       }
       .kimchi-drawer {
         position: fixed;
