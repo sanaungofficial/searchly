@@ -1,6 +1,6 @@
 /** Admin sub-routes — shown in top nav dropdown for admins. */
 export const ADMIN_NAV = [
-  { id: "dashboard", label: "Dashboard", path: "/admin" },
+  { id: "dashboard", label: "Dashboard", path: "/admin/dashboard" },
   { id: "coaches", label: "Experts", path: "/admin/coaches" },
   { id: "bookings", label: "Bookings", path: "/admin/bookings" },
   { id: "purchases", label: "Purchases", path: "/admin/purchases" },
@@ -10,7 +10,7 @@ export const ADMIN_NAV = [
 ] as const;
 
 export function matchAdminNavPath(pathname: string, itemPath: string): boolean {
-  if (itemPath === "/admin") return pathname === "/admin";
+  if (itemPath === "/admin/dashboard") return pathname === "/admin/dashboard";
   if (itemPath === "/admin/coaches") return pathname.startsWith("/admin/coaches");
   return pathname.startsWith(itemPath);
 }

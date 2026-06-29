@@ -653,13 +653,13 @@ export function WorkspaceSidebar({
 
           {showAdminNav && (
             <SidebarNavButton
-              active={pathname === "/admin"}
-              onClick={() => navigate("/admin")}
+              active={pathname === "/admin/dashboard"}
+              onClick={() => navigate("/admin/dashboard")}
               label="Admin"
               isRail={isRail}
               Icon={() => (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke={pathname === "/admin" ? S.iconActive : S.iconMuted}
+                  stroke={pathname === "/admin/dashboard" ? S.iconActive : S.iconMuted}
                   strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
                 >
                   <rect x="3" y="3" width="7" height="7" rx="0" />

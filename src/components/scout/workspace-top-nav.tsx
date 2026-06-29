@@ -1182,7 +1182,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               {showAdminSection && (
                 <UtilityPortalDropdown
                   label="Admin"
-                  defaultPath="/admin"
+                  defaultPath="/admin/dashboard"
                   active={adminPortalActive}
                   items={adminNavItems}
                   dropdownOpen={navDropdownOpen === "admin-portal"}
