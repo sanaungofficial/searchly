@@ -6,7 +6,8 @@ import {
   linkedInEditUrl,
 } from "@/lib/linkedin-profile";
 import { useCompactLayout } from "@/hooks/use-compact-layout";
-import { LinkedInGenerateLoader } from "./linkedin-generate-loader";
+import { LinkedInAboutMergeModal } from "./linkedin-about-merge-modal";
+import type { LinkedInAboutMergeDiff, LinkedInAboutMergeSection } from "@/lib/linkedin-about-merge";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ScoutBox, ScoutDisplayTitle, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface } from "@/lib/typography";
@@ -273,7 +274,11 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
   const { updateAvatarUrl } = useWorkspace();
 
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [applyingAbout, setApplyingAbout] = useState(false);
+  const [aboutMergeOpen, setAboutMergeOpen] = useState(false);
+  const [aboutMergeLoading, setAboutMergeLoading] = useState(false);
+  const [aboutMergeError, setAboutMergeError] = useState<string | null>(null);
+  const [aboutMergeDiffs, setAboutMergeDiffs] = useState<LinkedInAboutMergeDiff[]>([]);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<LinkedInProfileDraft | null>(null);
   const draftRef = useRef<LinkedInProfileDraft | null>(null);
@@ -458,32 +463,51 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
     );
   }
 
-  const generate = async () => {
-    setGenerating(true);
+  const openAboutMerge = async () => {
+    setAboutMergeOpen(true);
+    setAboutMergeLoading(true);
+    setAboutMergeError(null);
     setError(null);
     try {
-      const res = await fetch(api("/api/profile/linkedin-draft/generate"), { method: "POST" });
-      const text = await res.text();
-      let data: Record<string, unknown> = {};
-      if (text) {
-        try {
-          data = JSON.parse(text) as Record<string, unknown>;
-        } catch {
-          throw new Error("Invalid server response");
-        }
-      }
-      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Generation failed");
+      const res = await fetch(api("/api/profile/linkedin-draft/about-preview"));
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Could not load About preview");
+      setAboutMergeDiffs(Array.isArray(data.diffs) ? data.diffs : []);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not load About preview";
+      setAboutMergeError(message);
+      setError(message);
+    } finally {
+      setAboutMergeLoading(false);
+    }
+  };
+
+  const applyAboutMerge = async (sections: LinkedInAboutMergeSection[]) => {
+    setApplyingAbout(true);
+    setAboutMergeError(null);
+    setError(null);
+    try {
+      const res = await fetch(api("/api/profile/linkedin-draft/apply-about"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Apply failed");
       const next = data.draft as LinkedInProfileDraft;
       setDraft(next);
       draftRef.current = next;
       setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : new Date().toISOString());
       setAboutSyncStale(false);
       setSaveHint(null);
+      setAboutMergeOpen(false);
       await loadAnalysis(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Generation failed");
+      const message = e instanceof Error ? e.message : "Apply failed";
+      setAboutMergeError(message);
+      setError(message);
     } finally {
-      setGenerating(false);
+      setApplyingAbout(false);
     }
   };
 
@@ -764,7 +788,18 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
     <div style={{ paddingBottom: 48, minWidth: 0, width: "100%", position: "relative" }}>
       <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={onPhotoFileChange("cover")} />
       <input ref={profileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={onPhotoFileChange("profile")} />
-      <LinkedInGenerateLoader active={generating} />
+      <LinkedInAboutMergeModal
+        open={aboutMergeOpen}
+        loading={aboutMergeLoading}
+        applying={applyingAbout}
+        error={aboutMergeError}
+        diffs={aboutMergeDiffs}
+        isFirstBuild={!draft}
+        onClose={() => {
+          if (!applyingAbout) setAboutMergeOpen(false);
+        }}
+        onApply={(sections) => void applyAboutMerge(sections)}
+      />
       {importing && (
         <div
           style={{
@@ -787,7 +822,10 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
         <div style={{ minWidth: 0, flex: "1 1 220px" }}>
           <ScoutDisplayTitle size={stackLayout ? 22 : 26}>LinkedIn profile preview</ScoutDisplayTitle>
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "6px 0 0", lineHeight: 1.5 }}>
-            Pulled from your About profile — edit here for a LinkedIn-ready view, or refine in About as the source of truth. Changes sync back to About automatically.
+            Edit a LinkedIn-ready preview here.{" "}
+            <strong>Import from LinkedIn</strong> pulls your live profile via Apify (headline, about, experience, profile photo, cover).{" "}
+            <strong>Apply from About</strong> lets you choose which resume/About sections to bring over — nothing replaces automatically.{" "}
+            Edits you save here sync back to About.
             {updatedAt && <span> Last saved {new Date(updatedAt).toLocaleDateString()}.</span>}
           </p>
         </div>
@@ -826,8 +864,8 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
           >
             {importing ? "Importing…" : "Import from LinkedIn"}
           </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={() => void generate()} disabled={generating} style={{ padding: "10px 18px" }}>
-            {generating ? "Refreshing…" : draft ? "Refresh from About" : "Build from About"}
+          <ScoutPrimaryBtn onClick={() => void openAboutMerge()} disabled={applyingAbout || aboutMergeLoading} style={{ padding: "10px 18px" }}>
+            {applyingAbout || aboutMergeLoading ? "Loading…" : draft ? "Apply from About" : "Build from About"}
           </ScoutPrimaryBtn>
           <a href={liUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, padding: "10px 18px", borderRadius: "var(--scout-radius)", border: border.lineStrong, background: surface.card, color: color.forest, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
             Open LinkedIn →
@@ -846,8 +884,8 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
           <span style={{ lineHeight: 1.5 }}>
             Your About profile changed since this LinkedIn draft was last synced.
           </span>
-          <ScoutPrimaryBtn type="button" onClick={() => void generate()} disabled={generating} style={{ padding: "8px 14px" }}>
-            Update from About
+          <ScoutPrimaryBtn type="button" onClick={() => void openAboutMerge()} disabled={applyingAbout || aboutMergeLoading} style={{ padding: "8px 14px" }}>
+            Review About updates
           </ScoutPrimaryBtn>
         </div>
       )}
@@ -888,18 +926,18 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
             Cancel
           </ScoutSecondaryBtn>
           <p style={{ flex: "1 1 100%", margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
-            Pulls your live LinkedIn profile into this editor. Requires Apify on this environment (production).
+            Fetches your live LinkedIn profile (headline, about, experience, education, skills, profile photo, cover) and updates your About data plus this preview. Requires Apify — available on dev preview and production.
           </p>
         </ScoutBox>
       )}
 
-      {!draft && !generating && (
+      {!draft && !aboutMergeOpen && (
         <ScoutBox padding={stackLayout ? 24 : 40} style={{ textAlign: "center" }}>
           <p style={{ fontFamily: fontSans, fontSize: 15, color: color.ink, marginBottom: 8 }}>No LinkedIn preview yet</p>
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginBottom: 20, maxWidth: 420, margin: "0 auto 20px" }}>
-            Add experience, education, and a summary in About — Kimchi builds a trimmed LinkedIn preview from that data.
+            Add experience, education, and a summary in About — then choose which sections to bring into a LinkedIn preview.
           </p>
-          <ScoutPrimaryBtn onClick={() => void generate()} style={{ padding: "12px 24px", fontSize: 14 }}>
+          <ScoutPrimaryBtn onClick={() => void openAboutMerge()} style={{ padding: "12px 24px", fontSize: 14 }}>
             Build from About
           </ScoutPrimaryBtn>
         </ScoutBox>
