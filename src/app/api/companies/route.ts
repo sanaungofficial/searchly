@@ -10,6 +10,7 @@ import {
   hydrateIntelFromHirebase,
   normalizeWebsiteUrl,
 } from "@/lib/hirebase-company-sync";
+import { dedupeTrackedCompanies } from "@/lib/tracked-companies-dedupe";
 
 async function findExistingWatchlistCompany(
   userId: string,
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
 
   try {
     const companies = await loadTrackedCompanies(dbUser.id);
-    const merged = await attachIntel(companies);
+    const merged = dedupeTrackedCompanies(await attachIntel(companies));
     return NextResponse.json(merged);
   } catch (err) {
     console.error("[companies GET]", err);

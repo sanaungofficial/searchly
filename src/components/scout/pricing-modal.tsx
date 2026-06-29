@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PricingPanel } from "./pricing-panel";
 import { bruddleHeadingStyle, color, fontSans, radius, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 type Props = {
   onClose: () => void;
@@ -30,7 +31,7 @@ export function PricingModal({ onClose }: Props) {
           position: "fixed",
           inset: 0,
           background: "rgba(22, 22, 22, 0.45)",
-          zIndex: 200,
+          zIndex: DRAWER_BACKDROP_Z,
         }}
         onClick={onClose}
         aria-hidden
@@ -42,7 +43,7 @@ export function PricingModal({ onClose }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          zIndex: 201,
+          zIndex: DRAWER_Z,
           padding: 16,
           pointerEvents: "none",
         }}

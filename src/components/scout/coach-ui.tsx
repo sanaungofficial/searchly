@@ -164,7 +164,17 @@ export function ProfileMyCoachCard({
               )}
             </div>
             {(coach.matchScore ?? 0) > 0 && (
-              <CoachMatchScoreCluster score={coach.matchScore!} label={coach.matchLabel ?? ""} align="right" />
+              <CoachMatchScoreCluster
+                score={coach.matchScore!}
+                label={coach.matchLabel ?? ""}
+                align="right"
+                job={{
+                  matchScore: coach.matchScore!,
+                  matchLabel: coach.matchLabel ?? "",
+                  matchReasons: coach.matchReasons ?? [],
+                  matchedSkills: coach.matchedSkills,
+                }}
+              />
             )}
           </div>
 

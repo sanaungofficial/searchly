@@ -19,10 +19,9 @@ import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem, CoachProfileDetail } from "@/lib/coach-types";
 import { bruddleHeadingStyle, color, fontSans, radius, surface, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
-const DRAWER_BACKDROP_Z = 200;
-const DRAWER_Z = 201;
 const line = "var(--scout-border)";
 const cardBg = surface.card;
 

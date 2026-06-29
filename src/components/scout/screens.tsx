@@ -3451,11 +3451,13 @@ export function ScreenFinalSummary({
   profile,
   onConfirm,
   onBack,
+  confirming = false,
 }: {
   readbackData: ReadBackData | null;
   profile: FinalSummaryProfile;
   onConfirm: () => void;
   onBack: () => void;
+  confirming?: boolean;
 }) {
   const hasAI = readbackData != null;
 
@@ -3586,17 +3588,30 @@ export function ScreenFinalSummary({
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
         <button
           className="onboarding-cta"
+          type="button"
           onClick={onConfirm}
-          style={{ ...PRIMARY_CTA, width: "100%", marginBottom: 10 }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          disabled={confirming}
+          style={{
+            ...PRIMARY_CTA,
+            width: "100%",
+            marginBottom: 10,
+            opacity: confirming ? 0.65 : 1,
+            cursor: confirming ? "wait" : "pointer",
+          }}
+          onMouseEnter={(e) => {
+            if (!confirming) e.currentTarget.style.opacity = "0.86";
+          }}
+          onMouseLeave={(e) => {
+            if (!confirming) e.currentTarget.style.opacity = "1";
+          }}
         >
-          Looks good, let&apos;s go →
+          {confirming ? "Setting up…" : "Looks good, let's go →"}
         </button>
         <button
           type="button"
           onClick={onBack}
-          style={{ display: "block", width: "100%", padding: "12px 0", background: "none", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT_SECONDARY, cursor: "pointer", textAlign: "center" as const }}
+          disabled={confirming}
+          style={{ display: "block", width: "100%", padding: "12px 0", background: "none", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: ONBOARDING_TEXT_SECONDARY, cursor: confirming ? "not-allowed" : "pointer", textAlign: "center" as const, opacity: confirming ? 0.5 : 1 }}
         >
           ← Go back and edit
         </button>

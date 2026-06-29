@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useKimchiThreads } from "@/hooks/use-kimchi-threads";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { fontSans } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 
 const sans = fontSans;
@@ -195,7 +196,7 @@ function KimchiAssistantStyles() {
         left: 0;
         right: 0;
         bottom: 0;
-        z-index: 200;
+        z-index: ${DRAWER_BACKDROP_Z};
         background: rgba(15, 24, 20, 0.2);
         transition: opacity 0.28s ease;
         cursor: pointer;
@@ -209,7 +210,7 @@ function KimchiAssistantStyles() {
         position: fixed;
         right: 0;
         bottom: 0;
-        z-index: 201;
+        z-index: ${DRAWER_Z};
         background: var(--scout-page);
         display: flex;
         flex-direction: column;

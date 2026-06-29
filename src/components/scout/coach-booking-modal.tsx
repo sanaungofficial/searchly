@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontSans, displayTitleStyle } from "@/lib/typography";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 
 export type CoachBookingSessionType = "intro" | "session";
 
@@ -200,7 +201,7 @@ export function CoachBookingModal({
     <>
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 80 }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: DRAWER_NESTED_BACKDROP_Z }}
       />
       <div
         style={{
@@ -212,7 +213,7 @@ export function CoachBookingModal({
           maxHeight: "min(90vh, 720px)",
           background: "#fff",
           border: "2px solid #1A1A1A",
-          zIndex: 90,
+          zIndex: DRAWER_NESTED_Z,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",

@@ -8,6 +8,7 @@ import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachCompanyLookupMeta, CoachExperienceCompany } from "@/lib/coach-experience-companies";
 import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 type Props = {
   company: CoachExperienceCompany;
@@ -89,7 +90,7 @@ export function CoachCompanyDrawer({
     <>
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 220, backdropFilter: isMobile ? "none" : "blur(1px)" }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z, backdropFilter: isMobile ? "none" : "blur(1px)" }}
       />
       <div
         style={{
@@ -102,7 +103,7 @@ export function CoachCompanyDrawer({
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,
           border: isMobile ? "none" : border.lineStrong,
-          zIndex: 221,
+          zIndex: DRAWER_Z,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
           display: "flex",
           flexDirection: "column",

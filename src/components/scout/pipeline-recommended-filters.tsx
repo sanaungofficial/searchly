@@ -21,6 +21,7 @@ import { POSTED_WITHIN_OPTIONS } from "@/lib/job-posted-filter";
 import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import {
   ChipToggle,
   DatalistInput,
@@ -509,7 +510,7 @@ export function RecommendedFiltersDrawer({
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.35)",
-          zIndex: 60,
+          zIndex: DRAWER_BACKDROP_Z,
         }}
       />
       <div
@@ -524,7 +525,7 @@ export function RecommendedFiltersDrawer({
           width: "min(480px, 100vw)",
           background: surface.card,
           borderLeft: border.line,
-          zIndex: 61,
+          zIndex: DRAWER_Z,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",

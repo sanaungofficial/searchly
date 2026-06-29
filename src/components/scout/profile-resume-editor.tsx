@@ -28,6 +28,7 @@ import {
 import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { notifyCreditsChanged } from "@/lib/credits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
@@ -215,6 +216,19 @@ export function ProfileResumeEditor({
     void fetch(withClientScope(`/api/assets/${assetId}/improve`), { method: "POST" })
       .then(async (res) => {
         const data = await res.json();
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setImproveError("Monthly AI limit reached — upgrade for more.");
+          return;
+        }
+        if (res.status === 503) {
+          setImproveError(
+            data.error === "AI not configured"
+              ? "AI isn't available in this environment — try on production."
+              : (data.error ?? "AI isn't available right now."),
+          );
+          return;
+        }
         if (!res.ok) {
           setImproveError(data.error ?? "Could not generate improvements — try on production.");
           return;
@@ -224,6 +238,7 @@ export function ProfileResumeEditor({
         setImproveHighlights(Array.isArray(data.highlights) ? data.highlights : []);
         setImproveNewScore(data.newScore);
         setImprovePreviousScore(data.previousScore);
+        notifyCreditsChanged();
       })
       .catch(() => setImproveError("Could not generate improvements"))
       .finally(() => setImproveLoading(false));

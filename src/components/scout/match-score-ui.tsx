@@ -1,7 +1,11 @@
 "use client";
 
-import { coachMatchTierExplanation, isLowQualityMatchReason, matchScoreStyle, matchScoreTier } from "@/lib/match-score";
+import type { ReactNode } from "react";
+import { useCallback, useRef, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
+import { useHoverCapable } from "@/hooks/use-hover-capable";
+import { coachMatchTierExplanation, isLowQualityMatchReason, matchScoreStyle, matchScoreTier } from "@/lib/match-score";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
 export type MatchScoreDisplayJob = {
@@ -93,21 +97,221 @@ export function CompactMatchScore({ score, label }: { score: number; label: stri
   );
 }
 
-/** Score badge + hover explainer — matches Opportunities recommended rows. */
+function filterCoachMatchReasons(reasons: string[], max = 4): string[] {
+  return reasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, max);
+}
+
+function CoachWhyFitPanel({
+  score,
+  label,
+  reasons,
+  matchedSkills,
+}: {
+  score: number;
+  label: string;
+  reasons: string[];
+  matchedSkills: string[];
+}) {
+  const style = matchScoreStyle(score);
+
+  return (
+    <>
+      <p
+        style={{
+          margin: "0 0 2px",
+          fontFamily: fontSans,
+          fontSize: T.label,
+          fontWeight: 700,
+          color: color.muted,
+          textTransform: "uppercase",
+          letterSpacing: "0.07em",
+        }}
+      >
+        Why this fit
+      </p>
+      <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: T.caption, color: color.stone, lineHeight: 1.45 }}>
+        {coachMatchTierExplanation(score, label)}
+      </p>
+      {reasons.length > 0 && (
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+          {reasons.map((reason) => (
+            <li key={reason} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+              <span style={{ color: style.accent, fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>→</span>
+              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.45 }}>{reason}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {matchedSkills.length > 0 && (
+        <div style={{ marginTop: reasons.length > 0 ? 12 : 0 }}>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.label,
+              fontWeight: 600,
+              color: color.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              margin: "0 0 7px",
+            }}
+          >
+            Matched focus areas
+          </p>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {matchedSkills.map((skill) => (
+              <span
+                key={skill}
+                style={{
+                  display: "inline-block",
+                  padding: "3px 10px",
+                  fontSize: T.label,
+                  fontWeight: 600,
+                  color: style.accent,
+                  background: style.bg,
+                  border: `1px solid ${style.accent}40`,
+                  borderRadius: 4,
+                }}
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Hover popover on coach score badge — mirrors Opportunities `DiscoveryScoreBreakdownPopover`. */
+export function CoachMatchBreakdownPopover({
+  score,
+  label,
+  reasons,
+  matchedSkills,
+  align = "left",
+  children,
+}: {
+  score: number;
+  label: string;
+  reasons: string[];
+  matchedSkills?: string[];
+  align?: "left" | "right";
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const hoverCapable = useHoverCapable();
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filteredReasons = filterCoachMatchReasons(reasons);
+  const skills = matchedSkills?.slice(0, 6) ?? [];
+  const hasBreakdown = filteredReasons.length > 0 || skills.length > 0;
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    if (!hoverCapable) return;
+    clearCloseTimer();
+    closeTimer.current = setTimeout(() => setOpen(false), 180);
+  }, [clearCloseTimer, hoverCapable]);
+
+  const show = useCallback(() => {
+    if (!hoverCapable || !hasBreakdown) return;
+    clearCloseTimer();
+    setOpen(true);
+  }, [clearCloseTimer, hasBreakdown, hoverCapable]);
+
+  if (!hasBreakdown || score <= 0) {
+    return <>{children}</>;
+  }
+
+  return (
+    <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", verticalAlign: "middle" }}>
+      <Popover open={open} onOpenChange={setOpen} modal={false}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Coach fit score ${score} — hover for breakdown`}
+            aria-expanded={open}
+            onMouseEnter={show}
+            onMouseLeave={scheduleClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!hoverCapable) setOpen((v) => !v);
+            }}
+            style={{
+              display: "inline-flex",
+              padding: 0,
+              background: "transparent",
+              border: "none",
+              cursor: hoverCapable ? "default" : "pointer",
+              lineHeight: 0,
+            }}
+          >
+            {children}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align={align === "right" ? "end" : "start"}
+          side="bottom"
+          sideOffset={6}
+          collisionPadding={12}
+          avoidCollisions
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onMouseEnter={show}
+          onMouseLeave={scheduleClose}
+          className="rounded-[var(--scout-radius)] border-0 bg-transparent p-0 shadow-none outline-none"
+          style={{
+            width: 320,
+            maxWidth: "min(320px, calc(100vw - 24px))",
+            zIndex: 10000,
+            background: surface.card,
+            border: border.lineStrong,
+            boxShadow: "4px 4px 0 rgba(17,17,17,0.08)",
+            padding: "14px 16px 12px",
+            borderRadius: "var(--scout-radius)",
+          }}
+        >
+          <CoachWhyFitPanel score={score} label={label} reasons={filteredReasons} matchedSkills={skills} />
+        </PopoverContent>
+      </Popover>
+    </span>
+  );
+}
+
+/** Score badge + methodology eye + hover breakdown — matches Opportunities `DiscoveryScoreCluster`. */
 export function CoachMatchScoreCluster({
   score,
   label,
   align = "right",
+  job,
 }: {
   score: number;
   label: string;
   align?: "left" | "right";
+  job?: MatchScoreDisplayJob;
 }) {
   if (score <= 0) return null;
+
+  const badge = (
+    <CoachMatchBreakdownPopover
+      score={score}
+      label={label}
+      reasons={job?.matchReasons ?? []}
+      matchedSkills={job?.matchedSkills}
+      align={align}
+    >
+      <MatchScoreBadge score={score} label={label} />
+    </CoachMatchBreakdownPopover>
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: align === "right" ? "flex-end" : "flex-start", gap: 4, flexShrink: 0 }}>
       <ScoreExplainerPopover variant="coach-match" align={align} />
-      <MatchScoreBadge score={score} label={label} />
+      {badge}
       <ScoreSourceHint />
     </div>
   );
@@ -129,7 +333,7 @@ function coachFitAssessmentSummary(score: number, label: string, omitScore = fal
   return `${label} · ${score}/100 — based on your goals and profile`;
 }
 
-/** Coaching directory fit block — honest label (not always "good fit"). */
+/** Coaching directory fit block — score visible, details on hover (Opportunities fit-score pattern). */
 export function CoachFitAssessment({
   job,
   compact = false,
@@ -140,17 +344,23 @@ export function CoachFitAssessment({
   /** When true, score badge sits in the panel header (directory cards). */
   showScore?: boolean;
 }) {
-  const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 3);
-  if (!reasons.length || job.matchScore <= 0) return null;
+  const reasons = filterCoachMatchReasons(job.matchReasons, 4);
+  const matchedSkills = job.matchedSkills?.slice(0, 6) ?? [];
+  if (job.matchScore <= 0 || (reasons.length === 0 && matchedSkills.length === 0)) return null;
 
   const tier = matchScoreTier(job.matchScore);
   const isStretch = tier === "poor" || tier === "fair";
-  const score = matchScoreStyle(job.matchScore);
-  const matchedSkills = job.matchedSkills?.slice(0, 5) ?? [];
+  const scoreStyle = matchScoreStyle(job.matchScore);
 
-  const bg = isStretch ? "rgba(17,17,17,0.03)" : score.bgSubtle;
-  const accent = isStretch ? color.muted : score.accent;
-  const borderColor = isStretch ? border.line : `${score.accent}40`;
+  const bg = isStretch ? "rgba(17,17,17,0.03)" : scoreStyle.bgSubtle;
+  const accent = isStretch ? color.muted : scoreStyle.accent;
+  const borderColor = isStretch ? border.line : `${scoreStyle.accent}40`;
+
+  const scoreBadge = showScore ? (
+    <CompactMatchScore score={job.matchScore} label={job.matchLabel} />
+  ) : (
+    <MatchScoreBadge score={job.matchScore} label={job.matchLabel} />
+  );
 
   return (
     <div
@@ -165,69 +375,40 @@ export function CoachFitAssessment({
       <div
         style={{
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: showScore ? "center" : "flex-start",
           justifyContent: "space-between",
           gap: 12,
-          marginBottom: showScore ? 8 : 4,
         }}
       >
-        <p
-          style={{
-            fontFamily: fontSans,
-            fontSize: T.label,
-            fontWeight: 700,
-            color: accent,
-            margin: 0,
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-          }}
-        >
-          <ScoreExplainerLabel variant="coach-match">Alignment check</ScoreExplainerLabel>
-        </p>
-        {showScore && <CompactMatchScore score={job.matchScore} label={job.matchLabel} />}
-      </div>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
-        {coachFitAssessmentSummary(job.matchScore, job.matchLabel, showScore)}
-      </p>
-      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
-        {reasons.map((reason) => (
-          <li
-            key={reason}
+        <div style={{ minWidth: 0 }}>
+          <p
             style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-start",
               fontFamily: fontSans,
-              fontSize: T.caption,
-              color: color.ink,
-              lineHeight: 1.45,
+              fontSize: T.label,
+              fontWeight: 700,
+              color: accent,
+              margin: 0,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
             }}
           >
-            <span aria-hidden style={{ flexShrink: 0, color: accent, fontWeight: 700, marginTop: 1 }}>→</span>
-            <span>{reason}</span>
-          </li>
-        ))}
-      </ul>
-      {matchedSkills.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-          {matchedSkills.map((skill) => (
-            <span
-              key={skill}
-              style={{
-                padding: "3px 9px",
-                background: isStretch ? surface.inset : score.bg,
-                borderRadius: 999,
-                fontFamily: fontSans,
-                fontSize: T.label,
-                fontWeight: 600,
-                color: accent,
-              }}
-            >
-              {skill}
-            </span>
-          ))}
+            <ScoreExplainerLabel variant="coach-match">Alignment check</ScoreExplainerLabel>
+          </p>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0", lineHeight: 1.45 }}>
+            {coachFitAssessmentSummary(job.matchScore, job.matchLabel, showScore)}
+            {showScore ? " Hover the score for details." : ""}
+          </p>
         </div>
-      )}
+        <CoachMatchBreakdownPopover
+          score={job.matchScore}
+          label={job.matchLabel}
+          reasons={job.matchReasons}
+          matchedSkills={job.matchedSkills}
+          align="right"
+        >
+          {scoreBadge}
+        </CoachMatchBreakdownPopover>
+      </div>
     </div>
   );
 }
