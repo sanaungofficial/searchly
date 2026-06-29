@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-import/types";
 import type { VisibleImportType } from "@/lib/client-import/import-types";
 import { VISIBLE_IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
 import type { CompanyImportOptions } from "@/lib/client-import/company-field-mapping";
 import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 import type { IntakeParseResult } from "@/lib/career-strategy";
-import { ImportReviewModal } from "@/components/admin/admin-client-import-panel";
 import { JobTrackerImportWizard } from "@/components/scout/job-tracker-import-wizard";
 import { CompaniesImportWizard } from "@/components/scout/companies-import-wizard";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
@@ -62,9 +61,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [preview, setPreview] = useState<ClientImportPreview | null>(null);
-  const [applyResume, setApplyResume] = useState(false);
-  const [showReview, setShowReview] = useState(false);
   const [showJobTrackerWizard, setShowJobTrackerWizard] = useState(false);
   const [showCompaniesWizard, setShowCompaniesWizard] = useState(false);
   const [jobImportOptions, setJobImportOptions] = useState<JobTrackerImportOptions | undefined>();
@@ -81,16 +77,17 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setFiles([]);
     setPasteText("");
     setError(null);
-    setPreview(null);
-    setShowReview(false);
     setShowJobTrackerWizard(false);
     setShowCompaniesWizard(false);
     setJobImportOptions(undefined);
     setCompanyImportOptions(undefined);
     setIntakeResult(null);
     setShowApplyProfile(false);
-    setApplyResume(false);
   }, []);
+
+  useEffect(() => {
+    if (!open) resetState();
+  }, [open, resetState]);
 
   const handleClose = useCallback(() => {
     resetState();
@@ -188,6 +185,16 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   }
 
   async function handleParse() {
+    if (importType === "job_tracker") {
+      setShowJobTrackerWizard(true);
+      return;
+    }
+    if (importType === "target_companies") {
+      setShowCompaniesWizard(true);
+      return;
+    }
+    if (importType !== "application_info") return;
+
     const hasPaste = pasteText.trim().length > 0;
     const hasFiles = files.length > 0;
     if (!hasPaste && !hasFiles) {
@@ -199,36 +206,17 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
 
     try {
-      if (importType === "application_info") {
-        let notes = pasteText.trim();
-        if (!notes && files.length) {
-          const parts: string[] = [];
-          for (const file of files) {
-            const text = await extractFileText(file);
-            if (text) parts.push(text);
-          }
-          notes = parts.join("\n\n");
+      let notes = pasteText.trim();
+      if (!notes && files.length) {
+        const parts: string[] = [];
+        for (const file of files) {
+          const text = await extractFileText(file);
+          if (text) parts.push(text);
         }
-        if (!notes) throw new Error("No text found to parse.");
-        await handleParseApplicationInfo(notes);
-        return;
+        notes = parts.join("\n\n");
       }
-
-      const form = new FormData();
-      form.append("importType", importType);
-      if (hasPaste) form.append("pasteText", pasteText.trim());
-      for (const f of files) form.append("files", f);
-
-      const res = await fetch(`/api/admin/clients/${clientUserId}/import/parse`, {
-        method: "POST",
-        body: form,
-      });
-      const data = await readResponseJson(res);
-      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Parse failed"));
-
-      setPreview(data.preview as ClientImportPreview);
-      setApplyResume(false);
-      setShowReview(true);
+      if (!notes) throw new Error("No text found to parse.");
+      await handleParseApplicationInfo(notes);
     } catch (e) {
       setError(formatApiErrorMessage(e, "Parse failed"));
     } finally {
@@ -328,12 +316,11 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   }
 
   async function handleApplyImport(
-    previewOverride?: ClientImportPreview,
+    activePreview: ClientImportPreview,
     jobOptionsOverride?: JobTrackerImportOptions,
     metaOverride?: ReturnType<typeof buildImportMeta>,
     companyOptionsOverride?: CompanyImportOptions,
   ) {
-    const activePreview = previewOverride ?? preview;
     if (!activePreview) return;
     setApplying(true);
     setError(null);
@@ -343,7 +330,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           preview: activePreview,
-          applyResume,
+          applyResume: false,
           jobImportOptions: jobOptionsOverride ?? jobImportOptions,
           companyImportOptions: companyOptionsOverride ?? companyImportOptions,
           importMeta: metaOverride ?? buildImportMeta(),
@@ -352,8 +339,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
       const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string; runId?: string };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
 
-      setShowReview(false);
-      setPreview(null);
       resetState();
       onClose();
 
@@ -375,7 +360,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   }) {
     setShowJobTrackerWizard(false);
     setJobImportOptions(result.jobImportOptions);
-    setApplyResume(false);
     await handleApplyImport(result.preview, result.jobImportOptions, {
       importType: "job_tracker",
       fileName: result.preview.sourceFiles[0]?.filename ?? null,
@@ -389,7 +373,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
   }) {
     setShowCompaniesWizard(false);
     setCompanyImportOptions(result.companyImportOptions);
-    setApplyResume(false);
     await handleApplyImport(result.preview, undefined, {
       importType: "target_companies",
       fileName: result.preview.sourceFiles[0]?.filename ?? null,
@@ -397,8 +380,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     }, result.companyImportOptions);
   }
 
-  const showMainModal =
-    open && !showReview && !showApplyProfile && !showJobTrackerWizard && !showCompaniesWizard && !applying;
+  const showMainModal = open && !showApplyProfile && !showJobTrackerWizard && !showCompaniesWizard && !applying;
 
   const dropBorder = isDragging ? color.forest : "rgba(26,58,47,0.25)";
   const dropBg = isDragging ? "rgba(26,58,47,0.06)" : surface.inset;
@@ -672,11 +654,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
                 onClick={handleParse}
                 disabled={parsing || applying || (!files.length && !pasteText.trim())}
               >
-                {parsing
-                  ? "Parsing…"
-                  : importType === "application_info"
-                    ? "Parse & review"
-                    : "Parse & review"}
+                {parsing ? "Parsing…" : "Parse & review"}
               </ScoutPrimaryBtn>
             </div>
           </>
@@ -706,97 +684,6 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           clientUserId={clientUserId}
           title="Import companies list"
           onComplete={handleCompaniesWizardComplete}
-        />
-      )}
-
-      {showReview && preview && (
-        <ImportReviewModal
-          preview={preview}
-          applyResume={applyResume}
-          onApplyResumeChange={setApplyResume}
-          onToggle={(bucket, id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = p[bucket].map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, [bucket]: rows };
-            })
-          }
-          onToggleRole={(kind, id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = p.profile[kind].map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, profile: { ...p.profile, [kind]: rows } };
-            })
-          }
-          onToggleCategory={(kind, id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = (p.profile[kind] ?? []).map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, profile: { ...p.profile, [kind]: rows } };
-            })
-          }
-          onToggleQa={(id, selected) =>
-            setPreview((p) => {
-              if (!p) return p;
-              const rows = (p.applicationQa ?? []).map((row) => (row.id === id ? { ...row, selected } : row));
-              return { ...p, applicationQa: rows };
-            })
-          }
-          onSelectAll={(bucket) =>
-            setPreview((p) => (p ? { ...p, [bucket]: p[bucket].map((row) => ({ ...row, selected: true })) } : p))
-          }
-          onUnselectAll={(bucket) =>
-            setPreview((p) => (p ? { ...p, [bucket]: p[bucket].map((row) => ({ ...row, selected: false })) } : p))
-          }
-          onSelectAllRoles={(kind) =>
-            setPreview((p) =>
-              p ? { ...p, profile: { ...p.profile, [kind]: p.profile[kind].map((row) => ({ ...row, selected: true })) } } : p,
-            )
-          }
-          onUnselectAllRoles={(kind) =>
-            setPreview((p) =>
-              p ? { ...p, profile: { ...p.profile, [kind]: p.profile[kind].map((row) => ({ ...row, selected: false })) } } : p,
-            )
-          }
-          onSelectAllCategories={(kind) =>
-            setPreview((p) =>
-              p
-                ? {
-                    ...p,
-                    profile: {
-                      ...p.profile,
-                      [kind]: (p.profile[kind] ?? []).map((row) => ({ ...row, selected: true })),
-                    },
-                  }
-                : p,
-            )
-          }
-          onUnselectAllCategories={(kind) =>
-            setPreview((p) =>
-              p
-                ? {
-                    ...p,
-                    profile: {
-                      ...p.profile,
-                      [kind]: (p.profile[kind] ?? []).map((row) => ({ ...row, selected: false })),
-                    },
-                  }
-                : p,
-            )
-          }
-          onSelectAllQa={() =>
-            setPreview((p) =>
-              p ? { ...p, applicationQa: (p.applicationQa ?? []).map((row) => ({ ...row, selected: true })) } : p,
-            )
-          }
-          onUnselectAllQa={() =>
-            setPreview((p) =>
-              p ? { ...p, applicationQa: (p.applicationQa ?? []).map((row) => ({ ...row, selected: false })) } : p,
-            )
-          }
-          onClose={() => setShowReview(false)}
-          onApply={() => handleApplyImport()}
-          applying={applying}
         />
       )}
 
