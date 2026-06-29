@@ -4,9 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   collectUniqueTags,
+  normalizeQaQuestion,
   parseTagsInput,
   type ApplicationQaEntry,
 } from "@/lib/application-qa";
+import {
+  APPLICATION_QA_SUGGESTIONS,
+  type ApplicationQaSuggestion,
+} from "@/lib/application-qa-suggestions";
 import {
   ScoutBox,
   ScoutPrimaryBtn,
@@ -172,23 +177,40 @@ function SearchFilterBar({ search, onSearchChange, tags, activeTag, onTagChange 
   );
 }
 
+type QaDraft = { question: string; answer: string; tags: string[] };
+
 type EntryFormProps = {
   initial?: ApplicationQaEntry | null;
+  prefill?: QaDraft | null;
   saving: boolean;
   onCancel: () => void;
   onSave: (payload: { question: string; answer: string; tags: string[] }) => void | Promise<void>;
 };
 
-function EntryForm({ initial, saving, onCancel, onSave }: EntryFormProps) {
-  const [question, setQuestion] = useState(initial?.question ?? "");
-  const [answer, setAnswer] = useState(initial?.answer ?? "");
-  const [tagsInput, setTagsInput] = useState(initial?.tags.join(", ") ?? "");
+function EntryForm({ initial, prefill, saving, onCancel, onSave }: EntryFormProps) {
+  const [question, setQuestion] = useState(initial?.question ?? prefill?.question ?? "");
+  const [answer, setAnswer] = useState(initial?.answer ?? prefill?.answer ?? "");
+  const [tagsInput, setTagsInput] = useState(
+    initial?.tags.join(", ") ?? prefill?.tags.join(", ") ?? "",
+  );
 
   useEffect(() => {
-    setQuestion(initial?.question ?? "");
-    setAnswer(initial?.answer ?? "");
-    setTagsInput(initial?.tags.join(", ") ?? "");
-  }, [initial]);
+    if (initial) {
+      setQuestion(initial.question);
+      setAnswer(initial.answer);
+      setTagsInput(initial.tags.join(", "));
+      return;
+    }
+    if (prefill) {
+      setQuestion(prefill.question);
+      setAnswer(prefill.answer);
+      setTagsInput(prefill.tags.join(", "));
+      return;
+    }
+    setQuestion("");
+    setAnswer("");
+    setTagsInput("");
+  }, [initial, prefill]);
 
   return (
     <ScoutBox padding={16} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -242,6 +264,95 @@ function EntryForm({ initial, saving, onCancel, onSave }: EntryFormProps) {
   );
 }
 
+type SuggestedQuestionsProps = {
+  existingQuestions: Set<string>;
+  disabled?: boolean;
+  onPick: (suggestion: ApplicationQaSuggestion) => void;
+};
+
+function SuggestedQuestions({ existingQuestions, disabled, onPick }: SuggestedQuestionsProps) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p
+        style={{
+          fontFamily: fontSans,
+          fontSize: 12,
+          fontWeight: 600,
+          color: color.muted,
+          letterSpacing: "0.4px",
+          textTransform: "uppercase",
+          margin: "0 0 6px",
+        }}
+      >
+        Suggested questions
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
+        Pick common application prompts — we&apos;ll pre-fill a starter answer you can customize.
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {APPLICATION_QA_SUGGESTIONS.map((suggestion) => {
+          const added = existingQuestions.has(normalizeQaQuestion(suggestion.question));
+          return (
+            <button
+              key={suggestion.question}
+              type="button"
+              disabled={disabled || added}
+              onClick={() => onPick(suggestion)}
+              style={{
+                ...scoutInsetChipStyle,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: 6,
+                padding: "10px 12px",
+                maxWidth: "100%",
+                textAlign: "left",
+                cursor: disabled || added ? "default" : "pointer",
+                opacity: added ? 0.65 : 1,
+                background: added ? surface.inset : surface.card,
+                border: line,
+              }}
+            >
+              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, lineHeight: 1.4 }}>
+                {suggestion.question}
+              </span>
+              <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {suggestion.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    style={{
+                      ...scoutInsetChipStyle,
+                      fontSize: 11,
+                      padding: "2px 8px",
+                      background: surface.inset,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+                {added && (
+                  <span
+                    style={{
+                      ...scoutInsetChipStyle,
+                      fontSize: 11,
+                      padding: "2px 8px",
+                      background: "rgba(174,122,255,0.18)",
+                      color: color.ink,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Added
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 type ApplicationQaPanelProps = {
   scopePath?: (path: string) => string;
 };
@@ -256,6 +367,7 @@ export function ApplicationQaPanel({ scopePath = (p) => p }: ApplicationQaPanelP
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<ApplicationQaEntry | null>(null);
   const [adding, setAdding] = useState(false);
+  const [addPrefill, setAddPrefill] = useState<QaDraft | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -292,6 +404,10 @@ export function ApplicationQaPanel({ scopePath = (p) => p }: ApplicationQaPanelP
   }, [loadFiltered, search, activeTag]);
 
   const tagOptions = useMemo(() => collectUniqueTags(allEntries), [allEntries]);
+  const existingQuestionKeys = useMemo(
+    () => new Set(allEntries.map((entry) => normalizeQaQuestion(entry.question))),
+    [allEntries],
+  );
 
   async function createEntry(payload: { question: string; answer: string; tags: string[] }) {
     setSaving(true);
@@ -303,6 +419,7 @@ export function ApplicationQaPanel({ scopePath = (p) => p }: ApplicationQaPanelP
       });
       if (!res.ok) throw new Error("Could not add entry");
       setAdding(false);
+      setAddPrefill(null);
       await loadAll();
       await loadFiltered();
     } catch (e) {
@@ -362,9 +479,32 @@ export function ApplicationQaPanel({ scopePath = (p) => p }: ApplicationQaPanelP
           </p>
         </div>
         {!adding && !editing && (
-          <ScoutPrimaryBtn onClick={() => setAdding(true)}>Add question</ScoutPrimaryBtn>
+          <ScoutPrimaryBtn
+            onClick={() => {
+              setAddPrefill(null);
+              setAdding(true);
+            }}
+          >
+            Add question
+          </ScoutPrimaryBtn>
         )}
       </div>
+
+      {!editing && (
+        <SuggestedQuestions
+          existingQuestions={existingQuestionKeys}
+          disabled={adding || saving}
+          onPick={(suggestion) => {
+            setEditing(null);
+            setAddPrefill({
+              question: suggestion.question,
+              answer: suggestion.answer,
+              tags: suggestion.tags,
+            });
+            setAdding(true);
+          }}
+        />
+      )}
 
       {error && (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#B42318", margin: "0 0 12px" }}>{error}</p>
@@ -374,9 +514,11 @@ export function ApplicationQaPanel({ scopePath = (p) => p }: ApplicationQaPanelP
         <div style={{ marginBottom: 16 }}>
           <EntryForm
             initial={editing}
+            prefill={adding && !editing ? addPrefill : null}
             saving={saving}
             onCancel={() => {
               setAdding(false);
+              setAddPrefill(null);
               setEditing(null);
             }}
             onSave={editing ? updateEntry : createEntry}
@@ -401,6 +543,7 @@ export function ApplicationQaPanel({ scopePath = (p) => p }: ApplicationQaPanelP
             mode="manage"
             onEdit={(entry) => {
               setAdding(false);
+              setAddPrefill(null);
               setEditing(entry);
             }}
             onDelete={(id) => void deleteEntry(id)}

@@ -985,6 +985,7 @@ Map common onboarding questions:
 - LinkedIn URL → linkedinUrl (URL only, never credentials)
 - Active offers → intakeContext.activeOffers
 - Biggest search frustration → include in careerMotivation or intakeContext.searchActivity
+- Standard application / screening questions with written answers (e.g. "Why this role?", "Tell us about yourself", visa sponsorship, salary expectations) → suggestedApplicationQa array entries with question + answer; tag each with "onboarding" unless a clearer tag is obvious from context
 
 Extract every field you can find with clear evidence. Use priorities for multi-select preferences (work arrangement, industries, company stage, benefits, deal-breakers).
 
@@ -1026,7 +1027,10 @@ Respond in this exact JSON format:
     "activeOffers": "PE-owned fintech, Commercial New Product Lead, NYC",
     "benefitsMustHaves": "15+ PTO; equity can offset lower base",
     "dealBreakers": "Toxic culture / leadership"
-  }
+  },
+  "suggestedApplicationQa": [
+    { "question": "Why are you interested in this role?", "answer": "Candidate's draft answer from intake", "tags": ["onboarding"] }
+  ]
 }`,
 
   PROFILE_COACH_SYSTEM: `${KIMCHI_VOICE}

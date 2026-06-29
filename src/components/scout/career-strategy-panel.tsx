@@ -6,12 +6,9 @@ import {
   type CareerStrategyDocument,
   EMPTY_STRATEGY,
   normalizeStrategyDocument,
-  type IntakeParseResult,
-  type StrategyProfileFields,
   type StrategyVersion,
 } from "@/lib/career-strategy";
-import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
-import { profileAboutSectionUrl, profileTargetCompaniesUrl, withClientUserId, withClientReviewPagePath } from "@/lib/workspace-urls";
+import { profileAboutSectionUrl, profileTargetCompaniesUrl, profileBasePath, profileTabPath, withClientUserId, withClientReviewPagePath } from "@/lib/workspace-urls";
 import { CareerPreferencesPanel } from "./career-preferences-panel";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -21,7 +18,6 @@ import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { StrategyFormattedView } from "./strategy-formatted-view";
 import { UserAssetsList, type UserAssetListItem } from "./user-assets-list";
 import { UploadDocumentModal } from "./upload-document-modal";
-import { AdminClientImportPanel } from "@/components/admin/admin-client-import-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -75,44 +71,6 @@ const navLinkStyle: React.CSSProperties = {
   fontFamily: fontSans,
   fontSize: 12,
 };
-
-const FIELD_LABELS: Record<string, string> = {
-  name: "Name",
-  headline: "Headline",
-  summary: "Summary",
-  linkedinUrl: "LinkedIn URL",
-  targetRoles: "Target roles",
-  targetSalary: "Target salary",
-  currentSalary: "Current salary",
-  employmentStatus: "Employment status",
-  jobTimeline: "Job timeline",
-  careerMotivation: "Motivation",
-  priorities: "Priorities",
-  targetMarket: "Target market",
-  relocationOpenness: "Relocation",
-  workAuthorization: "Work authorization",
-  securityClearance: "Security clearance",
-  searchDuration: "Search duration",
-  positioningStatement: "Positioning statement",
-};
-
-const INTAKE_CONTEXT_LABELS: Record<string, string> = {
-  recentEmployer: "Recent employer",
-  recentTitle: "Recent title",
-  industries: "Industries",
-  companyStages: "Company stage",
-  avoidNotes: "Avoid / pass",
-  searchActivity: "Search activity",
-  activeOffers: "Active offers",
-  benefitsMustHaves: "Benefits must-haves",
-  dealBreakers: "Deal breakers",
-};
-
-function formatValue(v: unknown): string {
-  if (v == null || v === "") return "—";
-  if (Array.isArray(v)) return v.join(", ");
-  return String(v);
-}
 
 function timelineLabel(v: string | null): string {
   if (v === "asap") return "Immediate";
@@ -181,10 +139,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   const [document, setDocument] = useState<CareerStrategyDocument>(EMPTY_STRATEGY);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [parseResult, setParseResult] = useState<IntakeParseResult | null>(null);
-  const [showApplyModal, setShowApplyModal] = useState(false);
   const [profileChanges, setProfileChanges] = useState<string[]>([]);
   const [isStale, setIsStale] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -201,7 +156,6 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   const [uploadedStrategyFiles, setUploadedStrategyFiles] = useState<StrategyFileAsset[]>([]);
   const [strategyFileUploading, setStrategyFileUploading] = useState(false);
   const [showStrategyUploadModal, setShowStrategyUploadModal] = useState(false);
-  const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const generationStatusRef = useRef<StrategyGenerationStatus>(null);
 
   const isGenerating = generationStatus === "running";
@@ -366,92 +320,6 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
     }
   }
 
-  async function handleParseIntake() {
-    if (!intakeNotes.trim()) {
-      setError("Paste client intake notes first.");
-      return;
-    }
-    setParsing(true);
-    setError(null);
-    try {
-      await saveIntakeNotes();
-      const res = await fetch(api("/api/ai/strategy-intake"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: intakeNotes }),
-      });
-      const data = await readResponseJson(res);
-      if (res.status === 402) {
-        notifyCreditsChanged();
-        setShowUpgrade(true);
-        return;
-      }
-      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Parse failed"));
-      setParseResult(data as IntakeParseResult);
-      setShowApplyModal(true);
-      notifyCreditsChanged();
-    } catch (e) {
-      setError(formatApiErrorMessage(e, "Parse failed"));
-    } finally {
-      setParsing(false);
-    }
-  }
-
-  async function applyParsedFields() {
-    if (!parseResult) return;
-    setError(null);
-    try {
-      const patch: Record<string, unknown> = { ...(parseResult.proposed ?? {}) };
-      if (Object.keys(patch).length > 0) {
-        if (patch.name) {
-          await onPatchProfile({ name: patch.name });
-          delete patch.name;
-        }
-        if (Object.keys(patch).length > 0) {
-          await onPatchProfile(patch);
-        }
-      }
-
-      const trackedCompanies = mergeIntakeTrackedCompanies(parseResult);
-      let companyMessage = "";
-      if (trackedCompanies.length > 0) {
-        const res = await fetch(api("/api/companies/intake-apply"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ suggestedTrackedCompanies: trackedCompanies }),
-        });
-        const data = await readResponseJson(res);
-        if (!res.ok) {
-          throw new Error(formatApiErrorMessage(data.error, "Failed to add target companies"));
-        }
-        const added = Number(data.added ?? 0);
-        const updated = Number(data.updated ?? 0);
-        const skipped = Number(data.skipped ?? 0);
-        const errors = Array.isArray(data.errors) ? data.errors.length : 0;
-        companyMessage = `Target companies: ${added} added, ${updated} updated${skipped ? `, ${skipped} unchanged` : ""}${errors ? `, ${errors} failed` : ""}.`;
-      }
-
-      setShowApplyModal(false);
-      setParseResult(null);
-      if (companyMessage) {
-        setApplySuccess(companyMessage);
-        window.setTimeout(() => setApplySuccess(null), 12000);
-      }
-      await loadStrategy();
-      if (trackedCompanies.length > 0) {
-        fetch(api("/api/companies"))
-          .then((r) => r.json())
-          .then((d) => {
-            if (Array.isArray(d)) setCompanies(d);
-            else if (d.companies) setCompanies(d.companies);
-          })
-          .catch(() => {});
-      }
-    } catch (e) {
-      setError(formatApiErrorMessage(e, "Failed to apply profile updates"));
-    }
-  }
-
   const hasDocument = !!(updatedAt && document.executiveSummary);
 
   const viewingDocument: CareerStrategyDocument | null =
@@ -578,51 +446,28 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       )}
 
       {isAdmin && clientUserId && (
-        <AdminClientImportPanel clientUserId={clientUserId} />
-      )}
-
-      {isAdmin && (
         <ScoutBox padding={isMobile ? 16 : 22}>
           <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>
-            Client intake notes
+            Kimchi strategy draft
             <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: color.forest, textTransform: "none", letterSpacing: 0 }}>Admin only</span>
           </p>
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
-            Paste onboarding answers, target company lists, or external strategy docs. Parse to update profile fields and target companies, then generate a Kimchi strategy draft.
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
+            Import trackers and intake notes under{" "}
+            <button
+              type="button"
+              onClick={() => router.push(reviewPath(profileTabPath(profileBasePath(clientUserId), "preferences", { preferencesSection: "import" })))}
+              style={{ ...navLinkStyle, fontSize: 13 }}
+            >
+              Preferences → Import
+            </button>
+            . Saved intake notes still feed generation here.
           </p>
-          <textarea
-            value={intakeNotes}
-            onChange={(e) => setIntakeNotes(e.target.value)}
-            placeholder="Paste client intake responses here…"
-            style={{ ...textareaStyle, minHeight: 140 }}
-          />
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-            <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || isGenerating || !intakeNotes.trim()}>
-              {parsing ? "Parsing…" : "Parse & review profile updates"}
-            </ScoutSecondaryBtn>
-            <ScoutPrimaryBtn onClick={handleGenerate} disabled={isGenerating || parsing}>
-              {isGenerating ? "Generating…" : hasDocument ? "Regenerate Kimchi strategy" : "Generate Kimchi strategy"}
-            </ScoutPrimaryBtn>
-          </div>
-          {parsing && (
-            <div style={{ marginTop: 16 }}>
-              <KimchiProcessLoader preset="strategyIntake" variant="inline" />
-            </div>
-          )}
-          {isGenerating && (
-            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
-              Generation runs in the background — you can leave this page and come back anytime.
-            </p>
-          )}
+          <ScoutPrimaryBtn onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? "Generating…" : hasDocument ? "Regenerate Kimchi strategy" : "Generate Kimchi strategy"}
+          </ScoutPrimaryBtn>
           <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
-            Kimchi strategy generation uses 1 AI credit.
+            Uses 1 AI credit. Runs in the background — you can leave this page.
           </p>
-        </ScoutBox>
-      )}
-
-      {applySuccess && (
-        <ScoutBox padding={16} style={{ background: "rgba(74,139,106,0.08)", borderColor: "rgba(74,139,106,0.35)" }}>
-          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, margin: 0 }}>{applySuccess}</p>
         </ScoutBox>
       )}
 
@@ -901,7 +746,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
         ) : !hasViewableDocument && !isGenerating && uploadedStrategyFiles.length === 0 ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
-            Upload a strategy file above{isAdmin ? ", or use client intake notes to generate one with Kimchi" : ""}.
+            Upload a strategy file above{isAdmin ? ", or generate one from saved intake notes (Preferences → Import)" : ""}.
           </p>
         ) : !hasViewableDocument && isGenerating ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
@@ -932,14 +777,6 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
         ) : null}
       </ScoutBox>
 
-      {showApplyModal && parseResult && (
-        <ApplyProfileModal
-          result={parseResult}
-          onClose={() => setShowApplyModal(false)}
-          onApply={applyParsedFields}
-        />
-      )}
-
       {showUpgrade && <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />}
     </div>
   );
@@ -966,103 +803,6 @@ function StrategyEditor({
       <textarea style={textareaStyle} value={d.pathForward.summary} onChange={(e) => update({ pathForward: { ...d.pathForward, summary: e.target.value } })} />
       <label style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>Closing</label>
       <textarea style={textareaStyle} value={d.pathForward.closing} onChange={(e) => update({ pathForward: { ...d.pathForward, closing: e.target.value } })} />
-    </div>
-  );
-}
-
-function ApplyProfileModal({
-  result,
-  onClose,
-  onApply,
-}: {
-  result: IntakeParseResult;
-  onClose: () => void;
-  onApply: () => void;
-}) {
-  const entries = Object.entries(result.proposed).filter(([, v]) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0));
-  const contextEntries = Object.entries(result.intakeContext ?? {}).filter(
-    ([, v]) => v != null && String(v).trim() !== "",
-  );
-  const trackedCompanies = mergeIntakeTrackedCompanies(result);
-  const canApply = entries.length > 0 || trackedCompanies.length > 0;
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: "#FFFDF9", maxWidth: 560, width: "100%", maxHeight: "80vh", overflow: "auto", padding: 24, border: "var(--scout-border)" }}>
-        <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: color.forest }}>Review profile updates</h3>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 16px" }}>{result.summary}</p>
-        {entries.length === 0 && contextEntries.length === 0 && trackedCompanies.length === 0 ? (
-          <p style={{ fontFamily: fontSans, fontSize: 14 }}>No structured fields found. Try adding more detail to the intake notes.</p>
-        ) : (
-          <>
-            {entries.length > 0 && (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
-                <tbody>
-                  {entries.map(([key, val]) => (
-                    <tr key={key} style={{ borderBottom: "var(--scout-border)" }}>
-                      <td style={{ padding: "8px 8px 8px 0", color: color.muted, verticalAlign: "top", width: "40%" }}>{FIELD_LABELS[key] ?? key}</td>
-                      <td style={{ padding: "8px 0", color: color.forest }}>{formatValue(val)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {contextEntries.length > 0 && (
-              <>
-                <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                  Also captured for strategy (from intake notes)
-                </p>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
-                  <tbody>
-                    {contextEntries.map(([key, val]) => (
-                      <tr key={key} style={{ borderBottom: "var(--scout-border)" }}>
-                        <td style={{ padding: "8px 8px 8px 0", color: color.muted, verticalAlign: "top", width: "40%" }}>{INTAKE_CONTEXT_LABELS[key] ?? key}</td>
-                        <td style={{ padding: "8px 0", color: color.forest }}>{formatValue(val)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-            {trackedCompanies.length > 0 && (
-              <>
-                <p style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, margin: "0 0 8px" }}>
-                  <strong>{trackedCompanies.length} target companies</strong> will be added or updated on apply.
-                </p>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "var(--scout-border)" }}>
-                      <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Company</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Priority</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trackedCompanies.slice(0, 12).map((c) => (
-                      <tr key={c.name} style={{ borderBottom: "var(--scout-border)" }}>
-                        <td style={{ padding: "8px", verticalAlign: "top" }}>{c.name}</td>
-                        <td style={{ padding: "8px", color: color.muted, verticalAlign: "top" }}>{c.priority ?? "—"}</td>
-                        <td style={{ padding: "8px", color: color.muted, verticalAlign: "top" }}>
-                          {c.notes ?? c.candidateEdge ?? "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {trackedCompanies.length > 12 && (
-                  <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 16px" }}>
-                    +{trackedCompanies.length - 12} more companies
-                  </p>
-                )}
-              </>
-            )}
-          </>
-        )}
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <ScoutSecondaryBtn onClick={onClose}>Cancel</ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={onApply} disabled={!canApply}>Apply to profile</ScoutPrimaryBtn>
-        </div>
-      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 
-const ACCEPT = ".xlsx,.xls,.docx,.doc,.pdf,.txt";
+const ACCEPT = ".xlsx,.xls,.csv,.docx,.doc,.pdf,.txt";
 
 function toggleRow<T extends { id: string; selected: boolean }>(
   preview: ClientImportPreview,
@@ -465,7 +465,14 @@ function CheckRow({
   );
 }
 
-export function AdminClientImportPanel({ clientUserId }: { clientUserId: string }) {
+export function AdminClientImportPanel({
+  clientUserId,
+  embedded = false,
+}: {
+  clientUserId: string;
+  /** When true, omit outer card — parent provides section chrome. */
+  embedded?: boolean;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [parsing, setParsing] = useState(false);
@@ -558,75 +565,87 @@ export function AdminClientImportPanel({ clientUserId }: { clientUserId: string 
     }
   }
 
+  const uploadBody = (
+    <>
+      {!embedded && (
+        <>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 13,
+              fontWeight: 600,
+              color: color.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              margin: "0 0 8px",
+            }}
+          >
+            Import client packet
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: color.forest, textTransform: "none" }}>
+              Admin only
+            </span>
+          </p>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 12px", lineHeight: 1.55 }}>
+            Download the Google Sheet as <strong>.xlsx</strong> or <strong>.csv</strong>, then upload it with strategy Word docs and resume. Parses
+            job tracker, contacts, target companies, and roles. Review everything before apply — no auto-updates.
+          </p>
+        </>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept={ACCEPT}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          onFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      {files.length > 0 && (
+        <ul style={{ fontFamily: fontSans, fontSize: 13, margin: "0 0 12px", paddingLeft: 18, color: color.stone }}>
+          {files.map((f) => (
+            <li key={`${f.name}-${f.size}`}>{f.name}</li>
+          ))}
+        </ul>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <ScoutSecondaryBtn type="button" onClick={() => inputRef.current?.click()} disabled={parsing}>
+          Choose files
+        </ScoutSecondaryBtn>
+        <ScoutPrimaryBtn type="button" onClick={handleParse} disabled={parsing || !files.length}>
+          {parsing ? "Parsing…" : "Parse & review"}
+        </ScoutPrimaryBtn>
+        {files.length > 0 && (
+          <ScoutSecondaryBtn type="button" onClick={() => setFiles([])} disabled={parsing}>
+            Clear
+          </ScoutSecondaryBtn>
+        )}
+      </div>
+
+      {error && (
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", margin: "12px 0 0" }}>
+          {error}
+        </p>
+      )}
+      {success && (
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, margin: "12px 0 0" }}>
+          {success}
+        </p>
+      )}
+    </>
+  );
+
   return (
     <>
-      <ScoutBox padding={20} style={{ marginBottom: 20 }}>
-        <p
-          style={{
-            fontFamily: fontSans,
-            fontSize: 13,
-            fontWeight: 600,
-            color: color.muted,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            margin: "0 0 8px",
-          }}
-        >
-          Import client packet
-          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: color.forest, textTransform: "none" }}>
-            Admin only
-          </span>
-        </p>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 12px", lineHeight: 1.55 }}>
-          Download the Google Sheet as <strong>.xlsx</strong>, then upload it with strategy Word docs and resume. Parses
-          job tracker, contacts, target companies, and roles. Review everything before apply — no auto-updates.
-        </p>
-
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept={ACCEPT}
-          style={{ display: "none" }}
-          onChange={(e) => {
-            onFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-
-        {files.length > 0 && (
-          <ul style={{ fontFamily: fontSans, fontSize: 13, margin: "0 0 12px", paddingLeft: 18, color: color.stone }}>
-            {files.map((f) => (
-              <li key={`${f.name}-${f.size}`}>{f.name}</li>
-            ))}
-          </ul>
-        )}
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <ScoutSecondaryBtn type="button" onClick={() => inputRef.current?.click()} disabled={parsing}>
-            Choose files
-          </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn type="button" onClick={handleParse} disabled={parsing || !files.length}>
-            {parsing ? "Parsing…" : "Parse & review"}
-          </ScoutPrimaryBtn>
-          {files.length > 0 && (
-            <ScoutSecondaryBtn type="button" onClick={() => setFiles([])} disabled={parsing}>
-              Clear
-            </ScoutSecondaryBtn>
-          )}
-        </div>
-
-        {error && (
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", margin: "12px 0 0" }}>
-            {error}
-          </p>
-        )}
-        {success && (
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, margin: "12px 0 0" }}>
-            {success}
-          </p>
-        )}
-      </ScoutBox>
+      {embedded ? uploadBody : (
+        <ScoutBox padding={20} style={{ marginBottom: 20 }}>
+          {uploadBody}
+        </ScoutBox>
+      )}
 
       {showReview && preview && (
         <ImportReviewModal
