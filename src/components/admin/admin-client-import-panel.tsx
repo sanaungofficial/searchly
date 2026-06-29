@@ -160,6 +160,7 @@ export function ImportReviewModal({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -172,6 +173,9 @@ export function ImportReviewModal({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: "#FFFDF9",
           maxWidth: 720,
