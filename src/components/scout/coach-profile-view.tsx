@@ -13,7 +13,6 @@ import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shar
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { formatCoachNextAvailable } from "@/components/scout/coach-booking-modal";
-import { bioSnippet } from "@/lib/coach-directory";
 import type { CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
@@ -391,7 +390,7 @@ export function CoachProfileView({
 
   const firstName = coach.displayName.split(" ")[0];
   const aboutText = coach.aboutMe || coach.bio || "";
-  const heroHeadline = coach.headline?.trim() || coach.category || "Expert coach";
+  const heroHeadline = coach.headline?.trim() || coach.category || coach.currentRole?.trim() || null;
   const upcoming = coach.upcomingLiveSessions ?? [];
   const recordings = coach.pastRecordings ?? [];
   const packages = coach.purchasablePackages ?? [];
@@ -404,8 +403,23 @@ export function CoachProfileView({
   const coachedMinutesLabel = formatCoachedMinutes(coach.totalCoachedMinutes ?? 0);
   const statsParts = [
     coachedMinutesLabel,
-    `${coach.followerCount.toLocaleString()} follower${coach.followerCount !== 1 ? "s" : ""}`,
+    coach.followerCount > 0
+      ? `${coach.followerCount.toLocaleString()} follower${coach.followerCount !== 1 ? "s" : ""}`
+      : "",
   ].filter(Boolean);
+  const hasQualifications =
+    coach.isProfessionalCoach ||
+    Boolean(coach.experienceLevel) ||
+    ((coach.clientsCoachedCount ?? 0) > 0 && Boolean(coach.category)) ||
+    (coach.industryYears != null && coach.industryYears > 0) ||
+    experienceCompanies.length > 0 ||
+    coach.specialties.length > 0;
+  const hasReviews = coach.reviewCount > 0 || coach.reviews.length > 0;
+  const hasHeroCredentials =
+    coach.featured ||
+    coach.spotlightBadge === "top-rated" ||
+    coach.schools.length > 0 ||
+    Boolean(coach.currentCompany || coach.firms[0]);
 
   useEffect(() => {
     if (!experienceCompanies.length) return;
@@ -428,16 +442,6 @@ export function CoachProfileView({
 
   const bookingSidebar = (
     <div>
-      <div style={{ border: line, borderRadius: radius.px, overflow: "hidden", marginBottom: 16, background: surface.inset }}>
-        <div style={{ position: "relative", minHeight: 160, background: "linear-gradient(145deg, rgba(26,58,47,0.12) 0%, rgba(74,139,106,0.18) 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={88} rounded />
-          <span aria-hidden style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.92)", border: line, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: color.forest }}>▶</span>
-        </div>
-        <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink, textAlign: "center", margin: "12px 16px 0" }}>Get to know {firstName}</p>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: "6px 16px 16px", lineHeight: 1.45 }}>
-          {bioSnippet(coach.bio ?? coach.aboutMe ?? "", 120) || "Book a free intro to learn how they can help."}
-        </p>
-      </div>
       <ScoutBox padding={20}>
         {bookingAllowed ? (
           <>
@@ -458,11 +462,6 @@ export function CoachProfileView({
             {nextSlotLoading ? "Checking availability…" : nextSlotStart ? formatCoachNextAvailable(nextSlotStart) : "No upcoming slots in the next two weeks"}
           </p>
         )}
-        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>Protected by the Second Ladder coaching guarantee</p>
-      </ScoutBox>
-      <ScoutBox padding={18} style={{ marginTop: 12 }}>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, margin: "0 0 10px", lineHeight: 1.45 }}>Questions? Reach out before you get started.</p>
-        <button type="button" onClick={onBookIntro} style={{ background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, cursor: "pointer", textDecoration: "underline" }}>Send {firstName} a message</button>
       </ScoutBox>
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
         <ScoutSecondaryBtn onClick={onToggleFollow} style={{ width: "100%", minHeight: 40 }}>{coach.isFollowing ? "Following ✓" : "+ Follow"}</ScoutSecondaryBtn>
@@ -526,22 +525,23 @@ export function CoachProfileView({
           )}
         </ContentSection>
       )}
-      <ContentSection>
-        <SectionHeading title={`${firstName}'s ${coach.category ?? "coaching"} qualifications`} />
-        <ScoutBox padding={20}>
-          {coach.isProfessionalCoach && <CredentialRow icon="🏆" label="Coaches professionally" />}
-          {coach.experienceLevel && <CredentialRow icon="📊" label={`Experience level: ${coach.experienceLevel}`} />}
-          {(coach.clientsCoachedCount ?? 0) > 0 && coach.category && <CredentialRow icon="👥" label={`${coach.clientsCoachedCount}+ people coached for ${coach.category}`} />}
-          {coach.industryYears != null && coach.industryYears > 0 && <CredentialRow icon="⏱" label={`${coach.industryYears}+ years in industry`} />}
-          <CompanyLogoRow companies={experienceCompanies} lookup={companyLookup} label={`${firstName} has helped clients at`} />
-          {aboutText && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, lineHeight: 1.75, color: color.stone, margin: "16px 0 0", whiteSpace: "pre-wrap" }}>{bioSnippet(aboutText, 480) || aboutText.slice(0, 480)}{aboutText.length > 480 ? "…" : ""}</p>}
-          {coach.specialties.length > 0 && (
-            <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "14px 0 0", lineHeight: 1.55 }}>
-              {firstName} also coaches for {coach.specialties.slice(0, 6).map((s, i) => (<span key={s}>{i > 0 ? ", " : ""}<span style={{ color: color.forest, fontWeight: 600 }}>{s}</span></span>))}{coach.specialties.length > 6 ? " and more." : "."}
-            </p>
-          )}
-        </ScoutBox>
-      </ContentSection>
+      {hasQualifications && (
+        <ContentSection>
+          <SectionHeading title={`${firstName}'s ${coach.category ?? "coaching"} qualifications`} />
+          <ScoutBox padding={20}>
+            {coach.isProfessionalCoach && <CredentialRow icon="🏆" label="Coaches professionally" />}
+            {coach.experienceLevel && <CredentialRow icon="📊" label={`Experience level: ${coach.experienceLevel}`} />}
+            {(coach.clientsCoachedCount ?? 0) > 0 && coach.category && <CredentialRow icon="👥" label={`${coach.clientsCoachedCount}+ people coached for ${coach.category}`} />}
+            {coach.industryYears != null && coach.industryYears > 0 && <CredentialRow icon="⏱" label={`${coach.industryYears}+ years in industry`} />}
+            <CompanyLogoRow companies={experienceCompanies} lookup={companyLookup} label={`${firstName} has helped clients at`} />
+            {coach.specialties.length > 0 && (
+              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: experienceCompanies.length ? "14px 0 0" : 0, lineHeight: 1.55 }}>
+                {firstName} also coaches for {coach.specialties.slice(0, 6).map((s, i) => (<span key={s}>{i > 0 ? ", " : ""}<span style={{ color: color.forest, fontWeight: 600 }}>{s}</span></span>))}{coach.specialties.length > 6 ? " and more." : "."}
+              </p>
+            )}
+          </ScoutBox>
+        </ContentSection>
+      )}
       {aboutText && (
         <ContentSection>
           <SectionHeading title={`About ${firstName}`} />
@@ -605,23 +605,24 @@ export function CoachProfileView({
           </ScoutBox>
         </ContentSection>
       )}
-      <ContentSection>
-        <SectionHeading title={`${coach.reviewCount} review${coach.reviewCount === 1 ? "" : "s"}`} action={<CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />} />
-        <ScoutBox padding={20}>
-          {coach.aggregates && (
-            <div style={{ marginBottom: 20, maxWidth: 420 }}>
-              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 12px" }}>Overall rating</p>
-              <p style={{ ...bruddleHeadingStyle("h3"), margin: "0 0 16px", color: color.ink }}>{coach.aggregates.avgRating.toFixed(1)}</p>
-              <DimensionBar label="Knowledge" value={coach.aggregates.knowledge} />
-              <DimensionBar label="Value" value={coach.aggregates.value} />
-              <DimensionBar label="Responsiveness" value={coach.aggregates.responsiveness} />
-              <DimensionBar label="Supportiveness" value={coach.aggregates.supportiveness} />
-            </div>
-          )}
-          <CompanyLogoRow companies={experienceCompanies} lookup={companyLookup} label={`${firstName} has helped clients at`} />
-          {coach.reviews.length === 0 ? <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginTop: 16 }}>No reviews yet.</p> : coach.reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
-        </ScoutBox>
-      </ContentSection>
+      {hasReviews && (
+        <ContentSection>
+          <SectionHeading title={`${coach.reviewCount} review${coach.reviewCount === 1 ? "" : "s"}`} action={<CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />} />
+          <ScoutBox padding={20}>
+            {coach.aggregates && (
+              <div style={{ marginBottom: 20, maxWidth: 420 }}>
+                <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 12px" }}>Overall rating</p>
+                <p style={{ ...bruddleHeadingStyle("h3"), margin: "0 0 16px", color: color.ink }}>{coach.aggregates.avgRating.toFixed(1)}</p>
+                <DimensionBar label="Knowledge" value={coach.aggregates.knowledge} />
+                <DimensionBar label="Value" value={coach.aggregates.value} />
+                <DimensionBar label="Responsiveness" value={coach.aggregates.responsiveness} />
+                <DimensionBar label="Supportiveness" value={coach.aggregates.supportiveness} />
+              </div>
+            )}
+            {coach.reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
+          </ScoutBox>
+        </ContentSection>
+      )}
       {coach.isMyCoach && (
         <ContentSection>
           <SectionHeading title="Shared with you" />
@@ -653,13 +654,18 @@ export function CoachProfileView({
                 {coach.isInternal && <InternalCoachBadge />}
               </div>
               <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
-              <h2 style={{ ...bruddleHeadingStyle(isMobile ? "h5" : "h4"), margin: "12px 0 0", lineHeight: 1.25, color: color.ink }}>{heroHeadline}</h2>
+              {heroHeadline && (
+                <h2 style={{ ...bruddleHeadingStyle(isMobile ? "h5" : "h4"), margin: "12px 0 0", lineHeight: 1.25, color: color.ink }}>{heroHeadline}</h2>
+              )}
               {statsParts.length > 0 && <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "10px 0 0" }}>{statsParts.join(" · ")}</p>}
-              <div style={{ marginTop: 14 }}>
-                {(coach.isProfessionalCoach || coach.featured || coach.spotlightBadge === "top-rated") && <CredentialRow icon="🏆" label="Top expert" />}
-                {coach.schools[0] && <CredentialRow icon="🎓" label={`Studied at ${coach.schools[0]}`} />}
-                {(coach.currentCompany || coach.firms[0]) && <CredentialRow icon="💼" label={`Worked at ${coach.currentCompany ?? coach.firms[0]}`} />}
-              </div>
+              {hasHeroCredentials && (
+                <div style={{ marginTop: 14 }}>
+                  {coach.featured && <CredentialRow icon="⭐" label="Featured coach" />}
+                  {coach.spotlightBadge === "top-rated" && <CredentialRow icon="🏆" label="Top rated" />}
+                  {coach.schools[0] && <CredentialRow icon="🎓" label={`Studied at ${coach.schools[0]}`} />}
+                  {(coach.currentCompany || coach.firms[0]) && <CredentialRow icon="💼" label={`Worked at ${coach.currentCompany ?? coach.firms[0]}`} />}
+                </div>
+              )}
               <CompanyLogoRow companies={experienceCompanies} lookup={companyLookup} label="Successful clients at" />
               {coach.location && <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "12px 0 0" }}>{coach.location}</p>}
             </div>
