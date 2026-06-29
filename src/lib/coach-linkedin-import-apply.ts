@@ -80,15 +80,17 @@ export async function applyLinkedInImportForCoach(input: {
     appliedFields.push("linkedinUrl");
   }
 
-  if (selected.has("photoUrl") && proposed.photoSourceUrl) {
+  let importedPhotoUrl: string | null = null;
+
+  if (proposed.photoSourceUrl && !coach.photoUrl?.trim()) {
     const photoResult = await persistExternalImageToAvatarsBucket({
       sourceUrl: proposed.photoSourceUrl,
       storagePath: `coaches/${coach.id}/photo.jpg`,
-      existingUrl: coach.photoUrl,
-      forceRefresh: true,
+      existingUrl: null,
     });
     if (photoResult.url) {
-      patch.photoUrl = photoResult.url;
+      importedPhotoUrl = photoResult.url;
+      patch.photoUrl = importedPhotoUrl;
       appliedFields.push("photoUrl");
     }
   }
@@ -123,6 +125,19 @@ export async function applyLinkedInImportForCoach(input: {
     where: { id: coach.id },
     data: patch,
   });
+
+  if (importedPhotoUrl && coach.userId) {
+    const linkedUser = await prisma.user.findUnique({
+      where: { id: coach.userId },
+      select: { id: true, avatarUrl: true },
+    });
+    if (linkedUser && !linkedUser.avatarUrl?.trim()) {
+      await prisma.user.update({
+        where: { id: linkedUser.id },
+        data: { avatarUrl: importedPhotoUrl },
+      });
+    }
+  }
 
   return { coach: updated, appliedFields };
 }

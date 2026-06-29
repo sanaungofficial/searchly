@@ -12,7 +12,10 @@ import {
   type LinkedInImportMergeSection,
 } from "@/lib/linkedin-import-merge";
 import { normalizeLinkedInDraft, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
-import { persistExternalImageToAvatarsBucket } from "@/lib/persist-external-image";
+import {
+  resolveLinkedInCoverPhotoImport,
+  resolveLinkedInProfilePhotoImport,
+} from "@/lib/linkedin-import-photos";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, reconcileParsedSkillsTools, type ParsedResumeData } from "@/lib/resume-parse";
@@ -48,40 +51,36 @@ async function persistLinkedInPhotos(input: {
   existingAvatarUrl?: string | null;
   existingDraft?: LinkedInProfileDraft | null;
   sections: Set<LinkedInImportMergeSection>;
-}): Promise<{ profilePhotoUrl: string | null; coverPhotoUrl: string | null; avatarUrl: string | null }> {
+}): Promise<{
+  profilePhotoUrl: string | null;
+  coverPhotoUrl: string | null;
+  avatarUrl: string | null;
+  avatarUrlToPersist: string | null;
+}> {
   const profileSource = input.scraped.picture?.trim() || null;
   const coverSource = input.scraped.backgroundCoverImageUrl?.trim() || null;
 
   const [profileResult, coverResult] = await Promise.all([
-    input.sections.has("profilePhoto") && profileSource
-      ? persistExternalImageToAvatarsBucket({
-          sourceUrl: profileSource,
-          storagePath: `${input.storageUserId}/linkedin-profile.jpg`,
-          existingUrl: input.existingDraft?.profilePhotoUrl ?? input.existingAvatarUrl,
-          forceRefresh: true,
-        })
-      : Promise.resolve({
-          url: input.existingDraft?.profilePhotoUrl ?? input.existingAvatarUrl ?? null,
-        }),
-    input.sections.has("coverPhoto") && coverSource
-      ? persistExternalImageToAvatarsBucket({
-          sourceUrl: coverSource,
-          storagePath: `${input.storageUserId}/linkedin-cover.jpg`,
-          existingUrl: input.existingDraft?.coverPhotoUrl,
-          forceRefresh: true,
-        })
-      : Promise.resolve({ url: input.existingDraft?.coverPhotoUrl ?? null }),
+    resolveLinkedInProfilePhotoImport({
+      sourceUrl: profileSource,
+      storagePath: `${input.storageUserId}/linkedin-profile.jpg`,
+      existingDraftPhotoUrl: input.existingDraft?.profilePhotoUrl,
+      existingUserAvatarUrl: input.existingAvatarUrl,
+    }),
+    resolveLinkedInCoverPhotoImport({
+      sourceUrl: coverSource,
+      storagePath: `${input.storageUserId}/linkedin-cover.jpg`,
+      existingCoverPhotoUrl: input.existingDraft?.coverPhotoUrl,
+      sectionSelected: input.sections.has("coverPhoto"),
+    }),
   ]);
 
-  const profilePhotoUrl = input.sections.has("profilePhoto")
-    ? profileResult.url
-    : input.existingDraft?.profilePhotoUrl ?? input.existingAvatarUrl ?? null;
-  const coverPhotoUrl = input.sections.has("coverPhoto")
-    ? coverResult.url
-    : input.existingDraft?.coverPhotoUrl ?? null;
-  const avatarUrl = profilePhotoUrl ?? input.existingAvatarUrl ?? null;
-
-  return { profilePhotoUrl, coverPhotoUrl, avatarUrl };
+  return {
+    profilePhotoUrl: profileResult.profilePhotoUrl,
+    coverPhotoUrl: coverResult.coverPhotoUrl ?? input.existingDraft?.coverPhotoUrl ?? null,
+    avatarUrl: profileResult.avatarUrl,
+    avatarUrlToPersist: profileResult.avatarUrlToPersist,
+  };
 }
 
 function mergeParsedForImportSections(
@@ -169,8 +168,8 @@ export async function applyLinkedInImportSelection(input: {
   const fullName = mergedParsed.name?.trim() || null;
   const userUpdate: Prisma.UserUpdateInput = {};
   if (fullName && !dbUser.name?.trim()) userUpdate.name = fullName;
-  if (selected.has("profilePhoto") && photos.profilePhotoUrl) {
-    userUpdate.avatarUrl = photos.profilePhotoUrl;
+  if (photos.avatarUrlToPersist) {
+    userUpdate.avatarUrl = photos.avatarUrlToPersist;
   }
   if (Object.keys(userUpdate).length > 0) {
     await prisma.user.update({ where: { id: dbUser.id }, data: userUpdate });
