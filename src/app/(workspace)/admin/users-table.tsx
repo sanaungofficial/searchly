@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 import { ScoutBox } from "@/components/scout/scout-box";
+import { AdminAddUserModal } from "@/components/admin/admin-add-user-modal";
 import { UserDrawer, DrawerUser } from "./user-drawer";
 
 export type UserRow = DrawerUser;
@@ -37,123 +38,18 @@ type SubFilter = (typeof SUB_FILTERS)[number];
 function InviteModal({
   onClose,
   onInvited,
+  canAssignAdmin,
 }: {
   onClose: () => void;
-  onInvited: (user: UserRow) => void;
+  onInvited: (user: UserRow, meta: { warnings: string[] }) => void;
+  canAssignAdmin: boolean;
 }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<UserRole>("USER");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: name || null, role }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to invite user");
-      }
-      const user = await res.json();
-      onInvited(user);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
-    <>
-      <div className="fixed inset-0 bg-black/40 z-[100]" onClick={onClose} />
-      <div className="fixed inset-0 flex items-center justify-center z-[101] p-4">
-        <ScoutBox padding={24} className="shadow-2xl w-full max-w-md">
-          <div className="flex items-center justify-between mb-5">
-            <h2
-              className="text-base font-semibold text-[#1A1A1A]"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Invite user
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-[var(--scout-muted)] hover:text-[#52493F] w-7 h-7 flex items-center justify-center rounded-[var(--scout-radius)] hover:bg-[var(--scout-inset)] text-lg leading-none"
-            >
-              ✕
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mb-1.5">Email *</label>
-              <input
-                type="email"
-                required
-                autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mb-1.5">Name (optional)</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full name"
-                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mb-1.5">Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-[family-name:var(--font-mono-ui)]"
-              >
-                <option value="USER">user</option>
-                <option value="COACH">coach</option>
-                <option value="ADMIN">admin</option>
-              </select>
-            </div>
-            {error && <p className="text-xs text-red-600 font-[family-name:var(--font-mono-ui)]">{error}</p>}
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-sm text-[var(--scout-muted)] px-4 py-2 rounded-[var(--scout-radius)] hover:bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="text-sm bg-[#1A3A2F] text-[#E8D5A3] px-4 py-2 rounded-[var(--scout-radius)] hover:opacity-90 disabled:opacity-50 font-medium"
-              >
-                {loading ? "Sending…" : "Send invite"}
-              </button>
-            </div>
-          </form>
-        </ScoutBox>
-      </div>
-    </>
+    <AdminAddUserModal
+      onClose={onClose}
+      onCreated={onInvited}
+      canAssignAdmin={canAssignAdmin}
+    />
   );
 }
 
@@ -166,6 +62,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [page, setPage] = useState(1);
   const [showInvite, setShowInvite] = useState(false);
+  const [createNotice, setCreateNotice] = useState<string | null>(null);
 
   const filtered = users
     .filter((u) => {
@@ -194,26 +91,56 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
     setSelectedUser((prev) => (prev?.id === id ? { ...prev, role } : prev));
   }
 
-  function handleInvited(newUser: UserRow) {
+  function handleInvited(newUser: UserRow, meta: { warnings: string[] }) {
     setUsers((prev) => {
       const exists = prev.find((u) => u.id === newUser.id);
-      if (exists) return prev.map((u) => (u.id === newUser.id ? { ...u, ...newUser } : u));
+      if (exists) {
+        return prev.map((u) =>
+          u.id === newUser.id
+            ? {
+                ...u,
+                ...newUser,
+                monthlyUsage: newUser.monthlyUsage ?? u.monthlyUsage,
+                jobs: newUser.jobs ?? u.jobs,
+                _count: newUser._count ?? u._count,
+                subscription: newUser.subscription ?? u.subscription,
+                profile: newUser.profile ?? u.profile,
+              }
+            : u,
+        );
+      }
       return [
         {
           ...newUser,
-          monthlyUsage: [],
-          jobs: [],
-          _count: { jobs: 0 },
-          subscription: null,
-          profile: null,
+          monthlyUsage: newUser.monthlyUsage ?? [],
+          jobs: newUser.jobs ?? [],
+          _count: newUser._count ?? { jobs: 0 },
+          subscription: newUser.subscription ?? null,
+          profile: newUser.profile ?? null,
         },
         ...prev,
       ];
     });
+    setCreateNotice(
+      meta.warnings.length > 0 ? meta.warnings.join(" ") : "User account created.",
+    );
   }
 
   return (
     <>
+      {createNotice && (
+        <div
+          className="mb-4 text-sm leading-relaxed"
+          style={{
+            background: "rgba(26,58,47,0.06)",
+            border: "var(--scout-border)",
+            padding: "12px 16px",
+            color: "#52493F",
+          }}
+        >
+          {createNotice}
+        </div>
+      )}
       <ScoutBox padding={0} style={{ overflow: "hidden" }}>
         {/* Controls */}
         <div className="px-6 py-4 border-b border-[rgba(17,17,17,0.08)] space-y-3">
@@ -237,14 +164,12 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                 </button>
               ))}
             </div>
-            {canEdit && (
-              <button
-                onClick={() => setShowInvite(true)}
-                className="shrink-0 text-xs bg-[#1A3A2F] text-[#E8D5A3] px-3 py-2 rounded-[var(--scout-radius)] hover:opacity-90 font-medium"
-              >
-                + Invite
-              </button>
-            )}
+            <button
+              onClick={() => { setShowInvite(true); setCreateNotice(null); }}
+              className="shrink-0 text-xs bg-[#1A3A2F] text-[#E8D5A3] px-3 py-2 rounded-[var(--scout-radius)] hover:opacity-90 font-medium"
+            >
+              + Add user
+            </button>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
@@ -388,6 +313,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
         <InviteModal
           onClose={() => setShowInvite(false)}
           onInvited={handleInvited}
+          canAssignAdmin={canEdit}
         />
       )}
 
