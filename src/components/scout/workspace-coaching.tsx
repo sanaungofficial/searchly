@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { CoachingDirectory } from "@/components/scout/coaching-directory";
 import { ProfileCoachPanel } from "@/components/scout/profile-coach-panel";
+import { CoachingBookingsPanel } from "@/components/scout/coaching-bookings-panel";
 import { CoachingLayoutSidebar } from "@/components/scout/coaching-layout-sidebar";
 import type { CoachingTab } from "@/components/scout/coaching-layout-sidebar";
 import { WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
@@ -18,7 +19,7 @@ import type { CoachListItem } from "@/lib/coach-types";
 const SIDEBAR_TABS: { id: CoachingTab; label: string }[] = [
   { id: "directory", label: "Find a coach" },
   { id: "my-coaches", label: "My coaches" },
-  { id: "sessions", label: "Sessions" },
+  { id: "bookings", label: "Bookings" },
   { id: "notes", label: "Session notes" },
   { id: "resources", label: "Resources" },
 ];
@@ -49,19 +50,6 @@ function EmptyIcon({ children }: { children: ReactNode }) {
     >
       {children}
     </div>
-  );
-}
-
-function CalendarSvg() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-      <rect x="2" y="4" width="18" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M2 9h18" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M7 2v3M15 2v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="7.5" cy="13.5" r="1" fill="currentColor" />
-      <circle cx="11" cy="13.5" r="1" fill="currentColor" />
-      <circle cx="14.5" cy="13.5" r="1" fill="currentColor" />
-    </svg>
   );
 }
 
@@ -294,12 +282,8 @@ function CoachingContent() {
                   <ProfileCoachPanel isMobile={isMobile} embedded />
                 )}
 
-                {isLoggedIn && page === "sessions" && (
-                  <PlaceholderTab
-                    icon={<CalendarSvg />}
-                    title="Your sessions"
-                    description="Upcoming and past coaching sessions will appear here once you book time with a coach."
-                  />
+                {isLoggedIn && page === "bookings" && (
+                  <CoachingBookingsPanel isMobile={isMobile} />
                 )}
 
                 {isLoggedIn && page === "notes" && (

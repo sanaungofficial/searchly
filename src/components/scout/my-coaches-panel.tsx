@@ -245,7 +245,7 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
   }, [coaches]);
 
   if (loading) {
-    return <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0 }}>Loading sessions…</p>;
+    return <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0 }}>Loading bookings…</p>;
   }
 
   const hasSessions = upcomingSessions.length > 0;
@@ -255,7 +255,7 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
     return (
       <ScoutBox padding={compact ? 16 : 20}>
         <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.muted, lineHeight: 1.6 }}>
-          No upcoming sessions yet. Book from your matched coach above or the{" "}
+          No upcoming bookings yet. Book from your matched coach above or the{" "}
           <button
             type="button"
             onClick={() => router.push("/coaching")}
@@ -273,11 +273,11 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
     <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "1fr 1fr", gap: compact ? 20 : 24 }}>
       <div>
         <p style={{ margin: "0 0 10px", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
-          Upcoming sessions
+          Upcoming bookings
         </p>
         {!hasSessions ? (
           <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
-            No upcoming sessions scheduled.
+            No upcoming bookings scheduled.
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -292,7 +292,7 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
           </div>
         )}
         <p style={{ margin: "10px 0 0", fontFamily: fontSans, fontSize: 12, color: color.muted, lineHeight: 1.5 }}>
-          Tap a session for details, reschedule, or cancel.
+          Tap a booking for details, reschedule, or cancel.
         </p>
       </div>
 
