@@ -7,6 +7,7 @@ import {
   type ImportRunMeta,
 } from "@/lib/client-import/import-run";
 import type { ClientImportApplyResult } from "@/lib/client-import/types";
+import { importRunUnavailableResponse, isPrismaMissingRelationError } from "@/lib/prisma-errors";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -82,6 +83,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ run: detail, runId: run.id });
   } catch (err) {
+    if (isPrismaMissingRelationError(err)) return importRunUnavailableResponse();
     console.error("[import runs record]", err);
     const message = err instanceof Error ? err.message : "Failed to record import run";
     return NextResponse.json({ error: message }, { status: 500 });
