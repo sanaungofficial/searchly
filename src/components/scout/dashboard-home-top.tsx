@@ -14,10 +14,8 @@ import {
   recommendationPathForGoals,
   SALES_TEAM_FORM_URL,
 } from "@/lib/dashboard-goals";
-import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
-import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-overview";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
 import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-modal";
@@ -123,10 +121,7 @@ function tuningInputFromProfile(p: ProfileData): RecommendationTuningInput {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath, openPricing } =
-    useWorkspace();
-  const isStaffPortal = isStaffPortalRole(userRole);
-  const showClientCoachUi = showSeekerDashboard;
+  const { withClientScope, withClientReviewPath, openPricing } = useWorkspace();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,12 +192,12 @@ export function DashboardHomeTop({ isMobile }: Props) {
   }, [withClientScope]);
 
   useEffect(() => {
-    if (!showClientCoachUi || loading || !profile || goalWizardAutoOpenedRef.current) return;
+    if (loading || !profile || goalWizardAutoOpenedRef.current) return;
     if (profile.dashboardGoals.length > 0 || isGoalsWizardDismissed()) return;
     goalWizardAutoOpenedRef.current = true;
     setGoalWizardIntro(true);
     setGoalModalOpen(true);
-  }, [showClientCoachUi, loading, profile]);
+  }, [loading, profile]);
 
   const tuningInput = useMemo(() => (profile ? tuningInputFromProfile(profile) : null), [profile]);
   const matchingPrefProfile = useMemo(
@@ -379,7 +374,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const pct = tuningInput ? recommendationTuningPct(tuningInput) : 0;
   const barColor = pct >= 75 ? color.forest : pct >= 50 ? "#C4A86A" : "#C4574A";
 
-  const actionItemsAccordion = showClientCoachUi && (
+  const actionItemsAccordion = (
     <ScoutBox
       padding={isMobile ? "16px 18px" : "18px 20px"}
       style={{
@@ -490,7 +485,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   );
 
   // ── Quick action cards (Contra-style 2+1 grid) ─────────────────────────────
-  const ctaCards = showClientCoachUi && (
+  const ctaCards = (
     <div
       style={{
         display: "grid",
@@ -582,7 +577,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   );
 
   // ── Discovery Score ───────────────────────────────────────────────────────
-  const discoveryScoreCard = showClientCoachUi && profile && !loading && tuningInput && (
+  const discoveryScoreCard = profile && !loading && tuningInput && (
     <DiscoveryScoreCard
       input={{
         name: profile.name,
@@ -771,7 +766,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   );
 
   // ── Welcome header ────────────────────────────────────────────────────────
-  const welcomeHeader = showClientCoachUi && profile && (
+  const welcomeHeader = profile && (
     <div style={{ marginBottom: isMobile ? 20 : 24 }}>
       <p style={{ ...bruddleHeadingStyle(isMobile ? "h4" : "h3"), margin: 0 }}>
         Welcome, {profile.name.split(" ")[0]} 👋
@@ -790,20 +785,18 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {welcomeHeader}
 
       {/* Two-column row: action items + CTA cards */}
-      {showClientCoachUi && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.2fr) minmax(0, 1fr)",
-            gap: isMobile ? 16 : 20,
-            marginBottom: isMobile ? 20 : 24,
-            alignItems: isMobile ? "start" : "stretch",
-          }}
-        >
-          {actionItemsAccordion || <div />}
-          {ctaCards}
-        </div>
-      )}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1.2fr) minmax(0, 1fr)",
+          gap: isMobile ? 16 : 20,
+          marginBottom: isMobile ? 20 : 24,
+          alignItems: isMobile ? "start" : "stretch",
+        }}
+      >
+        {actionItemsAccordion || <div />}
+        {ctaCards}
+      </div>
 
       {/* Discovery Score — full width */}
       {discoveryScoreCard && (
@@ -827,13 +820,12 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
-          {!showClientCoachUi && showExpertDashboard && <ExpertDashboardOverview isMobile={isMobile} />}
           {eventsSection}
         </div>
       </div>
 
       {/* Job search metrics */}
-      {showClientCoachUi && <DashboardGetStarted isMobile={isMobile} />}
+      <DashboardGetStarted isMobile={isMobile} />
 
       {/* Modals */}
       {pendingSync && <ProfileSyncPromptModal sync={pendingSync} onConfirm={confirmProfileSync} onSkip={() => setPendingSync(null)} saving={syncSaving} />}
