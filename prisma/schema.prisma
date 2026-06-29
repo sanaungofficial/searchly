@@ -63,6 +63,7 @@ model User {
   inboxActivities      InboxActivity[]
   assistantThreads     AssistantThread[]
   networkJobRequests   NetworkJobRequest[]
+  applicationQaEntries ApplicationQaEntry[]
 
   @@index([referredByUserId])
 }
@@ -1359,6 +1360,20 @@ model AssistantMessage {
   createdAt DateTime @default(now())
 
   @@index([threadId, createdAt])
+}
+
+/// Reusable application Q&A pairs for job applications (user-managed bank).
+model ApplicationQaEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question  String   @db.Text
+  answer    String   @db.Text
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 /// Kimchi-owned Nylas Agent Account (system mailbox).

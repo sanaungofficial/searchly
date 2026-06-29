@@ -43,6 +43,7 @@ import {
 } from "@/lib/network-job-client-actions";
 import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 import { JobInsiderConnectionSection } from "./job-insider-connection-section";
+import { ApplicationQaModal } from "./application-qa-bank";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -789,6 +790,7 @@ export function JobDrawer({
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
+  const [qaModalOpen, setQaModalOpen] = useState(false);
   const [resumeMatchForJob, setResumeMatchForJob] = useState<MatchData | null>(null);
   const [resumeMatchLoading, setResumeMatchLoading] = useState(false);
   const [resumeMatchName, setResumeMatchName] = useState<string | null>(null);
@@ -1567,6 +1569,30 @@ export function JobDrawer({
             </div>
             )}
 
+            <div>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                Application Q&A
+              </p>
+              <button
+                type="button"
+                onClick={() => setQaModalOpen(true)}
+                style={{
+                  width: "100%",
+                  padding: "11px 14px",
+                  background: surface.inset,
+                  border: line,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: sans,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#1A1A1A",
+                  cursor: "pointer",
+                }}
+              >
+                Open Q&A bank
+              </button>
+            </div>
+
             {/* AI tools — desktop sidebar only; mobile uses sticky footer */}
             {!isMobile && (
             <div>
@@ -1744,6 +1770,12 @@ export function JobDrawer({
           onClose={() => setRequestModal(null)}
         />
       )}
+
+      <ApplicationQaModal
+        open={qaModalOpen}
+        onClose={() => setQaModalOpen(false)}
+        scopePath={withClientScope}
+      />
     </>
   );
 }
