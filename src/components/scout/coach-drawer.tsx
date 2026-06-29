@@ -14,6 +14,10 @@ import {
   CoachBookingModal,
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
+import {
+  CoachBookingRequestModal,
+  type CoachBookingRequestSessionType,
+} from "@/components/scout/coach-booking-request-modal";
 import { ScoutPrimaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
@@ -183,6 +187,8 @@ export function CoachDrawer({
   const [showReview, setShowReview] = useState(false);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingModalType, setBookingModalType] = useState<CoachBookingSessionType>("intro");
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestModalType, setRequestModalType] = useState<CoachBookingRequestSessionType>("intro");
   const [nextSlotStart, setNextSlotStart] = useState<number | null>(null);
   const [nextSlotLoading, setNextSlotLoading] = useState(false);
   const autoOpenedBooking = useRef(false);
@@ -208,6 +214,11 @@ export function CoachDrawer({
 
   const sessionDurationMinutes = coach?.schedulerDurationMinutes ?? 60;
   const canBookInApp = Boolean(coach?.hasNylasBooking);
+  const canRequestBooking = Boolean(
+    coach &&
+      !coach.hasNylasBooking &&
+      !(coach.requiresAssignment && !coach.isMyCoach),
+  );
 
   useEffect(() => {
     if (!coach?.hasNylasBooking || !slug) return;
@@ -244,6 +255,15 @@ export function CoachDrawer({
     }
     setBookingModalType(type);
     setBookingModalOpen(true);
+  };
+
+  const openRequestBooking = (type: CoachBookingRequestSessionType = "intro") => {
+    if (!authChecked || !user) {
+      requireAuth("login");
+      return;
+    }
+    setRequestModalType(type);
+    setRequestModalOpen(true);
   };
 
   async function buyPackage(packageId: string) {
@@ -409,6 +429,8 @@ export function CoachDrawer({
               matchedSkills={matchedSkills}
               sessionDurationMinutes={sessionDurationMinutes}
               canBookInApp={canBookInApp}
+              canRequestBooking={canRequestBooking}
+              bookingAvailability={coach.bookingAvailability ?? null}
               bookUrl={coach.calLink}
               nextSlotStart={nextSlotStart}
               nextSlotLoading={nextSlotLoading}
@@ -416,6 +438,7 @@ export function CoachDrawer({
               isAdmin={isAdmin}
               onBookIntro={() => openBooking("intro")}
               onBookSession={() => openBooking("session")}
+              onRequestBooking={() => openRequestBooking("intro")}
               onBuyPackage={buyPackage}
               onToggleFollow={toggleFollow}
               onToggleMyCoach={toggleMyCoach}
@@ -430,7 +453,7 @@ export function CoachDrawer({
         <ReviewFormModal coach={coach} slug={slug} onClose={() => setShowReview(false)} onSubmitted={load} />
       )}
 
-      {coach && (
+      {coach && canBookInApp && (
         <CoachBookingModal
           open={bookingModalOpen}
           onClose={() => setBookingModalOpen(false)}
@@ -442,6 +465,21 @@ export function CoachDrawer({
           initialSessionType={bookingModalType}
           guestName={user?.name ?? undefined}
           onBooked={load}
+        />
+      )}
+
+      {coach && canRequestBooking && (
+        <CoachBookingRequestModal
+          open={requestModalOpen}
+          onClose={() => setRequestModalOpen(false)}
+          slug={slug}
+          coachDisplayName={coach.displayName}
+          coachPhotoUrl={coach.photoUrl}
+          sessionDurationMinutes={sessionDurationMinutes}
+          availability={coach.bookingAvailability ?? null}
+          initialSessionType={requestModalType}
+          guestName={user?.name ?? undefined}
+          onSubmitted={load}
         />
       )}
     </>

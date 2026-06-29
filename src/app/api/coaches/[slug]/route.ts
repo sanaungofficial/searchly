@@ -9,6 +9,7 @@ import { isNylasConfigured } from "@/lib/nylas";
 import { listCoachLiveSessions, listCoachPastRecordings, toLiveSessionView } from "@/lib/live-session-db";
 import { listPublicCoachResources } from "@/lib/coach-shared-documents";
 import { enrichPackages } from "@/lib/coach-pricing";
+import { formatCoachAvailabilitySummary } from "@/lib/coach-availability-display";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -37,6 +38,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       calLink: true,
       nylasSchedulerConfigId: true,
       schedulerDurationMinutes: true,
+      schedulerTimezone: true,
+      schedulerOpenHourStart: true,
+      schedulerOpenHourEnd: true,
+      schedulerOpenDays: true,
+      schedulerWeeklyHours: true,
+      schedulerAvailabilityNotes: true,
+      introDurationMinutes: true,
       firms: true,
       schools: true,
       specialties: true,
@@ -131,6 +139,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     toLiveSessionView(row, { registrationCount: row._count.registrations }),
   );
   const publicResources = await listPublicCoachResources(coach.id);
+  const availabilityMeta = formatCoachAvailabilitySummary(coach);
+  const hasNylasBooking = Boolean(coach.nylasSchedulerConfigId && isNylasConfigured());
 
   return NextResponse.json({
     id: coach.id,
@@ -149,7 +159,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     calLink: coach.calLink,
     nylasSchedulerConfigId: coach.nylasSchedulerConfigId,
     schedulerDurationMinutes: coach.schedulerDurationMinutes ?? 60,
-    hasNylasBooking: Boolean(coach.nylasSchedulerConfigId && isNylasConfigured()),
+    hasNylasBooking,
+    bookingAvailability: {
+      summary: availabilityMeta.summary,
+      timezone: availabilityMeta.timezone,
+      availabilityNotes: availabilityMeta.availabilityNotes,
+      introDurationMinutes: coach.introDurationMinutes ?? 30,
+      sessionDurationMinutes: coach.schedulerDurationMinutes ?? 60,
+    },
     firms: coach.firms,
     schools: coach.schools,
     specialties: coach.specialties,
