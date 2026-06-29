@@ -1,12 +1,6 @@
 import { logAiUsage } from "@/lib/ai-usage";
-import {
-  buildResumeTextFromParsed,
-  isApifyConfigured,
-  mapApifyProfileToLinkedInDraft,
-  mapApifyProfileToParsedData,
-  scrapeLinkedInProfile,
-} from "@/lib/apify-linkedin";
-import { mergeLinkedInImportParsed } from "@/lib/merge-parsed-data";
+import { isApifyConfigured, scrapeLinkedInProfile } from "@/lib/apify-linkedin";
+import { applyLinkedInImportForUser } from "@/lib/linkedin-import-apply";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { getLegacyAnthropicClient, hasLegacyAnthropicClient, isKimchiAiConfigured, kimchiModelId } from "@/lib/llm";
 import { getPrompt } from "@/lib/prompts";
@@ -142,55 +136,7 @@ async function importLinkedInForClient(input: {
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const scraped = await scrapeLinkedInProfile(linkedinUrl, { userId: dbUser.id });
-  const incomingParsed = mapApifyProfileToParsedData(scraped);
-  const existingParsed = normalizeParsedResumeData(profile?.parsedData ?? null);
-  const mergedParsed = mergeLinkedInImportParsed(existingParsed, incomingParsed);
-  const linkedInDraft = mapApifyProfileToLinkedInDraft(scraped);
-  const resumeText = buildResumeTextFromParsed(mergedParsed);
-
-  const fullName = mergedParsed.name?.trim();
-  if (fullName && !dbUser.name?.trim()) {
-    await prisma.user.update({ where: { id: dbUser.id }, data: { name: fullName } });
-  }
-
-  await prisma.profile.upsert({
-    where: { userId: dbUser.id },
-    update: {
-      linkedinUrl,
-      headline: scraped.headline?.trim() || profile?.headline || null,
-      summary: mergedParsed.summary ?? profile?.summary ?? null,
-      parsedData: mergedParsed as unknown as Prisma.InputJsonValue,
-      resumeText: resumeText || profile?.resumeText || null,
-      linkedInDraft: linkedInDraft as unknown as Prisma.InputJsonValue,
-      linkedInDraftUpdatedAt: new Date(),
-    },
-    create: {
-      userId: dbUser.id,
-      linkedinUrl,
-      headline: scraped.headline?.trim() || null,
-      summary: mergedParsed.summary ?? null,
-      parsedData: mergedParsed as unknown as Prisma.InputJsonValue,
-      resumeText,
-      linkedInDraft: linkedInDraft as unknown as Prisma.InputJsonValue,
-      linkedInDraftUpdatedAt: new Date(),
-      targetRoles: [],
-      priorities: [],
-    },
-  });
-
-  const primaryAsset = await prisma.userAsset.findFirst({
-    where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
-    orderBy: { createdAt: "desc" },
-  });
-  if (primaryAsset) {
-    await prisma.userAsset.update({
-      where: { id: primaryAsset.id },
-      data: {
-        parsedData: mergedParsed as unknown as Prisma.InputJsonValue,
-        resumeText: resumeText || primaryAsset.resumeText,
-      },
-    });
-  }
+  await applyLinkedInImportForUser({ dbUser, profile, linkedinUrl, scraped });
 }
 
 export async function provisionClient(input: ProvisionClientInput): Promise<ProvisionClientResult> {

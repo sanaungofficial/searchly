@@ -23,6 +23,7 @@ import {
 } from "@/lib/linkedin-analysis";
 import { friendlyLinkedInImportError, LINKEDIN_SPARSE_MESSAGE } from "@/lib/user-facing-copy";
 import { withClientUserId } from "@/lib/workspace-urls";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { LINKEDIN_EMPLOYMENT_TYPES, newLinkedInEntryId, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
@@ -269,6 +270,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
   const compact = useCompactLayout();
   const stackLayout = isMobile || compact;
   const api = useCallback((path: string) => withClientUserId(path, clientUserId), [clientUserId]);
+  const { updateAvatarUrl } = useWorkspace();
 
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -508,7 +510,10 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
         ...draft,
         ...(type === "profile" ? { profilePhotoUrl: data.url } : { coverPhotoUrl: data.url }),
       };
-      if (type === "profile") setAvatarUrl(data.url);
+      if (type === "profile") {
+        setAvatarUrl(data.url);
+        updateAvatarUrl(data.url);
+      }
       await saveDraft(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
@@ -556,6 +561,10 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false, cli
       await load();
       if (typeof data.linkedinUrl === "string") setLinkedinUrl(data.linkedinUrl);
       if (typeof data.name === "string") setName(data.name);
+      if (typeof data.avatarUrl === "string" && data.avatarUrl) {
+        setAvatarUrl(data.avatarUrl);
+        updateAvatarUrl(data.avatarUrl);
+      }
       setUpdatedAt(new Date().toISOString());
       setShowImportInput(false);
       setImportUrl("");

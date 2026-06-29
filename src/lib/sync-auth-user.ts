@@ -4,6 +4,9 @@ import { sendWelcomeEmail } from "@/lib/email";
 import { attachReferrer } from "@/lib/referrals";
 import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { ensurePartneroCustomer, partneroEnabled } from "@/lib/partnero";
+import {
+  persistExternalImageToAvatarsBucket,
+} from "@/lib/persist-external-image";
 
 type CookieStore = {
   get: (name: string) => { value: string } | undefined;
@@ -55,16 +58,25 @@ export async function provisionUserFromAuth(user: User, cookieStore: CookieStore
     user.user_metadata?.full_name ??
     user.user_metadata?.name ??
     user.email.split("@")[0];
-  const avatarUrl =
+  const oauthAvatarUrl =
     user.user_metadata?.avatar_url ??
     user.user_metadata?.picture ??
     null;
 
   const existing = await prisma.user.findUnique({ where: { email: user.email } });
-  const preservedAvatar = existing?.avatarUrl ?? avatarUrl;
+  let avatarUrl = existing?.avatarUrl ?? null;
+
+  if (!avatarUrl && oauthAvatarUrl) {
+    const persisted = await persistExternalImageToAvatarsBucket({
+      sourceUrl: oauthAvatarUrl,
+      storagePath: `${user.id}/avatar.jpg`,
+    });
+    avatarUrl = persisted.url ?? oauthAvatarUrl;
+  }
+
   const created = await prisma.user.upsert({
     where: { email: user.email },
-    update: { name, avatarUrl: preservedAvatar },
+    update: { name, avatarUrl: existing?.avatarUrl ?? avatarUrl },
     create: { email: user.email, name, avatarUrl },
   });
 
