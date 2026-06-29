@@ -99,7 +99,7 @@ export async function ensureAssetResumeParsed(
     return asset;
   }
 
-  if (!asset.url) {
+  if (!asset.url || asset.url.startsWith("kimchi://")) {
     return asset.resumeText?.trim() ? asset : null;
   }
 

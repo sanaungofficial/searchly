@@ -1,11 +1,12 @@
 /** Plain-language copy for errors and empty states — keep at ~7th-grade reading level. */
 
-export const RESUME_MISSING_HEADLINE = "You don't have a resume saved yet";
+export const RESUME_MISSING_HEADLINE = "You don't have a master resume yet";
 
 export const RESUME_MISSING_BODY =
-  "Add a resume under Profile, or build your profile from scratch — then come back to improve your match for this job.";
+  "Upload a resume under Profile → Resumes, or click Create as a resume to build one from your profile data — then come back to tailor for this job.";
 
-export const RESUME_MISSING_SHORT = "Add a resume in Profile first, then try again.";
+export const RESUME_MISSING_SHORT =
+  "Upload a resume or create one from your profile under Profile → Resumes, then try again.";
 
 export function friendlyResumeError(error: string | null | undefined): {
   headline: string;

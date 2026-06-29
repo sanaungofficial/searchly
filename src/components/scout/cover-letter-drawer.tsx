@@ -9,6 +9,8 @@ import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { scoutPrimaryCtaStyle } from "@/components/scout/scout-box";
+import { MasterResumeGate } from "@/components/scout/master-resume-gate";
+import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 
 interface CoverLetterDrawerProps {
@@ -48,6 +50,7 @@ async function streamInto(
 
 export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, resumeAssetId, onClose, onLetterSaved }: CoverLetterDrawerProps) {
   const { user, openPricing, withClientScope } = useWorkspace();
+  const masterResume = useMasterResumeStatus();
   const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
@@ -385,12 +388,19 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
             <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
               {loading ? (
                 <KimchiProcessLoader preset="coverLetter" variant="centered" />
+              ) : !masterResume.loading && !masterResume.hasMasterResume ? (
+                <MasterResumeGate
+                  canCreateFromProfile={masterResume.canCreateFromProfile}
+                  onCreateFromProfile={() => void masterResume.createFromProfile()}
+                  creating={masterResume.creating}
+                  createError={masterResume.createError}
+                />
               ) : !letter ? (
                 <div style={{ paddingTop: 48, textAlign: "center", maxWidth: 360, margin: "0 auto" }}>
                   <p style={{ fontFamily: fontSans, fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 20 }}>
                     {error
                       ? error === "No resume found"
-                        ? "Upload a resume under Profile first."
+                        ? "Add a master resume under Profile first — upload a file or create one from your profile."
                         : error === "No job description provided"
                           ? "No job description on file — paste it in the panel on the right."
                           : "Couldn't generate a cover letter — try again."
