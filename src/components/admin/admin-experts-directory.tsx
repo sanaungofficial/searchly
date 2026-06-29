@@ -122,6 +122,7 @@ export function AdminExpertsDirectory() {
             name: item.name,
             logoUrl: item.logoUrl ?? null,
             website: item.website ?? null,
+            careersUrl: null,
           };
         }
         setCompanyLookup(map);
@@ -342,7 +343,7 @@ export function AdminExpertsDirectory() {
                 onOpenCoach={openCoach}
                 companyLookup={companyLookup}
                 variant="admin"
-                adminStatus={coach.status}
+                adminStatus={(coach as AdminExpertListItem).status}
               />
             ))}
           </div>
