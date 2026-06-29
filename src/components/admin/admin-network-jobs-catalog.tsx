@@ -256,7 +256,7 @@ export function AdminNetworkJobsCatalog() {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div>
         <Link
-          href="/admin"
+          href="/admin/dashboard"
           style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, textDecoration: "none" }}
         >
           ← Admin dashboard
