@@ -163,10 +163,10 @@ export function UserDrawer({
   const drawer = (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/25 z-[100]" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/25 z-[220]" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-[var(--scout-page)] border-l border-[rgba(17,17,17,0.14)] z-[101] overflow-y-auto shadow-2xl flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-[var(--scout-page)] border-l border-[rgba(17,17,17,0.14)] z-[221] overflow-y-auto shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-[rgba(17,17,17,0.14)] bg-[var(--scout-surface)]/60 backdrop-blur-sm sticky top-0 z-10">
           <div className="min-w-0 flex-1 pr-4">

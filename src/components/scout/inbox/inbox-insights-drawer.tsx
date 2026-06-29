@@ -8,6 +8,7 @@ import type { FollowUpSuggestion, InboxInsightsPayload } from "@/lib/inbox-insig
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { InboxInsightRow } from "./inbox-insight-row";
 import { InboxWisdomTipRow } from "./inbox-wisdom-tip-row";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import type { ActivitySummary, PipelineJob } from "./inbox-types";
 
 const DRAWER_WIDTH = 440;
@@ -57,7 +58,7 @@ export function InboxInsightsDrawer({
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.18)",
-          zIndex: 200,
+          zIndex: DRAWER_BACKDROP_Z,
           backdropFilter: isMobile ? "none" : "blur(1px)",
         }}
       />
@@ -72,7 +73,7 @@ export function InboxInsightsDrawer({
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,
           border: isMobile ? "none" : "var(--scout-border)",
-          zIndex: 201,
+          zIndex: DRAWER_Z,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
           display: "flex",
           flexDirection: "column",

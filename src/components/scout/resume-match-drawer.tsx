@@ -12,6 +12,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { scoutPrimaryCtaStyle } from "./scout-box";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 import {
   BigScoreGauge,
   IndustryTag,
@@ -477,7 +478,7 @@ export function ResumeMatchDrawer({
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.4)",
-          zIndex: 200,
+          zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.28s ease",
         }}
@@ -494,7 +495,7 @@ export function ResumeMatchDrawer({
           width: "min(960px, 85vw)",
           background: "#FFFFFF",
           borderLeft: "var(--scout-border)",
-          zIndex: 201,
+          zIndex: DRAWER_NESTED_Z,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-4px 4px 0 #161616",

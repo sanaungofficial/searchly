@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 export type NetworkJobRequestModalKind = "intro" | "send-profile";
 
@@ -106,7 +107,7 @@ export function NetworkJobRequestModal({
 
   return (
     <>
-      <div role="presentation" onClick={handleClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 80 }} />
+      <div role="presentation" onClick={handleClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         role="dialog"
         aria-modal="true"
@@ -120,7 +121,7 @@ export function NetworkJobRequestModal({
           background: surface.card,
           border: "var(--scout-border)",
           borderRadius: "var(--scout-radius)",
-          zIndex: 81,
+          zIndex: DRAWER_Z,
           boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
           padding: "22px 24px 20px",
         }}

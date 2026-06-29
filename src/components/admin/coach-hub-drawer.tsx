@@ -10,6 +10,7 @@ import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
 import { CoachProfileTab } from "@/components/scout/coach-profile-tab";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
@@ -73,7 +74,7 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
+      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         style={{
           position: "fixed",
@@ -85,7 +86,7 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,
           overflow: "hidden",
-          zIndex: 70,
+          zIndex: DRAWER_Z,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",

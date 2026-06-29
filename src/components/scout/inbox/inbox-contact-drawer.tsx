@@ -13,6 +13,7 @@ import { InboxStatusPills } from "./inbox-status-pill";
 import { SenderAvatar } from "./sender-avatar";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import type { ContactCardData, ContactTimelineItem } from "./inbox-types";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = "88vw";
 const SIDEBAR_WIDTH = 320;
@@ -467,7 +468,7 @@ export function InboxContactDrawer({
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: 80 }} />
+      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         style={{
           position: "fixed",
@@ -479,7 +480,7 @@ export function InboxContactDrawer({
           maxWidth: isMobile ? "100vw" : "calc(100vw - 20px)",
           background: surface.page,
           overflow: "hidden",
-          zIndex: 90,
+          zIndex: DRAWER_Z,
           boxShadow: isMobile ? "none" : "0 8px 40px rgba(0,0,0,0.12)",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 20px))",
           transition: "transform 0.25s ease",

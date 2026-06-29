@@ -9,6 +9,7 @@ import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { scoutPrimaryCtaStyle } from "@/components/scout/scout-box";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 
 interface CoverLetterDrawerProps {
   jobTitle: string;
@@ -274,7 +275,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.4)",
-          zIndex: 200,
+          zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.28s ease",
         }}
@@ -291,7 +292,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
           width: "min(960px, 85vw)",
           background: "#FFFFFF",
           borderLeft: "var(--scout-border)",
-          zIndex: 201,
+          zIndex: DRAWER_NESTED_Z,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-4px 4px 0 #161616",

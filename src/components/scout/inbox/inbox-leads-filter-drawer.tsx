@@ -5,6 +5,7 @@ import type { ContactListFilter } from "@/lib/inbox-crm/list-contacts";
 import { INBOX_CONTACT_STATUSES } from "@/lib/inbox-crm/contact-status";
 import { INBOX_USER_TAGS } from "@/lib/email-sender-display";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 type FilterFieldDef = {
   category: ContactListFilter["category"];
@@ -150,7 +151,7 @@ export function InboxLeadsFilterDrawer({ open, filters, onClose, onApply }: Prop
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: 200 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", zIndex: DRAWER_BACKDROP_Z }} />
       <aside
         style={{
           position: "fixed",
@@ -159,7 +160,7 @@ export function InboxLeadsFilterDrawer({ open, filters, onClose, onApply }: Prop
           bottom: 0,
           width: "min(400px, 92vw)",
           background: surface.card,
-          zIndex: 201,
+          zIndex: DRAWER_Z,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.08)",

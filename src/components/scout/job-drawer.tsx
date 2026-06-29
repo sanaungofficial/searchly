@@ -23,6 +23,7 @@ import { JobDrawerNetworkAdminSection, JobDrawerRecruiterSection } from "./job-d
 import { isGenericNetworkCompanyLabel } from "@/lib/network-employer-labels";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
@@ -772,7 +773,6 @@ export function JobDrawer({
   addingToPipeline = false,
   existingPipelineCardId = null,
   onOpenInPipeline,
-  elevated = false,
   detailLoading = false,
 }: JobDrawerProps) {
   const { openFitChat, withClientScope } = useWorkspace();
@@ -1013,8 +1013,8 @@ export function JobDrawer({
     !hirebaseLoading &&
     !isGenericNetworkCompanyLabel(card.company) &&
     isTrackableHirebaseCompany(hirebaseCompany);
-  const backdropZ = elevated ? 210 : 60;
-  const drawerZ = elevated ? 211 : 70;
+  const backdropZ = DRAWER_BACKDROP_Z;
+  const drawerZ = DRAWER_Z;
 
   return (
     <>
