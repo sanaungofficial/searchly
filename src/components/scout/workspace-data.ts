@@ -311,6 +311,13 @@ export const STAGE_LABELS: Record<KanbanStage, string> = {
   offer: "Offer",
   closed: "Closed",
 };
+export const STAGE_DESCRIPTIONS: Record<KanbanStage, string> = {
+  saved: "Roles you saved but haven't applied to yet",
+  applied: "Applications submitted or in progress",
+  interview: "Active interview processes",
+  offer: "Offers received or under negotiation",
+  closed: "Closed or withdrawn roles",
+};
 export const STAGE_COLORS: Record<KanbanStage, string> = {
   saved: "#8A8278",
   applied: "#5B7FA6",

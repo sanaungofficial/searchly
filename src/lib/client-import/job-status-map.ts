@@ -92,10 +92,13 @@ function mapStatusText(v: string): JobStage | null {
 
   if (/^applied|application sent|submitted|complete/.test(v) || /\bapplied\b/.test(v)) return "APPLIED";
   if (/applying|in progress|in-progress|draft|working on/.test(v)) return "APPLYING";
+  if (/^closed$|role closed|position closed|posting closed|no longer (open|accepting|hiring)/.test(v)) {
+    return "REJECTED";
+  }
   if (/saved|bookmark|watch|pipeline|interested|target|to apply|not yet|queued|prospect|research/.test(v)) {
     return "SAVED";
   }
-  if (/pending|waiting|hold|on hold|paused|inactive|closed/.test(v)) return "SAVED";
+  if (/pending|waiting|hold|on hold|paused|inactive/.test(v)) return "SAVED";
 
   return null;
 }
