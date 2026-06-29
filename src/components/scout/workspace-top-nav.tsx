@@ -804,8 +804,9 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           background: surface.page,
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
-          position: "relative",
-          zIndex: 100,
+          position: "sticky",
+          top: 0,
+          zIndex: TOP_NAV_Z,
         }}
       >
         <div
@@ -906,7 +907,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           background: surface.card,
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
-          position: "relative",
+          position: "sticky",
+          top: 0,
           zIndex: TOP_NAV_Z,
         }}
       >

@@ -27,6 +27,7 @@ export function ScoutDrawerBackdrop({
       : variant === "nested"
         ? "rgba(0,0,0,0.4)"
         : "rgba(0,0,0,0.18)";
+  const { top, ...restStyle } = style ?? {};
 
   return (
     <div
@@ -36,11 +37,14 @@ export function ScoutDrawerBackdrop({
       className={className}
       style={{
         position: "fixed",
-        inset: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        top: top ?? 0,
         background,
         zIndex: resolvedZ,
         cursor: "pointer",
-        ...style,
+        ...restStyle,
       }}
     />
   );
