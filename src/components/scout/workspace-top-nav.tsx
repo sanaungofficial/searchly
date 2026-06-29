@@ -31,17 +31,9 @@ type NavLink = {
   children?: NavChild[];
 };
 
-function buildNavLinks(opts: { isAdmin: boolean; isStaffPortal: boolean }): NavLink[] {
-  const { isAdmin, isStaffPortal } = opts;
+function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
+  const { isAdmin } = opts;
   const links: NavLink[] = [];
-  if (isStaffPortal) {
-    links.push({
-      id: "expert",
-      label: "Expert",
-      path: "/expert/dashboard",
-      match: isExpertPortalPath,
-    });
-  }
   links.push({
     id: "dashboard",
     label: "Dashboard",
@@ -617,7 +609,6 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     authChecked,
     userRole,
     showAdminUi,
-    staffDashboardView,
     setStaffDashboardView,
     isImpersonating,
     isAdminReviewing,
@@ -627,7 +618,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const navLinks = buildNavLinks({ isAdmin: showAdminUi, isStaffPortal });
+  const navLinks = buildNavLinks({ isAdmin: showAdminUi });
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
   const isLoggedOut = !user;
@@ -638,14 +629,6 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
       return buildAuthUrl("login", path);
     }
     return withClientReviewPath(path);
-  };
-
-  const authGateOrNavigate = (path: string) => {
-    if (showGuestWorkspaceNav && !isPublicCoachingPath(path)) {
-      window.location.href = buildAuthUrl("login", path);
-      return;
-    }
-    router.push(withClientReviewPath(path));
   };
 
   const expertPortalActive =
@@ -671,7 +654,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     match: (p) => matchAdminNavPath(p, path),
   }));
 
-  const navigateToSeekerDashboard = () => {
+  const syncSeekerWorkspaceView = () => {
     if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
   };
 
@@ -759,7 +742,14 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
       setStaffDashboardView("expert");
       return;
     }
-    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    if (
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/") ||
+      pathname.startsWith("/opportunities") ||
+      matchInboxPath(pathname) ||
+      pathname.startsWith("/coaching") ||
+      pathname.startsWith("/profile")
+    ) {
       setStaffDashboardView("seeker");
     }
   }, [pathname, isStaffPortal, isImpersonating, isAdminReviewing, setStaffDashboardView]);
@@ -783,12 +773,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  const navigateMainFromDrawer = (link: NavLink, childPath?: string) => {
-    if (link.id === "dashboard") {
-      navigateToSeekerDashboard();
-    } else if (link.id === "expert") {
-      navigateExpertPortal(childPath ?? link.path);
-    }
+  const navigateMainFromDrawer = (_link: NavLink, _childPath?: string) => {
+    syncSeekerWorkspaceView();
     setNavDropdownOpen(null);
     closeMobileMenu();
   };
@@ -920,7 +906,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
           position: "relative",
-          zIndex: 100,
+          zIndex: 210,
         }}
       >
         <div
@@ -964,7 +950,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           <Link
             href={showGuestWorkspaceNav ? "/coaching" : resolveNavHref("/dashboard")}
             onClick={() => {
-              if (!showGuestWorkspaceNav) navigateToSeekerDashboard();
+              if (!showGuestWorkspaceNav) syncSeekerWorkspaceView();
             }}
             style={{
               textDecoration: "none",
@@ -1022,8 +1008,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                           e.preventDefault();
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
                         } else {
-                          if (id === "dashboard") navigateToSeekerDashboard();
-                          else if (id === "expert") navigateExpertPortal(path);
+                          syncSeekerWorkspaceView();
                           setNavDropdownOpen(null);
                         }
                       }}
@@ -1085,8 +1070,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                               active={childActive}
                               href={resolveNavHref(childPath)}
                               onClick={() => {
-                                if (id === "dashboard") navigateToSeekerDashboard();
-                                else if (id === "expert") navigateExpertPortal(childPath);
+                                syncSeekerWorkspaceView();
                                 setNavDropdownOpen(null);
                               }}
                             />
@@ -1103,10 +1087,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                   key={id}
                   href={resolveNavHref(path)}
                   className={`workspace-nav-link${active ? " is-active" : ""}`}
-                  onClick={() => {
-                    if (id === "dashboard") navigateToSeekerDashboard();
-                    else if (id === "expert") navigateExpertPortal(path);
-                  }}
+                  onClick={() => syncSeekerWorkspaceView()}
                   style={{
                     background: "none",
                     border: "none",
