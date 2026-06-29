@@ -2,6 +2,7 @@ import type { User } from "@prisma/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getActingUser } from "@/lib/acting-user";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
+import { persistExternalImageToAvatarsBucket } from "@/lib/persist-external-image";
 import { prisma } from "@/lib/prisma";
 
 export async function ensureDbUser(supabase: SupabaseClient, request?: Request): Promise<User | null> {
@@ -26,10 +27,19 @@ export async function ensureDbUser(supabase: SupabaseClient, request?: Request):
     user.user_metadata?.name ??
     user.email.split("@")[0] ??
     null;
-  const avatarUrl =
+  const oauthAvatarUrl =
     user.user_metadata?.avatar_url ??
     user.user_metadata?.picture ??
     null;
+
+  let avatarUrl: string | null = null;
+  if (oauthAvatarUrl) {
+    const persisted = await persistExternalImageToAvatarsBucket({
+      sourceUrl: oauthAvatarUrl,
+      storagePath: `${user.id}/avatar.jpg`,
+    });
+    avatarUrl = persisted.url ?? oauthAvatarUrl;
+  }
 
   try {
     return await prisma.user.create({
