@@ -3,12 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { JobBoardId } from "@/lib/job-board-search";
 import { buildJobBoardLinks } from "@/lib/job-board-search";
-import {
-  mergeRoleSuggestions,
-  normalizeCustomRoleTitle,
-  TARGET_ROLE_SUGGESTIONS,
-} from "@/lib/target-roles";
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
+import {
+  OnboardingCategoryFilterInput,
+  TargetRoleAutocomplete,
+} from "@/components/scout/onboarding-suggest-input";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   UploadIcon,
@@ -1648,314 +1647,6 @@ function SuggestedForYouChips({
   );
 }
 
-function TargetRoleChip({
-  title,
-  onRemove,
-}: {
-  title: string;
-  onRemove?: () => void;
-}) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 12px",
-        background: "rgba(26,58,47,0.12)",
-        border: "1.5px solid #1A3A2F",
-        borderRadius: "var(--scout-radius)",
-        fontFamily: "var(--font-ui)",
-        fontSize: 14,
-        fontWeight: 600,
-        color: "#1A3A2F",
-      }}
-    >
-      {title}
-      {onRemove && (
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Remove ${title}`}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            fontFamily: "var(--font-ui)",
-            fontSize: 16,
-            lineHeight: 1,
-            color: "#1A3A2F",
-          }}
-        >
-          ×
-        </button>
-      )}
-    </span>
-  );
-}
-
-function TargetRoleAutocomplete({
-  selectedTitles,
-  suggestedTitles,
-  suggestionLabel = "Suggested from your resume",
-  onAddTitle,
-  onRemoveTitle,
-  onDropdownOpenChange,
-}: {
-  selectedTitles: string[];
-  suggestedTitles: string[];
-  suggestionLabel?: string;
-  onAddTitle: (title: string) => void;
-  onRemoveTitle: (title: string) => void;
-  onDropdownOpenChange?: (open: boolean) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const [highlight, setHighlight] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const readbackSuggestions = suggestedTitles.filter((t) => !selectedTitles.includes(t));
-
-  const dropdownOptions = useMemo(() => {
-    return mergeRoleSuggestions(query, readbackSuggestions, 10).filter(
-      (t) => !selectedTitles.includes(t)
-    );
-  }, [query, readbackSuggestions, selectedTitles]);
-
-  useEffect(() => {
-    setHighlight(0);
-  }, [query, dropdownOptions.length]);
-
-  useEffect(() => {
-    onDropdownOpenChange?.(open && dropdownOptions.length > 0);
-  }, [open, dropdownOptions.length, onDropdownOpenChange]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open]);
-
-  const tryAdd = (raw: string) => {
-    const normalized = normalizeCustomRoleTitle(raw);
-    if (!normalized || selectedTitles.includes(normalized)) return false;
-    if (selectedTitles.length >= 10) return false;
-    onAddTitle(normalized);
-    setQuery("");
-    setOpen(false);
-    return true;
-  };
-
-  const pickOption = (title: string) => {
-    tryAdd(title);
-    inputRef.current?.focus();
-  };
-
-  return (
-    <div ref={containerRef}>
-      {selectedTitles.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-          {selectedTitles.map((title) => (
-            <TargetRoleChip key={title} title={title} onRemove={() => onRemoveTitle(title)} />
-          ))}
-        </div>
-      )}
-
-      {readbackSuggestions.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <p
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 12,
-              fontWeight: 600,
-              color: ONBOARDING_TEXT_SECONDARY,
-              letterSpacing: "0.4px",
-              textTransform: "uppercase",
-              marginBottom: 8,
-              marginTop: 0,
-            }}
-          >
-            {suggestionLabel}
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {readbackSuggestions.slice(0, 5).map((title) => (
-              <button
-                key={title}
-                type="button"
-                className="onboarding-chip"
-                onClick={() => pickOption(title)}
-                style={{
-                  padding: "8px 14px",
-                  background: ONBOARDING_FIELD_BG,
-                  border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: ONBOARDING_TEXT,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                {title}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ position: "relative" }}>
-        <label
-          htmlFor="target-role-input"
-          style={{
-            display: "block",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 600,
-            color: ONBOARDING_LABEL_COLOR,
-            letterSpacing: "0.6px",
-            textTransform: "uppercase",
-            marginBottom: 10,
-          }}
-        >
-          Target roles · {selectedTitles.length} selected
-        </label>
-        <input
-          id="target-role-input"
-          ref={inputRef}
-          type="text"
-          value={query}
-          placeholder="Start typing a role title…"
-          autoComplete="off"
-          role="combobox"
-          aria-expanded={open && dropdownOptions.length > 0}
-          aria-controls="target-role-listbox"
-          aria-autocomplete="list"
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setOpen(true);
-              setHighlight((i) => Math.min(i + 1, Math.max(dropdownOptions.length - 1, 0)));
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setHighlight((i) => Math.max(i - 1, 0));
-            } else if (e.key === "Enter") {
-              e.preventDefault();
-              if (open && dropdownOptions[highlight]) pickOption(dropdownOptions[highlight]);
-              else tryAdd(query);
-            } else if (e.key === "Escape") {
-              setOpen(false);
-            }
-          }}
-          style={{
-            width: "100%",
-            minHeight: 48,
-            padding: "12px 14px",
-            border: ONBOARDING_FIELD_BORDER,
-            borderRadius: "var(--scout-radius)",
-            background: ONBOARDING_FIELD_BG,
-            fontFamily: "var(--font-ui)",
-            fontSize: 16,
-            fontWeight: 500,
-            color: ONBOARDING_TEXT,
-            boxSizing: "border-box",
-            outline: "none",
-          }}
-        />
-
-        {open && dropdownOptions.length > 0 && (
-          <ul
-            id="target-role-listbox"
-            role="listbox"
-            style={{
-              position: "absolute",
-              zIndex: 20,
-              top: "calc(100% + 6px)",
-              left: 0,
-              right: 0,
-              margin: 0,
-              padding: 6,
-              listStyle: "none",
-              background: "#FFFFFF",
-              border: "1px solid rgba(26,58,47,0.16)",
-              borderRadius: "var(--scout-radius)",
-              boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
-              maxHeight: 240,
-              overflowY: "auto",
-            }}
-          >
-            {dropdownOptions.map((title, index) => (
-              <li key={title} role="option" aria-selected={index === highlight}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pickOption(title)}
-                  onMouseEnter={() => setHighlight(index)}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    border: "none",
-                    borderRadius: "var(--scout-radius)",
-                    background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: ONBOARDING_TEXT,
-                    cursor: "pointer",
-                  }}
-                >
-                  {title}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {query.trim() && dropdownOptions.length === 0 && (
-        <button
-          type="button"
-          onClick={() => tryAdd(query)}
-          style={{
-            marginTop: 10,
-            background: "none",
-            border: "none",
-            padding: 0,
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#1A3A2F",
-            cursor: "pointer",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
-          Use &ldquo;{normalizeCustomRoleTitle(query) ?? query.trim()}&rdquo;
-        </button>
-      )}
-
-      {!query && (
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
-          {TARGET_ROLE_SUGGESTIONS.length}+ common titles — start typing, or pick a suggestion below.
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function ScreenTargetRoles({
   selectedTitles,
   suggestedTitles = [],
@@ -1984,11 +1675,9 @@ export function ScreenTargetRoles({
       .catch(() => {});
   }, [categoriesOpen, allCategories.length]);
 
-  const categoryPool = [...new Set([...allCategories, ...suggestedCategories])];
-  const filteredCategories = categoryPool.filter(
-    (cat) =>
-      !prioritizedCategories.some((s) => s.toLowerCase() === cat.toLowerCase()) &&
-      (!categoryQuery.trim() || cat.toLowerCase().includes(categoryQuery.trim().toLowerCase())),
+  const categoryPool = useMemo(
+    () => [...new Set([...allCategories, ...suggestedCategories])],
+    [allCategories, suggestedCategories],
   );
 
   return (
@@ -2087,48 +1776,13 @@ export function ScreenTargetRoles({
                 + Add category
               </button>
             ) : (
-              <div>
-                <input
-                  autoFocus
-                  value={categoryQuery}
-                  onChange={(e) => setCategoryQuery(e.target.value)}
-                  placeholder="Filter categories…"
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    border: ONBOARDING_FIELD_BORDER,
-                    borderRadius: "var(--scout-radius)",
-                    background: ONBOARDING_FIELD_BG,
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 15,
-                    marginBottom: 8,
-                    boxSizing: "border-box",
-                  }}
-                />
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {filteredCategories.slice(0, 8).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => {
-                        onAddCategory(cat);
-                        setCategoryQuery("");
-                      }}
-                      style={{
-                        padding: "8px 12px",
-                        background: ONBOARDING_FIELD_BG,
-                        border: ONBOARDING_FIELD_BORDER,
-                        borderRadius: "var(--scout-radius)",
-                        fontFamily: "var(--font-ui)",
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <OnboardingCategoryFilterInput
+                query={categoryQuery}
+                onQueryChange={setCategoryQuery}
+                selectedCategories={prioritizedCategories}
+                categoryPool={categoryPool}
+                onAdd={onAddCategory}
+              />
             )}
           </div>
         )}
@@ -3303,11 +2957,9 @@ export function ScreenOnboardingAvoidRoles({
       .catch(() => {});
   }, [categoriesOpen, allCategories.length]);
 
-  const categoryPool = [...new Set([...allCategories, ...suggestedCategories])];
-  const filteredCategories = categoryPool.filter(
-    (cat) =>
-      !deprioritizedCategories.some((s) => s.toLowerCase() === cat.toLowerCase()) &&
-      (!categoryQuery.trim() || cat.toLowerCase().includes(categoryQuery.trim().toLowerCase())),
+  const categoryPool = useMemo(
+    () => [...new Set([...allCategories, ...suggestedCategories])],
+    [allCategories, suggestedCategories],
   );
 
   return (
@@ -3375,48 +3027,14 @@ export function ScreenOnboardingAvoidRoles({
           + Add category to avoid
         </button>
       ) : (
-        <div>
-          <input
-            autoFocus
-            value={categoryQuery}
-            onChange={(e) => setCategoryQuery(e.target.value)}
-            placeholder="Filter categories…"
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              border: ONBOARDING_FIELD_BORDER,
-              borderRadius: "var(--scout-radius)",
-              background: ONBOARDING_FIELD_BG,
-              fontFamily: "var(--font-ui)",
-              fontSize: 15,
-              marginBottom: 8,
-              boxSizing: "border-box",
-            }}
-          />
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {filteredCategories.slice(0, 8).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => {
-                  onAddAvoidCategory(cat);
-                  setCategoryQuery("");
-                }}
-                style={{
-                  padding: "8px 12px",
-                  background: ONBOARDING_FIELD_BG,
-                  border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  cursor: "pointer",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
+        <OnboardingCategoryFilterInput
+          query={categoryQuery}
+          onQueryChange={setCategoryQuery}
+          selectedCategories={deprioritizedCategories}
+          categoryPool={categoryPool}
+          onAdd={onAddAvoidCategory}
+          placeholder="Search or add category to avoid…"
+        />
       )}
       {deprioritizedCategories.length === 0 && (
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
