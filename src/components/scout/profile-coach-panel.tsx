@@ -209,7 +209,7 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
               margin: "0 0 12px",
             }}
           >
-            Sessions & activity
+            Bookings & activity
           </p>
           <ScoutBox padding={isMobile ? 16 : 20}>
             <MyCoachesPanel compact={isMobile} />

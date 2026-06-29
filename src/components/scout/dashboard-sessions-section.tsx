@@ -31,7 +31,7 @@ export function DashboardSessionsSection({ isMobile }: Props) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-          <ScoutLabel>My coaching sessions</ScoutLabel>
+          <ScoutLabel>My coaching bookings</ScoutLabel>
         </div>
         {bookings.length > 0 && (
           <button
@@ -58,7 +58,7 @@ export function DashboardSessionsSection({ isMobile }: Props) {
       <ScoutBox padding={isMobile ? "16px 16px" : "18px 20px"}>
         <BookingsList
           bookings={bookings}
-          emptyMessage="No upcoming sessions. Browse the coaching directory to book time with a coach."
+          emptyMessage="No upcoming bookings. Browse the coaching directory to book time with a coach."
           showCoach
           showGuest={false}
           onReschedule={(ref) => router.push(`/coaching/reschedule/${encodeURIComponent(ref)}`)}

@@ -5,6 +5,7 @@ export type BookingRow = {
   coachProfileId?: string;
   coachName: string;
   coachSlug: string | null;
+  coachPhotoUrl?: string | null;
   coachEmail?: string | null;
   guestName: string | null;
   guestEmail: string | null;
