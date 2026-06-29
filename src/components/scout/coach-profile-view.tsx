@@ -13,7 +13,7 @@ import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shar
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { formatCoachNextAvailable } from "@/components/scout/coach-booking-modal";
-import type { CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
+import type { CoachProfileDetail, CoachReviewItem, CoachBookingAvailability } from "@/lib/coach-types";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { bruddleHeadingStyle, color, fontMono, fontSans, radius, surface, type as T } from "@/lib/typography";
@@ -347,6 +347,8 @@ export type CoachProfileViewProps = {
   matchedSkills?: string[];
   sessionDurationMinutes: number;
   canBookInApp: boolean;
+  canRequestBooking?: boolean;
+  bookingAvailability?: CoachBookingAvailability | null;
   bookUrl?: string | null;
   nextSlotStart: number | null;
   nextSlotLoading: boolean;
@@ -354,6 +356,7 @@ export type CoachProfileViewProps = {
   isAdmin?: boolean;
   onBookIntro: () => void;
   onBookSession: () => void;
+  onRequestBooking?: () => void;
   onBuyPackage: (packageId: string) => void;
   onToggleFollow: () => void;
   onToggleMyCoach: () => void;
@@ -370,6 +373,8 @@ export function CoachProfileView({
   matchedSkills = [],
   sessionDurationMinutes,
   canBookInApp,
+  canRequestBooking = false,
+  bookingAvailability,
   bookUrl,
   nextSlotStart,
   nextSlotLoading,
@@ -377,6 +382,7 @@ export function CoachProfileView({
   isAdmin,
   onBookIntro,
   onBookSession,
+  onRequestBooking,
   onBuyPackage,
   onToggleFollow,
   onToggleMyCoach,
@@ -384,6 +390,7 @@ export function CoachProfileView({
   onPrepChat,
 }: CoachProfileViewProps) {
   const bookingAllowed = canBookInApp;
+  const requestAllowed = canRequestBooking && !canBookInApp;
   const [aboutExpanded, setAboutExpanded] = useState(false);
   const [showAllPackages, setShowAllPackages] = useState(false);
   const [companyLookup, setCompanyLookup] = useState<Record<string, CoachCompanyLookupMeta>>({});
@@ -447,6 +454,24 @@ export function CoachProfileView({
           <>
             <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 10, borderRadius: 999, minHeight: 48 }}>Schedule a free intro call</GoldBookBtn>
             <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 48, borderRadius: 999 }}>Book a session</ScoutSecondaryBtn>
+          </>
+        ) : requestAllowed ? (
+          <>
+            <GoldBookBtn onClick={onRequestBooking} style={{ marginBottom: 10, borderRadius: 999, minHeight: 48 }}>Request to book</GoldBookBtn>
+            <ScoutSecondaryBtn onClick={onRequestBooking} style={{ width: "100%", minHeight: 48, borderRadius: 999 }}>Request intro call</ScoutSecondaryBtn>
+            {bookingAvailability?.summary && (
+              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>
+                Typically available {bookingAvailability.summary.toLowerCase()}
+              </p>
+            )}
+            {bookingAvailability?.availabilityNotes && (
+              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.stone, textAlign: "center", margin: "8px 0 0", lineHeight: 1.45 }}>
+                {bookingAvailability.availabilityNotes}
+              </p>
+            )}
+            <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, textAlign: "center", margin: "10px 0 0", lineHeight: 1.45 }}>
+              Your coach confirms availability — not instant booking
+            </p>
           </>
         ) : bookUrl ? (
           <a href={bookUrl} target="_blank" rel="noreferrer" style={{ display: "block", textDecoration: "none" }}>
@@ -684,13 +709,18 @@ export function CoachProfileView({
           </aside>
         )}
       </div>
-      {isMobile && bookingAllowed && (
+      {isMobile && (bookingAllowed || requestAllowed) && (
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, background: cardBg, borderTop: line, padding: "12px 16px calc(12px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -4px 20px rgba(0,0,0,0.08)" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 700, margin: 0, color: color.ink }}>{coach.displayName}</p>
             <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
           </div>
-          <GoldBookBtn onClick={onBookIntro} style={{ width: "auto", minWidth: 140, padding: "12px 20px", borderRadius: 999 }}>Schedule</GoldBookBtn>
+          <GoldBookBtn
+            onClick={bookingAllowed ? onBookIntro : onRequestBooking}
+            style={{ width: "auto", minWidth: 140, padding: "12px 20px", borderRadius: 999 }}
+          >
+            {bookingAllowed ? "Schedule" : "Request"}
+          </GoldBookBtn>
         </div>
       )}
     </div>
