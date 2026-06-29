@@ -343,6 +343,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               name: data.impersonating.name,
               email: data.impersonating.email,
             });
+            setAdminReviewClientId(null);
+            clearAdminReviewClient();
             setActingUserId(data.impersonating.userId ?? data.userId ?? null);
             setActingUserScope(data.impersonating.userId ?? data.userId ?? null);
             reviewClientId = null;
@@ -384,8 +386,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
                 name: imp.user.name,
                 email: imp.user.email,
               });
+              setAdminReviewClientId(null);
+              clearAdminReviewClient();
               setActingUserId(imp.user.id);
               setActingUserScope(imp.user.id);
+              reviewClientId = null;
             }
           }
         } catch {}
