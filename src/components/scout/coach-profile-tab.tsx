@@ -7,7 +7,7 @@ import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
 import { CoachResourcesLibrary } from "@/components/scout/coach-resources-library";
 import { coachPublicProfilePath } from "@/lib/coach-slug";
-import { ScoutBox, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -164,6 +164,7 @@ type CoachProfileTabProps = {
   /** Admin mode: edit any coach by id via /api/admin/coaches/[id] */
   mode?: "coach" | "admin";
   coachId?: string;
+  onProfileSaved?: () => void;
 };
 
 export function CoachProfileTab({
@@ -171,6 +172,7 @@ export function CoachProfileTab({
   emptyMessage = "No coach profile found linked to your account. Contact an admin to get set up.",
   mode = "coach",
   coachId,
+  onProfileSaved,
 }: CoachProfileTabProps) {
   const isAdminEdit = mode === "admin" && Boolean(coachId);
   const searchParams = useSearchParams();
@@ -188,6 +190,9 @@ export function CoachProfileTab({
   const [nylasNotice, setNylasNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [retryingScheduler, setRetryingScheduler] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [linkedInImportUrl, setLinkedInImportUrl] = useState("");
+  const [linkedInImporting, setLinkedInImporting] = useState(false);
+  const [linkedInImportNotice, setLinkedInImportNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   async function loadProfile() {
     const url = isAdminEdit ? `/api/admin/coaches/${coachId}` : "/api/coach/profile";
@@ -324,9 +329,46 @@ export function CoachProfileTab({
       setProfile(updated);
       setForm(updated);
       setSaved(true);
+      onProfileSaved?.();
       setTimeout(() => setSaved(false), 3000);
     }
     setSaving(false);
+  }
+
+  async function importFromLinkedIn() {
+    if (!isAdminEdit || !coachId) return;
+    setLinkedInImporting(true);
+    setLinkedInImportNotice(null);
+    try {
+      const response = await fetch(`/api/admin/coaches/${coachId}/linkedin-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          linkedinUrl: linkedInImportUrl.trim() || form.linkedinUrl || "",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setLinkedInImportNotice({ type: "error", message: data.error ?? "LinkedIn import failed." });
+        return;
+      }
+      setProfile(data.coach);
+      setForm(data.coach);
+      setLinkedInImportUrl("");
+      onProfileSaved?.();
+      setLinkedInImportNotice({
+        type: "success",
+        message:
+          data.message ??
+          (Array.isArray(data.filledFields) && data.filledFields.length > 0
+            ? `Filled ${data.filledFields.join(", ")} from LinkedIn.`
+            : "Import completed — existing fields were kept."),
+      });
+    } catch {
+      setLinkedInImportNotice({ type: "error", message: "LinkedIn import failed. Please try again." });
+    } finally {
+      setLinkedInImporting(false);
+    }
   }
 
   if (loading || settingUp) {
@@ -811,6 +853,45 @@ export function CoachProfileTab({
             />
           </div>
         </div>
+
+        {isAdminEdit && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid rgba(26,58,47,0.08)" }}>
+            <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink }}>
+              Import from LinkedIn
+            </p>
+            <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
+              Pulls public LinkedIn profile data via Apify and fills only empty coach fields — existing bio, photo, firms, and other data are not overwritten.
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                value={linkedInImportUrl}
+                onChange={(event) => setLinkedInImportUrl(event.target.value)}
+                placeholder={form.linkedinUrl?.trim() ? "Uses saved LinkedIn URL" : "Paste LinkedIn profile URL"}
+                style={{ ...inputStyle, flex: "1 1 280px" }}
+              />
+              <ScoutPrimaryBtn
+                onClick={() => void importFromLinkedIn()}
+                disabled={linkedInImporting || (!linkedInImportUrl.trim() && !form.linkedinUrl?.trim())}
+                style={{ minHeight: 40, fontSize: 13, padding: "8px 16px", whiteSpace: "nowrap" }}
+              >
+                {linkedInImporting ? "Importing…" : "Import from LinkedIn"}
+              </ScoutPrimaryBtn>
+            </div>
+            {linkedInImportNotice && (
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  fontFamily: fontSans,
+                  fontSize: 13,
+                  color: linkedInImportNotice.type === "success" ? color.forest : "#b45309",
+                  lineHeight: 1.5,
+                }}
+              >
+                {linkedInImportNotice.message}
+              </p>
+            )}
+          </div>
+        )}
       </ScoutBox>
 
       <ScoutBox padding="20px 24px">
