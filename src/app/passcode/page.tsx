@@ -1,26 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { KimchiBySecondLadder, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { bruddleHeadingStyle, color, fontSans, surface, displayTitleStyle } from "@/lib/typography";
+import { sanitizeReturnPath } from "@/lib/auth-return-url";
 
-export default function PasscodePage() {
-  const router = useRouter();
+function PasscodeForm() {
+  const searchParams = useSearchParams();
   const [code, setCode] = useState("");
   const [error, setError] = useState(false);
   const [shaking, setShaking] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
-    if (code === "3992") {
-      await fetch("/api/passcode", { method: "POST" });
-      router.push("/");
-      router.refresh();
-    } else {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(false);
+
+    try {
+      const res = await fetch("/api/passcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+        credentials: "same-origin",
+      });
+
+      if (!res.ok) {
+        setError(true);
+        setShaking(true);
+        setCode("");
+        setTimeout(() => setShaking(false), 500);
+        return;
+      }
+
+      const next = sanitizeReturnPath(searchParams.get("next"));
+      const destination = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
+      window.location.assign(destination);
+    } catch {
       setError(true);
       setShaking(true);
       setCode("");
       setTimeout(() => setShaking(false), 500);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -77,6 +100,7 @@ export default function PasscodePage() {
           onKeyDown={onKey}
           autoFocus
           placeholder="••••"
+          disabled={submitting}
           style={{
             width: "100%",
             textAlign: "center",
@@ -100,8 +124,12 @@ export default function PasscodePage() {
           </div>
         )}
 
-        <ScoutPrimaryBtn onClick={submit} style={{ marginTop: 12, width: "100%", minHeight: 44 }}>
-          Continue →
+        <ScoutPrimaryBtn
+          onClick={submit}
+          disabled={submitting}
+          style={{ marginTop: 12, width: "100%", minHeight: 44 }}
+        >
+          {submitting ? "Checking…" : "Continue →"}
         </ScoutPrimaryBtn>
       </div>
 
@@ -115,5 +143,13 @@ export default function PasscodePage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function PasscodePage() {
+  return (
+    <Suspense>
+      <PasscodeForm />
+    </Suspense>
   );
 }
