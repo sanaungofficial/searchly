@@ -1,3 +1,4 @@
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { getActingUser, quotaUserFor } from "@/lib/acting-user";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
@@ -28,9 +29,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const acting = await getActingUser(request);
-    const { dbUser } = acting;
+    const scoped = await resolveScopedDbUser(request);
+    if (scoped.error) return scoped.error;
+    const dbUser = scoped.dbUser;
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const acting = await getActingUser(request);
 
     const formData = await request.formData();
     const file = formData.get("audio");
