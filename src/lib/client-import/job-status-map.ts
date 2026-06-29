@@ -6,13 +6,56 @@ export type ImportJobStageContext = {
   appliedAt: string | null;
 };
 
-/** Map spreadsheet Application Status (+ optional Yes/No approval) to Kimchi JobStage. */
-export function mapImportJobStage(ctx: ImportJobStageContext): JobStage {
-  const v = ctx.statusRaw.trim().toLowerCase();
+export type ImportStatusValueMapping = {
+  /** Exact spreadsheet status cell text → Kimchi stage. */
+  valueToStage: Record<string, JobStage>;
+  /** Fallback when status text is present but not auto-mapped and not in valueToStage. */
+  defaultUnmatchedStage: JobStage | null;
+};
 
-  if (v) {
-    const mapped = mapStatusText(v);
-    if (mapped) return applyApprovalGate(mapped, ctx.approved);
+/** Kimchi pipeline stages available for import value mapping. */
+export const IMPORT_JOB_STAGES: JobStage[] = [
+  "SAVED",
+  "APPLYING",
+  "APPLIED",
+  "SCREENING",
+  "INTERVIEWING",
+  "OFFER",
+  "REJECTED",
+  "WITHDRAWN",
+];
+
+/** Returns a Kimchi stage when status text matches built-in rules; null if user must map manually. */
+export function tryAutoMapImportStatusText(statusRaw: string): JobStage | null {
+  const v = statusRaw.trim().toLowerCase();
+  if (!v) return null;
+  return mapStatusText(v);
+}
+
+/** Map spreadsheet Application Status (+ optional Yes/No approval) to Kimchi JobStage. */
+export function mapImportJobStage(
+  ctx: ImportJobStageContext,
+  valueMapping?: ImportStatusValueMapping,
+): JobStage {
+  return resolveImportJobStage(ctx, valueMapping);
+}
+
+/** Resolve stage with optional user value mapping for unrecognized status strings. */
+export function resolveImportJobStage(
+  ctx: ImportJobStageContext,
+  valueMapping?: ImportStatusValueMapping,
+): JobStage {
+  const trimmed = ctx.statusRaw.trim();
+
+  if (trimmed) {
+    const userMapped = valueMapping?.valueToStage[trimmed];
+    if (userMapped) return applyApprovalGate(userMapped, ctx.approved);
+
+    const auto = tryAutoMapImportStatusText(trimmed);
+    if (auto) return applyApprovalGate(auto, ctx.approved);
+
+    const fallback = valueMapping?.defaultUnmatchedStage;
+    if (fallback) return applyApprovalGate(fallback, ctx.approved);
   }
 
   if (ctx.appliedAt?.trim()) return applyApprovalGate("APPLIED", ctx.approved);

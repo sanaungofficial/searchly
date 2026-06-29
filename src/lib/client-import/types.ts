@@ -1,6 +1,7 @@
 import type { JobStage } from "@prisma/client";
 import type { StrategyProfileFields } from "@/lib/career-strategy";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
+import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 
 export type ImportRow<T> = {
   id: string;
@@ -85,6 +86,8 @@ export type ClientImportApplyPayload = {
   contactIds?: string[];
   applicationQaIds?: string[];
   applyResume?: boolean;
+  /** Job tracker wizard dedupe / conflict options. */
+  jobImportOptions?: JobTrackerImportOptions;
   preview: ClientImportPreview;
 };
 
