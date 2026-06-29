@@ -2952,13 +2952,15 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating } = useWorkspace();
+  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating, isAdmin } = useWorkspace();
   const profileLoc = parseProfileLocation(pathname);
+  const urlClientId = searchParams.get("clientUserId")?.trim() || undefined;
+  const [profileReviewClientId, setProfileReviewClientId] = useState<string | undefined>();
   const clientId = isImpersonating
     ? undefined
-    : (adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? undefined);
+    : (adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? urlClientId ?? profileReviewClientId ?? undefined);
   const profileScopeKey = isImpersonating ? "impersonate" : (clientId ?? "self");
-  const canAccessImport = Boolean(clientId) && (showAdminUi || isAdminReviewing) && !isImpersonating;
+  const canAccessImport = Boolean(clientId) && isAdmin && !isImpersonating;
   const preferencesSection = profileLoc.preferencesSection;
   const profileBase = profileBasePath(clientId, { sessionScoped: isAdminReviewing });
   const api = withClientScope;
@@ -3017,6 +3019,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     setLoading(true);
     setProfile(null);
     setReadback(null);
+    setProfileReviewClientId(undefined);
     legacyMigratedRef.current = false;
     fetch(api("/api/profile"), { cache: "no-store" })
       .then(async (r) => {
@@ -3030,6 +3033,8 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
       })
       .then(async (data) => {
         if (data.error) return;
+        const adminReview = data.adminReview as { clientId?: string } | undefined;
+        if (adminReview?.clientId) setProfileReviewClientId(adminReview.clientId);
         const userProfile = data as UserProfile;
         setProfile(userProfile);
         setDreamList(userProfile.targetRoles || []);
