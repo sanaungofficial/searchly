@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { createElement } from "react";
 
+import { RT } from "@/lib/resume-tailor-tokens";
+
 /** Light green highlight for injected / changed resume keywords (Jobright-style). */
-export const RESUME_KEYWORD_HIGHLIGHT_BG = "rgba(134, 239, 172, 0.45)";
+export const RESUME_KEYWORD_HIGHLIGHT_BG = RT.keywordHighlight;
 
 export function renderTextWithKeywords(
   text: string,

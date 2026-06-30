@@ -3,15 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown } from "lucide-react";
-import { CreditsStatusBar } from "@/components/scout/credits-display";
-import { notifyCreditsChanged } from "@/lib/credits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ResumeStylePanel } from "./resume-style-panel";
 import { TailoredResumePreview } from "./tailored-resume-preview";
-import { BigScoreGauge } from "./job-match-ui";
-import { fontSans, fontMono } from "@/lib/typography";
+import { fontSans } from "@/lib/typography";
+import { RT } from "@/lib/resume-tailor-tokens";
+import { formatRelativeTimeAgo } from "@/lib/format-relative-time";
 import {
   DEFAULT_RESUME_STYLE,
   normalizeResumeStyle,
@@ -48,15 +47,9 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<string>("");
-  const [fitToPage, setFitToPage] = useState(false);
   const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
-  const [rightTab, setRightTab] = useState<"ai" | "editor" | "style">("editor");
-  const [matchData, setMatchData] = useState<{ score: number; matched: string[]; missing: string[]; total: number } | null>(null);
-  const [matchLoading, setMatchLoading] = useState(false);
+  const [rightTab, setRightTab] = useState<"editor" | "style">("editor");
   const [injectedKeywords, setInjectedKeywords] = useState<string[]>([]);
-  const [changeSummaries, setChangeSummaries] = useState<string[]>([]);
-  const [previousScore, setPreviousScore] = useState<number | null>(null);
-  const [newScore, setNewScore] = useState<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(updatedAtProp ?? null);
   const [stale, setStale] = useState(false);
@@ -67,7 +60,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   useEffect(() => {
     if (open && jobId) {
       setLoading(true);
-      setMatchData(null);
       setStale(false);
       fetch(withClientScope(`/api/resume/tailored/${jobId}`))
         .then((r) => r.json())
@@ -77,22 +69,11 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           if (d.stale) setStale(true);
           if (d.resumeStyle) setResumeStyle(normalizeResumeStyle(d.resumeStyle));
           if (Array.isArray(d.injectedKeywords)) setInjectedKeywords(d.injectedKeywords);
-          if (Array.isArray(d.changes)) setChangeSummaries(d.changes);
-          if (typeof d.previousScore === "number") setPreviousScore(d.previousScore);
-          if (typeof d.newScore === "number") setNewScore(d.newScore);
-          if (d.changes?.length || d.newScore != null) setRightTab("ai");
         })
         .catch(() => {})
         .finally(() => setLoading(false));
-
-      setMatchLoading(true);
-      fetch(withClientScope(`/api/resume/tailored/${jobId}/match`))
-        .then((r) => r.json())
-        .then((d) => { if (typeof d.score === "number") setMatchData(d); })
-        .catch(() => {})
-        .finally(() => setMatchLoading(false));
     }
-  }, [open, jobId]);
+  }, [open, jobId, withClientScope]);
 
   useEffect(() => {
     if (!downloadMenuOpen) return;
@@ -109,7 +90,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
   const activeSections = previewSections ?? sections;
   const style = normalizeResumeStyle(resumeStyle);
-  const compactPreview = fitToPage || style.fitToOnePage;
+  const compactPreview = style.fitToOnePage;
 
   async function save(updated: ResumeSection[], styleOverride?: ResumeStyleSettings) {
     setSaving(true);
@@ -185,12 +166,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     setSections(previewSections);
     save(previewSections);
     setPreviewSections(null);
-    setMatchLoading(true);
-      fetch(withClientScope(`/api/resume/tailored/${jobId}/match`))
-      .then((r) => r.json())
-      .then((d) => { if (typeof d.score === "number") setMatchData(d); })
-      .catch(() => {})
-      .finally(() => setMatchLoading(false));
   }
 
   async function downloadDocx() {
@@ -238,13 +213,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     router.push("/profile/assets");
   }
 
-  function formatUpdatedAt(iso: string | null) {
-    if (!iso) return null;
-    try {
-      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    } catch {
-      return null;
-    }
+  function toggleFitToOnePage() {
+    updateResumeStyle({ ...style, fitToOnePage: !style.fitToOnePage });
   }
 
   return (
@@ -276,7 +246,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         position: "relative",
         width: "min(80vw, calc(100vw - 16px))",
         height: "100%",
-        background: "#FFFFFF",
+        background: RT.drawerBg,
         borderLeft: "var(--scout-border)",
         display: "flex",
         flexDirection: "column",
@@ -293,8 +263,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           justifyContent: "space-between",
           padding: "0 28px",
           height: 56,
-          borderBottom: "1px solid #E5DDD0",
-          background: "#FDFAF5",
+          borderBottom: `1px solid ${RT.border}`,
+          background: RT.panelBg,
           flexShrink: 0,
         }}
       >
@@ -306,10 +276,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             <X size={16} />
           </button>
           <div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>View Your Tailored Resume</span>
-            {formatUpdatedAt(lastUpdated) && (
-              <span style={{ fontSize: 14, color: "var(--scout-muted)", marginLeft: 10 }}>
-                Last updated {formatUpdatedAt(lastUpdated)}
+            <span style={{ fontSize: 14, fontWeight: 600, color: RT.text }}>View Your Tailored Resume</span>
+            {formatRelativeTimeAgo(lastUpdated) && (
+              <span style={{ fontSize: 14, color: RT.muted, marginLeft: 10 }}>
+                Last updated {formatRelativeTimeAgo(lastUpdated)}
               </span>
             )}
           </div>
@@ -321,13 +291,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             </span>
           )}
           <button
-            onClick={() => setFitToPage(!fitToPage)}
+            onClick={toggleFitToOnePage}
             style={{
               padding: "6px 14px",
-              background: fitToPage ? "#1C3A2F" : "#F5F3EF",
-              color: fitToPage ? "#E8D5A3" : "#52493F",
-              border: "1px solid #D8D0C5",
-              borderRadius: "var(--scout-radius)",
+              background: style.fitToOnePage ? RT.applyBg : RT.drawerBg,
+              color: style.fitToOnePage ? RT.green : RT.muted,
+              border: `1px solid ${RT.border}`,
+              borderRadius: RT.ctaSecondaryRadius,
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
@@ -360,7 +330,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         <div
           style={{
             flex: "0 0 58%",
-            background: "#F3F2EF",
+            background: RT.previewBg,
             padding: "24px 28px",
             overflowY: "auto",
             display: "flex",
@@ -432,22 +402,21 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           )}
         </div>
 
-        {/* Right — AI Rewrite / Editor / Style */}
+        {/* Right — Editor / Style only (saved viewer) */}
         <div
           className="resume-print-hide"
           style={{
             flex: 1,
-            borderLeft: "1px solid rgba(0,0,0,0.08)",
+            borderLeft: `1px solid ${RT.border}`,
             display: "flex",
             flexDirection: "column",
-            background: "#FFFFFF",
+            background: RT.panelBg,
             minWidth: 0,
           }}
         >
-          <div style={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }}>
+          <div style={{ display: "flex", borderBottom: `1px solid ${RT.border}`, flexShrink: 0 }}>
             {(
               [
-                { id: "ai" as const, label: "AI Rewrite" },
                 { id: "editor" as const, label: "Editor" },
                 { id: "style" as const, label: "Style" },
               ] as const
@@ -461,10 +430,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                   padding: "12px 8px",
                   background: "none",
                   border: "none",
-                  borderBottom: rightTab === tab.id ? "2px solid #1A3A2F" : "2px solid transparent",
+                  borderBottom: rightTab === tab.id ? `2px solid ${RT.green}` : "2px solid transparent",
                   fontSize: 13,
                   fontWeight: rightTab === tab.id ? 700 : 500,
-                  color: rightTab === tab.id ? "#1A1A1A" : "#7A6E64",
+                  color: rightTab === tab.id ? RT.text : RT.muted,
                   cursor: "pointer",
                 }}
               >
@@ -474,45 +443,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: rightTab === "style" ? 0 : "16px 18px" }}>
-            {rightTab === "ai" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {(newScore != null || changeSummaries.length > 0) && (
-                  <div style={{ background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", padding: 16, border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
-                    {newScore != null && (
-                      <>
-                        <BigScoreGauge score={newScore} />
-                        {previousScore != null && (
-                          <p style={{ fontSize: 13, color: "#52493F", marginTop: 8, marginBottom: 0 }}>
-                            Score jumped from{" "}
-                            <strong style={{ fontFamily: fontMono }}>
-                              {previousScore.toFixed(1)} → {newScore.toFixed(1)}
-                            </strong>
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-                {changeSummaries.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>See What&apos;s Changed</p>
-                    {changeSummaries.map((change, i) => (
-                      <div key={i} style={{ display: "flex", gap: 9, padding: "9px 12px", background: "rgba(74,139,106,0.055)", borderRadius: "var(--scout-radius)", border: "1px solid rgba(74,139,106,0.12)", marginBottom: 7 }}>
-                        <span style={{ color: "#3D7A5B" }}>•</span>
-                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>{change}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {matchData && (
-                  <div style={{ padding: "12px 14px", background: "#F5F3EF", borderRadius: "var(--scout-radius)", fontSize: 13, color: "#52493F" }}>
-                    Keyword match: <strong>{matchData.score}%</strong>
-                    {matchData.missing.length > 0 && ` · ${matchData.missing.length} still missing`}
-                  </div>
-                )}
-              </div>
-            )}
-
             {rightTab === "editor" && (
               <>
           <div style={{ padding: "0 0 14px", marginBottom: 8 }}>
@@ -618,7 +548,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             )}
 
             {rightTab === "style" && (
-              <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} compact />
+              <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} compact useTailorTokens />
             )}
           </div>
         </div>
@@ -633,8 +563,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           justifyContent: "space-between",
           padding: "0 28px",
           height: 56,
-          borderTop: "1px solid #E5DDD0",
-          background: "#FDFAF5",
+          borderTop: `1px solid ${RT.border}`,
+          background: RT.panelBg,
           flexShrink: 0,
         }}
       >
@@ -647,10 +577,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               alignItems: "center",
               gap: 8,
               padding: "10px 18px",
-              background: "#1C3A2F",
-              color: "#E8D5A3",
+              background: RT.applyBg,
+              color: "#FFFFFF",
               border: "none",
-              borderRadius: "var(--scout-radius)",
+              borderRadius: RT.ctaSecondaryRadius,
               fontSize: 13,
               fontWeight: 500,
               cursor: "pointer",
@@ -703,10 +633,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             alignItems: "center",
             gap: 8,
             padding: "10px 24px",
-            background: "#86EFAC",
-            color: "#1A1A1A",
-            border: "1px solid rgba(0,0,0,0.12)",
-            borderRadius: 999,
+            background: RT.green,
+            color: RT.text,
+            border: `1px solid ${RT.border}`,
+            borderRadius: RT.ctaPrimaryRadius,
             fontSize: 14,
             fontWeight: 700,
             cursor: "pointer",
@@ -757,7 +687,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                   setRegenerateConfirm(false);
                   onRegenerateRequest?.();
                 }}
-                style={{ flex: 1, padding: "10px", background: "#86EFAC", color: "#1A1A1A", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                style={{ flex: 1, padding: "10px", background: RT.green, color: RT.text, border: "none", borderRadius: RT.ctaSecondaryRadius, fontFamily: fontSans, fontSize: 14, fontWeight: 700, cursor: "pointer" }}
               >
                 Regenerate
               </button>

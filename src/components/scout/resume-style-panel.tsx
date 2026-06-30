@@ -1,6 +1,7 @@
 "use client";
 
 import { JR } from "./profile-resume-editor-panels";
+import { RT } from "@/lib/resume-tailor-tokens";
 import {
   DEFAULT_RESUME_STYLE,
   normalizeResumeStyle,
@@ -18,12 +19,17 @@ export function ResumeStylePanel({
   style,
   onChange,
   compact,
+  useTailorTokens,
 }: {
   style: ResumeStyleSettings;
   onChange: (next: ResumeStyleSettings) => void;
   compact?: boolean;
+  useTailorTokens?: boolean;
 }) {
   const s = normalizeResumeStyle(style);
+  const T = useTailorTokens
+    ? { green: RT.green, greenLight: RT.industryMatched, border: RT.border, panel: RT.panelBg, text: RT.text, muted: RT.muted }
+    : { green: JR.green, greenLight: JR.greenLight, border: JR.border, panel: JR.panel, text: JR.text, muted: JR.muted };
 
   function patch(partial: Partial<ResumeStyleSettings>) {
     onChange({ ...s, ...partial });
@@ -32,7 +38,7 @@ export function ResumeStylePanel({
   const labelStyle: React.CSSProperties = {
     fontSize: 11,
     fontWeight: 700,
-    color: JR.muted,
+    color: T.muted,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     margin: "0 0 8px",
@@ -41,17 +47,17 @@ export function ResumeStylePanel({
   const selectStyle: React.CSSProperties = {
     width: "100%",
     padding: "8px 10px",
-    border: `1px solid ${JR.border}`,
-    borderRadius: "var(--scout-radius)",
+    border: `1px solid ${T.border}`,
+    borderRadius: useTailorTokens ? RT.ctaSecondaryRadius : "var(--scout-radius)",
     fontSize: 13,
-    background: JR.panel,
-    color: JR.text,
+    background: T.panel,
+    color: T.text,
     boxSizing: "border-box",
   };
 
   return (
     <div style={{ padding: compact ? "12px 14px" : "16px 18px", overflowY: "auto", height: "100%" }}>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: JR.muted, lineHeight: 1.5 }}>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: T.muted, lineHeight: 1.5 }}>
         Layout and typography apply to preview and downloads.
       </p>
 
@@ -64,9 +70,9 @@ export function ResumeStylePanel({
             onClick={() => patch({ template: t })}
             style={{
               padding: "10px 8px",
-              border: s.template === t ? `2px solid ${JR.green}` : `1px solid ${JR.border}`,
-              borderRadius: "var(--scout-radius)",
-              background: s.template === t ? JR.greenLight : JR.panel,
+              border: s.template === t ? `2px solid ${T.green}` : `1px solid ${T.border}`,
+              borderRadius: useTailorTokens ? RT.ctaSecondaryRadius : "var(--scout-radius)",
+              background: s.template === t ? T.greenLight : T.panel,
               fontSize: 11,
               fontWeight: 600,
               cursor: "pointer",
@@ -84,7 +90,7 @@ export function ResumeStylePanel({
           type="color"
           value={s.accentColor}
           onChange={(e) => patch({ accentColor: e.target.value })}
-          style={{ width: 44, height: 36, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", padding: 2 }}
+          style={{ width: 44, height: 36, border: `1px solid ${T.border}`, borderRadius: useTailorTokens ? RT.ctaSecondaryRadius : "var(--scout-radius)", padding: 2 }}
         />
         <select
           value={s.accentTarget}
@@ -97,7 +103,7 @@ export function ResumeStylePanel({
       </div>
 
       <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, cursor: "pointer" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: JR.text }}>Fit to one page</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Fit to one page</span>
         <input type="checkbox" checked={s.fitToOnePage} onChange={(e) => patch({ fitToOnePage: e.target.checked })} />
       </label>
 
@@ -117,7 +123,7 @@ export function ResumeStylePanel({
           { key: "fontSizeBody" as const, label: "Body" },
         ].map(({ key, label }) => (
           <div key={key}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: JR.muted }}>{label}</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: T.muted }}>{label}</p>
             <input
               type="number"
               min={8}
@@ -140,9 +146,9 @@ export function ResumeStylePanel({
             style={{
               flex: 1,
               padding: "8px",
-              border: s.bulletStyle === b ? `2px solid ${JR.green}` : `1px solid ${JR.border}`,
-              borderRadius: "var(--scout-radius)",
-              background: JR.panel,
+              border: s.bulletStyle === b ? `2px solid ${T.green}` : `1px solid ${T.border}`,
+              borderRadius: useTailorTokens ? RT.ctaSecondaryRadius : "var(--scout-radius)",
+              background: T.panel,
               cursor: "pointer",
             }}
           >
@@ -152,7 +158,7 @@ export function ResumeStylePanel({
       </div>
 
       <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: JR.text }}>Hide section dividers</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Hide section dividers</span>
         <input type="checkbox" checked={s.hideDivider} onChange={(e) => patch({ hideDivider: e.target.checked })} />
       </label>
     </div>
