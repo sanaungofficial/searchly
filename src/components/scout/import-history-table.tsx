@@ -6,6 +6,7 @@ import {
   importStatusColor,
   importStatusLabel,
 } from "@/lib/client-import/import-run";
+import { importHistoryTrackingSinceLabel } from "@/lib/client-import/import-history-constants";
 import { ScoutBox, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, type as T } from "@/lib/typography";
 
@@ -108,10 +109,18 @@ export function ImportHistoryTable({ runs, loading, isMobile, onDetails, onRefre
   }
 
   if (!runs.length) {
+    const trackingSince = importHistoryTrackingSinceLabel();
     return (
       <ScoutBox padding={20}>
-        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 12px" }}>
-          No imports yet. Run your first import from the New import tab.
+        <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>
+          No tracked imports yet
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 8px", lineHeight: 1.55 }}>
+          Imports before {trackingSince} were not recorded. Client data from those imports is still in Kimchi — only
+          the history log is missing.
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 12px", lineHeight: 1.55 }}>
+          New imports from the New import tab will appear here automatically.
         </p>
         {onRefresh && (
           <ScoutSecondaryBtn type="button" onClick={onRefresh}>

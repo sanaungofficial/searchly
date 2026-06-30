@@ -296,6 +296,10 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
         clientUserId={clientUserId}
         onPatchProfile={onPatchProfile}
         onImportComplete={handleImportComplete}
+        onSuccess={(message) => {
+          setShowImportModal(false);
+          setError(message);
+        }}
       />
 
       {showReferenceUpload && (
