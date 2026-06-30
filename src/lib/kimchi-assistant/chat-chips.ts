@@ -47,7 +47,7 @@ export const CHIP_PAGE_GUIDANCE: Record<string, string> = {
     "Opening **Upskill**. Pick a course or next step for the skill you queued.",
   "/opportunities/pipeline":
     "Opening your **pipeline**. Add roles you're tracking or move cards forward as things progress.",
-  "/inbox":
+  "/networking":
     "Opening **Inbox**. Connect email if you haven't — Kimchi can summarize recruiter threads and draft replies.",
 };
 
@@ -227,7 +227,7 @@ function buildPersonalizedFollowUpExtras(
 
 function shouldSkipChipForContext(chip: AssistantChip, ctx?: AssistantContextPayload | null): boolean {
   if (!ctx) return false;
-  if (chip.action.type === "navigate" && chip.action.href === "/inbox" && ctx.inbox.pendingCount === 0) {
+  if (chip.action.type === "navigate" && chip.action.href === "/networking" && ctx.inbox.pendingCount === 0) {
     return true;
   }
   if (chip.id === "strategy" && ctx.profileGaps.hasStrategyDoc) return true;
@@ -483,7 +483,7 @@ function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
       label: "Connect your email",
       hint: s.detail,
       variant: "action",
-      action: { type: "navigate", href: "/inbox" },
+      action: { type: "navigate", href: "/networking/inbox" },
     };
   }
   if (s.kind === "inbox_email" && s.meta?.activityId) {
@@ -685,7 +685,7 @@ export function buildRouteSuggestionChips(pageHint?: AssistantPageHint | null): 
       },
     ].map(compactChip);
   }
-  if (pathname.startsWith("/inbox")) {
+  if (pathname.startsWith("/networking")) {
     return [
       {
         id: "route-inbox-summarize",
@@ -921,7 +921,7 @@ const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
         id: "open-inbox",
         label: "Open inbox",
         variant: "action",
-        action: { type: "navigate", href: "/inbox" },
+        action: { type: "navigate", href: "/networking" },
       },
       {
         id: "reply-draft",
@@ -1171,7 +1171,7 @@ const ALLOWED_NAV_ROUTES = [
   "/profile/career-strategy",
   "/profile/learning-path",
   "/profile",
-  "/inbox",
+  "/networking",
   "/opportunities/pipeline",
 ];
 

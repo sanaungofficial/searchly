@@ -21,7 +21,7 @@ function formatProfileGaps(gaps: AssistantProfileGaps): string {
     gaps.hasStrategyDoc ? "- Has career strategy doc" : "- Missing career strategy doc (suggest Create your strategy)",
     gaps.hasResume ? "- Has resume on file" : "- Missing resume (suggest upload)",
     gaps.hasPipelineJobs ? "- Has jobs in pipeline" : "- Pipeline empty (suggest add jobs)",
-    gaps.emailConnected ? "- Email connected" : "- Email not connected (suggest /inbox)",
+    gaps.emailConnected ? "- Email connected" : "- Email not connected (suggest /networking/inbox)",
   ];
   return lines.join("\n");
 }

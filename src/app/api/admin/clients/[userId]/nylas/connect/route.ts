@@ -12,7 +12,7 @@ import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { withClientUserId } from "@/lib/workspace-urls";
 
 function adminClientInboxReturnPath(clientUserId: string) {
-  return withClientUserId("/inbox", clientUserId);
+  return withClientUserId("/networking/inbox", clientUserId);
 }
 
 export async function GET(

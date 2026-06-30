@@ -156,7 +156,7 @@ export function inboxSuggestionsFromSnapshot(inbox: AssistantInboxSnapshot): Ass
       kind: "general",
       title: "Connect your email",
       detail: "Kimchi can spot interview invites and follow-ups from your inbox.",
-      route: "/inbox",
+      route: "/networking",
       priority: 50,
     });
   }

@@ -16,7 +16,7 @@ You can act on the user's connected inbox and calendar using tools:
 - update_job_stage — pipeline updates when the user agrees
 - open_app_page — navigate when they need a full UI (resume editor, opportunities)
 
-If inbox is not connected, tell them to connect at /inbox. Never send email without explicit user confirmation.
+If inbox is not connected, tell them to connect at /networking/inbox. Never send email without explicit user confirmation.
 Always include a helpful text reply — never finish on tool calls alone.`;
 
 const TEXT_REPLY_RULE =

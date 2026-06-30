@@ -24,7 +24,7 @@ import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { BETA_FEATURES, isProductionEnv } from "@/lib/beta-features";
 import { sidebarTheme as S } from "@/lib/sidebar-theme";
-import { matchInboxPath, matchNetworkRolesPath, matchOpportunitiesNavPath, NETWORK_ROLES_NAV, OPPORTUNITIES_PATH } from "@/lib/workspace-urls";
+import { INBOX_PATH, matchInboxPath, matchNetworkRolesPath, matchOpportunitiesNavPath, NETWORK_ROLES_NAV, OPPORTUNITIES_PATH } from "@/lib/workspace-urls";
 import { isStaffPortalRole, EXPERT_DASHBOARD_PATH, isExpertPortalPath } from "@/lib/staff-portal";
 
 interface SidebarProps {
@@ -653,8 +653,8 @@ export function WorkspaceSidebar({
 
           <SidebarNavButton
             active={matchInboxPath(pathname)}
-            onClick={() => navigate("/inbox")}
-            label="Inbox"
+            onClick={() => navigate(INBOX_PATH)}
+            label="Networking"
             Icon={InboxIcon}
             isRail={isRail}
           />

@@ -504,7 +504,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           break;
         case "inbox_insight":
           if (action.activityId) setInsightActivityId(action.activityId);
-          else void navigateWithGuidance(chip, "/inbox");
+          else void navigateWithGuidance(chip, "/networking");
           break;
         case "add_skill":
           void (async () => {

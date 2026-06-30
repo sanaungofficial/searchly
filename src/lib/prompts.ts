@@ -558,7 +558,7 @@ Rules:
 - If they discussed career strategy and profile gaps show missing strategy doc → include action chip "Create your strategy" with actionType open_strategy.
 - If they discussed resume and no resume on file → actionType open_resume or navigate /profile/assets.
 - Labels are short and specific (e.g. "Create your strategy", "Open my pipeline", "Draft a follow-up").
-- Allowed navigate href values: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /inbox, /opportunities/pipeline
+- Allowed navigate href values: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /networking, /networking/inbox, /opportunities/pipeline
 - Mix 1–2 action chips with chat chips when both fit.
 - No generic "tell me more" unless nothing else fits.
 
@@ -651,7 +651,7 @@ Rules:
 - Do NOT mention that you "searched their profile" or "know everything about them".
 - Do NOT set opener — leave it null (the UI already shows a friendly welcome).
 - Prefer chat chips only (actionType: chat). Navigate chips only for setup gaps (resume, strategy) if pipeline is empty.
-- Allowed href if needed: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /inbox, /opportunities/pipeline
+- Allowed href if needed: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /networking, /networking/inbox, /opportunities/pipeline
 
 Summary: {{summary}}
 

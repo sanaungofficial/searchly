@@ -19,9 +19,19 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: "/inbox",
+        destination: "/networking/inbox",
+        permanent: true,
+      },
+      {
+        source: "/inbox/:path*",
+        destination: "/networking/inbox/:path*",
+        permanent: true,
+      },
+      {
         source: "/opportunities/inbox",
-        destination: "/inbox",
-        permanent: false,
+        destination: "/networking/inbox",
+        permanent: true,
       },
       {
         source: "/opportunities/pipeline",

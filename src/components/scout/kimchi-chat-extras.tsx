@@ -773,7 +773,7 @@ export function KimchiEmailInsightDrawer({
           >
             Ask Kimchi what to do
           </button>
-          <Link href="/inbox" className="kimchi-email-insight__link" onClick={onClose}>
+          <Link href="/networking/inbox" className="kimchi-email-insight__link" onClick={onClose}>
             Open full inbox →
           </Link>
         </div>

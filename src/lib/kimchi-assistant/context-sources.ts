@@ -71,7 +71,7 @@ export function buildContextSourceRefs(ctx: AssistantContextPayload): ContextSou
       id: "inbox",
       label: "Inbox → Pending review",
       citeAs: "your inbox",
-      route: "/inbox",
+      route: "/networking",
       snippet: `${ctx.inbox.pendingCount} email(s) pending review`,
     });
   }
