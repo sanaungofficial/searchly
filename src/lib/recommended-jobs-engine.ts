@@ -10,8 +10,10 @@ import { enrichRecommendedSources } from "@/lib/jobs-search-response";
 import { sourcesToCacheEntries, upsertJobListingCache } from "@/lib/job-listing-cache";
 import {
   hasRestrictiveListingFilters,
+  hasSoftRestrictiveListingFilters,
   isDefaultRecommendedFilters,
   relaxRestrictiveFilters,
+  relaxSoftListingFilters,
 } from "@/lib/profile-preference-filters";
 import {
   filterJobsByLocationPreference,
@@ -796,8 +798,8 @@ export async function generateRecommendedJobsForUser(
 
   let { sources, matchMode, companyCount, trackedWithMatches, notice, resumeVSearch } = primary;
 
-  async function retryPrimaryWithRelaxedFilters(reason: string) {
-    const relaxed = relaxRestrictiveFilters(mergedFilters);
+  async function retryPrimaryWithRelaxedFilters(reason: string, softOnly: boolean) {
+    const relaxed = softOnly ? relaxSoftListingFilters(mergedFilters) : relaxRestrictiveFilters(mergedFilters);
     primary = await fetchPrimaryRecommendedSources({
       userId: input.userId,
       targetRoles,
@@ -821,13 +823,21 @@ export async function generateRecommendedJobsForUser(
     effectiveFilters = relaxed;
   }
 
-  if (!sources.length && hasRestrictiveListingFilters(mergedFilters)) {
-    await retryPrimaryWithRelaxedFilters(
-      "No roles matched salary, date, or location filters — showing broader matches. Clear or loosen those filters to refine.",
-    );
+  if (!sources.length) {
+    if (defaultFeed && hasRestrictiveListingFilters(mergedFilters)) {
+      await retryPrimaryWithRelaxedFilters(
+        "No roles matched salary, date, or location filters — showing broader matches. Clear or loosen those filters to refine.",
+        false,
+      );
+    } else if (!defaultFeed && hasSoftRestrictiveListingFilters(mergedFilters)) {
+      await retryPrimaryWithRelaxedFilters(
+        "No roles matched salary or date filters — try loosening those, or clear location and experience filters.",
+        true,
+      );
+    }
   }
 
-  if (!sources.length) {
+  if (!sources.length && defaultFeed) {
     const broad = await fetchRecommendedBroadFallback({
       profileTargetRoles: targetRoles,
       semanticQuery: semanticQuery || undefined,
@@ -844,34 +854,57 @@ export async function generateRecommendedJobsForUser(
     }
   }
 
-  if (!sources.length) return null;
+  if (!sources.length) {
+    if (!defaultFeed) {
+      return {
+        jobs: [],
+        matchMode: "profile_roles",
+        companyCount: 0,
+        trackedWithMatches: 0,
+        notice:
+          "No roles matched your filters — try loosening location, experience, or category, or clear filters to see your full feed.",
+        artifactReEmbedded: artifact.reEmbedded,
+        resumeVSearch: false,
+        effectiveFilters: mergedFilters,
+      };
+    }
+    return null;
+  }
 
   sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
 
-  if (
-    recommendedFeedNeedsSupplement(sources) &&
-    hasRestrictiveListingFilters(effectiveFilters)
-  ) {
-    await retryPrimaryWithRelaxedFilters(
-      "Filters were too narrow — showing broader matches. Loosen salary, date, or radius to refine.",
-    );
-    sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
+  if (recommendedFeedNeedsSupplement(sources)) {
+    if (defaultFeed && hasRestrictiveListingFilters(effectiveFilters)) {
+      await retryPrimaryWithRelaxedFilters(
+        "Filters were too narrow — showing broader matches. Loosen salary, date, or radius to refine.",
+        false,
+      );
+      sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
+    } else if (!defaultFeed && hasSoftRestrictiveListingFilters(effectiveFilters)) {
+      await retryPrimaryWithRelaxedFilters(
+        "Salary or date filters were too narrow — loosen those to see more matches in your selected geography and level.",
+        true,
+      );
+      sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
+    }
   }
 
-  const sparseSupplement = await supplementSparseRecommendedSources({
-    sources,
-    targetRoles,
-    semanticQuery,
-    locationInput,
-    applyLocationFilter: defaultFeed || Boolean(mergedFilters.locations?.length),
-  });
-  if (sparseSupplement.supplemented) {
-    sources = sparseSupplement.sources;
-    matchMode = matchMode === "broad" ? matchMode : "broad";
-    notice = appendNotice(
-      notice,
-      "Added broader roles to fill your feed — personalized matches were sparse.",
-    );
+  if (defaultFeed) {
+    const sparseSupplement = await supplementSparseRecommendedSources({
+      sources,
+      targetRoles,
+      semanticQuery,
+      locationInput,
+      applyLocationFilter: true,
+    });
+    if (sparseSupplement.supplemented) {
+      sources = sparseSupplement.sources;
+      matchMode = matchMode === "broad" ? matchMode : "broad";
+      notice = appendNotice(
+        notice,
+        "Added broader roles to fill your feed — personalized matches were sparse.",
+      );
+    }
   }
 
   const sourcesBeforeLocation = sources;
@@ -936,7 +969,10 @@ export async function generateRecommendedJobsForUser(
     excludeMatchTerms: nameMatchExcludeTerms,
   });
 
-  if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES || countDistinctCompaniesFromJobs(jobs) < RECOMMENDED_MIN_DISTINCT_COMPANIES) {
+  if (
+    defaultFeed &&
+    (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES || countDistinctCompaniesFromJobs(jobs) < RECOMMENDED_MIN_DISTINCT_COMPANIES)
+  ) {
     const beforeCount = jobs.length;
     jobs = await supplementSparseRecommendedJobs({
       jobs,
@@ -962,7 +998,7 @@ export async function generateRecommendedJobsForUser(
     }
   }
 
-  if (!jobs.length) {
+  if (!jobs.length && defaultFeed) {
     let broadSources = (
       await fetchRecommendedBroadFallback({
         profileTargetRoles: targetRoles,
@@ -1021,7 +1057,25 @@ export async function generateRecommendedJobsForUser(
     jobs = jobs.filter((job) => jobMatchesListingFilters(job, job.companyName, effectiveFilters));
   }
 
-  if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
+  if (!jobs.length) {
+    if (!defaultFeed) {
+      return {
+        jobs: [],
+        matchMode,
+        companyCount,
+        trackedWithMatches,
+        notice:
+          notice ??
+          "No roles matched your filters — try loosening location, experience, or category, or clear filters to see your full feed.",
+        artifactReEmbedded: artifact.reEmbedded,
+        resumeVSearch,
+        effectiveFilters,
+      };
+    }
+    return null;
+  }
+
+  if (defaultFeed && jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
     const beforeFill = jobs.length;
     jobs = await ensureMinimumRecommendedJobs({
       jobs,

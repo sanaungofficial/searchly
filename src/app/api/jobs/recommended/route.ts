@@ -146,6 +146,25 @@ async function handleRecommended(request: Request) {
     });
 
     if (!result?.jobs.length) {
+      if (explicitUserFilters && result) {
+        return NextResponse.json({
+          jobs: [],
+          totalCount: 0,
+          page: 1,
+          limit: VECTOR_SEARCH_RESULTS_MAX,
+          totalPages: 0,
+          matchMode: result.matchMode,
+          companyCount: result.companyCount,
+          trackedWithMatches: result.trackedWithMatches,
+          filtersApplied: result.effectiveFilters ?? searchFilters,
+          effectiveFilters: result.effectiveFilters ?? searchFilters,
+          notice: result.notice,
+          snapshotDate,
+          generatedAt: new Date().toISOString(),
+          fromSnapshot: false,
+          scoreFloor: RECOMMENDED_MATCH_SCORE_FLOOR,
+        });
+      }
       return NextResponse.json(
         {
           error: "Could not load roles right now — try Refresh in a moment.",
