@@ -8,9 +8,8 @@ import {
   type VectorMatchedJob,
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
-import { cachedJobToMeta, companyLogoFromJobData, jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
+import { cachedJobToMeta, jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
 import {
-  roleListingToVectorMatchedJob,
   vectorJobToRoleListing,
   type RoleListing,
 } from "@/lib/role-listings";
@@ -47,11 +46,8 @@ import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
-import { CompanyLogo } from "./company-logo";
-import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
-import { ScoreExplainerLabel } from "./score-explainer-popover";
-import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
-import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { ScoutInsetBox } from "./scout-box";
+import { fontSans, color, surface, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
@@ -61,6 +57,8 @@ import {
 } from "./pipeline-recommended-filters";
 import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-bar";
 import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal";
+import { RecommendedJobCard } from "./recommended-job-card";
+import { JR } from "@/lib/opportunities-jobright-tokens";
 import { buildOpportunitiesFilterChips } from "@/lib/opportunities-filter-chips";
 import {
   dismissOpportunitiesPrefConfirm,
@@ -287,9 +285,9 @@ const inputStyle: React.CSSProperties = {
 
 function RecommendedResultsLoader() {
   return (
-    <ScoutBox padding={28} style={{ marginBottom: 12 }}>
+    <div style={{ padding: 28, marginBottom: 12, background: JR.pageBg, borderRadius: JR.cardRadius }}>
       <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
-    </ScoutBox>
+    </div>
   );
 }
 
@@ -330,248 +328,6 @@ function recommendedDedupeKey(job: VectorMatchedJob): string {
   });
 }
 
-function IconBriefcase() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="4" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M4.5 4V3a2 2 0 0 1 4 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="7.5" x2="12" y2="7.5" stroke="currentColor" strokeWidth="1.2"/>
-    </svg>
-  );
-}
-
-function IconBarChart() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="7" width="2.5" height="5" rx="0.5" fill="currentColor"/>
-      <rect x="5" y="4" width="2.5" height="8" rx="0.5" fill="currentColor"/>
-      <rect x="9" y="1" width="2.5" height="11" rx="0.5" fill="currentColor"/>
-    </svg>
-  );
-}
-
-function IconHome() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M1.5 6L6.5 1.5L11.5 6V12H8.5V9H4.5V12H1.5V6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function IconCalendar() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="1" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="4" y1="1" x2="4" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="9" y1="1" x2="9" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function IconDollar() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M6.5 3V10M4.5 8.5C4.5 8.5 5 9.5 6.5 9.5C8 9.5 8.5 8.5 8.5 7.5C8.5 6 6.5 6 6.5 6C6.5 6 4.5 6 4.5 4.5C4.5 3.5 5 3 6.5 3C8 3 8.5 4 8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function MetadataGrid({
-  row,
-}: {
-  row: UnifiedListing;
-}) {
-  const c = row.cached;
-  const items: { icon: JSX.Element; label: string }[] = [];
-  if (row.location) items.push({ icon: <IconHome />, label: row.location });
-  if (c.locationType) items.push({ icon: <IconHome />, label: c.locationType });
-  else if (c.remote) items.push({ icon: <IconHome />, label: "Remote" });
-  if (c.jobType) items.push({ icon: <IconBriefcase />, label: c.jobType });
-  if (c.seniority) items.push({ icon: <IconBarChart />, label: c.seniority });
-  if (c.salary) items.push({ icon: <IconDollar />, label: c.salary });
-  if (c.experienceLevel) items.push({ icon: <IconCalendar />, label: c.experienceLevel });
-  if (!items.length) return null;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 18px", marginTop: 10 }}>
-      {items.map(({ icon, label }, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: color.muted }}>
-          <span style={{ display: "flex", flexShrink: 0, opacity: 0.65 }}>{icon}</span>
-          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>{label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RecommendedJobCard({
-  row,
-  savingKey,
-  onOpenRecommended,
-  onSaveJob,
-  setSavingKey,
-}: {
-  row: UnifiedListing;
-  savingKey: string | null;
-  onOpenRecommended: (job: VectorMatchedJob) => void;
-  onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  setSavingKey: (key: string | null) => void;
-}) {
-  const handleOpen = () => {
-    onOpenRecommended(roleListingToVectorMatchedJob(row));
-  };
-
-  const handleSave = () => {
-    const matchJob = roleListingToVectorMatchedJob(row);
-    setSavingKey(row.dedupeKey);
-    onSaveJob(matchJob).finally(() => setSavingKey(null));
-  };
-
-  const isSaving = savingKey === row.dedupeKey;
-
-  const matchScore = row.matchScore ?? 0;
-  const matchLabel = row.matchLabel ?? "";
-
-  const postedDays = row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
-  const postedText =
-    postedDays === null
-      ? null
-      : postedDays === 0
-        ? "Posted today"
-        : postedDays === 1
-          ? "Posted 1 day ago"
-          : `Posted ${postedDays} days ago`;
-  const isRecentPost = postedDays !== null && postedDays <= 3;
-
-  return (
-    <div
-      key={row.dedupeKey}
-      style={{
-        display: "flex",
-        border: "1.5px solid #161616",
-        borderRadius: 8,
-        background: surface.card,
-        overflow: "hidden",
-      }}
-    >
-      {/* Left: job content area — swaps to "Why Match" when hovering score panel */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleOpen}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleOpen();
-            }
-          }}
-          style={{ flex: 1, padding: 18, cursor: "pointer" }}
-        >
-          <>
-              {/* Top badge row */}
-              {(postedText || row.isTrackedCompany) && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                  {postedText && (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "3px 9px",
-                        fontSize: T.label,
-                        fontWeight: 500,
-                        color: isRecentPost ? color.forest : color.muted,
-                        background: isRecentPost ? "rgba(26,58,47,0.07)" : "rgba(0,0,0,0.04)",
-                        border: `1px solid ${isRecentPost ? "rgba(26,58,47,0.15)" : "rgba(0,0,0,0.07)"}`,
-                        borderRadius: 4,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {postedText}
-                    </span>
-                  )}
-                  {row.isTrackedCompany && (
-                    <span
-                      style={{
-                        ...scoutInsetChipStyle,
-                        display: "inline-block",
-                        padding: "3px 9px",
-                        fontSize: T.label,
-                        fontWeight: 600,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: color.forest,
-                        background: "rgba(26,58,47,0.08)",
-                        border: border.lineStrong,
-                        borderRadius: 4,
-                      }}
-                    >
-                      Watchlist
-                    </span>
-                  )}
-                </div>
-              )}
-              {/* Logo + Title + Company */}
-              <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                <CompanyLogo {...companyLogoFromJobData(row.companyName, row.cached)} size={48} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-                    {row.companyName}
-                  </p>
-                  <MetadataGrid row={row} />
-                </div>
-              </div>
-          </>
-        </div>
-        <div
-          style={{ display: "flex", gap: 8, padding: "0 18px 16px", flexWrap: "wrap", alignItems: "center" }}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              padding: "8px 16px",
-              background: isSaving ? "#888" : "#AE7AFF",
-              color: "#FFFFFF",
-              border: "1.5px solid #161616",
-              borderRadius: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              cursor: isSaving ? "not-allowed" : "pointer",
-              opacity: isSaving ? 0.65 : 1,
-            }}
-          >
-            {isSaving ? "Saving…" : "Save job"}
-          </button>
-          {row.url && (
-            <a
-              href={row.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
-            >
-              Open posting ↗
-            </a>
-          )}
-        </div>
-      </div>
-      {matchScore > 0 && (
-        <MatchScoreColumn
-          score={matchScore}
-          label={matchLabel}
-          reasons={row.matchReasons ?? []}
-          matchedSkills={row.matchedSkills ?? []}
-        />
-      )}
-    </div>
-  );
-}
 
 function RecommendedResultsList({
   listings,
@@ -590,14 +346,21 @@ function RecommendedResultsList({
 }) {
   if (!listings.length) {
     return (
-      <ScoutBox style={{ padding: 40, textAlign: "center", border: "1.5px solid #161616" }}>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>{emptyMessage}</p>
-      </ScoutBox>
+      <div
+        style={{
+          padding: 40,
+          textAlign: "center",
+          background: JR.cardBg,
+          borderRadius: JR.cardRadius,
+        }}
+      >
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: JR.textMuted, margin: 0 }}>{emptyMessage}</p>
+      </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {listings.map((row) => (
         <RecommendedJobCard
           key={row.dedupeKey}
@@ -1230,17 +993,48 @@ export function PipelineRecommendedSection({
   const showInitialLoader = (loading || revalidating) && !hasLoadedOnce;
   const showRefreshLoader = (loading || revalidating) && hasLoadedOnce && jobs.length > 0;
 
+  const jrActionBtn: React.CSSProperties = {
+    padding: "7px 14px",
+    background: JR.cardBg,
+    color: JR.text,
+    border: `1px solid ${JR.border}`,
+    borderRadius: JR.pillRadius,
+    fontFamily: fontSans,
+    fontSize: T.label,
+    fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+
   return (
     <div>
-      <ScoutBox padding={14} style={{ marginBottom: 12 }}>
-        <ScoreExplainerLabel variant="vector-match">
-          <ScoutLabel>Roles</ScoutLabel>
-        </ScoreExplainerLabel>
+      <div
+        style={{
+          background: JR.cardBg,
+          borderRadius: JR.cardRadius,
+          padding: "14px 16px",
+          marginBottom: 10,
+        }}
+      >
         {hasLoadedOnce && !showInitialLoader && (
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "4px 0 8px", lineHeight: 1.45 }}>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 15,
+              fontWeight: 600,
+              color: JR.text,
+              margin: "0 0 10px",
+              lineHeight: 1.35,
+            }}
+          >
             {viewMode === "search"
               ? `Search results (${filteredListings.length})`
-              : "For you — roles matched to your profile filters, ranked by fit."}
+              : "Recommended"}
+          </p>
+        )}
+        {hasLoadedOnce && !showInitialLoader && viewMode === "recommended" && (
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: JR.textMuted, margin: "0 0 10px", lineHeight: 1.45 }}>
+            Roles matched to your profile filters, ranked by fit.
           </p>
         )}
 
@@ -1270,17 +1064,9 @@ export function PipelineRecommendedSection({
                   onClick={clearSearch}
                   disabled={loading || revalidating}
                   style={{
-                    padding: "7px 14px",
-                    background: "transparent",
-                    color: "#161616",
-                    border: "1.5px solid #161616",
-                    borderRadius: 0,
-                    fontFamily: fontSans,
-                    fontSize: T.label,
-                    fontWeight: 600,
+                    ...jrActionBtn,
                     cursor: loading || revalidating ? "not-allowed" : "pointer",
                     opacity: loading || revalidating ? 0.65 : 1,
-                    whiteSpace: "nowrap",
                   }}
                 >
                   Clear search
@@ -1291,17 +1077,9 @@ export function PipelineRecommendedSection({
                 onClick={handleRefresh}
                 disabled={loading || revalidating}
                 style={{
-                  padding: "7px 14px",
-                  background: "transparent",
-                  color: "#161616",
-                  border: "1.5px solid #161616",
-                  borderRadius: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.label,
-                  fontWeight: 600,
+                  ...jrActionBtn,
                   cursor: loading || revalidating ? "not-allowed" : "pointer",
                   opacity: loading || revalidating ? 0.65 : 1,
-                  whiteSpace: "nowrap",
                 }}
               >
                 {loading || revalidating ? "Loading…" : "Refresh"}
@@ -1318,6 +1096,9 @@ export function PipelineRecommendedSection({
                   padding: "7px 10px",
                   fontSize: T.label,
                   cursor: "pointer",
+                  borderRadius: JR.pillRadius,
+                  border: `1px solid ${JR.border}`,
+                  background: JR.cardBg,
                 }}
               >
                 {RECOMMENDED_SORT_OPTIONS.map((opt) => (
@@ -1421,12 +1202,19 @@ export function PipelineRecommendedSection({
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
         )}
         {notice && (
-          <ScoutInsetBox style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
+          <ScoutInsetBox style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.caption, color: JR.textMuted, lineHeight: 1.45 }}>
             {notice}
           </ScoutInsetBox>
         )}
-      </ScoutBox>
+      </div>
 
+      <div
+        style={{
+          background: JR.pageBg,
+          borderRadius: JR.cardRadius,
+          padding: 10,
+        }}
+      >
       {showInitialLoader ? (
         <RecommendedResultsLoader />
       ) : (
@@ -1451,6 +1239,7 @@ export function PipelineRecommendedSection({
           />
         </>
       )}
+      </div>
     </div>
   );
 }
