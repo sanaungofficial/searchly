@@ -30,8 +30,6 @@ import { MasterResumeGate } from "./master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { JobMatchScorePanel } from "./job-match-score-panel";
-import type { MatchData } from "./job-match-ui";
-import { matchDataToFitDisplay } from "./job-match-ui";
 import { getJobFreshness } from "@/lib/job-posted-freshness";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import {
@@ -424,92 +422,47 @@ function resolveJobFields(meta: JobMeta | null) {
 
 function JobDrawerMatchSection({
   meta,
-  resumeMatch,
-  resumeMatchLoading,
-  resumeName,
-  analyzeControls,
+  onCompareResume,
 }: {
   meta: JobMeta | null;
-  resumeMatch?: MatchData | null;
-  resumeMatchLoading?: boolean;
-  resumeName?: string | null;
-  analyzeControls?: {
-    run: () => void;
-    canAnalyze: boolean;
-    loading: boolean;
-    hasAiMatch: boolean;
-    selectedId: string | null;
-  } | null;
+  onCompareResume?: () => void;
 }) {
-  const vector = meta?.vectorMatch;
-  const fromResume = resumeMatch ? matchDataToFitDisplay(resumeMatch) : null;
-  const match = fromResume ?? vector;
-  const canShowAnalyzeOnly =
-    !match &&
-    analyzeControls?.canAnalyze &&
-    analyzeControls.selectedId &&
-    !analyzeControls.hasAiMatch;
-
-  if ((!match || match.matchScore <= 0) && !canShowAnalyzeOnly) return null;
-
-  const displayMatch = match && match.matchScore > 0 ? match : null;
-
-  const sourceLabel = fromResume
-      ? resumeName
-      ? `Comparison for ${resumeName}`
-      : "Resume comparison"
-    : "Profile-based estimate";
-
-  const showAnalyze =
-    analyzeControls?.canAnalyze &&
-    analyzeControls.selectedId &&
-    !analyzeControls.hasAiMatch &&
-    !analyzeControls.loading;
+  const match = meta?.vectorMatch;
+  if (!match || match.matchScore <= 0) return null;
 
   return (
     <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)", borderRadius: "var(--scout-radius)" }}>
       <SectionTitle icon={<IconTarget />}>
-        <ScoreExplainerLabel variant={fromResume ? "job-match" : "vector-match"}>Alignment check</ScoreExplainerLabel>
+        <ScoreExplainerLabel variant="vector-match">Alignment check</ScoreExplainerLabel>
       </SectionTitle>
-      {displayMatch ? (
-        <>
-          <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
-            {displayMatch.matchLabel} fit ({displayMatch.matchScore}/100) · {sourceLabel}
-          </p>
-          {resumeMatchLoading && !fromResume && (
-            <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>Analyzing selected resume…</p>
-          )}
-          {displayMatch.matchReasons.length > 0 ? (
-            <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55 }}>
-              {displayMatch.matchReasons.map((reason) => (
-                <li key={reason} style={{ marginBottom: 6 }}>{reason}</li>
-              ))}
-            </ul>
-          ) : (
-            <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55, margin: 0 }}>
-              Matched to your profile based on role, skills, and experience. Use &ldquo;See why in detail&rdquo; below for a deeper breakdown.
-            </p>
-          )}
-          {(displayMatch.matchedSkills?.length || displayMatch.gapSkills?.length) ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
-              {displayMatch.matchedSkills?.map((skill) => (
-                <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
-              ))}
-              {displayMatch.gapSkills?.map((skill) => (
-                <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
-              ))}
-            </div>
-          ) : null}
-        </>
+      <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
+        {match.matchLabel} fit ({match.matchScore}/100) · Based on your profile
+      </p>
+      {match.matchReasons.length > 0 ? (
+        <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55 }}>
+          {match.matchReasons.map((reason) => (
+            <li key={reason} style={{ marginBottom: 6 }}>{reason}</li>
+          ))}
+        </ul>
       ) : (
-        <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55, margin: "0 0 10px" }}>
-          See how well your resume fits this role — skills, gaps, and a detailed score.
+        <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55, margin: 0 }}>
+          Matched to your profile based on role, skills, and experience.
         </p>
       )}
-      {showAnalyze && (
+      {(match.matchedSkills?.length || match.gapSkills?.length) ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+          {match.matchedSkills?.map((skill) => (
+            <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
+          ))}
+          {match.gapSkills?.map((skill) => (
+            <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+          ))}
+        </div>
+      ) : null}
+      {onCompareResume && (
         <button
           type="button"
-          onClick={analyzeControls!.run}
+          onClick={onCompareResume}
           style={{
             marginTop: 14,
             padding: "11px 18px",
@@ -523,11 +476,8 @@ function JobDrawerMatchSection({
             cursor: "pointer",
           }}
         >
-          See why in detail
+          Compare your resume →
         </button>
-      )}
-      {analyzeControls?.loading && !fromResume && (
-        <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "14px 0 0" }}>Running AI analysis…</p>
       )}
     </div>
   );
@@ -801,24 +751,6 @@ export function JobDrawer({
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
   const [qaModalOpen, setQaModalOpen] = useState(false);
-  const [resumeMatchForJob, setResumeMatchForJob] = useState<MatchData | null>(null);
-  const [resumeMatchLoading, setResumeMatchLoading] = useState(false);
-  const [resumeMatchName, setResumeMatchName] = useState<string | null>(null);
-  const [matchAnalyzeControls, setMatchAnalyzeControls] = useState<{
-    run: () => void;
-    canAnalyze: boolean;
-    loading: boolean;
-    hasAiMatch: boolean;
-    selectedId: string | null;
-  } | null>(null);
-  const handleResumeMatchChange = useCallback(
-    (data: MatchData | null, _assetId: string | null, loading: boolean, name: string | null) => {
-      setResumeMatchForJob(data);
-      setResumeMatchLoading(loading);
-      setResumeMatchName(name);
-    },
-    [],
-  );
   const [visible, setVisible] = useState(false);
   useLayoutEffect(() => { setVisible(true); }, []);
 
@@ -849,10 +781,6 @@ export function JobDrawer({
   useEffect(() => {
     setActiveSection("overview");
     setMobileToolsOpen(false);
-    setResumeMatchForJob(null);
-    setResumeMatchLoading(false);
-    setResumeMatchName(null);
-    setMatchAnalyzeControls(null);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [card.id]);
 
@@ -981,7 +909,7 @@ export function JobDrawer({
   const jobDescription = resolveJobDescriptionText(meta, card.role, card.company);
   const fullDescriptionText = meta?.description?.trim() || jobDescription;
   const hasFullPosting = (meta?.description?.trim().length ?? 0) >= 200;
-  const displayFit = card.fit > 0 ? card.fit : (meta?.vectorMatch?.matchScore ?? 0);
+  const displayFit = meta?.vectorMatch?.matchScore ?? 0;
   const scrollSections: ScrollSection[] = networkJob
     ? ["overview", "recruiter", "company"]
     : ["overview", "company"];
@@ -1184,8 +1112,7 @@ export function JobDrawer({
                   company={card.company}
                   description={jobDescription}
                   jobId={dbId}
-                  onMatchChange={handleResumeMatchChange}
-                  onAnalyzeControlsChange={setMatchAnalyzeControls}
+                  scoreSource="profile"
                   onRunFullMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined}
                   fullWidth={isMobile}
                 />
@@ -1301,13 +1228,10 @@ export function JobDrawer({
 
               {networkJob && <JobDrawerNetworkAdminSection networkJob={networkJob} />}
 
-              {(meta?.vectorMatch?.matchScore ?? 0) > 0 || resumeMatchForJob || matchAnalyzeControls?.canAnalyze ? (
+              {(meta?.vectorMatch?.matchScore ?? 0) > 0 ? (
                 <JobDrawerMatchSection
                   meta={meta}
-                  resumeMatch={resumeMatchForJob}
-                  resumeMatchLoading={resumeMatchLoading}
-                  resumeName={resumeMatchName}
-                  analyzeControls={matchAnalyzeControls}
+                  onCompareResume={canRunMatch ? () => setMatchDrawerOpen(true) : undefined}
                 />
               ) : null}
 
