@@ -551,7 +551,6 @@ export function PipelineRecommendedSection({
   onSaveJob,
   actingUserId,
 }: {
-  /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;

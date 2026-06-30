@@ -24,7 +24,7 @@ import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { BETA_FEATURES, isProductionEnv } from "@/lib/beta-features";
 import { sidebarTheme as S } from "@/lib/sidebar-theme";
-import { matchInboxPath, matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
+import { matchInboxPath, matchNetworkRolesPath, matchOpportunitiesNavPath, NETWORK_ROLES_NAV, OPPORTUNITIES_PATH } from "@/lib/workspace-urls";
 import { isStaffPortalRole, EXPERT_DASHBOARD_PATH, isExpertPortalPath } from "@/lib/staff-portal";
 
 interface SidebarProps {
@@ -259,50 +259,15 @@ function SidebarOpportunitiesNav({
   onNavigate: (path: string) => void;
   badge?: number;
 }) {
-  const opportunitiesActive = matchOpportunitiesNavPath(pathname);
-  const [expanded, setExpanded] = useState(opportunitiesActive);
-
-  useEffect(() => {
-    if (opportunitiesActive) setExpanded(true);
-  }, [opportunitiesActive]);
-
-  const onParentClick = () => {
-    if (isRail) {
-      onNavigate("/opportunities");
-      return;
-    }
-    if (!expanded) {
-      setExpanded(true);
-      onNavigate("/opportunities");
-      return;
-    }
-    setExpanded((prev) => !prev);
-  };
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <SidebarNavButton
-        active={opportunitiesActive}
-        onClick={onParentClick}
-        label="Opportunities"
-        Icon={OpportunitiesIcon}
-        isRail={isRail}
-        badge={badge}
-      />
-      {!isRail && expanded && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {OPPORTUNITIES_NAV.map(({ id, label, path, match }) => (
-            <SidebarNavSubButton
-              key={id}
-              active={match(pathname)}
-              onClick={() => onNavigate(path)}
-              label={label}
-              isRail={isRail}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    <SidebarNavButton
+      active={matchOpportunitiesNavPath(pathname)}
+      onClick={() => onNavigate(OPPORTUNITIES_PATH)}
+      label="Opportunities"
+      Icon={OpportunitiesIcon}
+      isRail={isRail}
+      badge={badge}
+    />
   );
 }
 
@@ -676,6 +641,14 @@ export function WorkspaceSidebar({
             pathname={pathname}
             onNavigate={navigate}
             badge={activePipelineCount}
+          />
+
+          <SidebarNavButton
+            active={matchNetworkRolesPath(pathname)}
+            onClick={() => navigate(NETWORK_ROLES_NAV.path)}
+            label={NETWORK_ROLES_NAV.label}
+            Icon={OpportunitiesIcon}
+            isRail={isRail}
           />
 
           <SidebarNavButton
