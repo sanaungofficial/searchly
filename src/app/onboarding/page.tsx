@@ -876,6 +876,10 @@ export default function OnboardingPage() {
         autoRunMatch: false,
       });
 
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("kimchi:onboarding-just-finished", "1");
+      }
+
       await fetch("/api/referrals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -62,6 +62,18 @@ import {
   type RecommendedFilterForm,
 } from "./pipeline-recommended-filters";
 import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-bar";
+import {
+  OpportunitiesPrefConfirmModal,
+  shouldShowOpportunitiesPrefConfirm,
+} from "./opportunities-pref-confirm-modal";
+import {
+  applySearchPreferencesToFilterForm,
+  emptyExtendedFilterFields,
+  patchParsedDataSearchPreferences,
+  searchPreferencesFromFilterForm,
+  searchPreferencesFromParsedData,
+  type SearchPreferences,
+} from "@/lib/search-preferences";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -96,8 +108,8 @@ function splitInputListOrUndefined(value: string): string[] | undefined {
   return items.length ? items : undefined;
 }
 
-function filtersToForm(f: VectorSearchFilters) {
-  return {
+function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) {
+  const base = {
     semanticQuery: f.semanticQuery ?? "",
     jobTitles: (f.jobTitles ?? []).join(", "),
     keywords: (f.keywords ?? []).join(", "),
@@ -123,7 +135,9 @@ function filtersToForm(f: VectorSearchFilters) {
     companySizeBuckets: new Set(f.companySizeBuckets ?? []),
     visaSponsored: f.visaSponsored === true,
     relocationPriorities: [] as string[],
+    ...emptyExtendedFilterFields(),
   };
+  return searchPrefs ? applySearchPreferencesToFilterForm(base, searchPrefs) : base;
 }
 
 type FilterForm = RecommendedFilterForm;
@@ -177,13 +191,17 @@ function readDefaultFeedCache(): RecommendedCacheEntry | null {
 
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
+  const skillKeywords = splitInputListOrUndefined(form.skills);
+  const baseKeywords = splitInputListOrUndefined(form.keywords) ?? [];
+  const mergedKeywords = skillKeywords?.length ? [...baseKeywords, ...skillKeywords] : baseKeywords.length ? baseKeywords : undefined;
+
   return {
     ...DEFAULT_VECTOR_SEARCH_FILTERS,
     page,
     limit: VECTOR_SEARCH_RESULTS_MAX,
     semanticQuery: form.semanticQuery.trim() || undefined,
     jobTitles: splitInputListOrUndefined(form.jobTitles),
-    keywords: splitInputListOrUndefined(form.keywords),
+    keywords: mergedKeywords,
     companyName: form.companyName.trim() || undefined,
     industries: splitInputListOrUndefined(form.industries),
     subindustries: splitInputListOrUndefined(form.subindustries),
@@ -191,7 +209,7 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     jobBoard: form.jobBoard.trim() || undefined,
     locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
     jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
-    experienceLevels: form.experienceLevels.size ? [...form.experienceLevels] : undefined,
+    experienceLevels: form.openToAllExperience ? undefined : form.experienceLevels.size ? [...form.experienceLevels] : undefined,
     companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
     visaSponsored: form.visaSponsored || undefined,
     datePostedWithinDays: form.datePostedWithinDays.trim()
@@ -201,10 +219,10 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     locationRadiusMiles: form.locationRadiusMiles.trim()
       ? Number(form.locationRadiusMiles)
       : undefined,
-    salaryFrom: form.salaryFrom.trim() ? Number(form.salaryFrom) : undefined,
-    salaryTo: form.salaryTo.trim() ? Number(form.salaryTo) : undefined,
-    yearsFrom: form.yearsFrom.trim() ? Number(form.yearsFrom) : undefined,
-    yearsTo: form.yearsTo.trim() ? Number(form.yearsTo) : undefined,
+    salaryFrom: form.openToAllSalary || !form.salaryFrom.trim() ? undefined : Number(form.salaryFrom),
+    salaryTo: form.openToAllSalary || !form.salaryTo.trim() ? undefined : Number(form.salaryTo),
+    yearsFrom: form.openToAllExperience || !form.yearsFrom.trim() ? undefined : Number(form.yearsFrom),
+    yearsTo: form.openToAllExperience || !form.yearsTo.trim() ? undefined : Number(form.yearsTo),
     locations: locationParts.length
       ? [{ city: form.locationCity.trim() || undefined, region: form.locationRegion.trim() || undefined, country: form.locationCountry.trim() || undefined }]
       : undefined,
@@ -589,6 +607,13 @@ export function PipelineRecommendedSection({
   const [profileFormReady, setProfileFormReady] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
   const [sortOption, setSortOption] = useState<RecommendedSortOption>("recommended");
+  const [profileMeta, setProfileMeta] = useState<{
+    userId: string | null;
+    targetRoles: string[];
+    prioritizedCategories: string[];
+    searchPreferences: SearchPreferences;
+  }>({ userId: null, targetRoles: [], prioritizedCategories: [], searchPreferences: {} });
+  const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
 
   const initialFetchAttemptedRef = useRef(false);
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
@@ -714,9 +739,14 @@ export function PipelineRecommendedSection({
   useEffect(() => {
     void fetch(withClientScope("/api/jobs/recommended/defaults"))
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { filters?: VectorSearchFilters; labels?: string[] } | null) => {
+      .then((data: {
+        filters?: VectorSearchFilters;
+        labels?: string[];
+        searchPreferences?: SearchPreferences;
+      } | null) => {
         if (data?.filters) {
-          const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
+          const searchPrefs = data.searchPreferences ?? {};
+          const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
           // Default feed API uses open filters — profile prefs drive matching server-side, not as Hirebase pre-filters.
@@ -743,17 +773,51 @@ export function PipelineRecommendedSection({
 
     void fetch(withClientScope("/api/profile"))
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { parsedData?: { location?: string | null }; priorities?: string[] } | null) => {
+      .then((data: {
+        userId?: string;
+        parsedData?: Record<string, unknown> | null;
+        priorities?: string[];
+        targetRoles?: string[];
+        prioritizedCategories?: string[];
+      } | null) => {
         if (!data) return;
-        const fields = locationFieldsFromProfileString(data.parsedData?.location);
+        const fields = locationFieldsFromProfileString(
+          typeof data.parsedData?.location === "string" ? data.parsedData.location : null,
+        );
         const priorities = Array.isArray(data.priorities) ? data.priorities : [];
         setProfileBaseline({
           location: fields.display,
           priorities: [...priorities],
         });
+        const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
+        setProfileMeta({
+          userId: data.userId ?? actingUserId ?? null,
+          targetRoles: data.targetRoles ?? [],
+          prioritizedCategories: data.prioritizedCategories ?? [],
+          searchPreferences,
+        });
       })
       .catch(() => {});
   }, [actingUserId, withClientScope]);
+
+  useEffect(() => {
+    if (!hasLoadedOnce || !profileFormReady) return;
+    const onboardingJustFinished =
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("kimchi:onboarding-just-finished") === "1";
+    if (
+      shouldShowOpportunitiesPrefConfirm({
+        userId: profileMeta.userId,
+        targetRoles: profileMeta.targetRoles,
+        prioritizedCategories: profileMeta.prioritizedCategories,
+        searchPreferences: profileMeta.searchPreferences,
+        onboardingJustFinished,
+      })
+    ) {
+      setPrefConfirmOpen(true);
+      if (onboardingJustFinished) sessionStorage.removeItem("kimchi:onboarding-just-finished");
+    }
+  }, [hasLoadedOnce, profileFormReady, profileMeta]);
 
   useEffect(() => {
     fetch(withClientScope("/api/companies"))
@@ -836,28 +900,46 @@ export function PipelineRecommendedSection({
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
     const location = profileLocationFromForm(filtersForm);
     const priorities = profilePrioritiesFromForm(filtersForm);
+    const searchPreferences = searchPreferencesFromFilterForm(filtersForm);
     const unchanged =
       profileBaseline &&
       location.trim() === (profileBaseline.location ?? "").trim() &&
       JSON.stringify([...priorities].sort()) === JSON.stringify([...profileBaseline.priorities].sort());
-    if (unchanged) return;
+    const categories = splitInputList(filtersForm.jobCategories);
 
     const profileRes = await fetch(withClientScope("/api/profile"));
     const profile = (await profileRes.json().catch(() => ({}))) as {
       parsedData?: Record<string, unknown> | null;
+      prioritizedCategories?: string[];
     };
     if (!profileRes.ok) return;
 
-    const parsedData = {
-      ...(profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {}),
-      location: location.trim() || null,
-    };
+    const parsedData = patchParsedDataSearchPreferences(
+      profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {},
+      searchPreferences,
+    );
+    parsedData.location = location.trim() || null;
+
+    const patch: Record<string, unknown> = { parsedData, priorities };
+    if (categories.length) patch.prioritizedCategories = categories;
+
+    if (unchanged && !categories.length) {
+      // Still persist extended search prefs when only those changed
+      const prevPrefs = searchPreferencesFromParsedData(profile.parsedData);
+      if (JSON.stringify(prevPrefs) === JSON.stringify(searchPreferences)) return;
+    }
+
     await fetch(withClientScope("/api/profile"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parsedData, priorities }),
+      body: JSON.stringify(patch),
     });
     setProfileBaseline({ location: location.trim(), priorities: [...priorities] });
+    setProfileMeta((prev) => ({
+      ...prev,
+      prioritizedCategories: categories.length ? categories : prev.prioritizedCategories,
+      searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
+    }));
   }, [profileBaseline, withClientScope]);
 
   const toggleSet = (set: Set<string>, value: string) => {
@@ -1032,6 +1114,45 @@ export function PipelineRecommendedSection({
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
           searching={loading || revalidating}
+          profileChipsOnly
+        />
+
+        <OpportunitiesPrefConfirmModal
+          open={prefConfirmOpen}
+          userId={profileMeta.userId}
+          input={{
+            targetRoles: profileMeta.targetRoles,
+            prioritizedCategories: profileMeta.prioritizedCategories,
+            suggestedCategories: categorySuggestions.slice(0, 6),
+            experienceLevelLabels: profileMeta.searchPreferences.experienceLevelLabels,
+            roleMatchCount: profileMeta.targetRoles.length,
+          }}
+          onClose={() => setPrefConfirmOpen(false)}
+          onConfirm={async ({ prioritizedCategories, searchPreferences }) => {
+            const profileRes = await fetch(withClientScope("/api/profile"));
+            const profile = (await profileRes.json().catch(() => ({}))) as {
+              parsedData?: Record<string, unknown> | null;
+            };
+            if (!profileRes.ok) return;
+            const parsedData = patchParsedDataSearchPreferences(profile.parsedData ?? {}, searchPreferences);
+            await fetch(withClientScope("/api/profile"), {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prioritizedCategories, parsedData }),
+            });
+            setProfileMeta((prev) => ({
+              ...prev,
+              prioritizedCategories,
+              searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
+            }));
+            const nextForm = {
+              ...form,
+              jobCategories: prioritizedCategories.join(", "),
+            };
+            setForm(nextForm);
+            defaultFormRef.current = nextForm;
+            void applyFilters(nextForm);
+          }}
         />
 
         <div style={{ marginTop: 10 }}>
@@ -1046,6 +1167,7 @@ export function PipelineRecommendedSection({
           setForm={setForm}
           toggleSet={toggleSet}
           trackedCompanyNames={trackedCompanyNames}
+          categorySuggestions={categorySuggestions}
           applying={loading || revalidating}
           onApply={() => {
             void applyFilters().then(() => setFiltersDrawerOpen(false));

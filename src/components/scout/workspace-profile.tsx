@@ -15,6 +15,11 @@ import {
   PRIORITIZED_ROLE_SUGGESTIONS,
 } from "@/lib/role-title-preferences";
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
+import { SearchPreferencesExperienceEditor } from "./search-preferences-profile-section";
+import {
+  patchParsedDataSearchPreferences,
+  searchPreferencesFromParsedData,
+} from "@/lib/search-preferences";
 import { RoleListBulkPaste } from "./role-list-bulk-paste";
 import {
   parseProfileLocation,
@@ -1065,6 +1070,8 @@ function DreamRoleTab({
   prioritizedCategories,
   setPrioritizedCategories,
   onPrioritizedCategoriesSave,
+  experienceLevelLabels,
+  onExperienceLevelsSave,
   deprioritizedList,
   setDeprioritizedList,
   onDeprioritizedSave,
@@ -1095,6 +1102,8 @@ function DreamRoleTab({
   prioritizedCategories: string[];
   setPrioritizedCategories: (l: string[]) => void;
   onPrioritizedCategoriesSave: (list: string[]) => void;
+  experienceLevelLabels: string[];
+  onExperienceLevelsSave: (labels: string[]) => void;
   deprioritizedList: string[];
   setDeprioritizedList: (l: string[]) => void;
   onDeprioritizedSave: (list: string[]) => void;
@@ -1707,7 +1716,7 @@ function DreamRoleTab({
         />
         <div style={{ marginTop: 20 }}>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Prioritized categories
+            Job functions
           </p>
           <JobCategoryPicker
             selected={prioritizedCategories}
@@ -1717,6 +1726,15 @@ function DreamRoleTab({
             }}
             suggestions={PRIORITIZED_CATEGORY_SUGGESTIONS}
             addButtonLabel="+ Add prioritized category"
+          />
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Experience levels
+          </p>
+          <SearchPreferencesExperienceEditor
+            selected={experienceLevelLabels}
+            onChange={onExperienceLevelsSave}
           />
         </div>
       </ScoutBox>
@@ -2997,6 +3015,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [deprioritizedList, setDeprioritizedList] = useState<string[]>([]);
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
+  const [experienceLevelLabels, setExperienceLevelLabels] = useState<string[]>([]);
   const [roleAnalyses, setRoleAnalyses] = useState<RoleAnalysesMap>({});
   const [upskillProgress, setUpskillProgress] = useState<UpskillProgressMap>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
@@ -3065,6 +3084,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         setPrioritizedCategories(userProfile.prioritizedCategories || []);
         setDeprioritizedList(userProfile.deprioritizedRoles || []);
         setDeprioritizedCategories(userProfile.deprioritizedCategories || []);
+        setExperienceLevelLabels(
+          searchPreferencesFromParsedData(userProfile.parsedData).experienceLevelLabels ?? [],
+        );
         setRoleAnalyses(normalizeRoleAnalysesMap(userProfile.roleAnalyses));
         setSkillGoals(normalizeSkillGoals(userProfile.skillGoals));
         setUpskillProgress(userProfile.upskillProgress ?? {});
@@ -3827,6 +3849,18 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 prioritizedCategories={prioritizedCategories}
                 setPrioritizedCategories={setPrioritizedCategories}
                 onPrioritizedCategoriesSave={(list) => patchProfile({ prioritizedCategories: list })}
+                experienceLevelLabels={experienceLevelLabels}
+                onExperienceLevelsSave={(labels) => {
+                  setExperienceLevelLabels(labels);
+                  const base =
+                    profile?.parsedData && typeof profile.parsedData === "object"
+                      ? (profile.parsedData as Record<string, unknown>)
+                      : {};
+                  const parsedData = patchParsedDataSearchPreferences(base, {
+                    experienceLevelLabels: labels,
+                  });
+                  void patchProfile({ parsedData });
+                }}
                 deprioritizedList={deprioritizedList}
                 setDeprioritizedList={setDeprioritizedList}
                 onDeprioritizedSave={(list) => patchProfile({ deprioritizedRoles: list })}

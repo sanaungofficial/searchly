@@ -170,6 +170,7 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange,
   onSearchSubmit,
   searching,
+  profileChipsOnly,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
@@ -182,9 +183,11 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   searching?: boolean;
+  profileChipsOnly?: boolean;
 }) {
   const isMobile = useIsMobile();
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const chipsOnly = profileChipsOnly === true;
 
   const labels = useMemo(() => {
     const titles = splitFormList(form.jobTitles);
@@ -257,7 +260,7 @@ export function OpportunitiesJobrightFilterBar({
               apply({ ...form, locationCity: "", locationRegion: "", locationCountry: "", locationRadiusMiles: "" })
             }
           />
-        ) : (
+        ) : !chipsOnly ? (
           <DropdownPill label={labels.countryLabel} open={openKey === "location"} onOpenChange={(o) => setOpenKey(o ? "location" : null)}>
             <PopoverSection title="Location">
               <FilterField label="City"><input style={pipelineInputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="Albany" /></FilterField>
@@ -266,7 +269,7 @@ export function OpportunitiesJobrightFilterBar({
               {applyBtn()}
             </PopoverSection>
           </DropdownPill>
-        )}
+        ) : null}
 
         {titles.length > 0 ? (
           <ActiveFilterChip label={labels.titlesLabel} onRemove={() => apply({ ...form, jobTitles: "" })} />
@@ -274,14 +277,14 @@ export function OpportunitiesJobrightFilterBar({
 
         {categories.length > 0 ? (
           <ActiveFilterChip label={labels.categoriesLabel} onRemove={() => apply({ ...form, jobCategories: "" })} />
-        ) : (
+        ) : !chipsOnly ? (
           <DropdownPill label={labels.categoriesLabel} open={openKey === "categories"} onOpenChange={(o) => setOpenKey(o ? "categories" : null)}>
             <PopoverSection title="Role categories">
               <DatalistInput value={form.jobCategories} onChange={(jobCategories) => setForm((f) => ({ ...f, jobCategories }))} listId="jobright-categories" options={categorySuggestions ?? []} placeholder="Operations Jobs" />
               {applyBtn()}
             </PopoverSection>
           </DropdownPill>
-        )}
+        ) : null}
 
         {levels.length > 0 ? (
           <ActiveFilterChip label={labels.levelsLabel} onRemove={() => apply({ ...form, experienceLevels: new Set() })} />
@@ -295,29 +298,45 @@ export function OpportunitiesJobrightFilterBar({
           <ActiveFilterChip label={labels.remoteLabel} onRemove={() => apply({ ...form, locationTypes: new Set() })} />
         ) : null}
 
-        <DropdownPill label={labels.dateLabel} active={Boolean(form.datePostedWithinDays)} open={openKey === "date"} onOpenChange={(o) => setOpenKey(o ? "date" : null)}>
-          <PopoverSection title="Date posted">
-            <RadioOption label="Any time" checked={!form.datePostedWithinDays} onSelect={() => apply({ ...form, datePostedWithinDays: "" })} />
-            {POSTED_WITHIN_OPTIONS.map((opt) => (
-              <RadioOption key={opt.days} label={opt.label} checked={form.datePostedWithinDays === String(opt.days)} onSelect={() => apply({ ...form, datePostedWithinDays: String(opt.days) })} />
-            ))}
-          </PopoverSection>
-        </DropdownPill>
+        {!chipsOnly && (
+          <>
+            <DropdownPill label={labels.dateLabel} active={Boolean(form.datePostedWithinDays)} open={openKey === "date"} onOpenChange={(o) => setOpenKey(o ? "date" : null)}>
+              <PopoverSection title="Date posted">
+                <RadioOption label="Any time" checked={!form.datePostedWithinDays} onSelect={() => apply({ ...form, datePostedWithinDays: "" })} />
+                {POSTED_WITHIN_OPTIONS.map((opt) => (
+                  <RadioOption key={opt.days} label={opt.label} checked={form.datePostedWithinDays === String(opt.days)} onSelect={() => apply({ ...form, datePostedWithinDays: String(opt.days) })} />
+                ))}
+              </PopoverSection>
+            </DropdownPill>
 
-        <DropdownPill label={labels.industryLabel} active={Boolean(form.industries.trim())} open={openKey === "industry"} onOpenChange={(o) => setOpenKey(o ? "industry" : null)}>
-          <PopoverSection title="Industry">
-            <input style={pipelineInputStyle} value={form.industries} onChange={(e) => setForm((f) => ({ ...f, industries: e.target.value }))} placeholder="Software, Healthcare" />
-            {applyBtn()}
-          </PopoverSection>
-        </DropdownPill>
+            <DropdownPill label={labels.industryLabel} active={Boolean(form.industries.trim())} open={openKey === "industry"} onOpenChange={(o) => setOpenKey(o ? "industry" : null)}>
+              <PopoverSection title="Industry">
+                <input style={pipelineInputStyle} value={form.industries} onChange={(e) => setForm((f) => ({ ...f, industries: e.target.value }))} placeholder="Software, Healthcare" />
+                {applyBtn()}
+              </PopoverSection>
+            </DropdownPill>
 
-        <DropdownPill label={labels.yearsLabel} active={Boolean(form.yearsFrom.trim() || form.yearsTo.trim())} open={openKey === "years"} onOpenChange={(o) => setOpenKey(o ? "years" : null)}>
-          <PopoverSection title="Years of experience">
-            {YEARS_OF_EXPERIENCE_OPTIONS.map((opt) => (
-              <RadioOption key={opt.label} label={opt.label} checked={form.yearsFrom === opt.yearsFrom && form.yearsTo === opt.yearsTo} onSelect={() => apply({ ...form, yearsFrom: opt.yearsFrom, yearsTo: opt.yearsTo })} />
-            ))}
-          </PopoverSection>
-        </DropdownPill>
+            <DropdownPill label={labels.yearsLabel} active={Boolean(form.yearsFrom.trim() || form.yearsTo.trim())} open={openKey === "years"} onOpenChange={(o) => setOpenKey(o ? "years" : null)}>
+              <PopoverSection title="Years of experience">
+                {YEARS_OF_EXPERIENCE_OPTIONS.map((opt) => (
+                  <RadioOption key={opt.label} label={opt.label} checked={form.yearsFrom === opt.yearsFrom && form.yearsTo === opt.yearsTo} onSelect={() => apply({ ...form, yearsFrom: opt.yearsFrom, yearsTo: opt.yearsTo })} />
+                ))}
+              </PopoverSection>
+            </DropdownPill>
+          </>
+        )}
+
+        {chipsOnly && form.datePostedWithinDays ? (
+          <ActiveFilterChip label={labels.dateLabel} onRemove={() => apply({ ...form, datePostedWithinDays: "" })} />
+        ) : null}
+
+        {chipsOnly && form.industries.trim() ? (
+          <ActiveFilterChip label={labels.industryLabel} onRemove={() => apply({ ...form, industries: "" })} />
+        ) : null}
+
+        {chipsOnly && (form.yearsFrom.trim() || form.yearsTo.trim()) ? (
+          <ActiveFilterChip label={labels.yearsLabel} onRemove={() => apply({ ...form, yearsFrom: "", yearsTo: "" })} />
+        ) : null}
 
         <div style={{ width: 1, height: 24, background: "rgba(17,17,17,0.14)", margin: "0 2px" }} aria-hidden />
 

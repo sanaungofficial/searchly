@@ -19,6 +19,8 @@ import {
 } from "@/lib/recommended-filter-utils";
 import { POSTED_WITHIN_OPTIONS } from "@/lib/job-posted-filter";
 import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
+import { JobFunctionPicker } from "@/components/scout/job-function-picker";
+import { JOBRIGHT_EXPERIENCE_LEVELS, COMPANY_STAGE_OPTIONS } from "@/lib/search-preferences";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
@@ -35,9 +37,14 @@ export type RecommendedFilterForm = {
   jobTitles: string;
   keywords: string;
   companyName: string;
+  excludedCompany: string;
   industries: string;
+  excludedIndustries: string;
   subindustries: string;
+  skills: string;
+  excludedSkills: string;
   jobCategories: string;
+  excludedJobTitles: string;
   locationCity: string;
   locationRegion: string;
   locationCountry: string;
@@ -53,7 +60,14 @@ export type RecommendedFilterForm = {
   jobTypes: Set<string>;
   experienceLevels: Set<string>;
   companySizeBuckets: Set<string>;
+  companyStages: Set<string>;
+  roleTypes: Set<string>;
   visaSponsored: boolean;
+  excludeSecurityClearance: boolean;
+  excludeUsCitizenOnly: boolean;
+  excludeStaffingAgency: boolean;
+  openToAllSalary: boolean;
+  openToAllExperience: boolean;
   relocationPriorities: string[];
 };
 
@@ -232,16 +246,26 @@ function quickFilterLabel(form: RecommendedFilterForm) {
   return { dateLabel, expLabel, salaryLabel, companyLabel, remoteLabel };
 }
 
+function splitFormList(value: string): string[] {
+  return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+}
+
+function jobFunctionSelected(form: RecommendedFilterForm): string[] {
+  return splitFormList(form.jobCategories);
+}
+
 function AllFiltersDrawerContent({
   form,
   setForm,
   toggleSet,
   trackedCompanyNames,
+  categorySuggestions,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   trackedCompanyNames: string[];
+  categorySuggestions?: string[];
 }) {
   const isMobile = useIsMobile();
   const locationGrid = isMobile ? "1fr" : "1.2fr 1fr 1fr";
@@ -249,9 +273,55 @@ function AllFiltersDrawerContent({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <FilterSectionHeader
-        title="Where & how you want to work"
-        hint="Set your anchor city, then choose a mile radius. Remote roles always show. Saved to your profile when you search."
+        title="Basic job criteria"
+        hint="Job functions, type, location, and experience — wired to Hirebase where supported."
       />
+
+      <FilterField label="Job function">
+        <JobFunctionPicker
+          selected={jobFunctionSelected(form)}
+          onChange={(next) => setForm((f) => ({ ...f, jobCategories: next.join(", ") }))}
+          suggested={categorySuggestions}
+          variant="profile"
+        />
+      </FilterField>
+
+      <FilterField label="Excluded title">
+        <input
+          style={pipelineInputStyle}
+          value={form.excludedJobTitles}
+          onChange={(e) => setForm((f) => ({ ...f, excludedJobTitles: e.target.value }))}
+          placeholder="Intern, Sales Rep"
+        />
+      </FilterField>
+
+      <FilterField label="Job type">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {HIREBASE_JOB_TYPES.map((t) => (
+            <ChipToggle
+              key={t}
+              label={t.replace(" Time", "-time")}
+              active={form.jobTypes.has(t)}
+              onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))}
+            />
+          ))}
+        </div>
+      </FilterField>
+
+      <FilterField label="Work model">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {HIREBASE_LOCATION_TYPES.map((t) => (
+            <ChipToggle
+              key={t}
+              label={t === "In-Person" ? "Onsite" : t === "Remote" ? "Remote (US)" : t}
+              active={form.locationTypes.has(t)}
+              onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))}
+            />
+          ))}
+        </div>
+      </FilterField>
+
+      <FilterSectionHeader title="Location" hint="" />
       <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
         <FilterField label="City">
           <input
@@ -295,18 +365,139 @@ function AllFiltersDrawerContent({
         </select>
       </FilterField>
 
-      <FilterField label="Work arrangement">
+      <FilterField label="Experience level">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {HIREBASE_LOCATION_TYPES.map((t) => (
-            <ChipToggle
-              key={t}
-              label={t}
-              active={form.locationTypes.has(t)}
-              onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))}
-            />
+          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label, hirebase }) => {
+            const active = hirebase.some((hb) => form.experienceLevels.has(hb));
+            return (
+              <ChipToggle
+                key={label}
+                label={label}
+                active={active}
+                onClick={() => {
+                  setForm((f) => {
+                    const next = new Set(f.experienceLevels);
+                    for (const hb of hirebase) {
+                      if (active) next.delete(hb);
+                      else next.add(hb);
+                    }
+                    return { ...f, experienceLevels: next };
+                  });
+                }}
+              />
+            );
+          })}
+        </div>
+      </FilterField>
+
+      <FilterField label="Required experience (years)">
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontFamily: fontSans, fontSize: T.caption, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={form.openToAllExperience}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                openToAllExperience: e.target.checked,
+                yearsFrom: e.target.checked ? "" : f.yearsFrom,
+                yearsTo: e.target.checked ? "" : f.yearsTo,
+              }))
+            }
+          />
+          Open to all experience levels
+        </label>
+        {!form.openToAllExperience && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <input type="number" style={pipelineInputStyle} value={form.yearsFrom} onChange={(e) => setForm((f) => ({ ...f, yearsFrom: e.target.value }))} placeholder="Min years" min={0} />
+            <input type="number" style={pipelineInputStyle} value={form.yearsTo} onChange={(e) => setForm((f) => ({ ...f, yearsTo: e.target.value }))} placeholder="Max years" min={0} />
+          </div>
+        )}
+      </FilterField>
+
+      <FilterField label="Date posted">
+        <select style={pipelineInputStyle} value={form.datePostedWithinDays} onChange={(e) => setForm((f) => ({ ...f, datePostedWithinDays: e.target.value }))}>
+          <option value="">Any time</option>
+          {POSTED_WITHIN_OPTIONS.map((opt) => (
+            <option key={opt.days} value={String(opt.days)}>{opt.label}</option>
+          ))}
+        </select>
+      </FilterField>
+
+      <div style={{ borderTop: border.line, margin: "20px 0", paddingTop: 16 }}>
+        <FilterSectionHeader title="Compensation & sponsorship" hint="" />
+      </div>
+
+      <FilterField label="Minimum annual salary ($)">
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontFamily: fontSans, fontSize: T.caption, cursor: "pointer" }}>
+          <input type="checkbox" checked={form.openToAllSalary} onChange={(e) => setForm((f) => ({ ...f, openToAllSalary: e.target.checked, salaryFrom: e.target.checked ? "" : f.salaryFrom }))} />
+          Open to all salaries
+        </label>
+        {!form.openToAllSalary && (
+          <input type="number" style={pipelineInputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="150000" min={0} />
+        )}
+      </FilterField>
+
+      <FilterField label="Work authorization / H1B sponsorship">
+        <CheckboxOption label="Visa sponsorship required" checked={form.visaSponsored} onToggle={() => setForm((f) => ({ ...f, visaSponsored: !f.visaSponsored }))} />
+      </FilterField>
+
+      <FilterField label="Exclude">
+        <CheckboxOption label="Security clearance required" checked={form.excludeSecurityClearance} onToggle={() => setForm((f) => ({ ...f, excludeSecurityClearance: !f.excludeSecurityClearance }))} />
+        <CheckboxOption label="US citizen only" checked={form.excludeUsCitizenOnly} onToggle={() => setForm((f) => ({ ...f, excludeUsCitizenOnly: !f.excludeUsCitizenOnly }))} />
+      </FilterField>
+
+      <div style={{ borderTop: border.line, margin: "20px 0", paddingTop: 16 }}>
+        <FilterSectionHeader title="Areas of interest" hint="" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+        <FilterField label="Industry"><input style={pipelineInputStyle} value={form.industries} onChange={(e) => setForm((f) => ({ ...f, industries: e.target.value }))} placeholder="Software, Healthcare" /></FilterField>
+        <FilterField label="Excluded industry"><input style={pipelineInputStyle} value={form.excludedIndustries} onChange={(e) => setForm((f) => ({ ...f, excludedIndustries: e.target.value }))} placeholder="Staffing, Retail" /></FilterField>
+        <FilterField label="Skill"><input style={pipelineInputStyle} value={form.skills} onChange={(e) => setForm((f) => ({ ...f, skills: e.target.value }))} placeholder="Python, SQL" /></FilterField>
+        <FilterField label="Excluded skill"><input style={pipelineInputStyle} value={form.excludedSkills} onChange={(e) => setForm((f) => ({ ...f, excludedSkills: e.target.value }))} placeholder="Cold calling" /></FilterField>
+      </div>
+
+      <FilterField label="Role type">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {(["IC", "Manager"] as const).map((rt) => (
+            <ChipToggle key={rt} label={rt === "IC" ? "Individual contributor" : "Manager"} active={form.roleTypes.has(rt)} onClick={() => setForm((f) => ({ ...f, roleTypes: toggleSet(f.roleTypes, rt) }))} />
           ))}
         </div>
       </FilterField>
+
+      <div style={{ borderTop: border.line, margin: "20px 0", paddingTop: 16 }}>
+        <FilterSectionHeader title="Company insights" hint="" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+        <FilterField label="Company">
+          <DatalistInput value={form.companyName} onChange={(companyName) => setForm((f) => ({ ...f, companyName }))} listId="drawer-company-suggestions" options={trackedCompanyNames} placeholder={trackedCompanyNames.length ? "Tracked or any company" : "Stripe"} />
+        </FilterField>
+        <FilterField label="Exclude company">
+          <input style={pipelineInputStyle} value={form.excludedCompany} onChange={(e) => setForm((f) => ({ ...f, excludedCompany: e.target.value }))} placeholder="Agency name" />
+        </FilterField>
+      </div>
+
+      <FilterField label="Company stage">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {COMPANY_STAGE_OPTIONS.map((stage) => (
+            <ChipToggle key={stage} label={stage} active={form.companyStages.has(stage)} onClick={() => setForm((f) => ({ ...f, companyStages: toggleSet(f.companyStages, stage) }))} />
+          ))}
+        </div>
+        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>Stored in profile — Hirebase company-stage filter not yet available.</p>
+      </FilterField>
+
+      <FilterField label="Job source">
+        <CheckboxOption label="Exclude staffing agency" checked={form.excludeStaffingAgency} onToggle={() => setForm((f) => ({ ...f, excludeStaffingAgency: !f.excludeStaffingAgency }))} />
+      </FilterField>
+
+      <div style={{ borderTop: border.line, margin: "20px 0", paddingTop: 16 }}>
+        <FilterSectionHeader title="Role search" hint="Optional title/keyword focus for live searches." />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12 }}>
+        <FilterField label="Job titles"><input style={pipelineInputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Ops" /></FilterField>
+        <FilterField label="Keywords"><input style={pipelineInputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" /></FilterField>
+      </div>
 
       <FilterField label="Open to relocating">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -318,153 +509,13 @@ function AllFiltersDrawerContent({
               onClick={() =>
                 setForm((f) => ({
                   ...f,
-                  relocationPriorities: mergeRecommendationPriorities(
-                    f.relocationPriorities,
-                    pref,
-                    !f.relocationPriorities.includes(pref),
-                  ),
+                  relocationPriorities: mergeRecommendationPriorities(f.relocationPriorities, pref, !f.relocationPriorities.includes(pref)),
                 }))
               }
             />
           ))}
         </div>
       </FilterField>
-
-      <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
-        <FilterSectionHeader
-          title="Role criteria"
-          hint="Titles and keywords for a live job search — comma-separate multiples."
-        />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
-        <FilterField label="Job titles">
-          <input
-            style={pipelineInputStyle}
-            value={form.jobTitles}
-            onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))}
-            placeholder="Strategy Manager, VP Ops"
-          />
-        </FilterField>
-        <FilterField label="Keywords">
-          <input
-            style={pipelineInputStyle}
-            value={form.keywords}
-            onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
-            placeholder="remote, B2B SaaS"
-          />
-        </FilterField>
-        <FilterField label="Company">
-          <DatalistInput
-            value={form.companyName}
-            onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
-            listId="drawer-company-suggestions"
-            options={trackedCompanyNames}
-            placeholder={trackedCompanyNames.length ? "Tracked or any company" : "Stripe"}
-          />
-        </FilterField>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: 12,
-          marginTop: 16,
-          paddingTop: 16,
-          borderTop: border.line,
-        }}
-      >
-        <FilterField label="Posted within">
-          <select
-            style={pipelineInputStyle}
-            value={form.datePostedWithinDays}
-            onChange={(e) => setForm((f) => ({ ...f, datePostedWithinDays: e.target.value }))}
-          >
-            <option value="">Any time</option>
-            {POSTED_WITHIN_OPTIONS.map((opt) => (
-              <option key={opt.days} value={String(opt.days)}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Salary from ($)">
-          <input
-            type="number"
-            style={pipelineInputStyle}
-            value={form.salaryFrom}
-            onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))}
-            placeholder="150000"
-            min={0}
-          />
-        </FilterField>
-        <FilterField label="Salary to ($)">
-          <input
-            type="number"
-            style={pipelineInputStyle}
-            value={form.salaryTo}
-            onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))}
-            placeholder="250000"
-            min={0}
-          />
-        </FilterField>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <FilterField label="Employment type">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {HIREBASE_JOB_TYPES.map((t) => (
-                <ChipToggle
-                  key={t}
-                  label={t}
-                  active={form.jobTypes.has(t)}
-                  onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))}
-                />
-              ))}
-            </div>
-          </FilterField>
-          <FilterField label="Experience level">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
-                <ChipToggle
-                  key={t}
-                  label={t}
-                  active={form.experienceLevels.has(t)}
-                  onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))}
-                />
-              ))}
-            </div>
-          </FilterField>
-          <FilterField label="Company size">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
-                <ChipToggle
-                  key={t}
-                  label={t}
-                  active={form.companySizeBuckets.has(t)}
-                  onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))}
-                />
-              ))}
-            </div>
-          </FilterField>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              color: color.ink,
-              cursor: "pointer",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.visaSponsored}
-              onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))}
-            />
-            Visa sponsorship only
-          </label>
-        </div>
-      </div>
     </div>
   );
 }
@@ -476,6 +527,7 @@ export function RecommendedFiltersDrawer({
   setForm,
   toggleSet,
   trackedCompanyNames,
+  categorySuggestions,
   onApply,
   onReset,
   applying,
@@ -486,6 +538,7 @@ export function RecommendedFiltersDrawer({
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   trackedCompanyNames: string[];
+  categorySuggestions?: string[];
   onApply: () => void;
   onReset: () => void;
   applying?: boolean;
@@ -567,6 +620,7 @@ export function RecommendedFiltersDrawer({
             setForm={setForm}
             toggleSet={toggleSet}
             trackedCompanyNames={trackedCompanyNames}
+            categorySuggestions={categorySuggestions}
           />
         </div>
 
