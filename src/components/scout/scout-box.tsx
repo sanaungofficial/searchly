@@ -244,7 +244,8 @@ export function ScoutGoldBtn({
         padding: "8px 16px",
         background: disabled ? "rgba(196,168,106,0.35)" : color.gold,
         color: color.forest,
-        border: `1px solid ${color.forest}`,
+        border: "var(--scout-border)",
+        boxShadow: "var(--scout-shadow-bruddle)",
         fontWeight: 700,
         opacity: disabled ? 0.7 : 1,
         ...style,
@@ -275,7 +276,7 @@ export function ScoutSecondaryBtn({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={BRUDDLE_BTN_CLASS}
+      className={active ? undefined : BRUDDLE_BTN_CLASS}
       style={{
         ...btnBase,
         padding: "8px 16px",

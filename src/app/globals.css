@@ -506,7 +506,7 @@
   --type-caption: 14px;
   --type-label: 12px;
   --scout-border: 1.5px solid var(--bruddle-ink);
-  --scout-shadow-bruddle-hover: 4px 4px 0 var(--bruddle-ink);
+  --scout-shadow-bruddle-hover: 5px 5px 0 var(--bruddle-ink);
   font-family: var(--font-ui);
   font-size: var(--type-body);
 }
@@ -519,10 +519,19 @@
     box-shadow 0.15s ease;
 }
 
-.bruddle .bruddle-hover-lift:hover:not(:disabled),
-.bruddle .bruddle-btn-hover:hover:not(:disabled) {
+.bruddle .bruddle-hover-lift:hover:not(:disabled) {
   transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--bruddle-ink);
+}
+
+.bruddle .bruddle-btn-hover:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
   box-shadow: var(--scout-shadow-bruddle-hover);
+}
+
+.bruddle .bruddle-btn-hover:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: var(--scout-shadow-bruddle);
 }
 
 .bruddle .bruddle-card-hover {
