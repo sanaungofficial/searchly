@@ -18,16 +18,17 @@ import { JOBRIGHT_EXPERIENCE_LEVELS, hirebaseLevelsFromExperienceLabelSet, toggl
 import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
 import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
+import { JR } from "@/lib/opportunities-jobright-tokens";
 
 const ACTIVE_PILL: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
   padding: "6px 12px",
-  borderRadius: 999,
-  border: "1px solid rgba(45, 107, 74, 0.35)",
-  background: "rgba(45, 107, 74, 0.12)",
-  color: color.forest,
+  borderRadius: JR.pillRadius,
+  border: `1px solid ${JR.mintBorder}`,
+  background: JR.mintTintStrong,
+  color: JR.text,
   fontFamily: fontSans,
   fontSize: T.caption,
   fontWeight: 600,
@@ -37,10 +38,10 @@ const ACTIVE_PILL: React.CSSProperties = {
 
 const INACTIVE_PILL: React.CSSProperties = {
   ...ACTIVE_PILL,
-  border: border.line,
-  background: surface.card,
-  color: color.ink,
-  fontWeight: 500,
+  border: `1px solid ${JR.border}`,
+  background: JR.cardBg,
+  color: JR.text,
+  fontWeight: 400,
 };
 
 function jobTypeDisplay(type: string): string {
@@ -136,7 +137,7 @@ function PopoverFooter({
           fontFamily: fontSans,
           fontSize: T.caption,
           fontWeight: 700,
-          color: color.forest,
+          color: JR.mint,
           cursor: "pointer",
         }}
       >
@@ -330,7 +331,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("location") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Country
             </p>
             {(preferCanada
@@ -450,7 +451,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("experience") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Experience Level
             </p>
             {JOBRIGHT_EXPERIENCE_LEVELS.map(({ id, label }) => (
@@ -487,7 +488,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("jobtype") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Job Type
             </p>
             {HIREBASE_JOB_TYPES.map((t) => (
@@ -515,7 +516,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("workmodel") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Work Model
             </p>
             {HIREBASE_LOCATION_TYPES.map((t) => (
@@ -546,7 +547,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("date") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Date Posted
             </p>
             <RadioRow
@@ -576,7 +577,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("industry") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Industry
             </p>
             <input
@@ -592,14 +593,16 @@ export function OpportunitiesJobrightFilterBar({
           />
         </DropdownPill>
 
-        <div style={{ width: 1, height: 24, background: "rgba(17,17,17,0.14)", margin: "0 2px" }} aria-hidden />
+        <div style={{ width: 1, height: 24, background: JR.borderSubtle, margin: "0 2px" }} aria-hidden />
 
         <button
           type="button"
           onClick={onOpenAllFilters}
           style={{
-            ...(activeFilterCount > 0 ? ACTIVE_PILL : INACTIVE_PILL),
-            fontWeight: activeFilterCount > 0 ? 600 : 500,
+            ...INACTIVE_PILL,
+            background: JR.mint,
+            border: `1px solid ${JR.mint}`,
+            fontWeight: 700,
           }}
         >
           All Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
@@ -637,14 +640,14 @@ export function OpportunitiesJobrightFilterBar({
               onClick={onSearchSubmit}
               disabled={searching || searchDisabled}
               style={{
-                padding: "7px 12px",
-                background: color.forest,
-                color: color.gold,
-                border: border.lineStrong,
-                borderRadius: 999,
+                padding: "7px 14px",
+                background: JR.mint,
+                color: JR.text,
+                border: "none",
+                borderRadius: JR.ctaRadius,
                 fontFamily: fontSans,
                 fontSize: T.label,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: searching || searchDisabled ? "not-allowed" : "pointer",
                 opacity: searching || searchDisabled ? 0.65 : 1,
                 flexShrink: 0,
