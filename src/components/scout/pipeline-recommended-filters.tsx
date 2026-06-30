@@ -33,7 +33,6 @@ import {
   FilterBlockTitle,
   FilterField,
   FilterSectionHeader,
-  RoleTypeToggle,
   SalarySliderField,
   TagListField,
   pipelineInputStyle,
@@ -273,7 +272,7 @@ export type AllFiltersSectionId =
 export const ALL_FILTER_SECTIONS: { id: AllFiltersSectionId; title: string; hint: string }[] = [
   { id: "basic", title: "Basic Job Criteria", hint: "Job Function / Job Type / Work Model…" },
   { id: "compensation", title: "Compensation & Sponsorship", hint: "Annual Salary / H1B Sponsorship" },
-  { id: "interests", title: "Areas of Interests", hint: "Industry / Skill / Role (IC/Manager)…" },
+  { id: "interests", title: "Areas of Interests", hint: "Industry / Skill…" },
   { id: "company", title: "Company Insights", hint: "Company Search / Exclude Staffing Agency…" },
 ];
 
@@ -701,20 +700,6 @@ function InterestsFields({
         onChange={(excludedSkills) => setForm((f) => ({ ...f, excludedSkills }))}
         placeholder="Cold calling"
       />
-      <div style={{ marginBottom: 8 }}>
-        <FilterBlockTitle
-          title="Role Type"
-          onClear={() => setForm((f) => ({ ...f, roleTypes: new Set() }))}
-          clearDisabled={form.roleTypes.size === 0}
-        />
-        <RoleTypeToggle
-          selected={form.roleTypes}
-          onToggle={(rt) => setForm((f) => ({ ...f, roleTypes: toggleSet(f.roleTypes, rt) }))}
-        />
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0 0" }}>
-          Saved to profile — not sent to Hirebase.
-        </p>
-      </div>
     </>
   );
 }
@@ -787,6 +772,50 @@ function CompanyInsightsFields({
   );
 }
 
+function sectionHasActiveFilters(section: AllFiltersSectionId, form: RecommendedFilterForm): boolean {
+  switch (section) {
+    case "basic":
+      return (
+        Boolean(form.jobCategories.trim()) ||
+        (form.customJobFunctions?.length ?? 0) > 0 ||
+        Boolean(form.excludedJobTitles.trim()) ||
+        form.jobTypes.size > 0 ||
+        form.locationTypes.size > 0 ||
+        Boolean(form.locationCountry.trim()) ||
+        Boolean(form.locationCity.trim()) ||
+        Boolean(form.locationRegion.trim()) ||
+        form.locationAllInCountry ||
+        Boolean(form.locationRadiusMiles.trim()) ||
+        form.experienceLevelLabels.size > 0 ||
+        Boolean(form.yearsFrom.trim()) ||
+        Boolean(form.datePostedWithinDays.trim())
+      );
+    case "compensation":
+      return (
+        Boolean(form.salaryFrom.trim()) ||
+        form.visaSponsored ||
+        form.excludeSecurityClearance ||
+        form.excludeUsCitizenOnly
+      );
+    case "interests":
+      return (
+        Boolean(form.industries.trim()) ||
+        Boolean(form.excludedIndustries.trim()) ||
+        Boolean(form.skills.trim()) ||
+        Boolean(form.excludedSkills.trim())
+      );
+    case "company":
+      return (
+        Boolean(form.companyName.trim()) ||
+        form.companyStages.size > 0 ||
+        form.excludeStaffingAgency ||
+        Boolean(form.excludedCompany.trim())
+      );
+    default:
+      return false;
+  }
+}
+
 export function AllFiltersScrollContent({
   form,
   setForm,
@@ -794,6 +823,7 @@ export function AllFiltersScrollContent({
   trackedCompanyNames,
   categorySuggestions,
   sectionRefs,
+  onClearSection,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
@@ -801,6 +831,7 @@ export function AllFiltersScrollContent({
   trackedCompanyNames: string[];
   categorySuggestions?: string[];
   sectionRefs?: React.MutableRefObject<Partial<Record<AllFiltersSectionId, HTMLElement | null>>>;
+  onClearSection?: (section: AllFiltersSectionId) => void;
 }) {
   const isMobile = useIsMobile();
 
@@ -815,6 +846,8 @@ export function AllFiltersScrollContent({
         title="Basic Job Criteria"
         hint="Job Function / Job Type / Work Model / Location / Experience"
         sectionRef={bindRef("basic")}
+        onClearAll={onClearSection ? () => onClearSection("basic") : undefined}
+        clearDisabled={!sectionHasActiveFilters("basic", form)}
       >
         <BasicJobCriteriaFields
           form={form}
@@ -830,6 +863,8 @@ export function AllFiltersScrollContent({
         title="Compensation & Sponsorship"
         hint="Annual Salary / H1B Sponsorship / Job limitations"
         sectionRef={bindRef("compensation")}
+        onClearAll={onClearSection ? () => onClearSection("compensation") : undefined}
+        clearDisabled={!sectionHasActiveFilters("compensation", form)}
       >
         <CompensationFields form={form} setForm={setForm} />
       </AllFiltersSectionAnchor>
@@ -837,8 +872,10 @@ export function AllFiltersScrollContent({
       <AllFiltersSectionAnchor
         id="interests"
         title="Areas of Interests"
-        hint="Industry / Skill / Role (IC/Manager)"
+        hint="Industry / Skill"
         sectionRef={bindRef("interests")}
+        onClearAll={onClearSection ? () => onClearSection("interests") : undefined}
+        clearDisabled={!sectionHasActiveFilters("interests", form)}
       >
         <InterestsFields form={form} setForm={setForm} toggleSet={toggleSet} />
       </AllFiltersSectionAnchor>
@@ -848,6 +885,8 @@ export function AllFiltersScrollContent({
         title="Company Insights"
         hint="Company Search / Company Stage / Job Source"
         sectionRef={bindRef("company")}
+        onClearAll={onClearSection ? () => onClearSection("company") : undefined}
+        clearDisabled={!sectionHasActiveFilters("company", form)}
       >
         <CompanyInsightsFields
           form={form}

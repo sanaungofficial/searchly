@@ -63,6 +63,7 @@ import {
 } from "./pipeline-recommended-filters";
 import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-bar";
 import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal";
+import { buildOpportunitiesFilterChips } from "@/lib/opportunities-filter-chips";
 import {
   OpportunitiesPrefConfirmModal,
   shouldShowOpportunitiesPrefConfirm,
@@ -633,6 +634,7 @@ export function PipelineRecommendedSection({
     semanticQuery: "",
   }));
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
+  const drawerAppliedSnapshotRef = useRef<FilterForm | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [profileBaseline, setProfileBaseline] = useState<RecommendationPreferencesState | null>(null);
   const [profileCountry, setProfileCountry] = useState("");
@@ -1077,8 +1079,11 @@ export function PipelineRecommendedSection({
 
   const hasExplicitAppliedFilters = !isDefaultRecommendedFilters(appliedFilters);
   const appliedFilterCount = useMemo(
-    () => describeActiveFilters(appliedFilters).length,
-    [appliedFilters],
+    () =>
+      buildOpportunitiesFilterChips(appliedForm, {
+        excludeTargetRoleBleed: profileMeta.targetRoles,
+      }).length,
+    [appliedForm, profileMeta.targetRoles],
   );
 
   const filteredListings = useMemo(() => {
@@ -1132,7 +1137,11 @@ export function PipelineRecommendedSection({
           toggleSet={toggleSet}
           categorySuggestions={categorySuggestions}
           onQuickApply={(nextForm) => void applyFilters(nextForm)}
-          onOpenAllFilters={() => setFiltersDrawerOpen(true)}
+          onOpenAllFilters={() => {
+            drawerAppliedSnapshotRef.current = appliedForm;
+            setForm((f) => ({ ...appliedForm, semanticQuery: f.semanticQuery }));
+            setFiltersDrawerOpen(true);
+          }}
           activeFilterCount={appliedFilterCount}
           searchValue={form.semanticQuery}
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
@@ -1234,7 +1243,14 @@ export function PipelineRecommendedSection({
 
         <OpportunitiesAllFiltersModal
           open={filtersDrawerOpen}
-          onClose={() => setFiltersDrawerOpen(false)}
+          onClose={() => {
+            if (drawerAppliedSnapshotRef.current) {
+              const snapshot = drawerAppliedSnapshotRef.current;
+              setForm((f) => ({ ...snapshot, semanticQuery: f.semanticQuery }));
+            }
+            drawerAppliedSnapshotRef.current = null;
+            setFiltersDrawerOpen(false);
+          }}
           form={form}
           appliedForm={appliedForm}
           setForm={setForm}
@@ -1242,9 +1258,16 @@ export function PipelineRecommendedSection({
           trackedCompanyNames={trackedCompanyNames}
           categorySuggestions={categorySuggestions}
           applying={loading || revalidating}
-          appliedFilters={appliedFilters}
+          excludeTargetRoleBleed={profileMeta.targetRoles}
+          onResetAll={() => {
+            const empty = defaultFeedForm();
+            setForm((f) => ({ ...empty, semanticQuery: f.semanticQuery }));
+          }}
           onConfirm={() => {
-            void applyFilters().then(() => setFiltersDrawerOpen(false));
+            void applyFilters(form).then(() => {
+              drawerAppliedSnapshotRef.current = null;
+              setFiltersDrawerOpen(false);
+            });
           }}
         />
 

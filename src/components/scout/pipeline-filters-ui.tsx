@@ -720,12 +720,16 @@ export function AllFiltersSectionAnchor({
   title,
   hint,
   sectionRef,
+  onClearAll,
+  clearDisabled,
   children,
 }: {
   id: string;
   title: string;
   hint: string;
   sectionRef?: (el: HTMLElement | null) => void;
+  onClearAll?: () => void;
+  clearDisabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -735,28 +739,62 @@ export function AllFiltersSectionAnchor({
       ref={sectionRef}
       style={{ scrollMarginTop: 16, marginBottom: 36 }}
     >
-      <h3
+      <div
         style={{
-          fontFamily: fontSans,
-          fontSize: T.body,
-          fontWeight: 700,
-          color: color.ink,
-          margin: "0 0 4px",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 20,
         }}
       >
-        {title}
-      </h3>
-      <p
-        style={{
-          fontFamily: fontSans,
-          fontSize: T.label,
-          color: color.muted,
-          margin: "0 0 20px",
-          lineHeight: 1.45,
-        }}
-      >
-        {hint}
-      </p>
+        <div style={{ minWidth: 0 }}>
+          <h3
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.body,
+              fontWeight: 700,
+              color: color.ink,
+              margin: "0 0 4px",
+            }}
+          >
+            {title}
+          </h3>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.label,
+              color: color.muted,
+              margin: 0,
+              lineHeight: 1.45,
+            }}
+          >
+            {hint}
+          </p>
+        </div>
+        {onClearAll && (
+          <button
+            type="button"
+            onClick={onClearAll}
+            disabled={clearDisabled}
+            style={{
+              border: "none",
+              background: "transparent",
+              fontFamily: fontSans,
+              fontSize: T.label,
+              fontWeight: 600,
+              color: clearDisabled ? color.mutedLight : color.muted,
+              cursor: clearDisabled ? "default" : "pointer",
+              textDecoration: clearDisabled ? "none" : "underline",
+              flexShrink: 0,
+              padding: 0,
+              opacity: clearDisabled ? 0.5 : 1,
+            }}
+          >
+            Clear All
+          </button>
+        )}
+      </div>
       {children}
     </section>
   );
