@@ -9,6 +9,7 @@ import {
   InboxIcon,
   ProfileIcon,
   CoachingIcon,
+  ResumeIcon,
   BellIcon,
   ArrowLeftIcon,
 } from "./workspace-icons";
@@ -351,6 +352,7 @@ export function WorkspaceSidebar({
     if (path === EXPERT_DASHBOARD_PATH) return isExpertPortalPath(pathname);
     if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     if (path === "/coaching") return pathname.startsWith("/coaching");
+    if (path === "/resume") return pathname === "/resume" || pathname.startsWith("/resume/");
     return pathname === path;
   };
 
@@ -656,6 +658,14 @@ export function WorkspaceSidebar({
             onClick={() => navigate("/inbox")}
             label="Inbox"
             Icon={InboxIcon}
+            isRail={isRail}
+          />
+
+          <SidebarNavButton
+            active={isActive("/resume")}
+            onClick={() => navigate("/resume")}
+            label="Resume"
+            Icon={ResumeIcon}
             isRail={isRail}
           />
 
