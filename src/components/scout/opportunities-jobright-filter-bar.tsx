@@ -206,6 +206,7 @@ function RadioRow({
 
 export function OpportunitiesJobrightFilterBar({
   form,
+  appliedForm = form,
   setForm,
   toggleSet,
   categorySuggestions,
@@ -220,6 +221,8 @@ export function OpportunitiesJobrightFilterBar({
   trailingActions,
 }: {
   form: RecommendedFilterForm;
+  /** Applied filters — drives pill labels and active styling (form is the edit draft). */
+  appliedForm?: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   categorySuggestions?: string[];
@@ -252,27 +255,27 @@ export function OpportunitiesJobrightFilterBar({
   };
 
   const labels = useMemo(() => {
-    const jobFns = jobFunctionPillItems(form);
-    const expLabels = experienceLabelsFromForm(form);
-    const types = [...form.jobTypes].map(jobTypeDisplay);
-    const remote = [...form.locationTypes].map(workModelDisplay);
-    const industries = form.industries.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
-    const dateLabel = form.datePostedWithinDays
-      ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date Posted"
+    const jobFns = jobFunctionPillItems(appliedForm);
+    const expLabels = experienceLabelsFromForm(appliedForm);
+    const types = [...appliedForm.jobTypes].map(jobTypeDisplay);
+    const remote = [...appliedForm.locationTypes].map(workModelDisplay);
+    const industries = appliedForm.industries.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    const dateLabel = appliedForm.datePostedWithinDays
+      ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === appliedForm.datePostedWithinDays)?.label ?? "Date Posted"
       : "Date Posted";
 
     let locationLabel = "Location";
-    if (form.locationAllInCountry && form.locationCountry.trim()) {
+    if (appliedForm.locationAllInCountry && appliedForm.locationCountry.trim()) {
       locationLabel =
-        form.locationCountry === "United States"
+        appliedForm.locationCountry === "United States"
           ? "Anywhere in the US"
-          : form.locationCountry === "Canada"
+          : appliedForm.locationCountry === "Canada"
             ? "Anywhere in Canada"
-            : `Anywhere in ${form.locationCountry}`;
-    } else if (form.locationCountry.trim()) {
-      locationLabel = form.locationCountry.trim();
-    } else if (form.locationCity.trim()) {
-      locationLabel = form.locationCity.trim();
+            : `Anywhere in ${appliedForm.locationCountry}`;
+    } else if (appliedForm.locationCountry.trim()) {
+      locationLabel = appliedForm.locationCountry.trim();
+    } else if (appliedForm.locationCity.trim()) {
+      locationLabel = appliedForm.locationCity.trim();
     }
 
     return {
@@ -284,19 +287,19 @@ export function OpportunitiesJobrightFilterBar({
       dateLabel,
       industryLabel: industries.length ? multiValuePillLabel(industries, "Industry") : "Industry",
     };
-  }, [form]);
+  }, [appliedForm]);
 
   const hasLocation =
-    Boolean(form.locationCountry.trim()) ||
-    Boolean(form.locationCity.trim()) ||
-    Boolean(form.locationRegion.trim()) ||
-    form.locationAllInCountry;
-  const hasJobFn = jobFunctionPillItems(form).length > 0;
-  const hasExp = form.experienceLevelLabels.size > 0;
-  const hasTypes = form.jobTypes.size > 0;
-  const hasRemote = form.locationTypes.size > 0;
-  const hasIndustry = Boolean(form.industries.trim());
-  const hasDate = Boolean(form.datePostedWithinDays);
+    Boolean(appliedForm.locationCountry.trim()) ||
+    Boolean(appliedForm.locationCity.trim()) ||
+    Boolean(appliedForm.locationRegion.trim()) ||
+    appliedForm.locationAllInCountry;
+  const hasJobFn = jobFunctionPillItems(appliedForm).length > 0;
+  const hasExp = appliedForm.experienceLevelLabels.size > 0;
+  const hasTypes = appliedForm.jobTypes.size > 0;
+  const hasRemote = appliedForm.locationTypes.size > 0;
+  const hasIndustry = Boolean(appliedForm.industries.trim());
+  const hasDate = Boolean(appliedForm.datePostedWithinDays);
 
   return (
     <div

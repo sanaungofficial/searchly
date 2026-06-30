@@ -116,6 +116,8 @@ function splitInputListOrUndefined(value: string): string[] | undefined {
 }
 
 function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) {
+  const locationAllInCountry = searchPrefs?.locationAllInCountry === true;
+  const loc = f.locations?.[0];
   const base = {
     semanticQuery: f.semanticQuery ?? "",
     jobTitles: (f.jobTitles ?? []).join(", "),
@@ -124,9 +126,9 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     industries: (f.industries ?? []).join(", "),
     subindustries: (f.subindustries ?? []).join(", "),
     jobCategories: (f.jobCategories ?? []).join(", "),
-    locationCity: f.locations?.[0]?.city ?? "",
-    locationRegion: f.locations?.[0]?.region ?? "",
-    locationCountry: f.locations?.[0]?.country ?? "",
+    locationCity: locationAllInCountry ? "" : (loc?.city ?? ""),
+    locationRegion: locationAllInCountry ? "" : (loc?.region ?? ""),
+    locationCountry: loc?.country ?? "",
     locationRadiusMiles:
       f.locationRadiusMiles != null && f.locationRadiusMiles > 0 ? String(f.locationRadiusMiles) : "",
     datePostedWithinDays: postedWithinDaysFormValue(f),
@@ -145,7 +147,7 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     relocationPriorities: [] as string[],
     ...emptyExtendedFilterFields(),
     customJobFunctions: searchPrefs?.customJobFunctions ?? [],
-    locationAllInCountry: searchPrefs?.locationAllInCountry ?? false,
+    locationAllInCountry,
   };
   return searchPrefs ? applySearchPreferencesToFilterForm(base, searchPrefs) : base;
 }
@@ -657,6 +659,7 @@ export function PipelineRecommendedSection({
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
   const fetchGenRef = useRef(0);
   const defaultFormRef = useRef<FilterForm | null>(null);
+  const prefsConfirmedRef = useRef(false);
 
   const hydrateFromCache = useCallback((filtersKey: string) => {
     const cached = readRecommendedCache(filtersKey);
@@ -784,13 +787,21 @@ export function PipelineRecommendedSection({
       } | null) => {
         if (data?.filters) {
           const searchPrefs = data.searchPreferences ?? {};
+          prefsConfirmedRef.current = Boolean(searchPrefs.opportunitiesPrefConfirmedAt);
           const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
-          // Default feed uses open Hirebase filters — profile prefs drive matching server-side.
-          setAppliedForm(defaultFeedForm());
-          setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
+          if (prefsConfirmedRef.current) {
+            const confirmedApplied = { ...profileForm, semanticQuery: "" };
+            setAppliedForm(confirmedApplied);
+            setActiveFilterLabels(describeActiveFilters(formToFilters(confirmedApplied, 1)));
+          } else {
+            // Unconfirmed profile prefill stays in form only until popup or filter bar apply.
+            setAppliedForm(defaultFeedForm());
+            setActiveFilterLabels([]);
+          }
         } else {
+          prefsConfirmedRef.current = false;
           setAppliedForm(defaultFeedForm());
         }
         setProfileFormReady(true);
@@ -905,8 +916,11 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = true;
 
-    const feedForm = defaultFeedForm();
-    const defaultKey = defaultFeedCacheKey();
+    const feedForm =
+      prefsConfirmedRef.current && defaultFormRef.current
+        ? { ...defaultFormRef.current, semanticQuery: "" }
+        : defaultFeedForm();
+    const defaultKey = filtersCacheKey(formToFilters(feedForm, 1));
 
     if (isAdminReviewing) {
       void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
@@ -915,7 +929,8 @@ export function PipelineRecommendedSection({
 
     if (hydrateFromCache(defaultKey)) return;
 
-    if (hasDefaultRecommendedFeedLoaded()) {
+    const isDefaultFeedRequest = isDefaultRecommendedFilters(formToFilters(feedForm, 1));
+    if (isDefaultFeedRequest && hasDefaultRecommendedFeedLoaded()) {
       setHasLoadedOnce(true);
       setLoading(false);
       return;
@@ -936,10 +951,17 @@ export function PipelineRecommendedSection({
     return () => window.clearTimeout(timer);
   }, [hasLoadedOnce]);
 
-  const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
+  const saveProfileFromForm = useCallback(async (filtersForm: FilterForm, options?: { markPrefsConfirmed?: boolean }) => {
     const location = profileLocationFromForm(filtersForm);
     const priorities = profilePrioritiesFromForm(filtersForm);
     const searchPreferences = searchPreferencesFromFilterForm(filtersForm);
+    if (
+      options?.markPrefsConfirmed &&
+      !searchPreferences.opportunitiesPrefConfirmedAt &&
+      !profileMeta.searchPreferences.opportunitiesPrefConfirmedAt
+    ) {
+      searchPreferences.opportunitiesPrefConfirmedAt = new Date().toISOString();
+    }
     const unchanged =
       profileBaseline &&
       location.trim() === (profileBaseline.location ?? "").trim() &&
@@ -979,7 +1001,7 @@ export function PipelineRecommendedSection({
       prioritizedCategories: categories.length ? categories : prev.prioritizedCategories,
       searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
     }));
-  }, [profileBaseline, withClientScope]);
+  }, [profileBaseline, profileMeta.searchPreferences.opportunitiesPrefConfirmedAt, withClientScope]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -990,7 +1012,8 @@ export function PipelineRecommendedSection({
 
 
   const applyFilters = async (filtersForm = form) => {
-    await saveProfileFromForm(filtersForm);
+    await saveProfileFromForm(filtersForm, { markPrefsConfirmed: true });
+    prefsConfirmedRef.current = true;
     setAppliedForm(filtersForm);
     setActiveFilterLabels(describeActiveFilters(formToFilters(filtersForm, 1)));
     const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
@@ -1050,6 +1073,10 @@ export function PipelineRecommendedSection({
   }, [jobs, savedKeys]);
 
   const hasExplicitAppliedFilters = !isDefaultRecommendedFilters(appliedFilters);
+  const appliedFilterCount = useMemo(
+    () => describeActiveFilters(appliedFilters).length,
+    [appliedFilters],
+  );
 
   const filteredListings = useMemo(() => {
     let list = [...recommendedListings];
@@ -1097,12 +1124,13 @@ export function PipelineRecommendedSection({
 
         <OpportunitiesJobrightFilterBar
           form={form}
+          appliedForm={appliedForm}
           setForm={setForm}
           toggleSet={toggleSet}
           categorySuggestions={categorySuggestions}
           onQuickApply={(nextForm) => void applyFilters(nextForm)}
           onOpenAllFilters={() => setFiltersDrawerOpen(true)}
-          activeFilterCount={activeFilterLabels.length}
+          activeFilterCount={appliedFilterCount}
           searchValue={form.semanticQuery}
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
@@ -1175,15 +1203,21 @@ export function PipelineRecommendedSection({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ prioritizedCategories, parsedData }),
             });
+            const mergedPrefs = { ...profileMeta.searchPreferences, ...searchPreferences };
+            prefsConfirmedRef.current = true;
             setProfileMeta((prev) => ({
               ...prev,
               prioritizedCategories,
-              searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
+              searchPreferences: mergedPrefs,
             }));
-            const nextForm = {
-              ...form,
-              jobCategories: prioritizedCategories.join(", "),
-            };
+            const base = defaultFormRef.current ?? form;
+            const nextForm = applySearchPreferencesToFilterForm(
+              {
+                ...base,
+                jobCategories: prioritizedCategories.join(", "),
+              },
+              mergedPrefs,
+            );
             setForm(nextForm);
             defaultFormRef.current = nextForm;
             void applyFilters(nextForm);

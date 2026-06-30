@@ -67,4 +67,12 @@ describe("profileDerivedSearchFilters", () => {
     expect(labels.some((l) => l.startsWith("Level:"))).toBe(false);
     expect(labels.some((l) => l.startsWith("Titles:"))).toBe(true);
   });
+
+  it("country-wide location omits city and region when locationAllInCountry is set", () => {
+    const filters = profileDerivedSearchFilters({
+      profileLocation: "Baltimore, Maryland, United States",
+      searchPreferences: { locationAllInCountry: true },
+    });
+    expect(filters.locations).toEqual([{ country: "United States" }]);
+  });
 });
