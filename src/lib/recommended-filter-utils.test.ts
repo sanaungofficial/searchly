@@ -48,6 +48,7 @@ describe("profileDerivedSearchFilters", () => {
     expect(filters.experienceLevels).toEqual(["Senior"]);
     expect(filters.jobTypes).toBeUndefined();
     expect(filters.locations?.[0]?.country).toBe("United States");
+    expect(filters.locationRadiusMiles).toBeUndefined();
   });
 
   it("maps contract preference from employment status text", () => {

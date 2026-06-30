@@ -163,13 +163,12 @@ function profileLocationFromForm(form: FilterForm): string {
   return parsed ? formatProfileLocation(parsed) : "";
 }
 
-function defaultFeedForm(profileForm?: FilterForm | null): FilterForm {
-  const base = profileForm ?? filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS);
-  return { ...base, semanticQuery: "" };
+function defaultFeedForm(): FilterForm {
+  return { ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS), semanticQuery: "" };
 }
 
-function defaultFeedCacheKey(profileForm?: FilterForm | null): string {
-  return filtersCacheKey(formToFilters(defaultFeedForm(profileForm), 1));
+function defaultFeedCacheKey(): string {
+  return filtersCacheKey(formToFilters(defaultFeedForm(), 1));
 }
 
 function readDefaultFeedCache(): RecommendedCacheEntry | null {
@@ -693,7 +692,7 @@ export function PipelineRecommendedSection({
             matchMode: data.matchMode,
             error: null,
           });
-          if (cacheKey === defaultFeedCacheKey(defaultFormRef.current) && nextJobs.length > 0) {
+          if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
             markDefaultRecommendedFeedLoaded();
           }
         }
@@ -721,7 +720,8 @@ export function PipelineRecommendedSection({
           const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
-          setAppliedForm(profileForm);
+          // Default feed API uses open filters — profile prefs drive matching server-side, not as Hirebase pre-filters.
+          setAppliedForm(defaultFeedForm());
           setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
           setProfileFormReady(true);
         }
@@ -772,7 +772,7 @@ export function PipelineRecommendedSection({
     // Profile resolves actingUserId after first paint — not an admin/client switch.
     if (prev === null && next !== null) {
       migrateRecommendedCacheScope("self", next);
-      hydrateFromCache(defaultFeedCacheKey(defaultFormRef.current));
+      hydrateFromCache(defaultFeedCacheKey());
       return;
     }
 
@@ -799,8 +799,8 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = true;
 
-    const feedForm = defaultFeedForm(defaultFormRef.current);
-    const defaultKey = defaultFeedCacheKey(defaultFormRef.current);
+    const feedForm = defaultFeedForm();
+    const defaultKey = defaultFeedCacheKey();
 
     if (isAdminReviewing) {
       void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
@@ -859,7 +859,7 @@ export function PipelineRecommendedSection({
     setActiveFilterLabels(describeActiveFilters(formToFilters(filtersForm, 1)));
     const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
     const isDefaultFeed =
-      cacheKey === defaultFeedCacheKey(defaultFormRef.current) && !filtersForm.semanticQuery.trim();
+      cacheKey === defaultFeedCacheKey() && !filtersForm.semanticQuery.trim();
 
     if (isDefaultFeed) {
       void fetchRecommended(filtersForm, { preferCache: false, forceRefresh: isAdminReviewing });
@@ -1036,8 +1036,10 @@ export function PipelineRecommendedSection({
             void applyFilters().then(() => setFiltersDrawerOpen(false));
           }}
           onReset={() => {
-            const reset = defaultFeedForm(defaultFormRef.current);
-            setForm({ ...reset, semanticQuery: form.semanticQuery });
+            const reset = defaultFormRef.current
+              ? { ...defaultFormRef.current, semanticQuery: form.semanticQuery }
+              : defaultFeedForm();
+            setForm(reset);
           }}
         />
 

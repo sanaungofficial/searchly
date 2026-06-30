@@ -45,9 +45,13 @@ export function parseVectorSearchFilters(body: Record<string, unknown>): VectorS
     experienceLevels: splitCsv(body.experienceLevels),
     companySizeBuckets: splitCsv(body.companySizeBuckets),
     locationTypes: splitCsv(body.locationTypes),
-    locations: Array.isArray(body.locations)
-      ? (body.locations as Array<{ city?: string; region?: string; country?: string }>)
-      : undefined,
+    locations: (() => {
+      if (!Array.isArray(body.locations) || !body.locations.length) return undefined;
+      const locs = (body.locations as Array<{ city?: string; region?: string; country?: string }>).filter(
+        (loc) => loc.city?.trim() || loc.region?.trim() || loc.country?.trim(),
+      );
+      return locs.length ? locs : undefined;
+    })(),
     datePostedFrom: typeof body.datePostedFrom === "string" ? body.datePostedFrom : undefined,
     datePostedWithinDays: num(body.datePostedWithinDays),
     locationRadiusMiles: num(body.locationRadiusMiles),
