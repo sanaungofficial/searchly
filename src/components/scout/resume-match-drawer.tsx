@@ -25,6 +25,7 @@ import {
   ResumeSelectDropdown,
   SmallScoreGauge,
   scoreColor,
+  MATCH_ROW_GRID_SPLIT,
   type MatchData,
   type ResumeAssetOption,
   type RowStatus,
@@ -522,7 +523,7 @@ export function ResumeMatchDrawer({
           right: 0,
           top: 0,
           bottom: 0,
-          width: "min(960px, 85vw)",
+          width: "min(80vw, calc(100vw - 16px))",
           background: "#FFFFFF",
           borderLeft: "var(--scout-border)",
           zIndex: DRAWER_NESTED_Z,
@@ -889,7 +890,7 @@ export function ResumeMatchDrawer({
                         <div
                           style={{
                             display: "grid",
-                            gridTemplateColumns: "148px 30px 1fr 1fr",
+                            gridTemplateColumns: MATCH_ROW_GRID_SPLIT,
                             gap: 12,
                             padding: "10px 16px",
                             background: "rgba(0,0,0,0.02)",
@@ -979,27 +980,36 @@ export function ResumeMatchDrawer({
                         />
                         <MatchComparisonRow
                           label="Industry Experience"
+                          layout="full"
                           left={
-                            <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                               {(data.industryTags ?? data.industries.map((ind) => ({
                                 label: ind,
                                 matched: data.industryMatch,
                               }))).slice(0, 6).map((ind) => (
                                 <IndustryTag key={ind.label} label={ind.label} matched={ind.matched} />
                               ))}
-                            </span>
-                          }
-                          right={
-                            data.industryMatch
-                              ? "Relevant experience"
-                              : "Limited overlap"
+                              {!data.industryMatch && (
+                                <span
+                                  style={{
+                                    fontFamily: fontSans,
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: "#B88A30",
+                                  }}
+                                >
+                                  Limited overlap
+                                </span>
+                              )}
+                            </div>
                           }
                           status={data.industryMatch ? "ok" : "warn"}
                         />
                         <MatchComparisonRow
                           label={`Job Keywords (${matchedKwCount}/${totalKwCount})`}
+                          layout="full"
                           left={
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingTop: 2 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
                               {data.keywords.map((kw) => (
                                 <MatchKeywordTag key={kw.text} text={kw.text} matched={kw.matched} />
                               ))}
@@ -1110,34 +1120,33 @@ export function ResumeMatchDrawer({
                                   setNewKw("");
                                 }}
                               />
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  fontSize: 14,
+                                  color:
+                                    kwStatus === "ok"
+                                      ? "#3D7A5B"
+                                      : kwStatus === "warn"
+                                      ? "#B88A30"
+                                      : "#B84040",
+                                  marginLeft: 4,
+                                }}
+                              >
+                                {matchedKwCount}/{totalKwCount} matched
+                              </span>
                             </div>
-                          }
-                          right={
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                fontSize: 14,
-                                color:
-                                  kwStatus === "ok"
-                                    ? "#3D7A5B"
-                                    : kwStatus === "warn"
-                                    ? "#B88A30"
-                                    : "#B84040",
-                              }}
-                            >
-                              {matchedKwCount}/{totalKwCount} matched
-                            </span>
                           }
                           status={kwStatus}
                         />
                         <MatchComparisonRow
                           label="Summary"
+                          layout="full"
                           left={
                             <span style={{ color: "#52493F", fontStyle: "italic" }}>
                               {data.summaryNote}
                             </span>
                           }
-                          right=""
                           status={summaryStatus}
                         />
                       </div>

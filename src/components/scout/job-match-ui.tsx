@@ -333,23 +333,30 @@ export function IndustryTag({ label, matched }: { label: string; matched: boolea
   );
 }
 
+export const MATCH_ROW_GRID_SPLIT = "148px 30px 1fr 1fr";
+export const MATCH_ROW_GRID_FULL = "148px 30px 1fr";
+
 export function MatchComparisonRow({
   label,
   left,
   right,
   status,
+  layout = "split",
 }: {
   label: string;
   left: React.ReactNode;
-  right: React.ReactNode;
+  right?: React.ReactNode;
   status: RowStatus;
+  /** split = job | resume columns; full = single content span */
+  layout?: "split" | "full";
 }) {
   const s = rowStatusStyles(status);
+  const isFull = layout === "full";
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "148px 30px 1fr 1fr",
+        gridTemplateColumns: isFull ? MATCH_ROW_GRID_FULL : MATCH_ROW_GRID_SPLIT,
         gap: 12,
         alignItems: "start",
         padding: "13px 16px",
@@ -378,8 +385,14 @@ export function MatchComparisonRow({
       >
         {s.icon}
       </div>
-      <div style={{ fontFamily: sans, fontSize: 14, color: "#1A1A1A", lineHeight: 1.55 }}>{left}</div>
-      <div style={{ fontFamily: sans, fontSize: 14, color: "#52493F", lineHeight: 1.55 }}>{right}</div>
+      {isFull ? (
+        <div style={{ fontFamily: sans, fontSize: 14, color: "#1A1A1A", lineHeight: 1.55 }}>{left}</div>
+      ) : (
+        <>
+          <div style={{ fontFamily: sans, fontSize: 14, color: "#1A1A1A", lineHeight: 1.55 }}>{left}</div>
+          <div style={{ fontFamily: sans, fontSize: 14, color: "#52493F", lineHeight: 1.55 }}>{right}</div>
+        </>
+      )}
     </div>
   );
 }
