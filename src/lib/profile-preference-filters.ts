@@ -129,6 +129,7 @@ export function hasRestrictiveListingFilters(filters: VectorSearchFilters): bool
 export function isDefaultRecommendedFilters(filters: VectorSearchFilters): boolean {
   const keys: (keyof VectorSearchFilters)[] = [
     "semanticQuery",
+    "customJobFunctions",
     "companyName",
     "companySlug",
     "jobTitles",

@@ -15,6 +15,10 @@ export type SearchPreferences = {
   openToAllExperience?: boolean;
   /** JobRight-style experience level labels the user confirmed. */
   experienceLevelLabels?: string[];
+  /** User-created job functions not in Hirebase taxonomy — merged into vsearch semantic query. */
+  customJobFunctions?: string[];
+  /** When true, location filter is country-wide (no city/region). */
+  locationAllInCountry?: boolean;
   opportunitiesPrefConfirmedAt?: string | null;
 };
 
@@ -53,6 +57,8 @@ export function parseSearchPreferences(raw: unknown): SearchPreferences {
     openToAllSalary: o.openToAllSalary === true,
     openToAllExperience: o.openToAllExperience === true,
     experienceLevelLabels: strList(o.experienceLevelLabels),
+    customJobFunctions: strList(o.customJobFunctions),
+    locationAllInCountry: o.locationAllInCountry === true,
     opportunitiesPrefConfirmedAt:
       typeof o.opportunitiesPrefConfirmedAt === "string" ? o.opportunitiesPrefConfirmedAt : null,
   };
@@ -142,6 +148,8 @@ export function applySearchPreferencesToFilterForm<
     openToAllSalary: boolean;
     openToAllExperience: boolean;
     experienceLevels: Set<string>;
+    customJobFunctions?: string[];
+    locationAllInCountry?: boolean;
   },
 >(form: T, prefs: SearchPreferences): T {
   const next = { ...form };
@@ -160,6 +168,8 @@ export function applySearchPreferencesToFilterForm<
     const levels = hirebaseLevelsFromJobrightLabels(prefs.experienceLevelLabels);
     if (levels.length) next.experienceLevels = new Set(levels);
   }
+  if (prefs.customJobFunctions?.length) next.customJobFunctions = [...prefs.customJobFunctions];
+  if (prefs.locationAllInCountry) next.locationAllInCountry = true;
   return next;
 }
 
@@ -178,6 +188,8 @@ export function searchPreferencesFromFilterForm(form: {
   openToAllSalary: boolean;
   openToAllExperience: boolean;
   experienceLevels: Set<string>;
+  customJobFunctions?: string[];
+  locationAllInCountry?: boolean;
 }): SearchPreferences {
   const excludedJobTitles = splitList(form.excludedJobTitles);
   const excludedIndustries = splitList(form.excludedIndustries);
@@ -206,6 +218,8 @@ export function searchPreferencesFromFilterForm(form: {
     openToAllSalary: form.openToAllSalary || undefined,
     openToAllExperience: form.openToAllExperience || undefined,
     experienceLevelLabels: experienceLevelLabels.length ? experienceLevelLabels : undefined,
+    customJobFunctions: form.customJobFunctions?.length ? form.customJobFunctions : undefined,
+    locationAllInCountry: form.locationAllInCountry || undefined,
   };
 }
 
@@ -223,6 +237,8 @@ export function emptyExtendedFilterFields() {
     excludeStaffingAgency: false,
     openToAllSalary: false,
     openToAllExperience: false,
+    customJobFunctions: [] as string[],
+    locationAllInCountry: false,
   };
 }
 

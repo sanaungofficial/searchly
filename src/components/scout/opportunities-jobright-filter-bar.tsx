@@ -1,30 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  HIREBASE_FILTER_COUNTRIES,
-  HIREBASE_FILTER_US_STATES,
   multiValuePillLabel,
-  yearsExperienceLabel,
-  YEARS_OF_EXPERIENCE_OPTIONS,
 } from "@/lib/recommended-filter-utils";
 import { POSTED_WITHIN_OPTIONS } from "@/lib/job-posted-filter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
+import { pipelineInputStyle } from "./pipeline-filters-ui";
 import {
-  DatalistInput,
-  FilterField,
-  pipelineInputStyle,
-} from "./pipeline-filters-ui";
+  HIREBASE_JOB_TYPES,
+  HIREBASE_LOCATION_TYPES,
+} from "@/lib/vector-matched-job";
+import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
+import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
+import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
 
-const ACTIVE_CHIP: React.CSSProperties = {
+const ACTIVE_PILL: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 5,
-  padding: "6px 8px 6px 12px",
+  gap: 4,
+  padding: "6px 12px",
   borderRadius: 999,
   border: "1px solid rgba(45, 107, 74, 0.35)",
   background: "rgba(45, 107, 74, 0.12)",
@@ -32,49 +31,34 @@ const ACTIVE_CHIP: React.CSSProperties = {
   fontFamily: fontSans,
   fontSize: T.caption,
   fontWeight: 600,
+  cursor: "pointer",
   whiteSpace: "nowrap",
 };
 
-function splitFormList(value: string): string[] {
-  return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+const INACTIVE_PILL: React.CSSProperties = {
+  ...ACTIVE_PILL,
+  border: border.line,
+  background: surface.card,
+  color: color.ink,
+  fontWeight: 500,
+};
+
+function jobTypeDisplay(type: string): string {
+  return type.replace("Full Time", "Full-time").replace("Part Time", "Part-time");
 }
 
-function locationCountryLabel(form: RecommendedFilterForm): string {
-  if (form.locationCountry.trim()) return form.locationCountry.trim();
-  const parts = [form.locationCity, form.locationRegion].filter(Boolean);
-  if (!parts.length) return "Location";
-  return parts.join(", ");
+function workModelDisplay(type: string): string {
+  if (type === "In-Person") return "Onsite";
+  if (type === "Remote") return "Remote";
+  return type;
 }
 
-function ActiveFilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span style={ACTIVE_CHIP}>
-      {label}
-      <button
-        type="button"
-        aria-label={`Remove ${label} filter`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 18,
-          height: 18,
-          padding: 0,
-          border: "none",
-          borderRadius: "50%",
-          background: "rgba(26, 58, 47, 0.12)",
-          color: color.forest,
-          cursor: "pointer",
-        }}
-      >
-        <X size={12} />
-      </button>
-    </span>
-  );
+function experienceLabelsFromForm(form: RecommendedFilterForm): string[] {
+  const labels: string[] = [];
+  for (const { label, hirebase } of JOBRIGHT_EXPERIENCE_LEVELS) {
+    if (hirebase.some((hb) => form.experienceLevels.has(hb))) labels.push(label);
+  }
+  return labels;
 }
 
 function DropdownPill({
@@ -93,24 +77,7 @@ function DropdownPill({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "6px 12px",
-            borderRadius: 999,
-            border: active ? "1px solid rgba(45, 107, 74, 0.35)" : border.line,
-            background: active ? "rgba(45, 107, 74, 0.12)" : surface.card,
-            color: active ? color.forest : color.ink,
-            fontFamily: fontSans,
-            fontSize: T.caption,
-            fontWeight: active ? 600 : 500,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <button type="button" style={active ? ACTIVE_PILL : INACTIVE_PILL}>
           {label}
           <ChevronDown size={14} style={{ opacity: 0.65 }} />
         </button>
@@ -118,7 +85,7 @@ function DropdownPill({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-auto min-w-[220px] max-w-[340px] p-0 shadow-lg"
+        className="w-auto p-0 shadow-lg"
         style={{ background: surface.card, border: border.line, borderRadius: 8 }}
       >
         {children}
@@ -127,32 +94,111 @@ function DropdownPill({
   );
 }
 
-function PopoverSection({ title, children }: { title?: string; children: React.ReactNode }) {
+function PopoverPad({ children }: { children: React.ReactNode }) {
+  return <div style={{ padding: "12px 14px" }}>{children}</div>;
+}
+
+function PopoverFooter({
+  onReset,
+  onConfirm,
+}: {
+  onReset: () => void;
+  onConfirm: () => void;
+}) {
   return (
-    <div style={{ padding: "12px 14px" }}>
-      {title && (
-        <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 10px" }}>
-          {title}
-        </p>
-      )}
-      {children}
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 14px",
+        borderTop: border.line,
+      }}
+    >
+      <button
+        type="button"
+        onClick={onReset}
+        style={{
+          border: "none",
+          background: "transparent",
+          fontFamily: fontSans,
+          fontSize: T.caption,
+          fontWeight: 600,
+          color: color.muted,
+          cursor: "pointer",
+          textDecoration: "underline",
+        }}
+      >
+        Reset
+      </button>
+      <button
+        type="button"
+        onClick={onConfirm}
+        style={{
+          border: "none",
+          background: "transparent",
+          fontFamily: fontSans,
+          fontSize: T.caption,
+          fontWeight: 700,
+          color: color.forest,
+          cursor: "pointer",
+        }}
+      >
+        Confirm
+      </button>
     </div>
   );
 }
 
-function RadioOption({ label, checked, onSelect }: { label: string; checked: boolean; onSelect: () => void }) {
+function CheckboxRow({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontFamily: fontSans, fontSize: T.caption, cursor: "pointer" }}>
-      <input type="radio" checked={checked} onChange={onSelect} />
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 0",
+        fontFamily: fontSans,
+        fontSize: T.caption,
+        cursor: "pointer",
+      }}
+    >
+      <input type="checkbox" checked={checked} onChange={onToggle} />
       {label}
     </label>
   );
 }
 
-function CheckboxOption({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
+function RadioRow({
+  label,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
   return (
-    <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontFamily: fontSans, fontSize: T.caption, cursor: "pointer" }}>
-      <input type="checkbox" checked={checked} onChange={onToggle} />
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 0",
+        fontFamily: fontSans,
+        fontSize: T.caption,
+        cursor: "pointer",
+      }}
+    >
+      <input type="radio" checked={checked} onChange={onSelect} />
       {label}
     </label>
   );
@@ -170,7 +216,7 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange,
   onSearchSubmit,
   searching,
-  profileChipsOnly,
+  profileCountry,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
@@ -183,160 +229,361 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   searching?: boolean;
-  profileChipsOnly?: boolean;
+  /** Profile country — used to prioritize Canada in location quick filter. */
+  profileCountry?: string;
 }) {
   const isMobile = useIsMobile();
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const chipsOnly = profileChipsOnly === true;
+  const [draft, setDraft] = useState<RecommendedFilterForm>(form);
+  const preferCanada = isCanadianLocationCountry(form.locationCountry || profileCountry);
 
-  const labels = useMemo(() => {
-    const titles = splitFormList(form.jobTitles);
-    const categories = splitFormList(form.jobCategories);
-    const levels = [...form.experienceLevels];
-    const types = [...form.jobTypes];
-    const remote = [...form.locationTypes];
-    const industries = splitFormList(form.industries);
-    const dateLabel = form.datePostedWithinDays
-      ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date posted"
-      : "Date posted";
-    return {
-      countryLabel: locationCountryLabel(form),
-      titlesLabel: multiValuePillLabel(titles, "Target roles"),
-      categoriesLabel: multiValuePillLabel(categories, "Role categories"),
-      levelsLabel: multiValuePillLabel(levels, "Seniority"),
-      typesLabel: multiValuePillLabel(types, "Job type"),
-      remoteLabel: multiValuePillLabel(remote, "Work mode"),
-      dateLabel,
-      industryLabel: industries.length ? multiValuePillLabel(industries, "Industry") : "Industry",
-      yearsLabel: yearsExperienceLabel(form.yearsFrom, form.yearsTo),
-    };
-  }, [form]);
+  const openDraft = (key: string) => {
+    setDraft(form);
+    setOpenKey(key);
+  };
 
-  const apply = (next: RecommendedFilterForm) => {
-    setForm(next);
-    onQuickApply(next);
+  const confirmDraft = () => {
+    setForm(draft);
+    onQuickApply(draft);
     setOpenKey(null);
   };
 
-  const applyBtn = () => (
-    <button
-      type="button"
-      onClick={() => apply(form)}
-      style={{
-        marginTop: 10,
-        width: "100%",
-        padding: "8px 12px",
-        border: border.lineStrong,
-        borderRadius: 999,
-        background: color.forest,
-        color: color.gold,
-        fontFamily: fontSans,
-        fontSize: T.label,
-        fontWeight: 600,
-        cursor: "pointer",
-      }}
-    >
-      Apply
-    </button>
-  );
+  const labels = useMemo(() => {
+    const jobFns = jobFunctionPillItems(form);
+    const expLabels = experienceLabelsFromForm(form);
+    const types = [...form.jobTypes].map(jobTypeDisplay);
+    const remote = [...form.locationTypes].map(workModelDisplay);
+    const industries = form.industries.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    const dateLabel = form.datePostedWithinDays
+      ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date Posted"
+      : "Date Posted";
 
-  const hasCountry =
+    let locationLabel = "Location";
+    if (form.locationAllInCountry && form.locationCountry.trim()) {
+      locationLabel =
+        form.locationCountry === "United States"
+          ? "Anywhere in the US"
+          : form.locationCountry === "Canada"
+            ? "Anywhere in Canada"
+            : `Anywhere in ${form.locationCountry}`;
+    } else if (form.locationCountry.trim()) {
+      locationLabel = form.locationCountry.trim();
+    } else if (form.locationCity.trim()) {
+      locationLabel = form.locationCity.trim();
+    }
+
+    return {
+      locationLabel,
+      jobFnLabel: multiValuePillLabel(jobFns, "Job Function"),
+      expLabel: multiValuePillLabel(expLabels, "Experience Level"),
+      typesLabel: multiValuePillLabel(types, "Job Type"),
+      remoteLabel: multiValuePillLabel(remote, "Work Model"),
+      dateLabel,
+      industryLabel: industries.length ? multiValuePillLabel(industries, "Industry") : "Industry",
+    };
+  }, [form]);
+
+  const hasLocation =
     Boolean(form.locationCountry.trim()) ||
     Boolean(form.locationCity.trim()) ||
-    Boolean(form.locationRegion.trim());
-  const titles = splitFormList(form.jobTitles);
-  const categories = splitFormList(form.jobCategories);
-  const levels = [...form.experienceLevels];
-  const types = [...form.jobTypes];
-  const remote = [...form.locationTypes];
+    Boolean(form.locationRegion.trim()) ||
+    form.locationAllInCountry;
+  const hasJobFn = jobFunctionPillItems(form).length > 0;
+  const hasExp = form.experienceLevels.size > 0;
+  const hasTypes = form.jobTypes.size > 0;
+  const hasRemote = form.locationTypes.size > 0;
+  const hasIndustry = Boolean(form.industries.trim());
+  const hasDate = Boolean(form.datePostedWithinDays);
 
   return (
-    <div style={{ display: "flex", flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-      <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: 8, overflowX: "auto", flex: 1, minWidth: 0, WebkitOverflowScrolling: "touch" }}>
-        {hasCountry ? (
-          <ActiveFilterChip
-            label={labels.countryLabel}
-            onRemove={() =>
-              apply({ ...form, locationCity: "", locationRegion: "", locationCountry: "", locationRadiusMiles: "" })
+    <div
+      style={{
+        display: "flex",
+        flexWrap: isMobile ? "wrap" : "nowrap",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "nowrap",
+          alignItems: "center",
+          gap: 8,
+          overflowX: "auto",
+          flex: 1,
+          minWidth: 0,
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <DropdownPill
+          label={labels.locationLabel}
+          active={hasLocation}
+          open={openKey === "location"}
+          onOpenChange={(o) => (o ? openDraft("location") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+              Country
+            </p>
+            {(preferCanada
+              ? ([
+                  { label: "Canada", value: "Canada" },
+                  { label: "United States", value: "United States" },
+                ] as const)
+              : ([
+                  { label: "United States", value: "United States" },
+                  { label: "Canada", value: "Canada" },
+                ] as const)
+            ).map(({ label, value }) => (
+              <RadioRow
+                key={value}
+                label={label}
+                checked={draft.locationCountry === value}
+                onSelect={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    locationCountry: value,
+                    ...(value === "Canada"
+                      ? { locationAllInCountry: false, locationCity: "", locationRegion: "" }
+                      : {}),
+                  }))
+                }
+              />
+            ))}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "12px 0 8px", flexWrap: "wrap", gap: 8 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: 0 }}>
+                Location
+              </p>
+              {(draft.locationCountry === "United States" || draft.locationCountry === "Canada") && (
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    color: color.muted,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={draft.locationAllInCountry}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        locationAllInCountry: e.target.checked,
+                        locationCity: e.target.checked ? "" : d.locationCity,
+                        locationRegion: e.target.checked ? "" : d.locationRegion,
+                      }))
+                    }
+                  />
+                  {draft.locationCountry === "Canada"
+                    ? "All locations within Canada"
+                    : "All locations within the US"}
+                </label>
+              )}
+            </div>
+
+            {!draft.locationAllInCountry && (
+              <input
+                style={pipelineInputStyle}
+                value={draft.locationCity}
+                onChange={(e) => setDraft((d) => ({ ...d, locationCity: e.target.value }))}
+                placeholder={draft.locationCountry === "Canada" ? "Enter City or Province" : "Enter City"}
+              />
+            )}
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() =>
+              setDraft((d) => ({
+                ...d,
+                locationCity: "",
+                locationRegion: "",
+                locationCountry: "",
+                locationAllInCountry: false,
+                locationRadiusMiles: "",
+              }))
             }
+            onConfirm={confirmDraft}
           />
-        ) : !chipsOnly ? (
-          <DropdownPill label={labels.countryLabel} open={openKey === "location"} onOpenChange={(o) => setOpenKey(o ? "location" : null)}>
-            <PopoverSection title="Location">
-              <FilterField label="City"><input style={pipelineInputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="Albany" /></FilterField>
-              <FilterField label="State / region"><DatalistInput value={form.locationRegion} onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))} listId="jobright-region" options={[...HIREBASE_FILTER_US_STATES]} placeholder="New York" /></FilterField>
-              <FilterField label="Country"><DatalistInput value={form.locationCountry} onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))} listId="jobright-country" options={[...HIREBASE_FILTER_COUNTRIES]} placeholder="United States" /></FilterField>
-              {applyBtn()}
-            </PopoverSection>
-          </DropdownPill>
-        ) : null}
+        </DropdownPill>
 
-        {titles.length > 0 ? (
-          <ActiveFilterChip label={labels.titlesLabel} onRemove={() => apply({ ...form, jobTitles: "" })} />
-        ) : null}
+        <DropdownPill
+          label={labels.jobFnLabel}
+          active={hasJobFn}
+          open={openKey === "jobfn"}
+          onOpenChange={(o) => (o ? openDraft("jobfn") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <JobFunctionDropdown
+              selected={draft.jobCategories.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)}
+              customSelected={draft.customJobFunctions ?? []}
+              onChange={(taxonomy, custom) =>
+                setDraft((d) => ({
+                  ...d,
+                  jobCategories: taxonomy.join(", "),
+                  customJobFunctions: custom,
+                }))
+              }
+              suggested={categorySuggestions}
+            />
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() => setDraft((d) => ({ ...d, jobCategories: "", customJobFunctions: [] }))}
+            onConfirm={confirmDraft}
+          />
+        </DropdownPill>
 
-        {categories.length > 0 ? (
-          <ActiveFilterChip label={labels.categoriesLabel} onRemove={() => apply({ ...form, jobCategories: "" })} />
-        ) : !chipsOnly ? (
-          <DropdownPill label={labels.categoriesLabel} open={openKey === "categories"} onOpenChange={(o) => setOpenKey(o ? "categories" : null)}>
-            <PopoverSection title="Role categories">
-              <DatalistInput value={form.jobCategories} onChange={(jobCategories) => setForm((f) => ({ ...f, jobCategories }))} listId="jobright-categories" options={categorySuggestions ?? []} placeholder="Operations Jobs" />
-              {applyBtn()}
-            </PopoverSection>
-          </DropdownPill>
-        ) : null}
+        <DropdownPill
+          label={labels.expLabel}
+          active={hasExp}
+          open={openKey === "experience"}
+          onOpenChange={(o) => (o ? openDraft("experience") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+              Experience Level
+            </p>
+            {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label, hirebase }) => {
+              const active = hirebase.some((hb) => draft.experienceLevels.has(hb));
+              return (
+                <CheckboxRow
+                  key={label}
+                  label={label}
+                  checked={active}
+                  onToggle={() => {
+                    setDraft((d) => {
+                      const next = new Set(d.experienceLevels);
+                      for (const hb of hirebase) {
+                        if (active) next.delete(hb);
+                        else next.add(hb);
+                      }
+                      return { ...d, experienceLevels: next };
+                    });
+                  }}
+                />
+              );
+            })}
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() => setDraft((d) => ({ ...d, experienceLevels: new Set() }))}
+            onConfirm={confirmDraft}
+          />
+        </DropdownPill>
 
-        {levels.length > 0 ? (
-          <ActiveFilterChip label={labels.levelsLabel} onRemove={() => apply({ ...form, experienceLevels: new Set() })} />
-        ) : null}
+        <DropdownPill
+          label={labels.typesLabel}
+          active={hasTypes}
+          open={openKey === "jobtype"}
+          onOpenChange={(o) => (o ? openDraft("jobtype") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+              Job Type
+            </p>
+            {HIREBASE_JOB_TYPES.map((t) => (
+              <CheckboxRow
+                key={t}
+                label={jobTypeDisplay(t)}
+                checked={draft.jobTypes.has(t)}
+                onToggle={() =>
+                  setDraft((d) => ({ ...d, jobTypes: toggleSet(d.jobTypes, t) }))
+                }
+              />
+            ))}
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() => setDraft((d) => ({ ...d, jobTypes: new Set() }))}
+            onConfirm={confirmDraft}
+          />
+        </DropdownPill>
 
-        {types.length > 0 ? (
-          <ActiveFilterChip label={labels.typesLabel} onRemove={() => apply({ ...form, jobTypes: new Set() })} />
-        ) : null}
+        <DropdownPill
+          label={labels.remoteLabel}
+          active={hasRemote}
+          open={openKey === "workmodel"}
+          onOpenChange={(o) => (o ? openDraft("workmodel") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+              Work Model
+            </p>
+            {HIREBASE_LOCATION_TYPES.map((t) => (
+              <CheckboxRow
+                key={t}
+                label={workModelDisplay(t)}
+                checked={draft.locationTypes.has(t)}
+                onToggle={() =>
+                  setDraft((d) => ({ ...d, locationTypes: toggleSet(d.locationTypes, t) }))
+                }
+              />
+            ))}
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0 0", lineHeight: 1.4 }}>
+              Work model is applied after Hirebase results (API has no remote/hybrid param).
+            </p>
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() => setDraft((d) => ({ ...d, locationTypes: new Set() }))}
+            onConfirm={confirmDraft}
+          />
+        </DropdownPill>
 
-        {remote.length > 0 ? (
-          <ActiveFilterChip label={labels.remoteLabel} onRemove={() => apply({ ...form, locationTypes: new Set() })} />
-        ) : null}
+        <DropdownPill
+          label={labels.dateLabel}
+          active={hasDate}
+          open={openKey === "date"}
+          onOpenChange={(o) => (o ? openDraft("date") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+              Date Posted
+            </p>
+            <RadioRow
+              label="Any time"
+              checked={!draft.datePostedWithinDays}
+              onSelect={() => setDraft((d) => ({ ...d, datePostedWithinDays: "" }))}
+            />
+            {POSTED_WITHIN_OPTIONS.map((opt) => (
+              <RadioRow
+                key={opt.days}
+                label={opt.label}
+                checked={draft.datePostedWithinDays === String(opt.days)}
+                onSelect={() => setDraft((d) => ({ ...d, datePostedWithinDays: String(opt.days) }))}
+              />
+            ))}
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() => setDraft((d) => ({ ...d, datePostedWithinDays: "" }))}
+            onConfirm={confirmDraft}
+          />
+        </DropdownPill>
 
-        {!chipsOnly && (
-          <>
-            <DropdownPill label={labels.dateLabel} active={Boolean(form.datePostedWithinDays)} open={openKey === "date"} onOpenChange={(o) => setOpenKey(o ? "date" : null)}>
-              <PopoverSection title="Date posted">
-                <RadioOption label="Any time" checked={!form.datePostedWithinDays} onSelect={() => apply({ ...form, datePostedWithinDays: "" })} />
-                {POSTED_WITHIN_OPTIONS.map((opt) => (
-                  <RadioOption key={opt.days} label={opt.label} checked={form.datePostedWithinDays === String(opt.days)} onSelect={() => apply({ ...form, datePostedWithinDays: String(opt.days) })} />
-                ))}
-              </PopoverSection>
-            </DropdownPill>
-
-            <DropdownPill label={labels.industryLabel} active={Boolean(form.industries.trim())} open={openKey === "industry"} onOpenChange={(o) => setOpenKey(o ? "industry" : null)}>
-              <PopoverSection title="Industry">
-                <input style={pipelineInputStyle} value={form.industries} onChange={(e) => setForm((f) => ({ ...f, industries: e.target.value }))} placeholder="Software, Healthcare" />
-                {applyBtn()}
-              </PopoverSection>
-            </DropdownPill>
-
-            <DropdownPill label={labels.yearsLabel} active={Boolean(form.yearsFrom.trim() || form.yearsTo.trim())} open={openKey === "years"} onOpenChange={(o) => setOpenKey(o ? "years" : null)}>
-              <PopoverSection title="Years of experience">
-                {YEARS_OF_EXPERIENCE_OPTIONS.map((opt) => (
-                  <RadioOption key={opt.label} label={opt.label} checked={form.yearsFrom === opt.yearsFrom && form.yearsTo === opt.yearsTo} onSelect={() => apply({ ...form, yearsFrom: opt.yearsFrom, yearsTo: opt.yearsTo })} />
-                ))}
-              </PopoverSection>
-            </DropdownPill>
-          </>
-        )}
-
-        {chipsOnly && form.datePostedWithinDays ? (
-          <ActiveFilterChip label={labels.dateLabel} onRemove={() => apply({ ...form, datePostedWithinDays: "" })} />
-        ) : null}
-
-        {chipsOnly && form.industries.trim() ? (
-          <ActiveFilterChip label={labels.industryLabel} onRemove={() => apply({ ...form, industries: "" })} />
-        ) : null}
-
-        {chipsOnly && (form.yearsFrom.trim() || form.yearsTo.trim()) ? (
-          <ActiveFilterChip label={labels.yearsLabel} onRemove={() => apply({ ...form, yearsFrom: "", yearsTo: "" })} />
-        ) : null}
+        <DropdownPill
+          label={labels.industryLabel}
+          active={hasIndustry}
+          open={openKey === "industry"}
+          onOpenChange={(o) => (o ? openDraft("industry") : setOpenKey(null))}
+        >
+          <PopoverPad>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+              Industry
+            </p>
+            <input
+              style={pipelineInputStyle}
+              value={draft.industries}
+              onChange={(e) => setDraft((d) => ({ ...d, industries: e.target.value }))}
+              placeholder="Software, Healthcare"
+            />
+          </PopoverPad>
+          <PopoverFooter
+            onReset={() => setDraft((d) => ({ ...d, industries: "" }))}
+            onConfirm={confirmDraft}
+          />
+        </DropdownPill>
 
         <div style={{ width: 1, height: 24, background: "rgba(17,17,17,0.14)", margin: "0 2px" }} aria-hidden />
 
@@ -344,19 +591,8 @@ export function OpportunitiesJobrightFilterBar({
           type="button"
           onClick={onOpenAllFilters}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "6px 12px",
-            borderRadius: 999,
-            border: activeFilterCount > 0 ? border.lineStrong : border.line,
-            background: activeFilterCount > 0 ? "rgba(45, 107, 74, 0.08)" : surface.card,
-            color: activeFilterCount > 0 ? color.forest : color.ink,
-            fontFamily: fontSans,
-            fontSize: T.caption,
+            ...(activeFilterCount > 0 ? ACTIVE_PILL : INACTIVE_PILL),
             fontWeight: activeFilterCount > 0 ? 600 : 500,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
           }}
         >
           All Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
@@ -364,7 +600,15 @@ export function OpportunitiesJobrightFilterBar({
       </div>
 
       {onSearchChange && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, width: isMobile ? "100%" : "auto" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexShrink: 0,
+            width: isMobile ? "100%" : "auto",
+          }}
+        >
           <input
             type="search"
             value={searchValue ?? ""}

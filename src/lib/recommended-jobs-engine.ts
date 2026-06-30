@@ -27,6 +27,8 @@ import { extractProfileSkills } from "@/lib/job-fit-ranking";
 import { formatProfileLocation } from "@/lib/recommended-filter-utils";
 import {
   buildProfileVSearchQuery,
+  customJobFunctionsToSemanticQuery,
+  mergeVSearchQueryParts,
   profileTextForMatchReasons,
   trimVSearchQuery,
 } from "@/lib/profile-vsearch-query";
@@ -551,6 +553,7 @@ async function fetchPrimaryRecommendedSources(input: {
         employmentStatus: input.profile?.employmentStatus,
         jobTimeline: input.profile?.jobTimeline,
         semanticQuery: input.semanticQuery || undefined,
+        customJobFunctions: input.filters.customJobFunctions,
       }) ?? trimVSearchQuery(input.targetRoles.join(", "));
 
     if (summaryQuery) {
@@ -997,7 +1000,10 @@ async function generateActiveRoleSearchForUser(
     relocationOpenness,
   } = await loadUserContext(input.userId);
 
-  const searchRoles = buildActiveRoleSearchTitles(semanticQuery, requestFilters.jobTitles);
+  const searchRoles = buildActiveRoleSearchTitles(
+    mergeVSearchQueryParts(semanticQuery, customJobFunctionsToSemanticQuery(requestFilters.customJobFunctions)) ?? semanticQuery,
+    requestFilters.jobTitles,
+  );
   if (!searchRoles.length) return null;
 
   const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
