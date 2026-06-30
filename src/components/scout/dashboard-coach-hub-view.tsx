@@ -5,7 +5,7 @@ import { WorkspaceSubpageShell } from "@/components/scout/workspace-content";
 
 export function DashboardCoachHubView() {
   return (
-    <WorkspaceSubpageShell>
+    <WorkspaceSubpageShell bruddle>
       <CoachHubPanel apiPath="/api/coach/hub" mode="coach" />
     </WorkspaceSubpageShell>
   );

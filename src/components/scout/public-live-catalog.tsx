@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { border, color, fontSans, type as T } from "@/lib/typography";
+import { border, bruddleHeadingStyle, color, fontSans, type as T } from "@/lib/typography";
 
 type PublicSession = LiveSessionView & { publicPath?: string };
 
@@ -29,10 +29,9 @@ export function PublicLiveCatalog() {
   }, [load]);
 
   return (
-    <div className="bruddle" style={{ minHeight: "100vh", background: "var(--scout-page)" }}>
     <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? "24px 16px 48px" : "40px 24px 64px" }}>
       <header style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: isMobile ? 28 : 34, fontWeight: 600, color: color.forest }}>
+        <h1 style={{ ...bruddleHeadingStyle(isMobile ? "h4" : "h3"), margin: "0 0 8px", color: color.forest }}>
           Live webinars
         </h1>
         <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55 }}>
@@ -98,7 +97,6 @@ export function PublicLiveCatalog() {
           ))}
         </div>
       )}
-    </div>
     </div>
   );
 }

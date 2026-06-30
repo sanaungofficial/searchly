@@ -158,7 +158,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
       return (
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
           <div style={{ padding: `0 ${embeddedPad} 32px` }}>
-            <WorkspacePageShell compact title="">
+            <WorkspacePageShell bruddle compact title="">
               {onboardingBanner}
               {content}
             </WorkspacePageShell>
@@ -167,7 +167,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
       );
     }
     return (
-      <WorkspacePageShell label="Coach portal" title={title}>
+      <WorkspacePageShell bruddle label="Coach portal" title={title}>
         {onboardingBanner}
         {tabs}
         {content}

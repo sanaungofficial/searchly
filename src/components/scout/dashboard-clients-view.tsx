@@ -54,7 +54,7 @@ function DashboardClientsInner() {
   }
 
   return (
-    <WorkspaceSubpageShell>
+    <WorkspaceSubpageShell bruddle>
       <AdminClientsPanel
         apiPath={showAdminUi ? "/api/admin/clients" : "/api/coach/clients"}
         onViewAsClient={showAdminUi ? viewAsClient : undefined}

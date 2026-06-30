@@ -8,7 +8,7 @@ import { liveSessionRouteId } from "@/lib/live-sessions";
 import { LiveSessionRoomPage } from "@/components/scout/live-session-room-page";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { border, color, fontSans, type as T } from "@/lib/typography";
+import { border, bruddleHeadingStyle, color, fontSans, type as T } from "@/lib/typography";
 
 type Props = {
   session: LiveSessionView;
@@ -110,21 +110,21 @@ export function PublicLiveEventPage({ session, joinAsGuest = false }: Props) {
             <img
               src={session.coverImageUrl}
               alt=""
-              style={{ width: "100%", maxHeight: 280, objectFit: "cover", borderRadius: 8, marginBottom: 20, border: border.line }}
+              style={{ width: "100%", maxHeight: 280, objectFit: "cover", marginBottom: 20, border: "var(--scout-border)" }}
             />
           )}
-          <h1 style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: isMobile ? 26 : 32, fontWeight: 600, color: color.ink, lineHeight: 1.2 }}>
+          <h1 style={{ ...bruddleHeadingStyle(isMobile ? "h4" : "h3"), margin: "0 0 12px", lineHeight: 1.2 }}>
             {session.title}
           </h1>
           <ScoutBox padding={18} style={{ marginBottom: 20 }}>
-            <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>{session.date}</p>
-            <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: 14, color: color.muted }}>{session.time}</p>
-            <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+            <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: T.body, fontWeight: 600 }}>{session.date}</p>
+            <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>{session.time}</p>
+            <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
               {session.format === "BROADCAST" ? "Broadcast webinar" : "Interactive live session"} · Virtual event
             </p>
           </ScoutBox>
 
-          <h2 style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: 18, fontWeight: 600 }}>About the event</h2>
+          <h2 style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 10px" }}>About the event</h2>
           <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
             {session.description}
           </p>
@@ -153,14 +153,14 @@ export function PublicLiveEventPage({ session, joinAsGuest = false }: Props) {
                   placeholder="Full name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  style={{ padding: "10px 12px", border: border.line, fontFamily: fontSans, fontSize: 14 }}
+                  style={{ padding: "10px 12px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.body, background: "var(--scout-inset)" }}
                 />
                 <input
                   placeholder="Email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{ padding: "10px 12px", border: border.line, fontFamily: fontSans, fontSize: 14 }}
+                  style={{ padding: "10px 12px", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.body, background: "var(--scout-inset)" }}
                 />
                 <ScoutPrimaryBtn type="button" disabled={busy} onClick={() => void registerGuest()}>
                   {busy ? "Registering…" : "Register — it's free"}
