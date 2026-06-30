@@ -217,6 +217,7 @@ export function OpportunitiesJobrightFilterBar({
   onSearchSubmit,
   searching,
   profileCountry,
+  trailingActions,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
@@ -231,6 +232,8 @@ export function OpportunitiesJobrightFilterBar({
   searching?: boolean;
   /** Profile country — used to prioritize Canada in location quick filter. */
   profileCountry?: string;
+  /** Refresh, sort, etc. — rendered on the same row as filter pills (Jobright layout). */
+  trailingActions?: React.ReactNode;
 }) {
   const isMobile = useIsMobile();
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -299,22 +302,19 @@ export function OpportunitiesJobrightFilterBar({
     <div
       style={{
         display: "flex",
-        flexWrap: isMobile ? "wrap" : "nowrap",
+        flexWrap: "wrap",
         alignItems: "center",
-        justifyContent: "space-between",
-        gap: 10,
+        gap: 8,
       }}
     >
       <div
         style={{
           display: "flex",
-          flexWrap: "nowrap",
+          flexWrap: "wrap",
           alignItems: "center",
           gap: 8,
-          overflowX: "auto",
-          flex: 1,
+          flex: "1 1 280px",
           minWidth: 0,
-          WebkitOverflowScrolling: "touch",
         }}
       >
         <DropdownPill
@@ -605,8 +605,8 @@ export function OpportunitiesJobrightFilterBar({
             display: "flex",
             alignItems: "center",
             gap: 8,
-            flexShrink: 0,
-            width: isMobile ? "100%" : "auto",
+            flex: isMobile ? "1 1 100%" : "0 1 240px",
+            minWidth: isMobile ? undefined : 180,
           }}
         >
           <input
@@ -622,7 +622,7 @@ export function OpportunitiesJobrightFilterBar({
             placeholder="Search by title or company"
             aria-label="Search by title or company"
             maxLength={400}
-            style={{ ...pipelineInputStyle, width: isMobile ? "100%" : 220, margin: 0, padding: "7px 10px", fontSize: T.label }}
+            style={{ ...pipelineInputStyle, width: "100%", margin: 0, padding: "7px 10px", fontSize: T.label }}
           />
           {onSearchSubmit && (
             <button
@@ -640,6 +640,7 @@ export function OpportunitiesJobrightFilterBar({
                 fontWeight: 600,
                 cursor: searching ? "not-allowed" : "pointer",
                 opacity: searching ? 0.65 : 1,
+                flexShrink: 0,
               }}
             >
               {searching ? "…" : "Search"}
@@ -647,6 +648,22 @@ export function OpportunitiesJobrightFilterBar({
           )}
         </div>
       )}
+
+      {trailingActions ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexShrink: 0,
+            marginLeft: isMobile ? 0 : "auto",
+            width: isMobile ? "100%" : "auto",
+            justifyContent: isMobile ? "flex-end" : undefined,
+          }}
+        >
+          {trailingActions}
+        </div>
+      ) : null}
     </div>
   );
 }

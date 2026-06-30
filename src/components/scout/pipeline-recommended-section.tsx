@@ -52,7 +52,6 @@ import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scou
 import { ScoreExplainerLabel } from "./score-explainer-popover";
 import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
@@ -592,7 +591,6 @@ export function PipelineRecommendedSection({
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
 }) {
-  const isMobile = useIsMobile();
   const { withClientScope, isAdminReviewing, openPricing } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const hasProAccess = isPro || isAdmin;
@@ -1057,66 +1055,15 @@ export function PipelineRecommendedSection({
 
   return (
     <div>
-      <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: isMobile ? "stretch" : "flex-start",
-            flexDirection: isMobile ? "column" : "row",
-            gap: 12,
-            marginBottom: 14,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <ScoreExplainerLabel variant="vector-match">
-              <ScoutLabel>Roles</ScoutLabel>
-            </ScoreExplainerLabel>
-            {hasLoadedOnce && !showInitialLoader && (
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
-                {snapshotMeta?.fromSnapshot ? "Daily snapshot" : "Live results"}
-                {snapshotMeta?.generatedAt
-                  ? ` · updated ${new Date(snapshotMeta.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
-                  : ""}
-                {" · "}
-                {filteredListings.length} role{filteredListings.length === 1 ? "" : "s"}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={loading || revalidating}
-            style={{
-              alignSelf: isMobile ? "flex-start" : "flex-end",
-              padding: "8px 16px",
-              background: "transparent",
-              color: "#161616",
-              border: "1.5px solid #161616",
-              borderRadius: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              cursor: loading || revalidating ? "not-allowed" : "pointer",
-              opacity: loading || revalidating ? 0.65 : 1,
-            }}
-          >
-            {loading || revalidating ? "Loading…" : "Refresh"}
-          </button>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as RecommendedSortOption)}
-            aria-label="Sort results"
-            style={{ ...inputStyle, width: "auto", minWidth: 130, margin: 0, padding: "7px 10px", fontSize: T.label, cursor: "pointer" }}
-          >
-            {RECOMMENDED_SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
+      <ScoutBox padding={14} style={{ marginBottom: 12 }}>
+        <ScoreExplainerLabel variant="vector-match">
+          <ScoutLabel>Roles</ScoutLabel>
+        </ScoreExplainerLabel>
+        {hasLoadedOnce && !showInitialLoader && (
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "4px 0 8px", lineHeight: 1.45 }}>
+            We found some roles for you — confirm these filters look right.
+          </p>
+        )}
 
         <OpportunitiesJobrightFilterBar
           form={form}
@@ -1131,6 +1078,48 @@ export function PipelineRecommendedSection({
           onSearchSubmit={() => void applyFilters()}
           searching={loading || revalidating}
           profileCountry={profileCountry}
+          trailingActions={
+            <>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={loading || revalidating}
+                style={{
+                  padding: "7px 14px",
+                  background: "transparent",
+                  color: "#161616",
+                  border: "1.5px solid #161616",
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.label,
+                  fontWeight: 600,
+                  cursor: loading || revalidating ? "not-allowed" : "pointer",
+                  opacity: loading || revalidating ? 0.65 : 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {loading || revalidating ? "Loading…" : "Refresh"}
+              </button>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as RecommendedSortOption)}
+                aria-label="Sort results"
+                style={{
+                  ...inputStyle,
+                  width: "auto",
+                  minWidth: 120,
+                  margin: 0,
+                  padding: "7px 10px",
+                  fontSize: T.label,
+                  cursor: "pointer",
+                }}
+              >
+                {RECOMMENDED_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </>
+          }
         />
 
         <OpportunitiesPrefConfirmModal
@@ -1171,7 +1160,7 @@ export function PipelineRecommendedSection({
           }}
         />
 
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 6 }}>
           <JobFreshnessLegend compact />
         </div>
 
