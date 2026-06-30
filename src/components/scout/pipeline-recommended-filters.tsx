@@ -1107,14 +1107,14 @@ export function RecommendedFiltersDrawer({
           </button>
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={onApply}
             disabled={applying}
             style={{
               padding: "10px 20px",
-              border: border.lineStrong,
-              borderRadius: 999,
-              background: color.forest,
-              color: color.gold,
+              border: "var(--scout-border)",
+              borderRadius: "var(--scout-radius)",
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: T.caption,
               fontWeight: 700,
@@ -1203,15 +1203,15 @@ export function RecommendedQuickFiltersBar({
           </FilterField>
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={() => applyAndClose(form, "location")}
             style={{
               marginTop: 4,
               width: "100%",
               padding: "8px 12px",
-              border: border.lineStrong,
-              borderRadius: 999,
-              background: color.forest,
-              color: color.gold,
+              border: "var(--scout-border)",
+              borderRadius: "var(--scout-radius)",
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: T.label,
               fontWeight: 600,
@@ -1273,15 +1273,15 @@ export function RecommendedQuickFiltersBar({
           ))}
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={() => applyAndClose(form, "experience")}
             style={{
               marginTop: 10,
               width: "100%",
               padding: "8px 12px",
-              border: border.lineStrong,
-              borderRadius: 999,
-              background: color.forest,
-              color: color.gold,
+              border: "var(--scout-border)",
+              borderRadius: "var(--scout-radius)",
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: T.label,
               fontWeight: 600,
@@ -1327,15 +1327,15 @@ export function RecommendedQuickFiltersBar({
           />
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={() => applyAndClose(form, "company")}
             style={{
               marginTop: 10,
               width: "100%",
               padding: "8px 12px",
-              border: border.lineStrong,
-              borderRadius: 999,
-              background: color.forest,
-              color: color.gold,
+              border: "var(--scout-border)",
+              borderRadius: "var(--scout-radius)",
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: T.label,
               fontWeight: 600,
@@ -1370,15 +1370,15 @@ export function RecommendedQuickFiltersBar({
           ))}
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={() => applyAndClose(form, "remote")}
             style={{
               marginTop: 10,
               width: "100%",
               padding: "8px 12px",
-              border: border.lineStrong,
-              borderRadius: 999,
-              background: color.forest,
-              color: color.gold,
+              border: "var(--scout-border)",
+              borderRadius: "var(--scout-radius)",
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: T.label,
               fontWeight: 600,
@@ -1394,13 +1394,14 @@ export function RecommendedQuickFiltersBar({
 
       <button
         type="button"
+        className={BRUDDLE_HOVER_LIFT_CLASS}
         onClick={onOpenAllFilters}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 4,
           padding: "6px 12px",
-          borderRadius: 999,
+          borderRadius: "var(--scout-radius)",
           border: activeFilterCount > 0 ? border.lineStrong : border.line,
           background: activeFilterCount > 0 ? surface.inset : surface.card,
           color: activeFilterCount > 0 ? color.forest : color.ink,

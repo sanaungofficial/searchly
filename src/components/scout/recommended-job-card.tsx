@@ -300,7 +300,7 @@ export function RecommendedJobCard({
                 padding: 0,
                 background: "transparent",
                 border: `1px solid ${JR.border}`,
-                borderRadius: 999,
+                borderRadius: "var(--scout-radius)",
                 cursor: isSaving ? "not-allowed" : "pointer",
                 opacity: isSaving ? 0.5 : 1,
                 color: JR.text,

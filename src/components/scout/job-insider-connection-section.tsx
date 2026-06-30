@@ -936,7 +936,7 @@ export function JobInsiderConnectionSection({
         <span
           style={{
             padding: "6px 10px",
-            borderRadius: 999,
+            borderRadius: "var(--scout-radius)",
             background: "rgba(74,139,106,0.12)",
             border: "1px solid rgba(74,139,106,0.25)",
             fontFamily: fontSans,

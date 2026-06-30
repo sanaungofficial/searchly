@@ -19,6 +19,7 @@ import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
 import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
 import { JR } from "@/lib/opportunities-jobright-tokens";
+import { BRUDDLE_BTN_CLASS, BRUDDLE_HOVER_LIFT_CLASS } from "./scout-box";
 
 const ACTIVE_PILL: React.CSSProperties = {
   display: "inline-flex",
@@ -74,7 +75,7 @@ function DropdownPill({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <button type="button" style={active ? ACTIVE_PILL : INACTIVE_PILL}>
+        <button type="button" className={BRUDDLE_HOVER_LIFT_CLASS} style={active ? ACTIVE_PILL : INACTIVE_PILL}>
           {label}
           <ChevronDown size={14} style={{ opacity: 0.65 }} />
         </button>
@@ -597,6 +598,7 @@ export function OpportunitiesJobrightFilterBar({
 
         <button
           type="button"
+          className={BRUDDLE_HOVER_LIFT_CLASS}
           onClick={onOpenAllFilters}
           style={{
             ...INACTIVE_PILL,

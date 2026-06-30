@@ -325,7 +325,7 @@ export function ToggleSwitch({
           position: "relative",
           width: 40,
           height: 22,
-          borderRadius: 999,
+          borderRadius: "var(--scout-radius)",
           background: checked ? color.forest : "rgba(17,17,17,0.18)",
           transition: "background 0.15s ease",
           flexShrink: 0,

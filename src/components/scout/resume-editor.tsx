@@ -11,6 +11,7 @@ import { TailoredResumePreview } from "./tailored-resume-preview";
 import { TailoredResumePreviewFrame } from "./tailored-resume-preview-frame";
 import { TailoredResumeEditorPanel } from "./tailored-resume-editor-panel";
 import { fontSans } from "@/lib/typography";
+import { BRUDDLE_BTN_CLASS } from "./scout-box";
 import { RT } from "@/lib/resume-tailor-tokens";
 import { formatRelativeTimeAgo } from "@/lib/format-relative-time";
 import {
@@ -323,7 +324,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                     color: "#15803D",
                     background: "rgba(134,239,172,0.25)",
                     padding: "3px 10px",
-                    borderRadius: 999,
+                    borderRadius: "var(--scout-radius)",
                   }}
                 >
                   {injectedKeywords.length} keywords added
@@ -497,6 +498,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         </div>
 
         <button
+          className={BRUDDLE_BTN_CLASS}
           onClick={regenerate}
           disabled={regenerating || loading}
           style={{
@@ -506,8 +508,9 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             padding: "10px 24px",
             background: RT.green,
             color: RT.text,
-            border: `1px solid ${RT.border}`,
+            border: "var(--scout-border)",
             borderRadius: RT.ctaPrimaryRadius,
+            boxShadow: "var(--scout-shadow-bruddle)",
             fontSize: 14,
             fontWeight: 700,
             cursor: "pointer",
