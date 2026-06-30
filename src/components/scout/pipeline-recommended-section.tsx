@@ -63,6 +63,7 @@ import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-
 import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal";
 import { buildOpportunitiesFilterChips } from "@/lib/opportunities-filter-chips";
 import {
+  dismissOpportunitiesPrefConfirm,
   OpportunitiesPrefConfirmModal,
   shouldShowOpportunitiesPrefConfirm,
 } from "./opportunities-pref-confirm-modal";
@@ -653,8 +654,15 @@ export function PipelineRecommendedSection({
     userId: string | null;
     targetRoles: string[];
     prioritizedCategories: string[];
+    experienceLevel: string | null;
     searchPreferences: SearchPreferences;
-  }>({ userId: null, targetRoles: [], prioritizedCategories: [], searchPreferences: {} });
+  }>({
+    userId: null,
+    targetRoles: [],
+    prioritizedCategories: [],
+    experienceLevel: null,
+    searchPreferences: {},
+  });
   const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("recommended");
 
@@ -905,10 +913,13 @@ export function PipelineRecommendedSection({
         });
         setProfileCountry(fields.country);
         const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
+        const experienceLevel =
+          typeof data.parsedData?.experienceLevel === "string" ? data.parsedData.experienceLevel : null;
         setProfileMeta({
           userId: data.userId ?? actingUserId ?? null,
           targetRoles: data.targetRoles ?? [],
           prioritizedCategories: data.prioritizedCategories ?? [],
+          experienceLevel,
           searchPreferences,
         });
       })
@@ -926,6 +937,7 @@ export function PipelineRecommendedSection({
         userId: profileMeta.userId,
         targetRoles: profileMeta.targetRoles,
         prioritizedCategories: profileMeta.prioritizedCategories,
+        experienceLevel: profileMeta.experienceLevel,
         searchPreferences: profileMeta.searchPreferences,
         onboardingJustFinished,
       })
@@ -1275,10 +1287,12 @@ export function PipelineRecommendedSection({
             prioritizedCategories: profileMeta.prioritizedCategories,
             suggestedCategories: categorySuggestions.slice(0, 6),
             experienceLevelLabels: profileMeta.searchPreferences.experienceLevelLabels,
+            experienceLevel: profileMeta.experienceLevel,
             roleMatchCount: profileMeta.targetRoles.length,
           }}
           onClose={() => {
             prefConfirmHandledRef.current = true;
+            dismissOpportunitiesPrefConfirm(profileMeta.userId);
             setPrefConfirmOpen(false);
           }}
           onConfirm={async ({ prioritizedCategories, searchPreferences }) => {
