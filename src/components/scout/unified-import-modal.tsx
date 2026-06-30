@@ -5,10 +5,12 @@ import type { ClientImportApplyResult, ClientImportPreview } from "@/lib/client-
 import type { VisibleImportType } from "@/lib/client-import/import-types";
 import { VISIBLE_IMPORT_TYPE_CONFIGS, getImportTypeConfig } from "@/lib/client-import/import-types";
 import type { CompanyImportOptions } from "@/lib/client-import/company-field-mapping";
+import type { ContactImportOptions } from "@/lib/client-import/contact-field-mapping";
 import type { JobTrackerImportOptions } from "@/lib/client-import/job-field-mapping";
 import type { IntakeParseResult } from "@/lib/career-strategy";
 import { JobTrackerImportWizard } from "@/components/scout/job-tracker-import-wizard";
 import { CompaniesImportWizard } from "@/components/scout/companies-import-wizard";
+import { ContactsImportWizard } from "@/components/scout/contacts-import-wizard";
 import { ApplyProfileModal } from "@/components/scout/profile-import-apply-modal";
 import { ScoutModal } from "@/components/scout/scout-modal";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -63,8 +65,10 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
 
   const [showJobTrackerWizard, setShowJobTrackerWizard] = useState(false);
   const [showCompaniesWizard, setShowCompaniesWizard] = useState(false);
+  const [showContactsWizard, setShowContactsWizard] = useState(false);
   const [jobImportOptions, setJobImportOptions] = useState<JobTrackerImportOptions | undefined>();
   const [companyImportOptions, setCompanyImportOptions] = useState<CompanyImportOptions | undefined>();
+  const [contactImportOptions, setContactImportOptions] = useState<ContactImportOptions | undefined>();
 
   const [intakeResult, setIntakeResult] = useState<IntakeParseResult | null>(null);
   const [showApplyProfile, setShowApplyProfile] = useState(false);
@@ -79,8 +83,10 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setError(null);
     setShowJobTrackerWizard(false);
     setShowCompaniesWizard(false);
+    setShowContactsWizard(false);
     setJobImportOptions(undefined);
     setCompanyImportOptions(undefined);
+    setContactImportOptions(undefined);
     setIntakeResult(null);
     setShowApplyProfile(false);
   }, []);
@@ -179,6 +185,8 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
       setShowJobTrackerWizard(true);
     } else if (importType === "target_companies") {
       setShowCompaniesWizard(true);
+    } else if (importType === "contacts") {
+      setShowContactsWizard(true);
     } else {
       setFlowStep("input");
     }
@@ -191,6 +199,10 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     }
     if (importType === "target_companies") {
       setShowCompaniesWizard(true);
+      return;
+    }
+    if (importType === "contacts") {
+      setShowContactsWizard(true);
       return;
     }
     if (importType !== "application_info") return;
@@ -385,7 +397,20 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     }, result.companyImportOptions);
   }
 
-  const showMainModal = open && !showApplyProfile && !showJobTrackerWizard && !showCompaniesWizard && !applying;
+  async function handleContactsWizardComplete(result: {
+    preview: ClientImportPreview;
+    contactImportOptions: ContactImportOptions;
+  }) {
+    setShowContactsWizard(false);
+    setContactImportOptions(result.contactImportOptions);
+    await handleApplyImport(result.preview, undefined, {
+      importType: "contacts",
+      fileName: result.preview.sourceFiles[0]?.filename ?? null,
+      sourceKind: result.preview.sourceFiles.length ? "file" : "paste",
+    });
+  }
+
+  const showMainModal = open && !showApplyProfile && !showJobTrackerWizard && !showCompaniesWizard && !showContactsWizard && !applying;
 
   const dropBorder = isDragging ? color.forest : "rgba(26,58,47,0.25)";
   const dropBg = isDragging ? "rgba(26,58,47,0.06)" : surface.inset;
@@ -689,6 +714,16 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           clientUserId={clientUserId}
           title="Import companies list"
           onComplete={handleCompaniesWizardComplete}
+        />
+      )}
+
+      {showContactsWizard && (
+        <ContactsImportWizard
+          open={showContactsWizard}
+          onClose={() => setShowContactsWizard(false)}
+          clientUserId={clientUserId}
+          title="Import contacts list"
+          onComplete={handleContactsWizardComplete}
         />
       )}
 

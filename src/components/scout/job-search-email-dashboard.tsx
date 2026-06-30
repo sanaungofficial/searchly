@@ -20,6 +20,7 @@ export function JobSearchEmailDashboard() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [openMessageId, setOpenMessageId] = useState<string | null>(searchParams.get("messageId"));
+  const [openContactId, setOpenContactId] = useState<string | null>(searchParams.get("contactId"));
   const [compose, setCompose] = useState<ComposeState>({ open: false, to: "", subject: "", body: "" });
   const [sending, setSending] = useState(false);
   const [mailRefreshKey, setMailRefreshKey] = useState(0);
@@ -48,6 +49,11 @@ export function JobSearchEmailDashboard() {
   useEffect(() => {
     const msgId = searchParams.get("messageId");
     if (msgId) setOpenMessageId(msgId);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const contactId = searchParams.get("contactId");
+    if (contactId) setOpenContactId(contactId);
   }, [searchParams]);
 
   useEffect(() => {
@@ -215,6 +221,8 @@ export function JobSearchEmailDashboard() {
           status={status}
           initialMessageId={openMessageId}
           onInitialMessageConsumed={() => setOpenMessageId(null)}
+          initialContactId={openContactId}
+          onInitialContactConsumed={() => setOpenContactId(null)}
           onNotice={setNotice}
           compose={compose}
           onComposeChange={setCompose}
