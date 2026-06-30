@@ -703,7 +703,7 @@ export function PipelineRecommendedSection({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: forceRefresh ? "no-store" : "default",
-          signal: AbortSignal.timeout(90_000),
+          signal: AbortSignal.timeout(115_000),
           body: JSON.stringify({
             ...filters,
             preferCache: options?.preferCache ?? !forceRefresh,
@@ -952,7 +952,7 @@ export function PipelineRecommendedSection({
       setLoading(false);
       setRevalidating(false);
       setError((prev) => prev ?? "Loading is taking longer than expected — hit Refresh or check your profile.");
-    }, 90_000);
+    }, 115_000);
     return () => window.clearTimeout(timer);
   }, [hasLoadedOnce]);
 
