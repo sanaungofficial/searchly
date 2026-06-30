@@ -2,7 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
+import { TailoredResumePreview } from "./tailored-resume-preview";
+import { ResumeStylePanel } from "./resume-style-panel";
+import {
+  DEFAULT_RESUME_STYLE,
+  normalizeResumeStyle,
+  type ResumeStyleSettings,
+} from "@/lib/resume-style";
+import {
+  plainTextToResumeSections,
+  sectionsToPlainText,
+  type TailoredResumeSection,
+} from "@/lib/tailored-resume-sections";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { friendlyResumeError } from "@/lib/user-facing-copy";
@@ -23,7 +36,6 @@ import {
   MatchComparisonRow,
   MatchKeywordTag,
   ResumeSelectDropdown,
-  SmallScoreGauge,
   scoreColor,
   MATCH_ROW_GRID_SPLIT,
   type MatchData,
@@ -59,6 +71,7 @@ interface ResumeMatchDrawerProps {
 }
 
 type Step = 1 | 2 | 3;
+type RightPanelTab = "ai" | "editor" | "style";
 
 const STEPS = [
   { n: 1 as Step, label: "See Your Difference" },
@@ -132,67 +145,6 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
-function renderLineWithKeywords(line: string, keywords: string[]): React.ReactNode {
-  if (!keywords.length || !line.trim()) return line;
-  const escaped = keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
-  const parts = line.split(pattern);
-  return parts.map((part, i) => {
-    const isKw = keywords.some((k) => k.toLowerCase() === part.toLowerCase());
-    return isKw ? (
-      <mark
-        key={i}
-        style={{
-          background: "rgba(74,139,106,0.2)",
-          color: "#1A3A2F",
-          borderRadius: 2,
-          padding: "0 2px",
-          fontWeight: 600,
-        }}
-      >
-        {part}
-      </mark>
-    ) : (
-      <span key={i}>{part}</span>
-    );
-  });
-}
-
-function HighlightedResume({ text, keywords }: { text: string; keywords: string[] }) {
-  const lines = text.split("\n");
-  return (
-    <div>
-      {lines.map((line, i) => {
-        const trimmed = line.trim();
-        const isSectionHeader =
-          trimmed.length > 0 &&
-          trimmed.length < 50 &&
-          /^[A-Z][A-Z\s&/\-.]{3,}$/.test(trimmed);
-        const content = renderLineWithKeywords(line, keywords);
-        return (
-          <div
-            key={i}
-            style={{
-              fontFamily: fontSans,
-              fontSize: isSectionHeader ? 10 : 12,
-              fontWeight: isSectionHeader ? 700 : 400,
-              color: isSectionHeader ? "#52493F" : "#1A1A1A",
-              borderBottom: isSectionHeader ? "1px solid rgba(0,0,0,0.1)" : "none",
-              marginTop: isSectionHeader && i > 0 ? 14 : 0,
-              paddingBottom: isSectionHeader ? 4 : 0,
-              letterSpacing: isSectionHeader ? "0.8px" : "normal",
-              lineHeight: 1.65,
-              minHeight: !trimmed ? 6 : undefined,
-            }}
-          >
-            {content || " "}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function ResumeMatchDrawer({
   jobTitle,
   company,
@@ -229,6 +181,12 @@ export function ResumeMatchDrawer({
   const [downloadingExport, setDownloadingExport] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [editorSections, setEditorSections] = useState<TailoredResumeSection[]>([]);
+  const [rightTab, setRightTab] = useState<RightPanelTab>("ai");
+  const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [sectionDraft, setSectionDraft] = useState("");
+  const [aiPrompt, setAiPrompt] = useState("");
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const masterResume = useMasterResumeStatus();
@@ -327,7 +285,9 @@ export function ResumeMatchDrawer({
     setStep(3);
     setAligning(true);
     setTailoredData(null);
+    setEditorSections([]);
     setGenerateError(null);
+    setRightTab("ai");
     try {
       const res = await fetch(withClientScope("/api/ai/tailor-resume"), {
         method: "POST",
@@ -365,6 +325,7 @@ export function ResumeMatchDrawer({
         return;
       }
       setTailoredData(json as TailoredData);
+      setEditorSections(plainTextToResumeSections((json as TailoredData).tailoredText));
       notifyCreditsChanged();
     } catch (err) {
       setGenerateError(formatApiErrorMessage(err, "Something went wrong — try again."));
@@ -395,12 +356,14 @@ export function ResumeMatchDrawer({
       const json = await res.json();
       if (json.error) setGenerateError(json.error);
       else if (json.tailoredText) {
-        setTailoredData({
+        const next: TailoredData = {
           ...tailoredData,
           tailoredText: json.tailoredText,
           tweaks: tailoredData.tweaks.filter((t) => t.id !== tweak.id),
           changes: [...tailoredData.changes, json.changeSummary ?? `Applied: ${tweak.label}`],
-        });
+        };
+        setTailoredData(next);
+        setEditorSections(plainTextToResumeSections(json.tailoredText));
         notifyCreditsChanged();
       }
     } catch {
@@ -412,6 +375,7 @@ export function ResumeMatchDrawer({
 
   async function exportResume(format: "pdf" | "docx") {
     if (!tailoredData) return;
+    const text = sectionsToPlainText(editorSections) || tailoredData.tailoredText;
     setDownloadingExport(true);
     setDownloadMenuOpen(false);
     try {
@@ -419,7 +383,7 @@ export function ResumeMatchDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: tailoredData.tailoredText,
+          text,
           format,
           filename: `${company}-${jobTitle}-tailored`,
         }),
@@ -438,8 +402,31 @@ export function ResumeMatchDrawer({
     }
   }
 
+  async function applyAiPrompt() {
+    if (!tailoredData || !aiPrompt.trim() || applyingTweakId) return;
+    await applyTweak({ id: "custom", label: aiPrompt.trim() });
+    setAiPrompt("");
+  }
+
+  function syncSectionsToTailored(nextSections: TailoredResumeSection[]) {
+    setEditorSections(nextSections);
+    if (tailoredData) {
+      setTailoredData({ ...tailoredData, tailoredText: sectionsToPlainText(nextSections) });
+    }
+  }
+
+  function updateEditorSection(id: string, content: string) {
+    syncSectionsToTailored(editorSections.map((s) => (s.id === id ? { ...s, content } : s)));
+  }
+
+  function deleteEditorSection(id: string) {
+    syncSectionsToTailored(editorSections.filter((s) => s.id !== id));
+    if (editingSectionId === id) setEditingSectionId(null);
+  }
+
   async function saveAndOpenEditor() {
     if (!tailoredData) return;
+    const text = sectionsToPlainText(editorSections) || tailoredData.tailoredText;
     if (!jobId) {
       onTailorResume();
       return;
@@ -451,9 +438,13 @@ export function ResumeMatchDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tailoredText: tailoredData.tailoredText,
+          tailoredText: text,
           sourceAssetId: activeResumeId,
           injectedKeywords: tailoredData.injectedKeywords,
+          changes: tailoredData.changes,
+          previousScore: data?.score,
+          newScore: tailoredData.newScore,
+          resumeStyle,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -616,8 +607,10 @@ export function ResumeMatchDrawer({
         <div
           style={{
             flex: 1,
-            overflowY: "auto",
-            padding: step === 3 && tailoredData ? "24px 28px" : "28px 32px",
+            overflow: step === 3 && tailoredData ? "hidden" : "auto",
+            padding: step === 3 && tailoredData ? 0 : "28px 32px",
+            display: step === 3 && tailoredData ? "flex" : "block",
+            flexDirection: "column",
           }}
         >
           <CreditsStatusBar />
@@ -1557,18 +1550,20 @@ export function ResumeMatchDrawer({
                 );
               })()}
 
-              {/* Result state */}
-              {!aligning && tailoredData && (
-                <div style={{ display: "flex", gap: 20 }}>
-                  {/* Left: Resume preview */}
+              {/* Result — post-generate editor split view */}
+              {!aligning && tailoredData && editorSections.length > 0 && (
+                <div style={{ display: "flex", gap: 0, height: "100%", minHeight: 480, margin: "-24px -28px" }}>
+                  {/* Left: formatted resume preview */}
                   <div
                     style={{
-                      flex: "0 0 57%",
-                      background: "#FAFAF8",
-                      borderRadius: "var(--scout-radius)",
-                      border: "1px solid rgba(0,0,0,0.07)",
-                      padding: "20px 22px",
+                      flex: "0 0 58%",
+                      background: "#F3F2EF",
+                      padding: "20px 24px",
+                      overflowY: "auto",
                       minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
                     }}
                   >
                     <div
@@ -1576,15 +1571,15 @@ export function ResumeMatchDrawer({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        marginBottom: 14,
-                        paddingBottom: 12,
-                        borderBottom: "1px solid rgba(0,0,0,0.07)",
+                        width: "100%",
+                        maxWidth: 640,
+                        marginBottom: 12,
                       }}
                     >
                       <span
                         style={{
                           fontFamily: fontSans,
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: 700,
                           color: "var(--scout-muted)",
                           textTransform: "uppercase",
@@ -1597,218 +1592,354 @@ export function ResumeMatchDrawer({
                         <span
                           style={{
                             fontFamily: fontSans,
-                            fontSize: 14,
-                            color: "#3D7A5B",
-                            background: "rgba(74,139,106,0.08)",
-                            padding: "2px 8px",
-                            borderRadius: "var(--scout-radius)",
-                            border: "1px solid rgba(74,139,106,0.15)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#15803D",
+                            background: "rgba(134,239,172,0.25)",
+                            padding: "3px 10px",
+                            borderRadius: 999,
                           }}
                         >
                           {tailoredData.injectedKeywords.length} keywords added
                         </span>
                       )}
                     </div>
-                    <HighlightedResume
-                      text={tailoredData.tailoredText}
-                      keywords={tailoredData.injectedKeywords}
-                    />
+                    <div style={{ width: "100%", maxWidth: 640 }}>
+                      <TailoredResumePreview
+                        sections={editorSections}
+                        highlightKeywords={tailoredData.injectedKeywords}
+                        resumeStyle={resumeStyle}
+                      />
+                    </div>
                   </div>
 
-                  {/* Right: Score + changes + tweaks */}
+                  {/* Right: AI Rewrite / Editor / Style panel */}
                   <div
                     style={{
                       flex: 1,
                       display: "flex",
                       flexDirection: "column",
-                      gap: 16,
+                      borderLeft: "1px solid rgba(0,0,0,0.08)",
+                      background: "#FFFFFF",
                       minWidth: 0,
                     }}
                   >
-                    {/* Score jump */}
-                    <div
-                      style={{
-                        background: "var(--scout-inset)",
-                        borderRadius: "var(--scout-radius)",
-                        padding: "16px 18px",
-                        border: "1px solid rgba(0,0,0,0.06)",
-                      }}
-                    >
-                      <p
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: "var(--scout-muted)",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.8px",
-                          marginBottom: 12,
-                        }}
-                      >
-                        Match Score
-                      </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 14,
-                        }}
-                      >
-                        <SmallScoreGauge score={tailoredData.newScore} />
+                    {/* Tab bar */}
+                    <div style={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }}>
+                      {(
+                        [
+                          { id: "ai" as const, label: "AI Rewrite" },
+                          { id: "editor" as const, label: "Editor" },
+                          { id: "style" as const, label: "Style" },
+                        ] as const
+                      ).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setRightTab(tab.id)}
+                          style={{
+                            flex: 1,
+                            padding: "12px 8px",
+                            background: "none",
+                            border: "none",
+                            borderBottom: rightTab === tab.id ? "2px solid #1A3A2F" : "2px solid transparent",
+                            fontFamily: fontSans,
+                            fontSize: 13,
+                            fontWeight: rightTab === tab.id ? 700 : 500,
+                            color: rightTab === tab.id ? "#1A1A1A" : "var(--scout-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: "auto", padding: rightTab === "style" ? 0 : "16px 18px" }}>
+                      {rightTab === "ai" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          <div
+                            style={{
+                              background: "var(--scout-inset)",
+                              borderRadius: "var(--scout-radius)",
+                              padding: "16px",
+                              border: "1px solid rgba(0,0,0,0.06)",
+                              textAlign: "center",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontFamily: fontSans,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: "var(--scout-muted)",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px",
+                                marginBottom: 8,
+                              }}
+                            >
+                              Match Score
+                            </p>
+                            <BigScoreGauge score={tailoredData.newScore} />
+                            <p
+                              style={{
+                                fontFamily: fontSans,
+                                fontSize: 13,
+                                color: "#52493F",
+                                marginTop: 8,
+                                marginBottom: 0,
+                              }}
+                            >
+                              Score jumped from{" "}
+                              <strong style={{ fontFamily: fontMono }}>
+                                {data?.score?.toFixed(1) ?? "–"} → {tailoredData.newScore.toFixed(1)}
+                              </strong>
+                            </p>
+                          </div>
+
+                          <div>
+                            <p
+                              style={{
+                                fontFamily: fontSans,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: "#1A1A1A",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px",
+                                marginBottom: 10,
+                              }}
+                            >
+                              See What&apos;s Changed
+                            </p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                              {tailoredData.changes.map((change, i) => (
+                                <div
+                                  key={i}
+                                  style={{
+                                    display: "flex",
+                                    gap: 9,
+                                    padding: "9px 12px",
+                                    background: "rgba(74,139,106,0.055)",
+                                    borderRadius: "var(--scout-radius)",
+                                    border: "1px solid rgba(74,139,106,0.12)",
+                                  }}
+                                >
+                                  <span style={{ color: "#3D7A5B", fontSize: 14, flexShrink: 0 }}>•</span>
+                                  <p style={{ fontFamily: fontSans, fontSize: 13, color: "#1A1A1A", lineHeight: 1.5, margin: 0 }}>
+                                    {change}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {tailoredData.tweaks.length > 0 && (
+                            <div>
+                              <p
+                                style={{
+                                  fontFamily: fontSans,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "var(--scout-muted)",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.8px",
+                                  marginBottom: 8,
+                                }}
+                              >
+                                Quick tweaks
+                              </p>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {tailoredData.tweaks.map((tweak) => (
+                                  <button
+                                    key={tweak.id}
+                                    type="button"
+                                    disabled={!!applyingTweakId}
+                                    onClick={() => void applyTweak(tweak)}
+                                    style={{
+                                      padding: "7px 12px",
+                                      background: "#FAFAF9",
+                                      border: "1px solid rgba(0,0,0,0.1)",
+                                      borderRadius: 999,
+                                      fontFamily: fontSans,
+                                      fontSize: 12,
+                                      color: "#52493F",
+                                      cursor: applyingTweakId ? "wait" : "pointer",
+                                      textAlign: "left",
+                                    }}
+                                  >
+                                    {applyingTweakId === tweak.id ? "Applying…" : `${tweak.label} →`}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ marginTop: "auto" }}>
+                            <textarea
+                              value={aiPrompt}
+                              onChange={(e) => setAiPrompt(e.target.value)}
+                              placeholder="Tell me how you'd like to tweak your resume…"
+                              rows={3}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                border: "1px solid rgba(0,0,0,0.12)",
+                                borderRadius: "var(--scout-radius)",
+                                fontFamily: fontSans,
+                                fontSize: 13,
+                                resize: "vertical",
+                                boxSizing: "border-box",
+                                marginBottom: 8,
+                              }}
+                            />
+                            <button
+                              type="button"
+                              disabled={!aiPrompt.trim() || !!applyingTweakId}
+                              onClick={() => void applyAiPrompt()}
+                              style={{
+                                width: "100%",
+                                padding: "11px",
+                                ...(aiPrompt.trim() && !applyingTweakId ? scoutPrimaryCtaStyle : {
+                                  background: "rgba(0,0,0,0.05)",
+                                  color: "var(--scout-muted)",
+                                  border: "none",
+                                }),
+                                borderRadius: "var(--scout-radius)",
+                                fontFamily: fontSans,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: aiPrompt.trim() && !applyingTweakId ? "pointer" : "not-allowed",
+                              }}
+                            >
+                              {applyingTweakId ? "Applying…" : "Edit With AI ✦"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {rightTab === "editor" && (
                         <div>
                           <p
                             style={{
                               fontFamily: fontSans,
-                              fontSize: 14,
+                              fontSize: 12,
                               color: "#52493F",
-                              marginBottom: 2,
-                            }}
-                          >
-                            Score jumped from
-                          </p>
-                          <p
-                            style={{
-                              fontFamily: fontMono,
-                              fontSize: 20,
-                              fontWeight: 700,
-                              color: "#1A3A2F",
-                            }}
-                          >
-                            {data?.score?.toFixed(1) ?? "–"}{" "}
-                            <span style={{ color: "var(--scout-muted)", fontWeight: 400 }}>→</span>{" "}
-                            {tailoredData.newScore.toFixed(1)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* What changed */}
-                    <div>
-                      <p
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: "#1A1A1A",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.8px",
-                          marginBottom: 10,
-                        }}
-                      >
-                        See What&apos;s Changed
-                      </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 7,
-                        }}
-                      >
-                        {tailoredData.changes.map((change, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              display: "flex",
-                              gap: 9,
-                              padding: "9px 12px",
-                              background: "rgba(74,139,106,0.055)",
+                              background: "rgba(74,139,106,0.08)",
+                              padding: "10px 12px",
                               borderRadius: "var(--scout-radius)",
-                              border: "1px solid rgba(74,139,106,0.12)",
+                              lineHeight: 1.5,
+                              marginBottom: 14,
                             }}
                           >
-                            <span
-                              style={{
-                                color: "#3D7A5B",
-                                fontSize: 14,
-                                flexShrink: 0,
-                                marginTop: 1,
-                              }}
-                            >
-                              •
-                            </span>
-                            <p
-                              style={{
-                                fontFamily: fontSans,
-                                fontSize: 14,
-                                color: "#1A1A1A",
-                                lineHeight: 1.5,
-                              }}
-                            >
-                              {change}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Tweaks */}
-                    {tailoredData.tweaks && tailoredData.tweaks.length > 0 && (
-                      <div>
-                        <p
-                          style={{
-                            fontFamily: fontSans,
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: "var(--scout-muted)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.8px",
-                            marginBottom: 8,
-                          }}
-                        >
-                          Optional Tweaks
-                        </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                          }}
-                        >
-                          {tailoredData.tweaks.map((tweak) => (
-                            <button
-                              key={tweak.id}
-                              type="button"
-                              disabled={!!applyingTweakId}
-                              onClick={() => void applyTweak(tweak)}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "10px 14px",
-                                background: applyingTweakId === tweak.id ? "#F0EDE8" : "#FAFAF9",
-                                borderRadius: "var(--scout-radius)",
-                                border: "1px solid rgba(0,0,0,0.08)",
-                                cursor: applyingTweakId ? "wait" : "pointer",
-                                width: "100%",
-                                textAlign: "left",
-                              }}
-                            >
-                              <p
+                            Edits here apply only to this job&apos;s resume. Update your base resume in Profile for changes that carry across roles.
+                          </p>
+                          {editorSections.map((section) => (
+                            <div key={section.id} style={{ marginBottom: 8 }}>
+                              <div
                                 style={{
-                                  fontFamily: fontSans,
-                                  fontSize: 14,
-                                  color: "#52493F",
-                                  lineHeight: 1.4,
-                                  margin: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  padding: "8px 0",
+                                  borderBottom: editingSectionId === section.id ? "1px solid rgba(0,0,0,0.08)" : "none",
                                 }}
                               >
-                                {applyingTweakId === tweak.id ? "Applying…" : tweak.label}
-                              </p>
-                              <span
-                                style={{
-                                  color: "#1A3A2F",
-                                  fontSize: 16,
-                                  flexShrink: 0,
-                                  marginLeft: 8,
-                                }}
-                              >
-                                ›
-                              </span>
-                            </button>
+                                <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>
+                                  {section.title}
+                                </span>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (editingSectionId === section.id) {
+                                        setEditingSectionId(null);
+                                      } else {
+                                        setEditingSectionId(section.id);
+                                        setSectionDraft(section.content);
+                                      }
+                                    }}
+                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)" }}
+                                  >
+                                    <Pencil size={13} />
+                                  </button>
+                                  {section.type !== "header" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteEditorSection(section.id)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)" }}
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {editingSectionId === section.id && (
+                                <textarea
+                                  value={sectionDraft}
+                                  onChange={(e) => setSectionDraft(e.target.value)}
+                                  onBlur={() => {
+                                    updateEditorSection(section.id, sectionDraft);
+                                    setEditingSectionId(null);
+                                  }}
+                                  rows={5}
+                                  style={{
+                                    width: "100%",
+                                    padding: "8px 10px",
+                                    border: "1px solid rgba(0,0,0,0.12)",
+                                    borderRadius: "var(--scout-radius)",
+                                    fontFamily: fontSans,
+                                    fontSize: 13,
+                                    resize: "vertical",
+                                    boxSizing: "border-box",
+                                    marginTop: 4,
+                                  }}
+                                />
+                              )}
+                            </div>
                           ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSec: TailoredResumeSection = {
+                                id: `s-${Date.now()}`,
+                                title: "New Section",
+                                type: "text",
+                                content: "",
+                              };
+                              syncSectionsToTailored([...editorSections, newSec]);
+                              setEditingSectionId(newSec.id);
+                              setSectionDraft("");
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "8px",
+                              marginTop: 8,
+                              background: "transparent",
+                              border: "1px dashed rgba(0,0,0,0.15)",
+                              borderRadius: "var(--scout-radius)",
+                              fontFamily: fontSans,
+                              fontSize: 13,
+                              color: "#52493F",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <Plus size={13} /> Add section
+                          </button>
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {rightTab === "style" && (
+                        <ResumeStylePanel
+                          style={resumeStyle}
+                          onChange={(next) => setResumeStyle(normalizeResumeStyle(next))}
+                          compact
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1900,7 +2031,7 @@ export function ResumeMatchDrawer({
           </div>
         )}
 
-        {step === 3 && !aligning && tailoredData && (
+        {step === 3 && !aligning && tailoredData && editorSections.length > 0 && (
           <div
             style={{
               position: "relative",

@@ -23,10 +23,14 @@ export async function POST(
 
   const { jobId } = await params;
   const body = await req.json();
-  const { tailoredText, sourceAssetId, injectedKeywords } = body as {
+  const { tailoredText, sourceAssetId, injectedKeywords, changes, previousScore, newScore, resumeStyle } = body as {
     tailoredText?: string;
     sourceAssetId?: string | null;
     injectedKeywords?: string[];
+    changes?: string[];
+    previousScore?: number;
+    newScore?: number;
+    resumeStyle?: import("@/lib/resume-style").ResumeStyleSettings | null;
   };
 
   if (!tailoredText?.trim()) {
@@ -45,6 +49,10 @@ export async function POST(
     sourceAssetId: sourceAssetId ?? null,
     sourceFingerprint: fingerprint,
     injectedKeywords: injectedKeywords ?? [],
+    changes: changes ?? [],
+    previousScore: typeof previousScore === "number" ? previousScore : undefined,
+    newScore: typeof newScore === "number" ? newScore : undefined,
+    resumeStyle: resumeStyle ?? null,
   });
 
   const saved = await prisma.tailoredResume.upsert({
@@ -66,5 +74,6 @@ export async function POST(
     sections: filterDisplaySections(withMeta),
     updatedAt: saved.updatedAt.toISOString(),
     skillsAdded,
+    hasTailored: true,
   });
 }

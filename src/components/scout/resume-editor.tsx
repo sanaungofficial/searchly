@@ -4,17 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown } from "lucide-react";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
-import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ResumeStylePanel } from "./resume-style-panel";
+import { TailoredResumePreview } from "./tailored-resume-preview";
+import { BigScoreGauge } from "./job-match-ui";
 import { fontSans, fontMono } from "@/lib/typography";
 import {
   DEFAULT_RESUME_STYLE,
   normalizeResumeStyle,
-  resumeStyleToCss,
   type ResumeStyleSettings,
 } from "@/lib/resume-style";
 
@@ -32,9 +32,11 @@ interface ResumeEditorProps {
   jobTitle?: string;
   company?: string;
   updatedAt?: string;
+  /** Opens match drawer at step 2 for explicit regenerate — not a silent re-run. */
+  onRegenerateRequest?: () => void;
 }
 
-export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, updatedAt: updatedAtProp }: ResumeEditorProps) {
+export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, updatedAt: updatedAtProp, onRegenerateRequest }: ResumeEditorProps) {
   const router = useRouter();
   const [sections, setSections] = useState<ResumeSection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,12 +50,17 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [editDraft, setEditDraft] = useState<string>("");
   const [fitToPage, setFitToPage] = useState(false);
   const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
-  const [rightTab, setRightTab] = useState<"sections" | "style">("sections");
+  const [rightTab, setRightTab] = useState<"ai" | "editor" | "style">("editor");
   const [matchData, setMatchData] = useState<{ score: number; matched: string[]; missing: string[]; total: number } | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [injectedKeywords, setInjectedKeywords] = useState<string[]>([]);
+  const [changeSummaries, setChangeSummaries] = useState<string[]>([]);
+  const [previousScore, setPreviousScore] = useState<number | null>(null);
+  const [newScore, setNewScore] = useState<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(updatedAtProp ?? null);
   const [stale, setStale] = useState(false);
+  const [regenerateConfirm, setRegenerateConfirm] = useState(false);
   const { openPricing, withClientScope } = useWorkspace();
   const downloadRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +76,11 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           if (d.updatedAt) setLastUpdated(d.updatedAt);
           if (d.stale) setStale(true);
           if (d.resumeStyle) setResumeStyle(normalizeResumeStyle(d.resumeStyle));
+          if (Array.isArray(d.injectedKeywords)) setInjectedKeywords(d.injectedKeywords);
+          if (Array.isArray(d.changes)) setChangeSummaries(d.changes);
+          if (typeof d.previousScore === "number") setPreviousScore(d.previousScore);
+          if (typeof d.newScore === "number") setNewScore(d.newScore);
+          if (d.changes?.length || d.newScore != null) setRightTab("ai");
         })
         .catch(() => {})
         .finally(() => setLoading(false));
@@ -97,9 +109,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
   const activeSections = previewSections ?? sections;
   const style = normalizeResumeStyle(resumeStyle);
-  const styleCss = resumeStyleToCss(style);
   const compactPreview = fitToPage || style.fitToOnePage;
-  const bulletPrefix = style.bulletStyle === "dash" ? "– " : "• ";
 
   async function save(updated: ResumeSection[], styleOverride?: ResumeStyleSettings) {
     setSaving(true);
@@ -154,6 +164,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   }
 
   async function regenerate() {
+    if (onRegenerateRequest) {
+      setRegenerateConfirm(true);
+      return;
+    }
     setRegenerating(true);
     try {
       const res = await fetch(withClientScope(`/api/resume/tailored/${jobId}/regenerate`), { method: "POST" });
@@ -233,9 +247,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     }
   }
 
-  const personalInfo = activeSections.find((s) => s.type === "header");
-  const contentSections = activeSections.filter((s) => s.type !== "header");
-
   return (
     <div
       className="resume-print-outer"
@@ -244,9 +255,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         inset: 0,
         zIndex: 1000,
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
+        alignItems: "stretch",
+        justifyContent: "flex-end",
         fontFamily: "var(--font-ui), sans-serif",
       }}
     >
@@ -261,18 +271,17 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         }}
       />
     <div
-      className="resume-print-target"
+      className="resume-print-target bruddle"
       style={{
         position: "relative",
-        width: "100%",
-        maxWidth: 1200,
-        height: "90vh",
-        background: "var(--scout-inset)",
-        borderRadius: "var(--scout-radius)",
+        width: "min(80vw, calc(100vw - 16px))",
+        height: "100%",
+        background: "#FFFFFF",
+        borderLeft: "var(--scout-border)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+        boxShadow: "-4px 4px 0 #161616",
       }}
     >
       {/* Header bar */}
@@ -297,7 +306,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             <X size={16} />
           </button>
           <div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Tailored resume for this role</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>View Your Tailored Resume</span>
             {formatUpdatedAt(lastUpdated) && (
               <span style={{ fontSize: 14, color: "var(--scout-muted)", marginLeft: 10 }}>
                 Last updated {formatUpdatedAt(lastUpdated)}
@@ -344,160 +353,16 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         </div>
       </div>
 
-      {/* Body */}
+      {/* Body — split preview + panel (Jobright-style) */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
-        {/* Left — job context */}
-        <div
-          className="resume-print-hide"
-          style={{
-            width: 260,
-            borderRight: "1px solid #E5DDD0",
-            padding: "28px 24px",
-            overflowY: "auto",
-            flexShrink: 0,
-            background: "#FDFAF5",
-          }}
-        >
-          <div style={{ marginBottom: 16 }}>
-            <CreditsStatusBar onUpgrade={openPricing} />
-          </div>
-          {company && (
-            <div style={{ marginBottom: 20 }}>
-              <div
-                style={{
-                  width: 40, height: 40, borderRadius: "var(--scout-radius)", background: "#1C3A2F",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: 10,
-                }}
-              >
-                <span style={{ color: "#E8D5A3", fontSize: 16, fontWeight: 700 }}>{company[0]}</span>
-              </div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>{company}</p>
-              {jobTitle && <p style={{ fontSize: 14, color: "#6B6258", marginTop: 3 }}>{jobTitle}</p>}
-            </div>
-          )}
-          {/* Match score */}
-          <div style={{ marginBottom: 16 }}>
-            {matchLoading ? (
-              <div style={{ padding: "14px 16px", background: "#F5F3EF", borderRadius: "var(--scout-radius)", display: "flex", alignItems: "center", gap: 8 }}>
-                <Loader2 size={13} style={{ color: "var(--scout-muted)", animation: "spin 1s linear infinite" }} />
-                <span style={{ fontSize: 14, color: "#7A6E64" }}>Analyzing keyword match…</span>
-              </div>
-            ) : matchData ? (
-              <div style={{ padding: "14px 16px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)" }}>
-                {/* Score header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    Keyword Match
-                    <ScoreExplainerPopover variant="keyword-match" />
-                  </span>
-                  <span style={{
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: matchData.score >= 70 ? "#2E7D52" : matchData.score >= 40 ? "#B8860B" : "#C0392B",
-                  }}>
-                    {matchData.score}%
-                  </span>
-                </div>
-                {/* Score bar */}
-                <div style={{ height: 5, background: "#F0EDE8", borderRadius: "var(--scout-radius)", marginBottom: 12, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%",
-                    width: `${matchData.score}%`,
-                    background: matchData.score >= 70 ? "#2E7D52" : matchData.score >= 40 ? "#D4A017" : "#C0392B",
-                    borderRadius: "var(--scout-radius)",
-                    transition: "width 0.4s ease",
-                  }} />
-                </div>
-                {/* Missing keywords */}
-                {matchData.missing.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
-                      Missing ({matchData.missing.length})
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {matchData.missing.map((kw) => (
-                        <span key={kw} style={{
-                          fontSize: 13,
-                          padding: "2px 7px",
-                          background: "#FFF0EE",
-                          color: "#C0392B",
-                          border: "1px solid #FADADD",
-                          borderRadius: "var(--scout-radius)",
-                        }}>{kw}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Matched keywords */}
-                {matchData.matched.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
-                      Matched ({matchData.matched.length})
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {matchData.matched.map((kw) => (
-                        <span key={kw} style={{
-                          fontSize: 13,
-                          padding: "2px 7px",
-                          background: "#F0FAF4",
-                          color: "#2E7D52",
-                          border: "1px solid #C8E6D0",
-                          borderRadius: "var(--scout-radius)",
-                        }}>{kw}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {matchData.missing.length > 0 && (
-                  <p style={{ fontSize: 13, color: "var(--scout-muted)", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
-                    Tip: Regenerate to incorporate missing keywords.
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          {stale && (
-            <div
-              style={{
-                marginBottom: 16,
-                padding: "12px 14px",
-                background: "#FFF8F0",
-                border: "1px solid #F0E8D8",
-                borderRadius: "var(--scout-radius)",
-                fontSize: 13,
-                color: "#7A6E64",
-                lineHeight: 1.55,
-              }}
-            >
-              Your master resume changed since this draft was saved. Regenerate from the job drawer to refresh for this role.
-            </div>
-          )}
-
-          <div
-            style={{
-              padding: "14px 16px",
-              background: "#FFF8F0",
-              border: "1px solid #F0E8D8",
-              borderRadius: "var(--scout-radius)",
-              fontSize: 14,
-              color: "#7A6E64",
-              lineHeight: 1.6,
-            }}
-          >
-            <span style={{ color: "#C0392B", marginRight: 4 }}>⚠</span>
-            Section edits here apply only to this job. Update your master resume in Profile for changes that carry across roles. Cover letters live in the job drawer.
-          </div>
-        </div>
-
-        {/* Middle — resume preview */}
+        {/* Left — formatted resume preview */}
         <div
           style={{
-            flex: 1,
+            flex: "0 0 58%",
+            background: "#F3F2EF",
+            padding: "24px 28px",
             overflowY: "auto",
-            padding: "32px 40px",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -507,64 +372,45 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           {loading ? (
             <KimchiProcessLoader
               preset="resumeTailor"
-              title={`Tailoring your resume for ${jobTitle}${company ? ` at ${company}` : ""}…`}
+              title={`Loading tailored resume…`}
               variant="centered"
             />
           ) : activeSections.length === 0 ? (
             <div style={{ textAlign: "center", marginTop: 80, color: "var(--scout-muted)", maxWidth: 360 }}>
               <p style={{ fontSize: 14 }}>No tailored resume saved for this role yet.</p>
               <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.55 }}>
-                Close this editor and use <strong>Improve resume match</strong> in the job drawer — then choose <strong>Save &amp; open editor</strong> after tailoring.
+                Close this editor and use <strong>Customize your resume</strong> in the job drawer.
               </p>
             </div>
           ) : (
-            <div
-              style={{
-                background: "#FFFFFF",
-                width: "100%",
-                maxWidth: 720,
-                padding: compactPreview ? "40px 48px" : "52px 60px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10)",
-                borderRadius: "var(--scout-radius)",
-                fontSize: compactPreview ? style.fontSizeBody - 1 : style.fontSizeBody,
-                lineHeight: compactPreview ? 1.45 : 1.55,
-                color: "#1A1A1A",
-                fontFamily: style.fontFamily,
-                ...styleCss,
-              }}
-            >
-              {/* Personal info header */}
-              {personalInfo ? (
-                <div style={{ textAlign: style.headerAlign === "left" ? "left" : "center", marginBottom: 24, paddingBottom: 20, borderBottom: style.hideDivider ? "none" : "1.5px solid #1A1A1A" }}>
-                  {personalInfo.content.split("\n").map((line, i) => (
-                    <p key={i} style={{ margin: 0, fontSize: i === 0 ? (compactPreview ? style.fontSizeName - 4 : style.fontSizeName) : style.fontSizeBody - 1, fontWeight: i === 0 ? 700 : 400, letterSpacing: i === 0 ? 2 : 0, color: "#1A1A1A", lineHeight: i === 0 ? 1.2 : 1.8 }}>
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-
-              {/* Content sections */}
-              {contentSections.map((section) => (
-                <div key={section.id} style={{ marginBottom: 18 }}>
-                  <p style={{ fontSize: style.fontSizeSection, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: style.accentTarget === "headings" || style.accentTarget === "all" ? style.accentColor : "#1A1A1A", marginBottom: 6, borderBottom: style.hideDivider ? "none" : "1px solid #1A1A1A", paddingBottom: 3 }}>
-                    {section.title}
-                  </p>
-                  {section.type === "bullets" ? (
-                    <ul style={{ margin: 0, paddingLeft: 16 }}>
-                      {section.content.split("\n").filter(Boolean).map((b, i) => (
-                        <li key={i} style={{ marginBottom: 3, fontSize: style.fontSizeBody }}>{bulletPrefix}{b.replace(/^[-•–]\s*/, "")}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: style.fontSizeBody, whiteSpace: "pre-wrap" }}>{section.content}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <>
+              {injectedKeywords.length > 0 && (
+                <span
+                  style={{
+                    alignSelf: "flex-end",
+                    marginBottom: 10,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#15803D",
+                    background: "rgba(134,239,172,0.25)",
+                    padding: "3px 10px",
+                    borderRadius: 999,
+                  }}
+                >
+                  {injectedKeywords.length} keywords added
+                </span>
+              )}
+              <div style={{ width: "100%", maxWidth: 640 }}>
+                <TailoredResumePreview
+                  sections={activeSections}
+                  highlightKeywords={injectedKeywords}
+                  resumeStyle={resumeStyle}
+                  compact={compactPreview}
+                />
+              </div>
+            </>
           )}
 
-          {/* Preview banner */}
           {previewSections && (
             <div
               style={{
@@ -575,7 +421,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
-                maxWidth: 720,
+                maxWidth: 640,
                 width: "100%",
               }}
             >
@@ -586,51 +432,103 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           )}
         </div>
 
-        {/* Right — section editor + style */}
+        {/* Right — AI Rewrite / Editor / Style */}
         <div
           className="resume-print-hide"
           style={{
-            width: 280,
-            borderLeft: "1px solid #E5DDD0",
+            flex: 1,
+            borderLeft: "1px solid rgba(0,0,0,0.08)",
             display: "flex",
             flexDirection: "column",
-            background: "#FDFAF5",
-            flexShrink: 0,
+            background: "#FFFFFF",
+            minWidth: 0,
           }}
         >
-          <div style={{ display: "flex", borderBottom: "1px solid #E5DDD0" }}>
-            {(["sections", "style"] as const).map((tab) => (
+          <div style={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }}>
+            {(
+              [
+                { id: "ai" as const, label: "AI Rewrite" },
+                { id: "editor" as const, label: "Editor" },
+                { id: "style" as const, label: "Style" },
+              ] as const
+            ).map((tab) => (
               <button
-                key={tab}
+                key={tab.id}
                 type="button"
-                onClick={() => setRightTab(tab)}
+                onClick={() => setRightTab(tab.id)}
                 style={{
                   flex: 1,
                   padding: "12px 8px",
-                  background: rightTab === tab ? "#F0EDE8" : "#FDFAF5",
+                  background: "none",
                   border: "none",
-                  borderBottom: rightTab === tab ? "2px solid #1C3A2F" : "2px solid transparent",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: rightTab === tab ? "#1A1A1A" : "#7A6E64",
+                  borderBottom: rightTab === tab.id ? "2px solid #1A3A2F" : "2px solid transparent",
+                  fontSize: 13,
+                  fontWeight: rightTab === tab.id ? 700 : 500,
+                  color: rightTab === tab.id ? "#1A1A1A" : "#7A6E64",
                   cursor: "pointer",
-                  textTransform: "capitalize",
                 }}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {rightTab === "style" ? (
-            <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} compact />
-          ) : (
-            <>
-          <div style={{ padding: "20px 20px 0", borderBottom: "1px solid #E5DDD0", paddingBottom: 16 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>Sections</p>
+          <div style={{ flex: 1, overflowY: "auto", padding: rightTab === "style" ? 0 : "16px 18px" }}>
+            {rightTab === "ai" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {(newScore != null || changeSummaries.length > 0) && (
+                  <div style={{ background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", padding: 16, border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
+                    {newScore != null && (
+                      <>
+                        <BigScoreGauge score={newScore} />
+                        {previousScore != null && (
+                          <p style={{ fontSize: 13, color: "#52493F", marginTop: 8, marginBottom: 0 }}>
+                            Score jumped from{" "}
+                            <strong style={{ fontFamily: fontMono }}>
+                              {previousScore.toFixed(1)} → {newScore.toFixed(1)}
+                            </strong>
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                {changeSummaries.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>See What&apos;s Changed</p>
+                    {changeSummaries.map((change, i) => (
+                      <div key={i} style={{ display: "flex", gap: 9, padding: "9px 12px", background: "rgba(74,139,106,0.055)", borderRadius: "var(--scout-radius)", border: "1px solid rgba(74,139,106,0.12)", marginBottom: 7 }}>
+                        <span style={{ color: "#3D7A5B" }}>•</span>
+                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>{change}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {matchData && (
+                  <div style={{ padding: "12px 14px", background: "#F5F3EF", borderRadius: "var(--scout-radius)", fontSize: 13, color: "#52493F" }}>
+                    Keyword match: <strong>{matchData.score}%</strong>
+                    {matchData.missing.length > 0 && ` · ${matchData.missing.length} still missing`}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {rightTab === "editor" && (
+              <>
+          <div style={{ padding: "0 0 14px", marginBottom: 8 }}>
+            <p style={{ fontSize: 12, color: "#52493F", background: "rgba(74,139,106,0.08)", padding: "10px 12px", borderRadius: "var(--scout-radius)", lineHeight: 1.5, margin: "0 0 10px" }}>
+              Edits here apply only to this job. Update your base resume in Profile for changes that carry across roles.
+            </p>
+            <button
+              type="button"
+              onClick={editBaseResume}
+              style={{ width: "100%", padding: "8px", background: "#FFFFFF", border: "1px solid #D8D0C5", borderRadius: "var(--scout-radius)", fontSize: 13, cursor: "pointer" }}
+            >
+              Edit base resume
+            </button>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+          <div style={{ flex: 1, overflowY: "auto" }}>
             {activeSections.map((section) => (
               <div key={section.id}>
                 <div
@@ -717,7 +615,12 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             </button>
           </div>
             </>
-          )}
+            )}
+
+            {rightTab === "style" && (
+              <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} compact />
+            )}
+          </div>
         </div>
       </div>
 
@@ -799,13 +702,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             display: "flex",
             alignItems: "center",
             gap: 8,
-            padding: "10px 20px",
-            background: "#1A3A2F",
-            color: "#FFFFFF",
-            border: "none",
-            borderRadius: "var(--scout-radius)",
-            fontSize: 13,
-            fontWeight: 600,
+            padding: "10px 24px",
+            background: "#86EFAC",
+            color: "#1A1A1A",
+            border: "1px solid rgba(0,0,0,0.12)",
+            borderRadius: 999,
+            fontSize: 14,
+            fontWeight: 700,
             cursor: "pointer",
             opacity: (regenerating || loading) ? 0.6 : 1,
           }}
@@ -814,6 +717,54 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           Regenerate
         </button>
       </div>
+
+      {regenerateConfirm && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              background: "#FFFFFF",
+              borderRadius: "var(--scout-radius)",
+              padding: "24px 28px",
+              maxWidth: 380,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.2)",
+            }}
+          >
+            <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 8px" }}>Regenerate tailored resume?</p>
+            <p style={{ fontFamily: fontSans, fontSize: 14, color: "#52493F", lineHeight: 1.55, margin: "0 0 20px" }}>
+              This will run AI tailoring again for this job. Your current edits will be replaced.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setRegenerateConfirm(false)}
+                style={{ flex: 1, padding: "10px", background: "transparent", border: "1px solid rgba(0,0,0,0.12)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRegenerateConfirm(false);
+                  onRegenerateRequest?.();
+                }}
+                style={{ flex: 1, padding: "10px", background: "#86EFAC", color: "#1A1A1A", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+              >
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media print {

@@ -33,18 +33,24 @@ export async function GET(
   });
 
   if (!existing) {
-    return NextResponse.json({ sections: [], updatedAt: null, stale: false });
+    return NextResponse.json({ sections: [], updatedAt: null, stale: false, hasTailored: false });
   }
 
   const stale = await isTailoredResumeStale(dbUser.id, existing.sections);
 
   const meta = extractTailoredMeta(existing.sections);
+  const displaySections = filterDisplaySections(existing.sections);
 
   return NextResponse.json({
-    sections: filterDisplaySections(existing.sections),
+    sections: displaySections,
     updatedAt: existing.updatedAt.toISOString(),
     stale,
+    hasTailored: displaySections.length > 0,
     resumeStyle: meta?.resumeStyle ?? null,
+    injectedKeywords: meta?.injectedKeywords ?? [],
+    changes: meta?.changes ?? [],
+    previousScore: meta?.previousScore ?? null,
+    newScore: meta?.newScore ?? null,
   });
 }
 
@@ -82,6 +88,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ job
     sourceFingerprint: fingerprint,
     injectedKeywords: existingMeta?.injectedKeywords,
     resumeStyle: resumeStyle !== undefined ? resumeStyle : existingMeta?.resumeStyle ?? null,
+    changes: existingMeta?.changes,
+    previousScore: existingMeta?.previousScore,
+    newScore: existingMeta?.newScore,
   });
 
   const saved = await prisma.tailoredResume.upsert({
