@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Zap } from "lucide-react";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
+import { RT } from "@/lib/resume-tailor-tokens";
 import { TailoredResumePreview } from "./tailored-resume-preview";
 import { ResumeStylePanel } from "./resume-style-panel";
 import {
@@ -66,6 +67,8 @@ interface ResumeMatchDrawerProps {
   jobId?: string;
   initialAssetId?: string | null;
   autoStart?: boolean;
+  /** External apply URL — Apply Now saves then opens this link. */
+  applyUrl?: string | null;
   onClose: () => void;
   onTailorResume: () => void;
 }
@@ -76,7 +79,7 @@ type RightPanelTab = "ai" | "editor" | "style";
 const STEPS = [
   { n: 1 as Step, label: "See Your Difference" },
   { n: 2 as Step, label: "Align Your Resume" },
-  { n: 3 as Step, label: "Review" },
+  { n: 3 as Step, label: "Review Your New Resume" },
 ];
 
 function fallbackNoticeFor(data: MatchData): string | null {
@@ -101,8 +104,8 @@ function Stepper({ step }: { step: Step }) {
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                background: step > s.n ? "#1A3A2F" : step === s.n ? "#1A3A2F" : "rgba(0,0,0,0.07)",
-                color: step >= s.n ? "#E8D5A3" : "var(--scout-muted)",
+                background: step > s.n ? RT.stepComplete : step === s.n ? RT.stepActive : RT.stepInactive,
+                color: step >= s.n ? RT.green : RT.muted,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -118,7 +121,7 @@ function Stepper({ step }: { step: Step }) {
               style={{
                 fontSize: DT.caption,
                 fontWeight: step === s.n ? 600 : 500,
-                color: step === s.n ? color.ink : color.muted,
+                color: step === s.n ? RT.text : RT.muted,
                 whiteSpace: "nowrap",
                 fontFamily: fontSans,
                 textAlign: "center",
@@ -132,7 +135,7 @@ function Stepper({ step }: { step: Step }) {
               style={{
                 flex: 1,
                 height: 1,
-                background: step > s.n ? "#1A3A2F" : "rgba(0,0,0,0.1)",
+                background: step > s.n ? RT.green : RT.border,
                 margin: "0 10px",
                 marginBottom: 22,
                 flexShrink: 1,
@@ -152,6 +155,7 @@ export function ResumeMatchDrawer({
   jobId,
   initialAssetId,
   autoStart = true,
+  applyUrl,
   onClose,
   onTailorResume,
 }: ResumeMatchDrawerProps) {
@@ -193,6 +197,7 @@ export function ResumeMatchDrawer({
   const proUser = isPro || isAdmin;
   const autoStartedRef = useRef(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -260,6 +265,17 @@ export function ResumeMatchDrawer({
   }
 
   useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
+        setDownloadMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [downloadMenuOpen]);
+
+  useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
   }, []);
 
@@ -278,6 +294,10 @@ export function ResumeMatchDrawer({
   }
 
   function handleAlign() {
+    if (data) {
+      const unmatched = data.keywords.filter((k) => !k.matched).map((k) => k.text);
+      setSelectedMissingKw(unmatched);
+    }
     setStep(2);
   }
 
@@ -424,12 +444,12 @@ export function ResumeMatchDrawer({
     if (editingSectionId === id) setEditingSectionId(null);
   }
 
-  async function saveAndOpenEditor() {
-    if (!tailoredData) return;
+  async function saveTailoredResume(openApplyAfter = false) {
+    if (!tailoredData) return false;
     const text = sectionsToPlainText(editorSections) || tailoredData.tailoredText;
     if (!jobId) {
       onTailorResume();
-      return;
+      return true;
     }
     setCommitting(true);
     setGenerateError(null);
@@ -450,15 +470,24 @@ export function ResumeMatchDrawer({
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setGenerateError((json as { error?: string }).error ?? "Couldn't save tailored resume — try again.");
-        return;
+        return false;
       }
       handleClose();
       onTailorResume();
+      if (openApplyAfter && applyUrl) {
+        window.open(applyUrl, "_blank", "noopener,noreferrer");
+      }
+      return true;
     } catch {
       setGenerateError("Couldn't save tailored resume — try again.");
+      return false;
     } finally {
       setCommitting(false);
     }
+  }
+
+  async function handleApplyNow() {
+    await saveTailoredResume(true);
   }
 
   function deriveJobTitleMatch(d: MatchData): boolean {
@@ -515,7 +544,7 @@ export function ResumeMatchDrawer({
           top: 0,
           bottom: 0,
           width: "min(80vw, calc(100vw - 16px))",
-          background: "#FFFFFF",
+          background: RT.drawerBg,
           borderLeft: "var(--scout-border)",
           zIndex: DRAWER_NESTED_Z,
           display: "flex",
@@ -598,8 +627,20 @@ export function ResumeMatchDrawer({
           </button>
         </div>
 
-        {/* Stepper */}
-        <div style={{ borderBottom: "1px solid rgba(0,0,0,0.07)", flexShrink: 0 }}>
+        {/* Stepper + wizard title */}
+        <div style={{ borderBottom: `1px solid ${RT.border}`, flexShrink: 0, background: RT.panelBg }}>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 18,
+              fontWeight: 700,
+              color: RT.text,
+              margin: 0,
+              padding: "20px 32px 0",
+            }}
+          >
+            Generate Your Custom Resume
+          </p>
           <Stepper step={step} />
         </div>
 
@@ -859,7 +900,7 @@ export function ResumeMatchDrawer({
                         </div>
                         <div style={{ flexShrink: 0, marginLeft: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                           <ScoreExplainerPopover variant="job-match" align="right" />
-                          <BigScoreGauge score={data.score} />
+                          <BigScoreGauge score={data.score} tailor />
                         </div>
                       </div>
 
@@ -980,7 +1021,7 @@ export function ResumeMatchDrawer({
                                 label: ind,
                                 matched: data.industryMatch,
                               }))).slice(0, 6).map((ind) => (
-                                <IndustryTag key={ind.label} label={ind.label} matched={ind.matched} />
+                                <IndustryTag key={ind.label} label={ind.label} matched={ind.matched} tailor />
                               ))}
                               {!data.industryMatch && (
                                 <span
@@ -1004,7 +1045,7 @@ export function ResumeMatchDrawer({
                           left={
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
                               {data.keywords.map((kw) => (
-                                <MatchKeywordTag key={kw.text} text={kw.text} matched={kw.matched} />
+                                <MatchKeywordTag key={kw.text} text={kw.text} matched={kw.matched} tailor />
                               ))}
                               {customKeywords.map((kw) => (
                                 <span
@@ -1557,7 +1598,7 @@ export function ResumeMatchDrawer({
                   <div
                     style={{
                       flex: "0 0 58%",
-                      background: "#F3F2EF",
+                      background: RT.previewBg,
                       padding: "20px 24px",
                       overflowY: "auto",
                       minWidth: 0,
@@ -1586,7 +1627,7 @@ export function ResumeMatchDrawer({
                           letterSpacing: "0.8px",
                         }}
                       >
-                        Tailored Resume
+                        Review Your New Resume
                       </span>
                       {tailoredData.injectedKeywords.length > 0 && (
                         <span
@@ -1642,7 +1683,7 @@ export function ResumeMatchDrawer({
                             padding: "12px 8px",
                             background: "none",
                             border: "none",
-                            borderBottom: rightTab === tab.id ? "2px solid #1A3A2F" : "2px solid transparent",
+                            borderBottom: rightTab === tab.id ? `2px solid ${RT.green}` : "2px solid transparent",
                             fontFamily: fontSans,
                             fontSize: 13,
                             fontWeight: rightTab === tab.id ? 700 : 500,
@@ -1680,7 +1721,7 @@ export function ResumeMatchDrawer({
                             >
                               Match Score
                             </p>
-                            <BigScoreGauge score={tailoredData.newScore} />
+                            <BigScoreGauge score={tailoredData.newScore} tailor />
                             <p
                               style={{
                                 fontFamily: fontSans,
@@ -1937,6 +1978,7 @@ export function ResumeMatchDrawer({
                           style={resumeStyle}
                           onChange={(next) => setResumeStyle(normalizeResumeStyle(next))}
                           compact
+                          useTailorTokens
                         />
                       )}
                     </div>
@@ -1952,9 +1994,9 @@ export function ResumeMatchDrawer({
           <div
             style={{
               padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
+              borderTop: `1px solid ${RT.border}`,
               flexShrink: 0,
-              background: "#FFFFFF",
+              background: RT.panelBg,
             }}
           >
             <button
@@ -1963,11 +2005,13 @@ export function ResumeMatchDrawer({
               style={{
                 width: "100%",
                 padding: "15px",
-                ...scoutPrimaryCtaStyle,
-                borderRadius: "var(--scout-radius)",
+                background: RT.green,
+                color: RT.text,
+                border: "none",
+                borderRadius: RT.ctaPrimaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: "pointer",
                 letterSpacing: "0.3px",
               }}
@@ -1981,9 +2025,9 @@ export function ResumeMatchDrawer({
           <div
             style={{
               padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
+              borderTop: `1px solid ${RT.border}`,
               flexShrink: 0,
-              background: "#FFFFFF",
+              background: RT.panelBg,
               display: "flex",
               gap: 10,
             }}
@@ -1994,9 +2038,9 @@ export function ResumeMatchDrawer({
               style={{
                 padding: "14px 20px",
                 background: "transparent",
-                color: "#52493F",
-                border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: "var(--scout-radius)",
+                color: RT.muted,
+                border: `1px solid ${RT.border}`,
+                borderRadius: RT.ctaSecondaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
@@ -2013,15 +2057,13 @@ export function ResumeMatchDrawer({
               style={{
                 flex: 1,
                 padding: "14px",
-                ...(selectedSections.size > 0 ? scoutPrimaryCtaStyle : {
-                  background: "rgba(0,0,0,0.05)",
-                  color: "var(--scout-muted)",
-                  border: "none",
-                }),
-                borderRadius: "var(--scout-radius)",
+                background: selectedSections.size > 0 ? RT.green : RT.stepInactive,
+                color: RT.text,
+                border: "none",
+                borderRadius: RT.ctaPrimaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
                 letterSpacing: "0.3px",
               }}
@@ -2036,11 +2078,12 @@ export function ResumeMatchDrawer({
             style={{
               position: "relative",
               padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
+              borderTop: `1px solid ${RT.border}`,
               flexShrink: 0,
-              background: "#FFFFFF",
+              background: RT.panelBg,
               display: "flex",
               gap: 10,
+              alignItems: "center",
             }}
           >
             <button
@@ -2050,9 +2093,9 @@ export function ResumeMatchDrawer({
               style={{
                 padding: "14px 20px",
                 background: "transparent",
-                color: "#52493F",
-                border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: "var(--scout-radius)",
+                color: RT.muted,
+                border: `1px solid ${RT.border}`,
+                borderRadius: RT.ctaSecondaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
@@ -2062,63 +2105,74 @@ export function ResumeMatchDrawer({
             >
               ← Back
             </button>
+            <div ref={downloadRef} style={{ position: "relative", flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setDownloadMenuOpen((v) => !v)}
+                disabled={downloadingExport || committing}
+                style={{
+                  padding: "14px 20px",
+                  background: "transparent",
+                  color: RT.text,
+                  border: `1px solid ${RT.border}`,
+                  borderRadius: RT.ctaSecondaryRadius,
+                  fontFamily: fontSans,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: downloadingExport ? "wait" : "pointer",
+                }}
+              >
+                {downloadingExport ? "Downloading…" : "Download Resume"}
+              </button>
+              {downloadMenuOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    bottom: "calc(100% + 6px)",
+                    background: RT.panelBg,
+                    border: `1px solid ${RT.border}`,
+                    borderRadius: RT.ctaSecondaryRadius,
+                    minWidth: 180,
+                    zIndex: 5,
+                    overflow: "hidden",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <button type="button" onClick={() => void exportResume("pdf")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer" }}>Download PDF</button>
+                  <button type="button" onClick={() => void exportResume("docx")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer", borderTop: `1px solid ${RT.border}` }}>Download Word</button>
+                </div>
+              )}
+            </div>
             <button
               type="button"
-              onClick={() => void saveAndOpenEditor()}
+              onClick={() => void handleApplyNow()}
               disabled={committing || downloadingExport}
               style={{
                 flex: 1,
-                padding: "14px",
-                ...(committing ? {
-                  background: "var(--scout-cta-muted)",
-                  color: "var(--scout-cta-foreground)",
-                  border: "var(--scout-border)",
-                } : scoutPrimaryCtaStyle),
-                borderRadius: "var(--scout-radius)",
+                padding: "14px 20px",
+                background: RT.applyBg,
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: RT.ctaPrimaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: committing ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 letterSpacing: "0.3px",
               }}
             >
-              {committing ? "Saving…" : jobId ? "Save & open editor →" : "Save job to continue →"}
+              {committing ? "Saving…" : (
+                <>
+                  Apply Now
+                  <Zap size={16} fill={RT.applyIcon} color={RT.applyIcon} />
+                </>
+              )}
             </button>
-            <button
-              type="button"
-              onClick={() => setDownloadMenuOpen((v) => !v)}
-              disabled={downloadingExport || committing}
-              style={{
-                padding: "14px 20px",
-                background: "transparent",
-                color: "#52493F",
-                border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: "var(--scout-radius)",
-                fontFamily: fontSans,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: downloadingExport ? "wait" : "pointer",
-                flexShrink: 0,
-              }}
-            >
-              {downloadingExport ? "…" : "Download"}
-            </button>
-            {downloadMenuOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 32,
-                  bottom: 72,
-                  background: "#FFFFFF",
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  minWidth: 180,
-                  zIndex: 5,
-                }}
-              >
-                <button type="button" onClick={() => void exportResume("pdf")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer" }}>Download PDF</button>
-                <button type="button" onClick={() => void exportResume("docx")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer", borderTop: "1px solid rgba(0,0,0,0.08)" }}>Download Word</button>
-              </div>
-            )}
           </div>
         )}
       </div>

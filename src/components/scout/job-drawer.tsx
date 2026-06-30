@@ -31,6 +31,7 @@ import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { JobMatchScorePanel } from "./job-match-score-panel";
 import { getJobFreshness } from "@/lib/job-posted-freshness";
+import { formatRelativeTimeAgo } from "@/lib/format-relative-time";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import {
   networkSourceChannelCode,
@@ -658,12 +659,7 @@ function daysLabel(days: number): string {
 }
 
 function formatTailoredUpdatedAt(iso: string | null): string | null {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return null;
-  }
+  return formatRelativeTimeAgo(iso);
 }
 
 function SidebarToolCard({
@@ -1772,6 +1768,7 @@ export function JobDrawer({
           company={card.company}
           description={jobDescription}
           jobId={dbId ?? undefined}
+          applyUrl={externalPostUrl}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             setMatchDrawerOpen(false);

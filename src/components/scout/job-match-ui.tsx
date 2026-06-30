@@ -1,6 +1,7 @@
 "use client";
 
 import { fontSans, fontMono, color } from "@/lib/typography";
+import { RT } from "@/lib/resume-tailor-tokens";
 
 const sans = fontSans;
 const mono = fontMono;
@@ -133,13 +134,14 @@ export function rowStatusStyles(status: RowStatus) {
   return { icon, iconColor, iconBg, rowBg, leftBorderColor };
 }
 
-export function BigScoreGauge({ score }: { score: number }) {
-  const c = scoreColor(score);
+export function BigScoreGauge({ score, tailor }: { score: number; tailor?: boolean }) {
+  const c = tailor ? RT.green : scoreColor(score);
   const label = scoreLabel(score);
   const r = 58;
   const circ = 2 * Math.PI * r;
   const pct = Math.min(score / 10, 1);
   const arcLen = circ * 0.5 * pct;
+  const gradId = tailor ? "tailor-gauge-bg" : "kimchi-gauge-bg";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
@@ -151,16 +153,27 @@ export function BigScoreGauge({ score }: { score: number }) {
           style={{ position: "absolute", top: 0, left: 0, transform: "rotate(180deg)" }}
         >
           <defs>
-            <linearGradient id="kimchi-gauge-bg" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FCA5A5" stopOpacity="0.45" />
-              <stop offset="35%" stopColor="#FCD34D" stopOpacity="0.45" />
-              <stop offset="70%" stopColor="#86EFAC" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#4ADE80" stopOpacity="0.55" />
+            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+              {tailor ? (
+                <>
+                  <stop offset="0%" stopColor="#FCA5A5" stopOpacity="0.5" />
+                  <stop offset="40%" stopColor="#FCD34D" stopOpacity="0.5" />
+                  <stop offset="75%" stopColor="#00F0A0" stopOpacity="0.65" />
+                  <stop offset="100%" stopColor="#00F0A0" stopOpacity="0.85" />
+                </>
+              ) : (
+                <>
+                  <stop offset="0%" stopColor="#FCA5A5" stopOpacity="0.45" />
+                  <stop offset="35%" stopColor="#FCD34D" stopOpacity="0.45" />
+                  <stop offset="70%" stopColor="#86EFAC" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#4ADE80" stopOpacity="0.55" />
+                </>
+              )}
             </linearGradient>
           </defs>
           <circle
             cx="65" cy="65" r={r}
-            stroke="url(#kimchi-gauge-bg)" strokeWidth="14" fill="none"
+            stroke={`url(#${gradId})`} strokeWidth="14" fill="none"
             strokeDasharray={`${circ * 0.5} ${circ * 0.5}`}
             strokeLinecap="round"
           />
@@ -287,7 +300,7 @@ export function ResumeSelectDropdown({
   );
 }
 
-export function MatchKeywordTag({ text, matched }: { text: string; matched: boolean }) {
+export function MatchKeywordTag({ text, matched, tailor }: { text: string; matched: boolean; tailor?: boolean }) {
   return (
     <span
       style={{
@@ -295,13 +308,15 @@ export function MatchKeywordTag({ text, matched }: { text: string; matched: bool
         alignItems: "center",
         gap: 4,
         padding: "4px 9px",
-        borderRadius: "var(--scout-radius)",
+        borderRadius: tailor ? 20 : "var(--scout-radius)",
         fontFamily: sans,
         fontSize: 13,
         fontWeight: 600,
-        background: matched ? "rgba(34,197,94,0.14)" : "rgba(254,226,226,0.9)",
-        color: matched ? "#166534" : "#991B1B",
-        border: `1px solid ${matched ? "rgba(34,197,94,0.35)" : "rgba(248,113,113,0.45)"}`,
+        background: matched
+          ? tailor ? RT.keywordTagMatched : "rgba(34,197,94,0.14)"
+          : tailor ? RT.keywordTagUnmatched : "rgba(254,226,226,0.9)",
+        color: matched ? (tailor ? RT.text : "#166534") : "#991B1B",
+        border: `1px solid ${matched ? (tailor ? "rgba(0,240,160,0.5)" : "rgba(34,197,94,0.35)") : "rgba(248,113,113,0.45)"}`,
       }}
     >
       <span style={{ fontSize: 12 }}>{matched ? "👍" : "✗"}</span>
@@ -310,7 +325,7 @@ export function MatchKeywordTag({ text, matched }: { text: string; matched: bool
   );
 }
 
-export function IndustryTag({ label, matched }: { label: string; matched: boolean }) {
+export function IndustryTag({ label, matched, tailor }: { label: string; matched: boolean; tailor?: boolean }) {
   return (
     <span
       style={{
@@ -318,13 +333,15 @@ export function IndustryTag({ label, matched }: { label: string; matched: boolea
         alignItems: "center",
         gap: 4,
         padding: "3px 8px",
-        borderRadius: "var(--scout-radius)",
+        borderRadius: tailor ? 20 : "var(--scout-radius)",
         fontFamily: sans,
         fontSize: 13,
         fontWeight: 500,
-        background: matched ? "rgba(34,197,94,0.14)" : "rgba(0,0,0,0.04)",
-        color: matched ? "#166534" : "#52493F",
-        border: `1px solid ${matched ? "rgba(34,197,94,0.3)" : "rgba(0,0,0,0.08)"}`,
+        background: matched
+          ? tailor ? RT.industryMatched : "rgba(34,197,94,0.14)"
+          : tailor ? RT.industryUnmatched : "rgba(0,0,0,0.04)",
+        color: matched ? (tailor ? RT.text : "#166534") : "#52493F",
+        border: `1px solid ${matched ? (tailor ? "rgba(0,240,160,0.35)" : "rgba(34,197,94,0.3)") : "rgba(0,0,0,0.08)"}`,
       }}
     >
       {matched && <span style={{ fontSize: 11 }}>👍</span>}
