@@ -12,7 +12,17 @@ export type OpportunitiesNavItem = {
   match: (pathname: string) => boolean;
 };
 
-export const INBOX_PATH = "/inbox";
+export const NETWORKING_PATH = "/networking";
+export const NETWORKING_INBOX_PATH = `${NETWORKING_PATH}?tab=inbox`;
+/** Leads landing — kept for legacy call sites that used INBOX_PATH. */
+export const INBOX_PATH = NETWORKING_PATH;
+export const LEGACY_INBOX_PATH = "/inbox";
+
+export type NetworkingSection = "leads" | "inbox";
+
+export function networkingSectionPath(section: NetworkingSection): string {
+  return section === "inbox" ? NETWORKING_INBOX_PATH : NETWORKING_PATH;
+}
 
 export const OPPORTUNITIES_PATH = "/opportunities";
 export const NETWORK_ROLES_PATH = "/network/roles";
@@ -47,7 +57,12 @@ export function matchNetworkRolesPath(pathname: string): boolean {
 }
 
 export function matchInboxPath(pathname: string): boolean {
-  return pathname === INBOX_PATH || pathname.startsWith(`${INBOX_PATH}/`);
+  return (
+    pathname === NETWORKING_PATH ||
+    pathname.startsWith(`${NETWORKING_PATH}/`) ||
+    pathname === LEGACY_INBOX_PATH ||
+    pathname.startsWith(`${LEGACY_INBOX_PATH}/`)
+  );
 }
 
 const JOB_TOOLS = new Set(["resume", "cover", "fit"]);
