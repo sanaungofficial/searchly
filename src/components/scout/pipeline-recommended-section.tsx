@@ -44,11 +44,11 @@ import {
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import { compareRoleSearchRelevance } from "@/lib/job-match";
-import { filterRoleListings } from "@/lib/role-listings";
 import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
+import { validateMandatorySearchFilters } from "@/lib/profile-search-constraints";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel } from "./score-explainer-popover";
@@ -82,7 +82,8 @@ import {
 import {
   loosenStackedHirebaseFilters,
 } from "@/lib/opportunities-hirebase-filters";
-import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
+
+type ViewMode = "recommended" | "search";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -659,6 +660,7 @@ export function PipelineRecommendedSection({
     searchPreferences: SearchPreferences;
   }>({ userId: null, targetRoles: [], prioritizedCategories: [], searchPreferences: {} });
   const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("recommended");
 
   const initialFetchAttemptedRef = useRef(false);
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
@@ -677,13 +679,23 @@ export function PipelineRecommendedSection({
     return true;
   }, []);
 
-  const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
+  const hasActiveSearch = viewMode === "search";
   const appliedFilters = useMemo(() => formToFilters(appliedForm, 1), [appliedForm]);
 
+  const searchFormValid = useMemo(
+    () =>
+      validateMandatorySearchFilters(appliedFilters, {
+        openToAllExperience: appliedForm.openToAllExperience,
+      }).valid,
+    [appliedFilters, appliedForm.openToAllExperience],
+  );
+
+  const fetchRecommendedRef = useRef<
+    ((options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => Promise<void>) | null
+  >(null);
+
   const fetchRecommended = useCallback(
-    async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
-      const filters = formToFilters(filtersForm, 1);
-      const cacheKey = filtersCacheKey(filters);
+    async (options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
       const forceRefresh = options?.forceRefresh === true;
       const background = options?.background === true;
       const gen = ++fetchGenRef.current;
@@ -696,9 +708,6 @@ export function PipelineRecommendedSection({
         setRevalidating(true);
       }
 
-      const semanticQuery = filtersForm.semanticQuery.trim();
-      saveScopedSemanticQuery(semanticQuery);
-
       try {
         const res = await fetch(withClientScope("/api/jobs/recommended"), {
           method: "POST",
@@ -706,13 +715,14 @@ export function PipelineRecommendedSection({
           cache: forceRefresh ? "no-store" : "default",
           signal: AbortSignal.timeout(115_000),
           body: JSON.stringify({
-            ...filters,
             preferCache: options?.preferCache ?? !forceRefresh,
             forceRefresh,
           }),
         });
         const data = (await res.json()) as JobsApiResponse;
         if (gen !== fetchGenRef.current) return;
+
+        const cacheKey = defaultFeedCacheKey();
 
         if (!res.ok) {
           const rawMsg = formatApiErrorMessage(data.error, "Couldn't load recommended roles.");
@@ -742,7 +752,7 @@ export function PipelineRecommendedSection({
             (options?.preferCache ?? true);
 
           if (snapshotPending) {
-            void fetchRecommended(filtersForm, {
+            void fetchRecommendedRef.current?.({
               preferCache: false,
               background: background || hasLoadedOnce,
             });
@@ -750,8 +760,8 @@ export function PipelineRecommendedSection({
             setJobs(nextJobs);
             setError(null);
             setNotice(data.notice?.trim() || null);
-            const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
-            setActiveFilterLabels(describeActiveFilters(applied));
+            const applied = data.effectiveFilters ?? data.filtersApplied;
+            if (applied) setActiveFilterLabels(describeActiveFilters(applied));
             setSnapshotMeta({
               fromSnapshot: data.fromSnapshot === true,
               generatedAt: data.generatedAt ?? new Date().toISOString(),
@@ -763,7 +773,7 @@ export function PipelineRecommendedSection({
               matchMode: data.matchMode,
               error: null,
             });
-            if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
+            if (nextJobs.length > 0) {
               markDefaultRecommendedFeedLoaded();
             }
           }
@@ -784,6 +794,75 @@ export function PipelineRecommendedSection({
   );
 
   useEffect(() => {
+    fetchRecommendedRef.current = fetchRecommended;
+  }, [fetchRecommended]);
+
+  const fetchSearch = useCallback(
+    async (filtersForm: FilterForm, options?: { background?: boolean }) => {
+      const filters = formToFilters(filtersForm, 1);
+      const cacheKey = filtersCacheKey(filters);
+      const background = options?.background === true;
+      const gen = ++fetchGenRef.current;
+
+      if (!background) {
+        setLoading(true);
+        setError(null);
+        setNotice(null);
+      } else {
+        setRevalidating(true);
+      }
+
+      const semanticQuery = filtersForm.semanticQuery.trim();
+      saveScopedSemanticQuery(semanticQuery);
+
+      try {
+        const res = await fetch(withClientScope("/api/jobs/search"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          signal: AbortSignal.timeout(115_000),
+          body: JSON.stringify(filters),
+        });
+        const data = (await res.json()) as JobsApiResponse;
+        if (gen !== fetchGenRef.current) return;
+
+        if (!res.ok) {
+          const msg = formatApiErrorMessage(data.error, "Couldn't run job search.");
+          setError(data.hint ? `${msg} ${data.hint}` : msg);
+          setNotice(null);
+          if (!background) setJobs([]);
+        } else {
+          const nextJobs = data.jobs ?? [];
+          setJobs(nextJobs);
+          setError(null);
+          setNotice(data.notice?.trim() || null);
+          const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
+          setActiveFilterLabels(describeActiveFilters(applied));
+          setSnapshotMeta(null);
+          writeRecommendedCache({
+            jobs: nextJobs,
+            filtersKey: cacheKey,
+            fetchedAt: Date.now(),
+            matchMode: data.matchMode,
+            error: null,
+          });
+        }
+      } catch (err) {
+        if (gen !== fetchGenRef.current) return;
+        setError(formatApiErrorMessage(err, "Couldn't run job search — try again."));
+        if (!background) setJobs([]);
+      } finally {
+        if (gen === fetchGenRef.current) {
+          setHasLoadedOnce(true);
+          setLoading(false);
+          setRevalidating(false);
+        }
+      }
+    },
+    [withClientScope],
+  );
+
+  useEffect(() => {
     void fetch(withClientScope("/api/jobs/recommended/defaults"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: {
@@ -797,15 +876,9 @@ export function PipelineRecommendedSection({
           const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
-          if (prefsConfirmedRef.current) {
-            const confirmedApplied = { ...profileForm, semanticQuery: "" };
-            setAppliedForm(confirmedApplied);
-            setActiveFilterLabels(describeActiveFilters(formToFilters(confirmedApplied, 1)));
-          } else {
-            // Unconfirmed profile prefill stays in form only until popup or filter bar apply.
-            setAppliedForm(defaultFeedForm());
-            setActiveFilterLabels([]);
-          }
+          const confirmedApplied = { ...profileForm, semanticQuery: "" };
+          setAppliedForm(confirmedApplied);
+          setActiveFilterLabels(describeActiveFilters(formToFilters(confirmedApplied, 1)));
         } else {
           prefsConfirmedRef.current = false;
           setAppliedForm(defaultFeedForm());
@@ -925,27 +998,20 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = true;
 
-    const feedForm =
-      prefsConfirmedRef.current && defaultFormRef.current
-        ? { ...defaultFormRef.current, semanticQuery: "" }
-        : defaultFeedForm();
-    const defaultKey = filtersCacheKey(formToFilters(feedForm, 1));
-
     if (isAdminReviewing) {
-      void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
+      void fetchRecommended({ preferCache: false, forceRefresh: true });
       return;
     }
 
-    if (hydrateFromCache(defaultKey)) return;
+    if (hydrateFromCache(defaultFeedCacheKey())) return;
 
-    const isDefaultFeedRequest = isDefaultRecommendedFilters(formToFilters(feedForm, 1));
-    if (isDefaultFeedRequest && hasDefaultRecommendedFeedLoaded()) {
+    if (hasDefaultRecommendedFeedLoaded()) {
       setHasLoadedOnce(true);
       setLoading(false);
       return;
     }
 
-    void fetchRecommended(feedForm, { preferCache: true });
+    void fetchRecommended({ preferCache: true });
   }, [fetchRecommended, defaultsLoaded, profileFormReady, isAdminReviewing, hydrateFromCache]);
 
   // Last-resort: never leave the initial loader spinning if bootstrap or fetch stalls.
@@ -1021,23 +1087,33 @@ export function PipelineRecommendedSection({
 
 
   const applyFilters = async (filtersForm = form) => {
+    const validation = validateMandatorySearchFilters(formToFilters(filtersForm, 1), {
+      openToAllExperience: filtersForm.openToAllExperience,
+    });
+    if (!validation.valid) {
+      setError(`Complete required filters before searching: ${validation.missing.join(", ")}.`);
+      setFiltersDrawerOpen(true);
+      return;
+    }
+
     await saveProfileFromForm(filtersForm, { markPrefsConfirmed: true });
     prefsConfirmedRef.current = true;
     setAppliedForm(filtersForm);
     setActiveFilterLabels(describeActiveFilters(formToFilters(filtersForm, 1)));
-    const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
-    const isDefaultFeed =
-      cacheKey === defaultFeedCacheKey() && !filtersForm.semanticQuery.trim();
+    setViewMode("search");
+    void fetchSearch(filtersForm, { background: jobs.length > 0 });
+  };
 
-    if (isDefaultFeed) {
-      void fetchRecommended(filtersForm, { preferCache: false, forceRefresh: isAdminReviewing });
-      return;
-    }
-
-    void fetchRecommended(filtersForm, {
-      preferCache: false,
-      background: jobs.length > 0,
-    });
+  const clearSearch = () => {
+    const profileForm = defaultFormRef.current ?? defaultFeedForm();
+    setForm((f) => ({ ...profileForm, semanticQuery: "" }));
+    setAppliedForm({ ...profileForm, semanticQuery: "" });
+    setActiveFilterLabels(describeActiveFilters(formToFilters(profileForm, 1)));
+    setViewMode("recommended");
+    setError(null);
+    setNotice(null);
+    if (hydrateFromCache(defaultFeedCacheKey())) return;
+    void fetchRecommended({ preferCache: true, background: jobs.length > 0 });
   };
 
   const handleRefresh = () => {
@@ -1046,11 +1122,15 @@ export function PipelineRecommendedSection({
       return;
     }
     clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
-    void fetchRecommended(appliedForm, {
-      forceRefresh: true,
-      preferCache: false,
-      background: false,
-    });
+    if (viewMode === "search") {
+      void fetchSearch(appliedForm, { background: false });
+    } else {
+      void fetchRecommended({
+        forceRefresh: true,
+        preferCache: false,
+        background: false,
+      });
+    }
   };
 
   const savedKeys = useMemo(() => {
@@ -1081,7 +1161,6 @@ export function PipelineRecommendedSection({
     return [...byKey.values()];
   }, [jobs, savedKeys]);
 
-  const hasExplicitAppliedFilters = !isDefaultRecommendedFilters(appliedFilters);
   const appliedFilterCount = useMemo(
     () =>
       buildOpportunitiesFilterChips(appliedForm, {
@@ -1092,10 +1171,7 @@ export function PipelineRecommendedSection({
 
   const filteredListings = useMemo(() => {
     let list = [...recommendedListings];
-    if (hasExplicitAppliedFilters) {
-      list = filterRoleListings(list, appliedFilters, "all");
-    }
-    if (hasActiveSearch) {
+    if (hasActiveSearch && appliedForm.semanticQuery.trim()) {
       const query = appliedForm.semanticQuery.trim();
       return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
     }
@@ -1107,17 +1183,15 @@ export function PipelineRecommendedSection({
       });
     }
     return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-  }, [recommendedListings, hasExplicitAppliedFilters, appliedFilters, hasActiveSearch, appliedForm.semanticQuery, sortOption]);
+  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery, sortOption]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
-    : hasExplicitAppliedFilters
-      ? "No roles matched your filters — try loosening location, experience, or category, or hit Refresh after clearing filters."
-      : hasActiveSearch
-        ? "Nothing matched — try different keywords or loosen your filters."
-        : recommendedListings.length === 0 && jobs.length > 0
-          ? "You've saved everything in today's list — check back after the daily refresh."
-          : "No matches right now — add target roles or upload a resume under Profile, then refresh.";
+    : viewMode === "search"
+      ? "No roles matched your filters — try loosening location, experience, or job function, or clear search to return to your feed."
+      : recommendedListings.length === 0 && jobs.length > 0
+        ? "You've saved everything in today's list — check back after the daily refresh."
+        : "No matches right now — add target roles or job functions under Profile, then refresh.";
 
   const showInitialLoader = (loading || revalidating) && !hasLoadedOnce;
   const showRefreshLoader = (loading || revalidating) && hasLoadedOnce && jobs.length > 0;
@@ -1130,7 +1204,9 @@ export function PipelineRecommendedSection({
         </ScoreExplainerLabel>
         {hasLoadedOnce && !showInitialLoader && (
           <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "4px 0 8px", lineHeight: 1.45 }}>
-            We found some roles for you — confirm these filters look right.
+            {viewMode === "search"
+              ? `Search results (${filteredListings.length})`
+              : "For you — roles matched to your profile filters, ranked by fit."}
           </p>
         )}
 
@@ -1151,9 +1227,32 @@ export function PipelineRecommendedSection({
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
           searching={loading || revalidating}
+          searchDisabled={!searchFormValid}
           profileCountry={profileCountry}
           trailingActions={
             <>
+              {viewMode === "search" && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  disabled={loading || revalidating}
+                  style={{
+                    padding: "7px 14px",
+                    background: "transparent",
+                    color: "#161616",
+                    border: "1.5px solid #161616",
+                    borderRadius: 0,
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    fontWeight: 600,
+                    cursor: loading || revalidating ? "not-allowed" : "pointer",
+                    opacity: loading || revalidating ? 0.65 : 1,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Clear search
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleRefresh}
@@ -1241,7 +1340,9 @@ export function PipelineRecommendedSection({
             );
             setForm(nextForm);
             defaultFormRef.current = nextForm;
-            void applyFilters(nextForm);
+            setAppliedForm({ ...nextForm, semanticQuery: "" });
+            setViewMode("recommended");
+            void fetchRecommended({ preferCache: false, forceRefresh: true });
           }}
         />
 
@@ -1288,11 +1389,6 @@ export function PipelineRecommendedSection({
           <ScoutInsetBox style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
             {notice}
           </ScoutInsetBox>
-        )}
-        {hasActiveSearch && !error && hasLoadedOnce && !showInitialLoader && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            Custom filters run a live search — results may differ from your daily snapshot.
-          </p>
         )}
       </ScoutBox>
 

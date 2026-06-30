@@ -217,6 +217,7 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange,
   onSearchSubmit,
   searching,
+  searchDisabled,
   profileCountry,
   trailingActions,
 }: {
@@ -233,6 +234,8 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   searching?: boolean;
+  /** When true, Search button is disabled (mandatory filters incomplete). */
+  searchDisabled?: boolean;
   /** Profile country — used to prioritize Canada in location quick filter. */
   profileCountry?: string;
   /** Refresh, sort, etc. — rendered on the same row as filter pills (Jobright layout). */
@@ -633,7 +636,7 @@ export function OpportunitiesJobrightFilterBar({
             <button
               type="button"
               onClick={onSearchSubmit}
-              disabled={searching}
+              disabled={searching || searchDisabled}
               style={{
                 padding: "7px 12px",
                 background: color.forest,
@@ -643,8 +646,8 @@ export function OpportunitiesJobrightFilterBar({
                 fontFamily: fontSans,
                 fontSize: T.label,
                 fontWeight: 600,
-                cursor: searching ? "not-allowed" : "pointer",
-                opacity: searching ? 0.65 : 1,
+                cursor: searching || searchDisabled ? "not-allowed" : "pointer",
+                opacity: searching || searchDisabled ? 0.65 : 1,
                 flexShrink: 0,
               }}
             >

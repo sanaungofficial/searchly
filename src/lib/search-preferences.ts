@@ -107,11 +107,6 @@ export function mergeSearchPreferencesIntoFilters(
 ): VectorSearchFilters {
   const out = { ...filters };
 
-  if (prefs.excludedJobTitles?.length) {
-    const existing = out.keywords ?? [];
-    out.keywords = [...existing, ...prefs.excludedJobTitles.map((t) => `-${t}`)];
-  }
-
   if (prefs.companyStages?.length && !out.companyTypes?.length) {
     const types = hirebaseCompanyTypesFromStages(prefs.companyStages);
     if (types.length) out.companyTypes = types;

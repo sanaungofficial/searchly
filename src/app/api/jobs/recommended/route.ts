@@ -1,11 +1,8 @@
 import { isHirebaseConfigured } from "@/lib/hirebase";
-import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import {
   generateRecommendedJobsForUser,
   hasProfileSignals,
 } from "@/lib/recommended-jobs-engine";
-import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
-import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
 import {
   RECOMMENDED_MATCH_SCORE_FLOOR,
   RECOMMENDED_SNAPSHOT_MAX_JOBS,
@@ -15,14 +12,11 @@ import {
   persistRecommendedSnapshot,
   readRecommendedSnapshot,
   recordManualRefresh,
-  invalidateRecommendedSnapshotForUser,
 } from "@/lib/recommended-jobs-snapshot";
 import { applyRoleTitlePreferencesToMatchedJobs } from "@/lib/recommended-jobs-ranking";
 import { buildRoleTitlePreferencesFromProfile } from "@/lib/role-title-preferences";
-import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
-import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -31,22 +25,21 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 
 export const maxDuration = 120;
 
-async function parseRecommendedFilters(request: Request): Promise<{
-  filters: VectorSearchFilters;
+async function parseRecommendedOptions(request: Request): Promise<{
   preferCache: boolean;
   forceRefresh: boolean;
 }> {
   if (request.method === "GET") {
-    return { filters: {}, preferCache: true, forceRefresh: false };
+    return { preferCache: true, forceRefresh: false };
   }
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const filters = parseVectorSearchFilters(body);
-    const preferCache = body.preferCache !== false;
-    const forceRefresh = body.forceRefresh === true;
-    return { filters, preferCache, forceRefresh };
+    return {
+      preferCache: body.preferCache !== false,
+      forceRefresh: body.forceRefresh === true,
+    };
   } catch {
-    return { filters: {}, preferCache: true, forceRefresh: false };
+    return { preferCache: true, forceRefresh: false };
   }
 }
 
@@ -86,15 +79,7 @@ async function handleRecommended(request: Request) {
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const roleTitlePreferences = buildRoleTitlePreferencesFromProfile(profile);
   const targetRoles = roleTitlePreferences.targetRoles ?? [];
-  const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
-  const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
-  const explicitUserFilters = !isDefaultRecommendedFilters(filters);
-  const searchFilters = semanticQuery
-    ? sanitizeFiltersForHirebase({ ...filters, semanticQuery })
-    : explicitUserFilters
-      ? sanitizeFiltersForHirebase(filters)
-      : {};
-  const defaultFeed = !semanticQuery && !explicitUserFilters;
+  const { preferCache, forceRefresh } = await parseRecommendedOptions(request);
   const snapshotDate = utcSnapshotDate();
 
   const parsedData = mergeParsedWithReadback(
@@ -111,7 +96,7 @@ async function handleRecommended(request: Request) {
     parsedData,
   });
 
-  if (!hasSignals && !semanticQuery) {
+  if (!hasSignals) {
     return NextResponse.json(
       {
         error: "Add target roles in your profile or upload a resume to see recommendations.",
@@ -125,12 +110,12 @@ async function handleRecommended(request: Request) {
 
   // Daily snapshot is for the member's own feed. Admin client review always regenerates live
   // so roles and heuristic scores match the reviewed profile (not a stale or wrong-user cache).
-  if (!forceRefresh && defaultFeed && !adminReviewClientId) {
+  if (!forceRefresh && !adminReviewClientId) {
     try {
       const cached = await readRecommendedSnapshot(dbUser.id, snapshotDate);
       if (cached?.jobs.length) {
         const jobs = applyRoleTitlePreferencesToMatchedJobs(cached.jobs, roleTitlePreferences);
-        return snapshotResponse({ ...cached, jobs }, { filtersApplied: searchFilters });
+        return snapshotResponse({ ...cached, jobs });
       }
     } catch (err) {
       console.warn("[recommended] snapshot read failed:", err);
@@ -140,31 +125,11 @@ async function handleRecommended(request: Request) {
   try {
     const result = await generateRecommendedJobsForUser({
       userId: dbUser.id,
-      filters: searchFilters,
       preferCache: forceRefresh ? false : preferCache,
       maxJobs: RECOMMENDED_SNAPSHOT_MAX_JOBS,
     });
 
     if (!result?.jobs.length) {
-      if (explicitUserFilters && result) {
-        return NextResponse.json({
-          jobs: [],
-          totalCount: 0,
-          page: 1,
-          limit: VECTOR_SEARCH_RESULTS_MAX,
-          totalPages: 0,
-          matchMode: result.matchMode,
-          companyCount: result.companyCount,
-          trackedWithMatches: result.trackedWithMatches,
-          filtersApplied: result.effectiveFilters ?? searchFilters,
-          effectiveFilters: result.effectiveFilters ?? searchFilters,
-          notice: result.notice,
-          snapshotDate,
-          generatedAt: new Date().toISOString(),
-          fromSnapshot: false,
-          scoreFloor: RECOMMENDED_MATCH_SCORE_FLOOR,
-        });
-      }
       return NextResponse.json(
         {
           error: "Could not load roles right now — try Refresh in a moment.",
@@ -179,7 +144,7 @@ async function handleRecommended(request: Request) {
       );
     }
 
-    if (defaultFeed) {
+    if (result) {
       try {
         await persistRecommendedSnapshot({
           userId: dbUser.id,
@@ -202,8 +167,8 @@ async function handleRecommended(request: Request) {
       matchMode: result.matchMode,
       companyCount: result.companyCount,
       trackedWithMatches: result.trackedWithMatches,
-      filtersApplied: result.effectiveFilters ?? searchFilters,
-      effectiveFilters: result.effectiveFilters ?? searchFilters,
+      filtersApplied: result.effectiveFilters,
+      effectiveFilters: result.effectiveFilters,
       artifactReEmbedded: result.artifactReEmbedded,
       resumeVSearch: result.resumeVSearch,
       notice: result.notice,
