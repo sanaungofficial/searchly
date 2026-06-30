@@ -202,13 +202,13 @@ export function JobMatchScorePanel({
         <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>
           <ScoreExplainerLabel variant="job-match">Match score</ScoreExplainerLabel>
         </p>
-        <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
+          <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
         <button
           type="button"
           onClick={onRunFullMatch}
           style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.cta, color: color.ctaForeground, border: "var(--scout-border)", borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "var(--scout-shadow-bruddle)" }}
         >
-          Analyze match
+          See full comparison →
         </button>
       </div>
     );
@@ -223,7 +223,7 @@ export function JobMatchScorePanel({
             <ScoreExplainerPopover variant={aiMatch ? "job-match" : "vector-match"} align="right" />
           </p>
           <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0 }}>
-            {aiMatch ? "AI analysis for selected resume" : "Based on your profile"}
+            {aiMatch ? "Resume comparison for selected file" : "Based on your profile"}
           </p>
           {assets.length > 0 && selectedId && (
             <div style={{ marginTop: 10 }}>

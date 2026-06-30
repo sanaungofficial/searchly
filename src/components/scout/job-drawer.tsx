@@ -455,9 +455,9 @@ function JobDrawerMatchSection({
   const displayMatch = match && match.matchScore > 0 ? match : null;
 
   const sourceLabel = fromResume
-    ? resumeName
-      ? `AI analysis for ${resumeName}`
-      : "AI analysis for selected resume"
+      ? resumeName
+      ? `Comparison for ${resumeName}`
+      : "Resume comparison"
     : "Profile-based estimate";
 
   const showAnalyze =
@@ -503,7 +503,7 @@ function JobDrawerMatchSection({
         </>
       ) : (
         <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55, margin: "0 0 10px" }}>
-          Run AI analysis to see how well your resume fits this role — skills, gaps, and a detailed score.
+          See how well your resume fits this role — skills, gaps, and a detailed score.
         </p>
       )}
       {showAnalyze && (
@@ -784,7 +784,7 @@ export function JobDrawer({
   onOpenInPipeline,
   detailLoading = false,
 }: JobDrawerProps) {
-  const { openFitChat, withClientScope } = useWorkspace();
+  const { withClientScope } = useWorkspace();
   const masterResume = useMasterResumeStatus();
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
@@ -1029,7 +1029,7 @@ export function JobDrawer({
   const drawerInset = isMobile ? 0 : 8;
   const drawerTop = navHeight + drawerInset;
   const isSavedJob = Boolean(dbId);
-  const showQaBank = isSavedJob || !prospectMode || existingPipelineCardId != null;
+  const showQaBank = Boolean(dbId);
 
   return (
     <>
@@ -1695,7 +1695,7 @@ export function JobDrawer({
                 icon="🎯"
                 title="Analyze how well you fit"
                 subtitle="Strengths, gaps, and a clear fit read for this role."
-                onClick={() => openFitChat(card)}
+                onClick={() => setMatchDrawerOpen(true)}
               />
               <SidebarToolCard
                 icon="📄"
@@ -1748,7 +1748,7 @@ export function JobDrawer({
             ) : null}
             {mobileToolsOpen && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                <button type="button" onClick={() => openFitChat(card)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
+                <button type="button" onClick={() => setMatchDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
                   Analyze how well you fit
                 </button>
                 <button type="button" onClick={() => setCoverDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>

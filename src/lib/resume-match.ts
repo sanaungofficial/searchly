@@ -1,6 +1,6 @@
 import type { ParsedResumeData, ResumeSectionId } from "./resume-parse";
 import { sectionTextBlob } from "./resume-parse";
-import { usableKeywordSummary } from "./match-score";
+import { computeResumeJobMatch } from "./resume-job-comparison";
 
 export interface JobMatchKeyword {
   text: string;
@@ -15,48 +15,23 @@ export interface JobMatchResult {
   _fallback?: boolean;
 }
 
-const STOP = new Set(["about", "and", "are", "for", "from", "have", "must", "need", "not", "our", "role", "that", "the", "this", "with", "will", "you", "your"]);
-
-function extractTerms(text: string): string[] {
-  const raw = text.toLowerCase().match(/[a-z0-9+#./-]{3,}/g) || [];
-  const seen = new Set<string>();
-  const terms: string[] = [];
-  for (const t of raw) {
-    if (STOP.has(t) || seen.has(t)) continue;
-    seen.add(t);
-    terms.push(t);
-  }
-  return terms;
-}
-
-function labelForScore(score: number): string {
-  if (score >= 8.5) return "Excellent";
-  if (score >= 7) return "Strong";
-  if (score >= 5.5) return "Good";
-  if (score >= 4) return "Fair";
-  return "Poor";
-}
-
 export function fallbackJobMatch(
   description: string,
   resumeText: string,
-  options?: { excludeTerms?: string[] },
+  options?: { excludeTerms?: string[]; jobTitle?: string; company?: string },
 ): JobMatchResult {
-  const exclude = new Set(
-    (options?.excludeTerms ?? []).map((t) => t.trim().toLowerCase()).filter(Boolean),
-  );
-  const terms = extractTerms(description)
-    .filter((term) => !exclude.has(term))
-    .slice(0, 15);
-  const resumeLower = resumeText.toLowerCase();
-  const keywords = terms.map((text) => ({ text, matched: resumeLower.includes(text) }));
-  const matched = keywords.filter((k) => k.matched).length;
-  const score = keywords.length ? Math.round((matched / keywords.length) * 100) / 10 : 0;
+  const full = computeResumeJobMatch({
+    jobTitle: options?.jobTitle ?? "Target role",
+    company: options?.company,
+    description,
+    resumeText,
+    excludeTerms: options?.excludeTerms,
+  });
   return {
-    score,
-    scoreLabel: labelForScore(score),
-    keywords,
-    summaryNote: usableKeywordSummary(matched, keywords.length) ?? undefined,
+    score: full.score,
+    scoreLabel: full.scoreLabel,
+    keywords: full.keywords,
+    summaryNote: full.summaryNote,
     _fallback: true,
   };
 }
