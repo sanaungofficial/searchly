@@ -178,8 +178,12 @@ export function describeActiveFilters(
 ): string[] {
   const labels: string[] = [];
   if (filters.semanticQuery?.trim()) labels.push(`Search: ${filters.semanticQuery.trim()}`);
-  if (filters.customJobFunctions?.length) {
-    labels.push(`Job function: ${filters.customJobFunctions.join(", ")}`);
+  if (filters.customJobFunctions?.length || filters.jobCategories?.length) {
+    const taxonomy = (filters.jobCategories ?? []).map((c) => c.replace(/ Jobs$/i, ""));
+    const catLower = new Set((filters.jobCategories ?? []).map((c) => c.toLowerCase()));
+    const custom = (filters.customJobFunctions ?? []).filter((c) => !catLower.has(c.toLowerCase()));
+    const merged = [...taxonomy, ...custom];
+    if (merged.length) labels.push(`Job function: ${merged.join(", ")}`);
   }
   if (filters.jobTitles?.length) labels.push(`Titles: ${filters.jobTitles.join(", ")}`);
   if (filters.keywords?.length) labels.push(`Keywords: ${filters.keywords.join(", ")}`);
@@ -206,7 +210,6 @@ export function describeActiveFilters(
   if (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0) {
     labels.push(locationRadiusLabel(filters.locationRadiusMiles));
   }
-  if (filters.jobCategories?.length) labels.push(`Categories: ${filters.jobCategories.join(", ")}`);
   if (filters.yearsFrom != null || filters.yearsTo != null) {
     const from = filters.yearsFrom ?? 0;
     const to = filters.yearsTo != null ? `${filters.yearsTo}` : "+";

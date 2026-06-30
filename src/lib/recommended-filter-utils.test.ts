@@ -70,7 +70,8 @@ describe("profileDerivedSearchFilters", () => {
     expect(labels.some((l) => l.startsWith("Type:"))).toBe(false);
     expect(labels.some((l) => l.startsWith("Level:"))).toBe(false);
     expect(labels.some((l) => l.startsWith("Titles:"))).toBe(false);
-    expect(labels.some((l) => l.startsWith("Categories:"))).toBe(true);
+    expect(labels.some((l) => l.startsWith("Categories:"))).toBe(false);
+    expect(labels.some((l) => l.startsWith("Job function:"))).toBe(true);
   });
 
   it("country-wide location omits city and region when locationAllInCountry is set", () => {
