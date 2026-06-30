@@ -1,6 +1,7 @@
 import { postedWithinDaysLabel } from "@/lib/job-posted-filter";
 import { locationRadiusLabel } from "@/lib/job-location-radius";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
+import { HIREBASE_EXPERIENCE_LEVELS } from "@/lib/vector-matched-job";
 import { parseProfileLocationString, resolveProfileLocation, type ParsedProfileLocation } from "@/lib/profile-location";
 import { profilePreferencesToFilters } from "@/lib/profile-preference-filters";
 
@@ -78,23 +79,12 @@ function uniqueTrimmed(values: string[]): string[] {
   return out;
 }
 
-/** Infer Hirebase experience levels from target role titles (best-effort). */
-export function inferExperienceLevelsFromRoles(roles: string[]): string[] {
-  const levels = new Set<string>();
-  for (const role of roles) {
-    const r = role.toLowerCase();
-    if (/\b(chief|ceo|cto|cfo|coo|president|evp|svp|vp|vice president|director|head of)\b/.test(r)) {
-      levels.add("Executive");
-      levels.add("Senior");
-    } else if (/\b(manager|lead|principal|staff)\b/.test(r)) {
-      levels.add("Senior");
-      levels.add("Mid");
-    } else if (/\b(associate|analyst|coordinator|specialist|junior|entry)\b/.test(r)) {
-      levels.add("Junior");
-      levels.add("Entry");
-    }
-  }
-  return [...levels];
+/** Map an explicit profile/onboarding experience level to Hirebase levels — exact match only. */
+export function explicitExperienceLevelsFromProfile(raw: string | null | undefined): string[] | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  const match = HIREBASE_EXPERIENCE_LEVELS.find((level) => level.toLowerCase() === trimmed.toLowerCase());
+  return match ? [match] : undefined;
 }
 
 /** Profile-derived Hirebase filters — pre-filled on Opportunities load and sent to the API. */
@@ -106,6 +96,7 @@ export function profileDerivedSearchFilters(input: {
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
+  experienceLevel?: string | null;
   targetRoles?: string[];
   prioritizedRoles?: string[];
   prioritizedCategories?: string[];
@@ -129,7 +120,7 @@ export function profileDerivedSearchFilters(input: {
     ...(input.targetRoles ?? []),
   ]);
   const jobCategories = uniqueTrimmed(input.prioritizedCategories ?? []);
-  const experienceLevels = inferExperienceLevelsFromRoles(roleTitles);
+  const experienceLevels = explicitExperienceLevelsFromProfile(input.experienceLevel);
 
   const locations =
     fields.city || fields.region || fields.country
@@ -143,8 +134,7 @@ export function profileDerivedSearchFilters(input: {
       : undefined;
 
   const locationRadiusMiles = fields.city ? 50 : undefined;
-  const jobTypes =
-    prefs.jobTypes?.length ? prefs.jobTypes : roleTitles.length ? ["Full Time"] : undefined;
+  const jobTypes = prefs.jobTypes?.length ? prefs.jobTypes : undefined;
 
   return {
     ...prefs,

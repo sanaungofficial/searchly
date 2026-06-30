@@ -4,11 +4,6 @@ import { useMemo, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  HIREBASE_EXPERIENCE_LEVELS,
-  HIREBASE_JOB_TYPES,
-  HIREBASE_LOCATION_TYPES,
-} from "@/lib/vector-matched-job";
-import {
   HIREBASE_FILTER_COUNTRIES,
   HIREBASE_FILTER_US_STATES,
   multiValuePillLabel,
@@ -290,42 +285,15 @@ export function OpportunitiesJobrightFilterBar({
 
         {levels.length > 0 ? (
           <ActiveFilterChip label={labels.levelsLabel} onRemove={() => apply({ ...form, experienceLevels: new Set() })} />
-        ) : (
-          <DropdownPill label={labels.levelsLabel} open={openKey === "levels"} onOpenChange={(o) => setOpenKey(o ? "levels" : null)}>
-            <PopoverSection title="Seniority">
-              {HIREBASE_EXPERIENCE_LEVELS.map((level) => (
-                <CheckboxOption key={level} label={level} checked={form.experienceLevels.has(level)} onToggle={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, level) }))} />
-              ))}
-              {applyBtn()}
-            </PopoverSection>
-          </DropdownPill>
-        )}
+        ) : null}
 
         {types.length > 0 ? (
           <ActiveFilterChip label={labels.typesLabel} onRemove={() => apply({ ...form, jobTypes: new Set() })} />
-        ) : (
-          <DropdownPill label={labels.typesLabel} open={openKey === "types"} onOpenChange={(o) => setOpenKey(o ? "types" : null)}>
-            <PopoverSection title="Job type">
-              {HIREBASE_JOB_TYPES.map((type) => (
-                <CheckboxOption key={type} label={type} checked={form.jobTypes.has(type)} onToggle={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, type) }))} />
-              ))}
-              {applyBtn()}
-            </PopoverSection>
-          </DropdownPill>
-        )}
+        ) : null}
 
         {remote.length > 0 ? (
           <ActiveFilterChip label={labels.remoteLabel} onRemove={() => apply({ ...form, locationTypes: new Set() })} />
-        ) : (
-          <DropdownPill label={labels.remoteLabel} open={openKey === "remote"} onOpenChange={(o) => setOpenKey(o ? "remote" : null)}>
-            <PopoverSection title="Work mode">
-              {HIREBASE_LOCATION_TYPES.map((type) => (
-                <CheckboxOption key={type} label={type} checked={form.locationTypes.has(type)} onToggle={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, type) }))} />
-              ))}
-              {applyBtn()}
-            </PopoverSection>
-          </DropdownPill>
-        )}
+        ) : null}
 
         <DropdownPill label={labels.dateLabel} active={Boolean(form.datePostedWithinDays)} open={openKey === "date"} onOpenChange={(o) => setOpenKey(o ? "date" : null)}>
           <PopoverSection title="Date posted">

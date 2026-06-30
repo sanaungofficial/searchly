@@ -91,6 +91,11 @@ function splitInputList(value: string): string[] {
   return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
 }
 
+function splitInputListOrUndefined(value: string): string[] | undefined {
+  const items = splitInputList(value);
+  return items.length ? items : undefined;
+}
+
 function filtersToForm(f: VectorSearchFilters) {
   return {
     semanticQuery: f.semanticQuery ?? "",
@@ -178,12 +183,12 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     page,
     limit: VECTOR_SEARCH_RESULTS_MAX,
     semanticQuery: form.semanticQuery.trim() || undefined,
-    jobTitles: splitInputList(form.jobTitles),
-    keywords: splitInputList(form.keywords),
+    jobTitles: splitInputListOrUndefined(form.jobTitles),
+    keywords: splitInputListOrUndefined(form.keywords),
     companyName: form.companyName.trim() || undefined,
-    industries: splitInputList(form.industries),
-    subindustries: splitInputList(form.subindustries),
-    jobCategories: splitInputList(form.jobCategories),
+    industries: splitInputListOrUndefined(form.industries),
+    subindustries: splitInputListOrUndefined(form.subindustries),
+    jobCategories: splitInputListOrUndefined(form.jobCategories),
     jobBoard: form.jobBoard.trim() || undefined,
     locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
     jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
@@ -406,7 +411,7 @@ function RecommendedJobCard({
               {/* Top badge row */}
               {(postedText || row.isTrackedCompany) && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                  {postedText ? (
+                  {postedText && (
                     <span
                       style={{
                         display: "inline-block",

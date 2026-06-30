@@ -22,6 +22,14 @@ export async function GET(request: Request) {
     targetMarket: profile?.targetMarket,
   });
 
+  const experienceLevel =
+    typeof parsedData === "object" &&
+    parsedData &&
+    "experienceLevel" in parsedData &&
+    typeof (parsedData as { experienceLevel?: unknown }).experienceLevel === "string"
+      ? (parsedData as { experienceLevel: string }).experienceLevel
+      : null;
+
   const filters = profileDerivedSearchFilters({
     profileLocation: parsedData.location ?? null,
     targetMarket: profile?.targetMarket ?? null,
@@ -29,6 +37,7 @@ export async function GET(request: Request) {
     targetSalary: profile?.targetSalary,
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
+    experienceLevel,
     targetRoles: profile?.targetRoles ?? [],
     prioritizedRoles: profile?.prioritizedRoles ?? [],
     prioritizedCategories: profile?.prioritizedCategories ?? [],
