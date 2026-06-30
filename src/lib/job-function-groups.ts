@@ -9,9 +9,14 @@ export type JobFunctionGroup = {
 
 export const JOB_FUNCTION_GROUPS: JobFunctionGroup[] = [
   {
+    id: "creative",
+    label: "Creative & Arts",
+    patterns: [/\barts\b/i, /creative/i, /entertainment/i, /performing/i, /fine art/i, /music/i, /film/i],
+  },
+  {
     id: "software",
     label: "Software / Internet / AI",
-    patterns: [/engineering/i, /product/i, /data/i, /design/i, /software/i],
+    patterns: [/engineering/i, /\bproduct\b/i, /\bdata\b/i, /design/i, /software/i, /internet/i, /\bai\b/i],
   },
   {
     id: "marketing",
@@ -19,19 +24,19 @@ export const JOB_FUNCTION_GROUPS: JobFunctionGroup[] = [
     patterns: [/marketing/i, /communications/i, /content/i],
   },
   {
+    id: "finance",
+    label: "Finance & Accounting",
+    patterns: [/finance/i, /accounting/i, /investment/i, /audit/i],
+  },
+  {
     id: "sales",
     label: "Sales & BD",
-    patterns: [/sales/i, /business development/i, /account/i],
+    patterns: [/sales/i, /business development/i, /\baccount executive\b/i, /\baccount manager\b/i],
   },
   {
     id: "operations",
     label: "Operations & PM",
     patterns: [/operations/i, /project management/i, /supply/i, /logistics/i],
-  },
-  {
-    id: "finance",
-    label: "Finance & Accounting",
-    patterns: [/finance/i, /accounting/i, /investment/i],
   },
   {
     id: "people",

@@ -96,6 +96,16 @@ export function explicitExperienceLevelsFromProfile(raw: string | null | undefin
   return match ? [match] : undefined;
 }
 
+/** Default US/Canada-wide search when profile has a country but no explicit city filter preference. */
+export function defaultLocationAllInCountry(
+  searchPreferences: SearchPreferences | undefined,
+  country: string | undefined,
+): boolean {
+  if (searchPreferences?.locationAllInCountry === true) return true;
+  if (searchPreferences?.locationAllInCountry === false) return false;
+  return Boolean(country?.trim());
+}
+
 /** Profile-derived Hirebase filters — UI pre-fill for the filter panel; not auto-applied on the default feed API. */
 export function profileDerivedSearchFilters(input: {
   profileLocation?: string | null;
@@ -117,10 +127,6 @@ export function profileDerivedSearchFilters(input: {
   });
   const fields = locationFieldsFromProfileString(resolvedLocation);
 
-  const roleTitles = uniqueTrimmed([
-    ...(input.prioritizedRoles ?? []),
-    ...(input.targetRoles ?? []),
-  ]);
   const jobCategories = uniqueTrimmed(input.prioritizedCategories ?? []);
   const experienceLevels =
     explicitExperienceLevelsFromProfile(input.experienceLevel) ??
@@ -128,32 +134,48 @@ export function profileDerivedSearchFilters(input: {
       ? hirebaseLevelsFromJobrightLabels(input.searchPreferences.experienceLevelLabels)
       : undefined);
 
-  const locationAllInCountry = input.searchPreferences?.locationAllInCountry === true;
-  const locations =
-    fields.city || fields.region || fields.country
-      ? [
-          {
-            city: locationAllInCountry ? undefined : fields.city || undefined,
-            region: locationAllInCountry ? undefined : fields.region || undefined,
-            country: fields.country || undefined,
-          },
-        ]
-      : undefined;
+  const country = fields.country?.trim() || undefined;
+  const locationAllInCountry = defaultLocationAllInCountry(input.searchPreferences, country);
+  const locations = country
+    ? [
+        {
+          country,
+          city: undefined,
+          region: undefined,
+        },
+      ]
+    : undefined;
 
   return {
-    jobTitles: roleTitles.length ? roleTitles : undefined,
     jobCategories: jobCategories.length ? jobCategories : undefined,
     experienceLevels: experienceLevels?.length ? experienceLevels : undefined,
     locations,
   };
 }
 
-function labelLocation(loc: NonNullable<VectorSearchFilters["locations"]>[number]): string {
+export function inferLocationAllInCountry(filters: VectorSearchFilters): boolean {
+  const loc = filters.locations?.[0];
+  return Boolean(loc?.country?.trim() && !loc?.city?.trim() && !loc?.region?.trim());
+}
+
+function labelLocation(
+  loc: NonNullable<VectorSearchFilters["locations"]>[number],
+  locationAllInCountry?: boolean,
+): string {
+  const countryWide = locationAllInCountry ?? false;
+  if (countryWide && loc.country) {
+    if (loc.country === "United States") return "Anywhere in the US";
+    if (loc.country === "Canada") return "Anywhere in Canada";
+    return `Anywhere in ${loc.country}`;
+  }
   return [loc.city, loc.region, loc.country].filter(Boolean).join(", ") || "Any";
 }
 
 /** Human-readable active filter chips for the UI. */
-export function describeActiveFilters(filters: VectorSearchFilters): string[] {
+export function describeActiveFilters(
+  filters: VectorSearchFilters,
+  options?: { locationAllInCountry?: boolean },
+): string[] {
   const labels: string[] = [];
   if (filters.semanticQuery?.trim()) labels.push(`Search: ${filters.semanticQuery.trim()}`);
   if (filters.customJobFunctions?.length) {
@@ -163,7 +185,10 @@ export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   if (filters.keywords?.length) labels.push(`Keywords: ${filters.keywords.join(", ")}`);
   if (filters.companyName?.trim()) labels.push(`Company: ${filters.companyName.trim()}`);
   if (filters.locations?.length) {
-    labels.push(`Location: ${filters.locations.map(labelLocation).join(" · ")}`);
+    const countryWide = options?.locationAllInCountry ?? inferLocationAllInCountry(filters);
+    labels.push(
+      `Location: ${filters.locations.map((loc) => labelLocation(loc, countryWide)).join(" · ")}`,
+    );
   }
   if (filters.locationTypes?.length) labels.push(`Work: ${filters.locationTypes.join(", ")}`);
   if (filters.jobTypes?.length) labels.push(`Type: ${filters.jobTypes.join(", ")}`);

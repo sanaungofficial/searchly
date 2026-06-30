@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
-import { profileDerivedSearchFilters, describeActiveFilters } from "@/lib/recommended-filter-utils";
+import { profileDerivedSearchFilters, describeActiveFilters, defaultLocationAllInCountry } from "@/lib/recommended-filter-utils";
 import { resolveProfileLocation } from "@/lib/profile-location";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { searchPreferencesFromParsedData } from "@/lib/search-preferences";
@@ -45,7 +45,12 @@ export async function GET(request: Request) {
     searchPreferences: searchPreferencesFromParsedData(parsedData),
   });
 
-  const searchPreferences = searchPreferencesFromParsedData(parsedData);
+  const parsedPrefs = searchPreferencesFromParsedData(parsedData);
+  const country = filters.locations?.[0]?.country;
+  const searchPreferences = {
+    ...parsedPrefs,
+    ...(defaultLocationAllInCountry(parsedPrefs, country) ? { locationAllInCountry: true } : {}),
+  };
 
   return NextResponse.json({
     filters,

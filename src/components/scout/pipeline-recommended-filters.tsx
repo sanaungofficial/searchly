@@ -342,85 +342,151 @@ function BasicJobCriteriaFields({
         </p>
       </FilterField>
       <FilterSectionHeader title="Location" hint="" />
-      <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
-        <FilterField label="City">
-          <input
-            style={pipelineInputStyle}
-            value={form.locationCity}
-            onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value, locationAllInCountry: false }))}
-            placeholder="Baltimore"
-            disabled={form.locationAllInCountry}
-          />
-        </FilterField>
-        <FilterField label="State / region">
-          <DatalistInput
-            value={form.locationRegion}
-            onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion, locationAllInCountry: false }))}
-            listId="drawer-region-suggestions"
-            options={[...HIREBASE_FILTER_US_STATES]}
-            placeholder="Maryland"
-          />
-        </FilterField>
-        <FilterField label="Country">
-          <DatalistInput
-            value={form.locationCountry}
-            onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
-            listId="drawer-country-suggestions"
-            options={[...HIREBASE_FILTER_COUNTRIES]}
-            placeholder="United States"
-          />
-        </FilterField>
-      </div>
-      {(form.locationCountry === "United States" || form.locationCountry === "Canada") && (
-        <FilterField
-          label={
-            form.locationCountry === "Canada" ? "All locations within Canada" : "All locations within the US"
-          }
-        >
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              cursor: "pointer",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.locationAllInCountry}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  locationAllInCountry: e.target.checked,
-                  locationCity: e.target.checked ? "" : f.locationCity,
-                  locationRegion: e.target.checked ? "" : f.locationRegion,
-                }))
-              }
-            />
-            {form.locationCountry === "Canada"
-              ? "Open to anywhere in Canada"
-              : "Open to anywhere in the United States"}
-          </label>
-        </FilterField>
-      )}
-      <FilterField label="Within radius">
+      <FilterField label="Country">
         <select
           style={pipelineInputStyle}
-          value={form.locationRadiusMiles}
-          onChange={(e) => setForm((f) => ({ ...f, locationRadiusMiles: e.target.value }))}
+          value={form.locationCountry}
+          onChange={(e) => {
+            const value = e.target.value;
+            setForm((f) => ({
+              ...f,
+              locationCountry: value,
+              ...(value === "Canada"
+                ? { locationAllInCountry: false, locationCity: "", locationRegion: "" }
+                : {}),
+            }));
+          }}
         >
-          {LOCATION_RADIUS_OPTIONS.map((opt) => (
-            <option key={opt.miles} value={opt.miles > 0 ? String(opt.miles) : ""}>
-              {opt.label}
+          <option value="">Select country</option>
+          <option value="United States">United States</option>
+          <option value="Canada">Canada</option>
+          {HIREBASE_FILTER_COUNTRIES.filter((c) => c !== "United States" && c !== "Canada").map((country) => (
+            <option key={country} value={country}>
+              {country}
             </option>
           ))}
         </select>
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>
-          Client-side only — applied after Hirebase results.
-        </p>
       </FilterField>
+
+      {(form.locationCountry === "United States" || form.locationCountry === "Canada") && (
+        <>
+          <FilterField
+            label={
+              form.locationCountry === "Canada" ? "All locations within Canada" : "All locations within the US"
+            }
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                cursor: "pointer",
+                marginBottom: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.locationAllInCountry}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    locationAllInCountry: e.target.checked,
+                    locationCity: e.target.checked ? "" : f.locationCity,
+                    locationRegion: e.target.checked ? "" : f.locationRegion,
+                  }))
+                }
+              />
+              {form.locationCountry === "Canada"
+                ? "Open to anywhere in Canada"
+                : "Open to anywhere in the United States"}
+            </label>
+          </FilterField>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1.4fr 0.8fr",
+              gap: 12,
+              marginBottom: 8,
+              alignItems: "end",
+            }}
+          >
+            <FilterField label={form.locationAllInCountry ? "Location" : "City"}>
+              {form.locationAllInCountry ? (
+                <input
+                  style={pipelineInputStyle}
+                  value={
+                    form.locationCountry === "United States"
+                      ? "Anywhere in the US"
+                      : "Anywhere in Canada"
+                  }
+                  readOnly
+                  aria-readonly
+                />
+              ) : (
+                <input
+                  style={pipelineInputStyle}
+                  value={form.locationCity}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      locationCity: e.target.value,
+                      locationAllInCountry: false,
+                    }))
+                  }
+                  placeholder="Enter City"
+                />
+              )}
+            </FilterField>
+            <FilterField label="Within radius">
+              <select
+                style={pipelineInputStyle}
+                value={form.locationRadiusMiles}
+                onChange={(e) => setForm((f) => ({ ...f, locationRadiusMiles: e.target.value }))}
+              >
+                {LOCATION_RADIUS_OPTIONS.map((opt) => (
+                  <option key={opt.miles} value={opt.miles > 0 ? String(opt.miles) : ""}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+          </div>
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "0 0 14px" }}>
+            Radius is applied after Hirebase results.
+          </p>
+        </>
+      )}
+
+      {form.locationCountry &&
+        form.locationCountry !== "United States" &&
+        form.locationCountry !== "Canada" && (
+          <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
+            <FilterField label="City">
+              <input
+                style={pipelineInputStyle}
+                value={form.locationCity}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, locationCity: e.target.value, locationAllInCountry: false }))
+                }
+                placeholder="Enter City"
+              />
+            </FilterField>
+            <FilterField label="State / region">
+              <DatalistInput
+                value={form.locationRegion}
+                onChange={(locationRegion) =>
+                  setForm((f) => ({ ...f, locationRegion, locationAllInCountry: false }))
+                }
+                listId="drawer-region-suggestions"
+                options={[...HIREBASE_FILTER_US_STATES]}
+                placeholder="Region"
+              />
+            </FilterField>
+          </div>
+        )}
       <FilterField label="Experience Level">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label }) => (
