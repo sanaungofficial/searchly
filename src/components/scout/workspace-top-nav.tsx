@@ -56,8 +56,8 @@ function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
     match: matchNetworkRolesPath,
   });
   links.push({
-    id: "inbox",
-    label: "Inbox",
+    id: "networking",
+    label: "Networking",
     path: INBOX_PATH,
     match: matchInboxPath,
   });
@@ -139,7 +139,7 @@ function ExpertModeChip({ isMobile }: { isMobile: boolean }) {
         display: "inline-flex",
         alignItems: "center",
         padding: isMobile ? "4px 8px" : "5px 10px",
-        borderRadius: 999,
+        borderRadius: "var(--scout-radius)",
         background: "rgba(26,58,47,0.08)",
         border: "1px solid rgba(26,58,47,0.14)",
         fontFamily: fontSans,
