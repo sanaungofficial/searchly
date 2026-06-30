@@ -406,7 +406,7 @@ function RecommendedJobCard({
               {/* Top badge row */}
               {(postedText || row.isTrackedCompany) && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                  {postedText ? (
+                  {postedText && (
                     <span
                       style={{
                         display: "inline-block",
