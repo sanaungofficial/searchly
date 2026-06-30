@@ -2,7 +2,6 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 
 /** Filter dimensions applied client-side after Hirebase fetch — never sent to Hirebase API. */
 export const HIREBASE_CLIENT_ONLY_FILTER_KEYS = [
-  "locationTypes",
   "locationRadiusMiles",
 ] as const satisfies readonly (keyof VectorSearchFilters)[];
 

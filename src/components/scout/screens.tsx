@@ -9,6 +9,7 @@ import {
   TargetRoleAutocomplete,
 } from "@/components/scout/onboarding-suggest-input";
 import { JobFunctionPicker } from "@/components/scout/job-function-picker";
+import { IndustrySearchField } from "@/components/scout/industry-search-field";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   UploadIcon,
@@ -1580,6 +1581,8 @@ interface TargetRolesProps {
   suggestionLabel?: string;
   prioritizedCategories?: string[];
   suggestedCategories?: string[];
+  selectedIndustries?: string[];
+  onIndustriesChange?: (industries: string) => void;
   onAddCategory?: (category: string) => void;
   onRemoveCategory?: (category: string) => void;
   onAddTitle: (title: string) => void;
@@ -1654,6 +1657,8 @@ export function ScreenTargetRoles({
   suggestionLabel = "Suggested for you",
   prioritizedCategories = [],
   suggestedCategories = [],
+  selectedIndustries = "",
+  onIndustriesChange,
   onAddCategory,
   onRemoveCategory,
   onAddTitle,
@@ -1719,6 +1724,30 @@ export function ScreenTargetRoles({
               }}
               suggested={suggestedCategories}
               variant="onboarding"
+            />
+          </div>
+        )}
+
+        {onIndustriesChange && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: ONBOARDING_FIELD_BORDER }}>
+            <p
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: ONBOARDING_LABEL_COLOR,
+                letterSpacing: "0.6px",
+                textTransform: "uppercase",
+                marginBottom: 10,
+                marginTop: 0,
+              }}
+            >
+              Industries
+            </p>
+            <IndustrySearchField
+              title=""
+              value={selectedIndustries}
+              onChange={onIndustriesChange}
             />
           </div>
         )}

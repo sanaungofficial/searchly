@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { HirebaseJob } from "@/lib/hirebase";
 import {
   fetchHirebaseMatchingJobs,
+  fetchHirebaseNeuralJobs,
   fetchHirebaseRecentJobs,
   fetchHirebaseRoleMatchingJobs,
   fetchHirebaseSimilarJobs,
@@ -15,6 +16,7 @@ import { parseJobsCache } from "@/lib/company-jobs-scan";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
 import { applyListingFiltersToSources, jobMatchesListingFilters } from "@/lib/job-listing-filters";
+import { applyExclusionPrefsToSources, type ListingExclusionPrefs } from "@/lib/opportunities-exclusion-filters";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { RECOMMENDED_FETCH_POOL, RECOMMENDED_SIMILAR_JOB_SEED_COUNT } from "@/lib/recommended-jobs-config";
@@ -103,6 +105,16 @@ export function buildFetchLaneMap(sources: RecommendedJobSource[]): Map<string, 
     map.set(key, mergeFetchLane(map.get(key), source.fetchLane) ?? source.fetchLane);
   }
   return map;
+}
+
+function applyRecommendedPostFilters<T extends RecommendedJobSource>(
+  sources: T[],
+  filters?: VectorSearchFilters,
+  exclusions?: ListingExclusionPrefs,
+): T[] {
+  let out = applyListingFiltersToSources(sources, filters);
+  out = applyExclusionPrefsToSources(out, exclusions);
+  return out;
 }
 
 export function tagSourcesWithLane(
@@ -561,6 +573,7 @@ export async function fetchRecommendedViaResumeVSearch(input: {
   filters?: VectorSearchFilters;
   semanticQuery?: string;
   maxJobs?: number;
+  exclusions?: ListingExclusionPrefs;
 }): Promise<{
   sources: RecommendedJobSource[];
   companyCount: number;
@@ -576,28 +589,48 @@ export async function fetchRecommendedViaResumeVSearch(input: {
     input.semanticQuery,
   );
 
-  const vsearch = await fetchHirebaseVectorJobs({
-    artifactId: input.artifactId,
-    ...vsearchFilters,
-    query,
-    limit: maxJobs,
-    fetchLimit: Math.min(100, maxJobs),
-    page: input.filters?.page ?? 1,
-    accuracy: input.filters?.accuracy,
-    topK: input.filters?.topK,
-    minScore: input.filters?.minScore,
-  });
+  let rawJobs: HirebaseJob[] = [];
+  let jobs: CachedJob[] = [];
+  let companyNames: string[] = [];
+
+  try {
+    const neural = await fetchHirebaseNeuralJobs({
+      artifactId: input.artifactId,
+      query,
+      ...vsearchFilters,
+      limit: maxJobs,
+      page: input.filters?.page ?? 1,
+    });
+    rawJobs = neural.rawJobs;
+    jobs = neural.jobs;
+    companyNames = neural.companyNames;
+  } catch {
+    const vsearch = await fetchHirebaseVectorJobs({
+      artifactId: input.artifactId,
+      ...vsearchFilters,
+      query,
+      limit: maxJobs,
+      fetchLimit: Math.min(100, maxJobs),
+      page: input.filters?.page ?? 1,
+      accuracy: input.filters?.accuracy,
+      topK: input.filters?.topK,
+      minScore: input.filters?.minScore,
+    });
+    rawJobs = vsearch.rawJobs;
+    jobs = vsearch.jobs;
+    companyNames = vsearch.companyNames;
+  }
 
   const sources: RecommendedJobSource[] = [];
-  for (let i = 0; i < vsearch.rawJobs.length; i++) {
-    const raw = vsearch.rawJobs[i];
-    const cached = vsearch.jobs[i] ?? mapHirebaseJob(raw);
-    const companyName = raw.company_name?.trim() || vsearch.companyNames[i] || "Unknown company";
+  for (let i = 0; i < rawJobs.length; i++) {
+    const raw = rawJobs[i];
+    const cached = jobs[i] ?? mapHirebaseJob(raw);
+    const companyName = raw.company_name?.trim() || companyNames[i] || "Unknown company";
     sources.push({ cached, companyName, raw });
     if (sources.length >= maxJobs) break;
   }
 
-  const filtered = applyListingFiltersToSources(sources, input.filters);
+  const filtered = applyRecommendedPostFilters(sources, input.filters, input.exclusions);
   const trackedWithMatches = filtered.filter((s) => jobMatchesTrackedCompany(s.raw, trackedIndex)).length;
 
   return {
@@ -626,22 +659,41 @@ export async function fetchRecommendedViaProfileSummary(input: {
 
   const { merged: vsearchFilters } = buildVSearchFilters(input.profileTargetRoles, input.filters);
 
-  const summary = await fetchHirebaseSummarySearch({
-    query: input.query,
-    filters: {
+  let rawJobs: HirebaseJob[] = [];
+  let jobs: CachedJob[] = [];
+  let companyNames: string[] = [];
+
+  try {
+    const neural = await fetchHirebaseNeuralJobs({
+      query: input.query,
       ...vsearchFilters,
       limit: maxJobs,
       page: input.filters?.page ?? 1,
-    },
-  });
+    });
+    rawJobs = neural.rawJobs;
+    jobs = neural.jobs;
+    companyNames = neural.companyNames;
+  } catch {
+    const summary = await fetchHirebaseSummarySearch({
+      query: input.query,
+      filters: {
+        ...vsearchFilters,
+        limit: maxJobs,
+        page: input.filters?.page ?? 1,
+      },
+    });
+    rawJobs = summary.rawJobs;
+    jobs = summary.jobs;
+    companyNames = summary.companyNames;
+  }
 
-  const sources: RecommendedJobSource[] = summary.rawJobs.map((raw, i) => ({
-    cached: summary.jobs[i] ?? mapHirebaseJob(raw),
-    companyName: summary.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
+  const sources: RecommendedJobSource[] = rawJobs.map((raw, i) => ({
+    cached: jobs[i] ?? mapHirebaseJob(raw),
+    companyName: companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
     raw,
   }));
 
-  const filtered = applyListingFiltersToSources(sources, input.filters);
+  const filtered = applyRecommendedPostFilters(sources, input.filters);
   const trackedWithMatches = filtered.filter((s) => jobMatchesTrackedCompany(s.raw, trackedIndex)).length;
 
   return {

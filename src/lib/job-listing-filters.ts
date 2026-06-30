@@ -68,6 +68,7 @@ export function jobMatchesListingFilters(
   cached: CachedJob,
   companyName: string,
   filters: VectorSearchFilters,
+  raw?: import("@/lib/hirebase").HirebaseJob,
 ): boolean {
   if (filters.companyName?.trim()) {
     const q = filters.companyName.trim().toLowerCase();
@@ -138,13 +139,17 @@ export function jobMatchesListingFilters(
     if (!matchesList(filters.jobCategories, cat)) return false;
   }
 
+  if (filters.companyTypes?.length && raw?.company_data?.type) {
+    const ctype = raw.company_data.type.toLowerCase();
+    if (!filters.companyTypes.some((t) => ctype.includes(t.toLowerCase()))) return false;
+  }
+
   return true;
 }
 
-export function applyListingFiltersToSources<T extends { cached: CachedJob; companyName: string }>(
-  sources: T[],
-  filters: VectorSearchFilters | undefined,
-): T[] {
+export function applyListingFiltersToSources<
+  T extends { cached: CachedJob; companyName: string; raw?: import("@/lib/hirebase").HirebaseJob },
+>(sources: T[], filters: VectorSearchFilters | undefined): T[] {
   if (!filters) return sources;
   const hasFilter =
     filters.companyName ||
@@ -155,6 +160,7 @@ export function applyListingFiltersToSources<T extends { cached: CachedJob; comp
     filters.locationTypes?.length ||
     filters.jobTypes?.length ||
     filters.experienceLevels?.length ||
+    filters.companyTypes?.length ||
     filters.visaSponsored ||
     filters.datePostedFrom ||
     filters.datePostedWithinDays ||
@@ -164,5 +170,5 @@ export function applyListingFiltersToSources<T extends { cached: CachedJob; comp
 
   if (!hasFilter) return sources;
 
-  return sources.filter((s) => jobMatchesListingFilters(s.cached, s.companyName, filters));
+  return sources.filter((s) => jobMatchesListingFilters(s.cached, s.companyName, filters, s.raw));
 }

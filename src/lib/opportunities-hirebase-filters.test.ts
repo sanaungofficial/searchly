@@ -17,13 +17,13 @@ describe("opportunities-hirebase-filters", () => {
     expect(loosened.jobTitles).toEqual(["PM"]);
   });
 
-  it("strips client-only work model from Hirebase payload", () => {
+  it("keeps location_types for Hirebase payload", () => {
     const sanitized = sanitizeFiltersForHirebase({
       locationTypes: ["Remote"],
       jobTypes: ["Full Time"],
       salaryFrom: 120000,
     });
-    expect(sanitized.locationTypes).toBeUndefined();
+    expect(sanitized.locationTypes).toEqual(["Remote"]);
     expect(sanitized.jobTypes).toEqual(["Full Time"]);
     expect(sanitized.salaryFrom).toBe(120000);
   });

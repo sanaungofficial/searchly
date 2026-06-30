@@ -15,6 +15,8 @@ import {
 import { POSTED_WITHIN_OPTIONS } from "@/lib/job-posted-filter";
 import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
 import { JobFunctionDropdown } from "@/components/scout/job-function-dropdown";
+import { IndustrySearchField } from "@/components/scout/industry-search-field";
+import { ExcludedTitleSearchField } from "@/components/scout/excluded-title-search-field";
 import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
@@ -303,15 +305,10 @@ function BasicJobCriteriaFields({
         />
       </FilterField>
       <FilterField label="Excluded Title">
-        <input
-          style={pipelineInputStyle}
+        <ExcludedTitleSearchField
           value={form.excludedJobTitles}
-          onChange={(e) => setForm((f) => ({ ...f, excludedJobTitles: e.target.value }))}
-          placeholder="Intern, Sales Rep"
+          onChange={(excludedJobTitles) => setForm((f) => ({ ...f, excludedJobTitles }))}
         />
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>
-          Saved to profile — applied as negative keywords, not a Hirebase title filter.
-        </p>
       </FilterField>
       <FilterField label="Job Type">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -337,7 +334,7 @@ function BasicJobCriteriaFields({
           ))}
         </div>
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>
-          Applied after Hirebase results — not sent as an API param.
+          Sent to Hirebase as location_types — client backup if API omits a match.
         </p>
       </FilterField>
       <FilterSectionHeader title="Location" hint="" />
@@ -614,17 +611,16 @@ function InterestsFields({
 }) {
   return (
     <>
-      <TagListField
+      <IndustrySearchField
         title="Industry"
         value={form.industries}
-        onChange={(industries) => setForm((f) => ({ ...f, industries }))}
-        placeholder="Software, Healthcare"
+        onChange={(industries) => setForm((f) => ({ ...f, industries, subindustries: "" }))}
       />
-      <CollapsibleTagListField
+      <IndustrySearchField
         title="Excluded Industry"
         value={form.excludedIndustries}
         onChange={(excludedIndustries) => setForm((f) => ({ ...f, excludedIndustries }))}
-        placeholder="Staffing, Retail"
+        collapsible
       />
       <TagListField
         title="Skill"
@@ -686,7 +682,7 @@ function CompanyInsightsFields({
           onToggle={(stage) => setForm((f) => ({ ...f, companyStages: toggleSet(f.companyStages, stage) }))}
         />
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0 0" }}>
-          Saved to profile — Hirebase company-stage filter not available.
+          Mapped to Hirebase company_types (Startup, Public Company, …).
         </p>
       </div>
       <div style={{ marginBottom: 20 }}>

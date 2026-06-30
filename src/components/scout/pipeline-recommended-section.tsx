@@ -68,6 +68,8 @@ import {
 import {
   applySearchPreferencesToFilterForm,
   emptyExtendedFilterFields,
+  hirebaseCompanyTypesFromStages,
+  mergeSearchPreferencesIntoFilters,
   patchParsedDataSearchPreferences,
   searchPreferencesFromFilterForm,
   searchPreferencesFromParsedData,
@@ -196,7 +198,12 @@ function readDefaultFeedCache(): RecommendedCacheEntry | null {
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
   const baseKeywords = splitInputListOrUndefined(form.keywords);
+  const skillKeywords = splitInputListOrUndefined(form.skills);
   const customJobFunctions = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
+  const mergedKeywords =
+    baseKeywords || skillKeywords
+      ? [...new Set([...(baseKeywords ?? []), ...(skillKeywords ?? [])])]
+      : undefined;
 
   const hasLocation =
     form.locationAllInCountry && form.locationCountry.trim()
@@ -210,10 +217,10 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     semanticQuery: form.semanticQuery.trim() || undefined,
     customJobFunctions: customJobFunctions.length ? customJobFunctions : undefined,
     jobTitles: splitInputListOrUndefined(form.jobTitles),
-    keywords: baseKeywords,
+    keywords: mergedKeywords,
     companyName: form.companyName.trim() || undefined,
     industries: splitInputListOrUndefined(form.industries),
-    subindustries: splitInputListOrUndefined(form.subindustries),
+    subindustries: undefined,
     jobCategories: splitInputListOrUndefined(form.jobCategories),
     jobBoard: form.jobBoard.trim() || undefined,
     locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
@@ -223,7 +230,10 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
       : form.experienceLevels.size
         ? [...form.experienceLevels]
         : undefined,
-    companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
+    companySizeBuckets: undefined,
+    companyTypes: form.companyStages.size
+      ? hirebaseCompanyTypesFromStages([...form.companyStages])
+      : undefined,
     visaSponsored: form.visaSponsored || undefined,
     datePostedWithinDays: form.datePostedWithinDays.trim()
       ? Number(form.datePostedWithinDays)
@@ -247,7 +257,8 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
       : undefined,
   };
 
-  return loosenStackedHirebaseFilters(raw);
+  const prefs = searchPreferencesFromFilterForm(form);
+  return mergeSearchPreferencesIntoFilters(prefs, loosenStackedHirebaseFilters(raw));
 }
 
 const inputStyle: React.CSSProperties = {
