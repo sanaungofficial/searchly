@@ -64,6 +64,9 @@ import {
 } from "@/lib/job-match";
 import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
 import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
+import { hirebaseCompanyTypesFromStages, mergeSearchPreferencesIntoFilters, parseSearchPreferences } from "@/lib/search-preferences";
+import { loadFlatIndustryOptions, splitIndustrySelections } from "@/lib/industry-options";
+import type { ListingExclusionPrefs } from "@/lib/opportunities-exclusion-filters";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTokens, type ParsedResumeData } from "@/lib/resume-parse";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -127,7 +130,62 @@ async function loadUserContext(userId: string) {
     roleTitlePreferences,
     profileSkills: extractProfileSkills(parsedData),
     nameMatchExcludeTerms: personalNameMatchTokens(parsedData),
+    searchPreferences: parseSearchPreferences(
+      parsedData && typeof parsedData === "object"
+        ? (parsedData as { searchPreferences?: unknown }).searchPreferences
+        : undefined,
+    ),
   };
+}
+
+async function resolveIndustryFilters(filters: VectorSearchFilters): Promise<VectorSearchFilters> {
+  const combined = [...(filters.industries ?? []), ...(filters.subindustries ?? [])];
+  if (!combined.length) return filters;
+  try {
+    const catalog = await loadFlatIndustryOptions();
+    const split = splitIndustrySelections(combined, catalog);
+    return {
+      ...filters,
+      industries: split.industries.length ? split.industries : undefined,
+      subindustries: split.subindustries.length ? split.subindustries : undefined,
+    };
+  } catch {
+    return filters;
+  }
+}
+
+function exclusionPrefsFromSearchPreferences(
+  prefs: ReturnType<typeof parseSearchPreferences>,
+): ListingExclusionPrefs {
+  return {
+    excludedJobTitles: prefs.excludedJobTitles,
+    excludedIndustries: prefs.excludedIndustries,
+    excludedSkills: prefs.excludedSkills,
+    excludedCompanies: prefs.excludedCompanies,
+    excludeSecurityClearance: prefs.excludeSecurityClearance,
+    excludeUsCitizenOnly: prefs.excludeUsCitizenOnly,
+    excludeStaffingAgency: prefs.excludeStaffingAgency,
+  };
+}
+
+async function prepareRecommendedFilters(
+  requestFilters: VectorSearchFilters,
+  searchPreferences: ReturnType<typeof parseSearchPreferences>,
+): Promise<VectorSearchFilters> {
+  let merged = mergeSearchPreferencesIntoFilters(
+    searchPreferences,
+    normalizePostedDateFilters(
+      sanitizeFiltersForHirebase({
+        ...requestFilters,
+        semanticQuery: trimVSearchQuery(requestFilters.semanticQuery ?? "") || undefined,
+      }),
+    ),
+  );
+  if (searchPreferences.companyStages?.length && !merged.companyTypes?.length) {
+    merged = { ...merged, companyTypes: hirebaseCompanyTypesFromStages(searchPreferences.companyStages) };
+  }
+  merged = await resolveIndustryFilters(merged);
+  return merged;
 }
 
 async function enrichAndRank(
@@ -506,6 +564,7 @@ async function fetchPrimaryRecommendedSources(input: {
   semanticQuery: string;
   maxJobs: number;
   preferCache: boolean;
+  exclusions?: ListingExclusionPrefs;
 }): Promise<PrimaryFetchResult> {
   const empty: PrimaryFetchResult = {
     sources: [],
@@ -531,6 +590,7 @@ async function fetchPrimaryRecommendedSources(input: {
         filters: input.filters,
         semanticQuery: input.semanticQuery || undefined,
         maxJobs: RECOMMENDED_FETCH_POOL,
+        exclusions: input.exclusions,
       });
       sources = result.sources;
       companyCount = result.companyCount;
@@ -695,16 +755,12 @@ export async function generateRecommendedJobsForUser(
     roleTitlePreferences,
     profileSkills,
     nameMatchExcludeTerms,
+    searchPreferences,
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
-  /** Default feed: open Hirebase query — profile location applied as soft post-filter only. */
-  let mergedFilters = normalizePostedDateFilters(
-    sanitizeFiltersForHirebase({
-      ...requestFilters,
-      semanticQuery: semanticQuery || undefined,
-    }),
-  );
+  const exclusions = exclusionPrefsFromSearchPreferences(searchPreferences);
+  let mergedFilters = await prepareRecommendedFilters(requestFilters, searchPreferences);
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
@@ -721,6 +777,7 @@ export async function generateRecommendedJobsForUser(
     semanticQuery,
     maxJobs,
     preferCache,
+    exclusions,
   });
 
   let { sources, matchMode, companyCount, trackedWithMatches, notice, resumeVSearch } = primary;
@@ -738,6 +795,7 @@ export async function generateRecommendedJobsForUser(
       semanticQuery,
       maxJobs,
       preferCache,
+      exclusions,
     });
     if (!primary.sources.length) return;
     sources = primary.sources;

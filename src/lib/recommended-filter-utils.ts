@@ -167,6 +167,7 @@ export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   if (filters.locationTypes?.length) labels.push(`Work: ${filters.locationTypes.join(", ")}`);
   if (filters.jobTypes?.length) labels.push(`Type: ${filters.jobTypes.join(", ")}`);
   if (filters.experienceLevels?.length) labels.push(`Level: ${filters.experienceLevels.join(", ")}`);
+  if (filters.companyTypes?.length) labels.push(`Company stage: ${filters.companyTypes.join(", ")}`);
   if (filters.companySizeBuckets?.length) labels.push(`Company size: ${filters.companySizeBuckets.join(", ")}`);
   if (filters.industries?.length) labels.push(`Industry: ${filters.industries.join(", ")}`);
   if (filters.visaSponsored) labels.push("Visa sponsorship");

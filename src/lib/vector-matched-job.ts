@@ -29,6 +29,9 @@ export type VectorSearchFilters = {
   jobCategories?: string[];
   jobTypes?: string[];
   experienceLevels?: string[];
+  /** Company stage / classification — Startup, Public Company, etc. (Hirebase company_types). */
+  companyTypes?: string[];
+  /** @deprecated Headcount buckets removed from UI — do not send to Hirebase. */
   companySizeBuckets?: string[];
   locationTypes?: string[];
   locations?: HirebaseLocationFilter[];

@@ -1,7 +1,10 @@
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
+import { COMPANY_STAGE_TO_HIREBASE_TYPE } from "@/lib/opportunities-filter-mapping";
 
 /** Extended job-search prefs stored in Profile.parsedData.searchPreferences (no schema change). */
 export type SearchPreferences = {
+  /** Flat industry + subindustry labels from onboarding / All Filters. */
+  industries?: string[];
   excludedJobTitles?: string[];
   excludedIndustries?: string[];
   excludedSkills?: string[];
@@ -42,6 +45,7 @@ export function parseSearchPreferences(raw: unknown): SearchPreferences {
     return items.length ? items : undefined;
   };
   return {
+    industries: strList(o.industries),
     excludedJobTitles: strList(o.excludedJobTitles),
     excludedIndustries: strList(o.excludedIndustries),
     excludedSkills: strList(o.excludedSkills),
@@ -77,6 +81,15 @@ export function hirebaseLevelsFromJobrightLabels(labels: string[]): string[] {
   return [...out];
 }
 
+export function hirebaseCompanyTypesFromStages(stages: string[]): string[] {
+  const out = new Set<string>();
+  for (const stage of stages) {
+    const mapped = COMPANY_STAGE_TO_HIREBASE_TYPE[stage.trim()];
+    if (mapped) out.add(mapped);
+  }
+  return [...out];
+}
+
 export function mergeSearchPreferencesIntoFilters(
   prefs: SearchPreferences,
   filters: VectorSearchFilters,
@@ -86,6 +99,11 @@ export function mergeSearchPreferencesIntoFilters(
   if (prefs.excludedJobTitles?.length) {
     const existing = out.keywords ?? [];
     out.keywords = [...existing, ...prefs.excludedJobTitles.map((t) => `-${t}`)];
+  }
+
+  if (prefs.companyStages?.length && !out.companyTypes?.length) {
+    const types = hirebaseCompanyTypesFromStages(prefs.companyStages);
+    if (types.length) out.companyTypes = types;
   }
 
   if (prefs.experienceLevelLabels?.length && !out.experienceLevels?.length) {
@@ -153,6 +171,7 @@ export function applySearchPreferencesToFilterForm<
   },
 >(form: T, prefs: SearchPreferences): T {
   const next = { ...form };
+  if (prefs.industries?.length) next.industries = joinList(prefs.industries);
   if (prefs.excludedJobTitles?.length) next.excludedJobTitles = joinList(prefs.excludedJobTitles);
   if (prefs.excludedIndustries?.length) next.excludedIndustries = joinList(prefs.excludedIndustries);
   if (prefs.excludedSkills?.length) next.excludedSkills = joinList(prefs.excludedSkills);
@@ -192,6 +211,7 @@ export function searchPreferencesFromFilterForm(form: {
   locationAllInCountry?: boolean;
 }): SearchPreferences {
   const excludedJobTitles = splitList(form.excludedJobTitles);
+  const industrySelections = splitList(form.industries);
   const excludedIndustries = splitList(form.excludedIndustries);
   const excludedSkills = splitList(form.excludedSkills);
   const excludedCompanies = splitList(form.excludedCompany);
@@ -206,6 +226,7 @@ export function searchPreferencesFromFilterForm(form: {
   ).map(({ label }) => label);
 
   return {
+    industries: industrySelections.length ? industrySelections : undefined,
     excludedJobTitles: excludedJobTitles.length ? excludedJobTitles : undefined,
     excludedIndustries: excludedIndustries.length ? excludedIndustries : undefined,
     excludedSkills: excludedSkills.length ? excludedSkills : undefined,

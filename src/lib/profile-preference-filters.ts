@@ -139,6 +139,7 @@ export function isDefaultRecommendedFilters(filters: VectorSearchFilters): boole
     "jobCategories",
     "jobTypes",
     "experienceLevels",
+    "companyTypes",
     "companySizeBuckets",
     "locationTypes",
     "locations",
