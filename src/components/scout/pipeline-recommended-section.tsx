@@ -80,6 +80,7 @@ import {
 import {
   loosenStackedHirebaseFilters,
 } from "@/lib/opportunities-hirebase-filters";
+import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -786,8 +787,9 @@ export function PipelineRecommendedSection({
           const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
-          setAppliedForm({ ...profileForm, semanticQuery: "" });
-          setActiveFilterLabels(describeActiveFilters(formToFilters(profileForm, 1)));
+          // Default feed uses open Hirebase filters — profile prefs drive matching server-side.
+          setAppliedForm(defaultFeedForm());
+          setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
         } else {
           setAppliedForm(defaultFeedForm());
         }
@@ -903,8 +905,8 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = true;
 
-    const feedForm = defaultFormRef.current ?? defaultFeedForm();
-    const defaultKey = filtersCacheKey(formToFilters(feedForm, 1));
+    const feedForm = defaultFeedForm();
+    const defaultKey = defaultFeedCacheKey();
 
     if (isAdminReviewing) {
       void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
@@ -1047,9 +1049,13 @@ export function PipelineRecommendedSection({
     return [...byKey.values()];
   }, [jobs, savedKeys]);
 
+  const hasExplicitAppliedFilters = !isDefaultRecommendedFilters(appliedFilters);
+
   const filteredListings = useMemo(() => {
     let list = [...recommendedListings];
-    list = filterRoleListings(list, appliedFilters, "all");
+    if (hasExplicitAppliedFilters) {
+      list = filterRoleListings(list, appliedFilters, "all");
+    }
     if (hasActiveSearch) {
       const query = appliedForm.semanticQuery.trim();
       return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
@@ -1062,12 +1068,12 @@ export function PipelineRecommendedSection({
       });
     }
     return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery, sortOption, appliedFilters]);
+  }, [recommendedListings, hasExplicitAppliedFilters, appliedFilters, hasActiveSearch, appliedForm.semanticQuery, sortOption]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
-    : notice
-      ? "Review the note above — these are broader matches while we refine your personalized feed."
+    : hasExplicitAppliedFilters
+      ? "No roles matched your filters — try loosening location, experience, or category, or hit Refresh after clearing filters."
       : hasActiveSearch
         ? "Nothing matched — try different keywords or loosen your filters."
         : recommendedListings.length === 0 && jobs.length > 0

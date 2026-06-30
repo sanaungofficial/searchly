@@ -94,6 +94,27 @@ export function mergeProfileAndRequestFilters(
   };
 }
 
+/** Salary, date, and radius — safe to relax when the feed is sparse on the default feed. */
+export function hasSoftRestrictiveListingFilters(filters: VectorSearchFilters): boolean {
+  return (
+    filters.salaryFrom != null ||
+    filters.salaryTo != null ||
+    Boolean(filters.datePostedFrom?.trim()) ||
+    (filters.datePostedWithinDays != null && filters.datePostedWithinDays > 0) ||
+    (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0)
+  );
+}
+
+/** Location, experience, and category — user intent; do not relax on explicit filter searches. */
+export function hasHardRestrictiveListingFilters(filters: VectorSearchFilters): boolean {
+  return (
+    Boolean(filters.locations?.length) ||
+    Boolean(filters.locationTypes?.length) ||
+    Boolean(filters.jobCategories?.length) ||
+    Boolean(filters.experienceLevels?.length)
+  );
+}
+
 /** Filters that often zero out Hirebase results when combined with role/resume search. */
 export function relaxRestrictiveFilters(filters: VectorSearchFilters): VectorSearchFilters {
   const {
@@ -111,18 +132,21 @@ export function relaxRestrictiveFilters(filters: VectorSearchFilters): VectorSea
   return rest;
 }
 
+/** Relax only salary, date, and radius — keeps geography, experience, and category filters intact. */
+export function relaxSoftListingFilters(filters: VectorSearchFilters): VectorSearchFilters {
+  const {
+    salaryFrom: _sf,
+    salaryTo: _st,
+    datePostedFrom: _dp,
+    datePostedWithinDays: _dwd,
+    locationRadiusMiles: _lr,
+    ...rest
+  } = filters;
+  return rest;
+}
+
 export function hasRestrictiveListingFilters(filters: VectorSearchFilters): boolean {
-  return (
-    filters.salaryFrom != null ||
-    filters.salaryTo != null ||
-    Boolean(filters.datePostedFrom?.trim()) ||
-    (filters.datePostedWithinDays != null && filters.datePostedWithinDays > 0) ||
-    Boolean(filters.locations?.length) ||
-    Boolean(filters.locationTypes?.length) ||
-    (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0) ||
-    Boolean(filters.jobCategories?.length) ||
-    Boolean(filters.experienceLevels?.length)
-  );
+  return hasSoftRestrictiveListingFilters(filters) || hasHardRestrictiveListingFilters(filters);
 }
 
 /** True when the client is asking for the default daily feed (no custom filters). */
