@@ -39,14 +39,19 @@ import {
 } from "@/lib/network-jobs-cache";
 import { CompanyLogo } from "./company-logo";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
-import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
-import { ScoreExplainerPopover } from "./score-explainer-popover";
+import {
+  CircularMatchScore,
+  filterMatchReasons,
+  MatchScoreColumn,
+  MatchWhyScorePopover,
+  matchScorePanelBackground,
+} from "./match-why-score-ui";
 import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 import { NetworkFiltersDrawer, NetworkQuickFiltersBar } from "./pipeline-network-filters";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ActiveFiltersBar, FilterField, pipelineInputStyle, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
+import { ActiveFiltersBar, pipelineInputStyle, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
 
 const EMPTY_MATCH = {
   matchScore: 0,
@@ -65,6 +70,78 @@ interface PipelineNetworkSectionProps {
   onSaveJob?: (job: NetworkJobListing) => Promise<void>;
   actingUserId?: string | null;
   embedded?: boolean;
+}
+
+function NetworkJobMetadataGrid({ job }: { job: NetworkMatchedJob }) {
+  const items: string[] = [];
+  if (job.location) items.push(job.location);
+  if (job.jobType) items.push(job.jobType);
+  if (job.remoteOption) items.push(job.remoteOption);
+  if (job.salary) items.push(job.salary);
+  if (!items.length) return null;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 18px", marginTop: 10 }}>
+      {items.map((label) => (
+        <span
+          key={label}
+          style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function NetworkMatchScoreStacked({
+  score,
+  label,
+  reasons,
+  matchedSkills,
+}: {
+  score: number;
+  label: string;
+  reasons: string[];
+  matchedSkills: string[];
+}) {
+  const filteredReasons = filterMatchReasons(reasons);
+  const skills = matchedSkills.slice(0, 6);
+  const panelBg = matchScorePanelBackground(score);
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      style={{
+        background: panelBg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px 18px",
+        borderTop: "1.5px solid rgba(255,255,255,0.07)",
+      }}
+    >
+      <MatchWhyScorePopover reasons={filteredReasons} matchedSkills={skills}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <CircularMatchScore score={score} />
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#FFFFFF",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            {label} Match
+          </p>
+        </div>
+      </MatchWhyScorePopover>
+    </div>
+  );
 }
 
 function NetworkJobCard({
