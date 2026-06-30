@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontSans, color, surface, border as B } from "@/lib/typography";
+import { matchScoreLabelFor } from "@/lib/match-score";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { friendlyResumeError } from "@/lib/user-facing-copy";
 import { getActingUserScope } from "@/lib/client-session";
@@ -24,6 +25,8 @@ function matchCacheKey(jobKey: string, assetId: string) {
   return `kimchi-match:${getActingUserScope()}:${jobKey}:${assetId}`;
 }
 
+export type MatchScoreSource = "profile" | "resume";
+
 export function JobMatchScorePanel({
   vectorFit,
   jobTitle,
@@ -34,6 +37,7 @@ export function JobMatchScorePanel({
   onMatchChange,
   onAnalyzeControlsChange,
   fullWidth,
+  scoreSource = "profile",
 }: {
   vectorFit: number;
   jobTitle: string;
@@ -50,7 +54,10 @@ export function JobMatchScorePanel({
     selectedId: string | null;
   }) => void;
   fullWidth?: boolean;
+  /** Profile = onboarding prefs/skills (overview). Resume = AI comparison for tailor flow. */
+  scoreSource?: MatchScoreSource;
 }) {
+  const profileMode = scoreSource === "profile";
   const { withClientScope } = useWorkspace();
   const [assets, setAssets] = useState<ResumeAssetOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,6 +69,7 @@ export function JobMatchScorePanel({
   const canAnalyze = description.trim().length >= 40;
 
   useEffect(() => {
+    if (profileMode) return;
     fetch(withClientScope("/api/assets"))
       .then((r) => r.json())
       .then((rows: Array<{ id: string; name: string; isPrimary: boolean; type?: string }>) => {
@@ -73,7 +81,7 @@ export function JobMatchScorePanel({
         }
       })
       .catch(() => {});
-  }, [withClientScope]);
+  }, [profileMode, withClientScope]);
 
   const fetchMatch = useCallback(
     async (assetId: string) => {
@@ -120,6 +128,7 @@ export function JobMatchScorePanel({
 
   // On job or resume selection change: restore session cache only — never auto-call AI on drawer open.
   useEffect(() => {
+    if (profileMode) return;
     if (!selectedId || !canAnalyze) {
       setAiMatch(null);
       setError(null);
@@ -137,7 +146,7 @@ export function JobMatchScorePanel({
     }
     setAiMatch(null);
     setError(null);
-  }, [jobKey, selectedId, canAnalyze]);
+  }, [profileMode, jobKey, selectedId, canAnalyze]);
 
   const handleResumeChange = useCallback(
     (assetId: string) => {
@@ -154,10 +163,24 @@ export function JobMatchScorePanel({
     assets.find((a) => a.id === selectedId)?.name.replace(/\.[^.]+$/, "") ?? null;
 
   useEffect(() => {
+    if (profileMode) {
+      onMatchChange?.(null, null, false, null);
+      return;
+    }
     onMatchChange?.(aiMatch, selectedId, loading, selectedResumeName);
-  }, [aiMatch, selectedId, loading, selectedResumeName, onMatchChange]);
+  }, [profileMode, aiMatch, selectedId, loading, selectedResumeName, onMatchChange]);
 
   useEffect(() => {
+    if (profileMode) {
+      onAnalyzeControlsChange?.({
+        run: () => {},
+        canAnalyze: false,
+        loading: false,
+        hasAiMatch: false,
+        selectedId: null,
+      });
+      return;
+    }
     onAnalyzeControlsChange?.({
       run: handleAnalyze,
       canAnalyze,
@@ -165,14 +188,19 @@ export function JobMatchScorePanel({
       hasAiMatch: Boolean(aiMatch),
       selectedId,
     });
-  }, [handleAnalyze, canAnalyze, loading, aiMatch, selectedId, onAnalyzeControlsChange]);
+  }, [profileMode, handleAnalyze, canAnalyze, loading, aiMatch, selectedId, onAnalyzeControlsChange]);
 
-  const displayScore = aiMatch?.score ?? (vectorFit > 0 ? vectorFit / 10 : 0);
+  const profileGaugeScore = vectorFit > 0 ? vectorFit / 10 : 0;
+  const displayScore = profileMode
+    ? profileGaugeScore
+    : aiMatch?.score ?? profileGaugeScore;
   const headlineColor = displayScore > 0 ? scoreColor(displayScore) : color.muted;
-  const label = aiMatch?.scoreLabel ?? (vectorFit > 0 ? scoreLabel(vectorFit / 10).toUpperCase() : null);
+  const label = profileMode
+    ? (vectorFit > 0 ? matchScoreLabelFor(vectorFit).toUpperCase() : null)
+    : aiMatch?.scoreLabel ?? (vectorFit > 0 ? scoreLabel(vectorFit / 10).toUpperCase() : null);
 
   const breakdown = useMemo(() => {
-    if (aiMatch) {
+    if (!profileMode && aiMatch) {
       const matchedKw = aiMatch.keywords.filter((k) => k.matched).length;
       const kwTotal = Math.max(aiMatch.keywords.length, 1);
       const kwPct = Math.round((matchedKw / kwTotal) * 100);
@@ -190,7 +218,7 @@ export function JobMatchScorePanel({
       };
     }
     return null;
-  }, [aiMatch, vectorFit]);
+  }, [profileMode, aiMatch, vectorFit]);
 
   if (displayScore <= 0 && !onRunFullMatch) {
     return null;
@@ -200,15 +228,17 @@ export function JobMatchScorePanel({
     return (
       <div style={{ background: surface.card, borderRadius: "var(--scout-radius)", padding: "20px 22px", minWidth: fullWidth ? undefined : 220, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
         <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>
-          <ScoreExplainerLabel variant="job-match">Match score</ScoreExplainerLabel>
+          <ScoreExplainerLabel variant="vector-match">Match score</ScoreExplainerLabel>
         </p>
-          <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
+        <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>
+          {profileMode ? "See how well this role fits your profile." : "See how well your resume fits this role."}
+        </p>
         <button
           type="button"
           onClick={onRunFullMatch}
           style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.cta, color: color.ctaForeground, border: "var(--scout-border)", borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "var(--scout-shadow-bruddle)" }}
         >
-          See full comparison →
+          {profileMode ? "Compare your resume →" : "See full comparison →"}
         </button>
       </div>
     );
@@ -220,12 +250,12 @@ export function JobMatchScorePanel({
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: headlineColor, letterSpacing: "0.5px", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 4 }}>
             {label ? `${label} MATCH` : "MATCH"}
-            <ScoreExplainerPopover variant={aiMatch ? "job-match" : "vector-match"} align="right" />
+            <ScoreExplainerPopover variant={profileMode || !aiMatch ? "vector-match" : "job-match"} align="right" />
           </p>
           <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0 }}>
-            {aiMatch ? "Resume comparison for selected file" : "Based on your profile"}
+            {profileMode ? "Based on your profile" : aiMatch ? "Resume comparison for selected file" : "Based on your profile"}
           </p>
-          {assets.length > 0 && selectedId && (
+          {!profileMode && assets.length > 0 && selectedId && (
             <div style={{ marginTop: 10 }}>
               <ResumeSelectDropdown assets={assets} value={selectedId} onChange={handleResumeChange} />
             </div>
@@ -236,10 +266,10 @@ export function JobMatchScorePanel({
         </div>
       </div>
 
-      {loading && (
+      {!profileMode && loading && (
         <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>Analyzing resume…</p>
       )}
-      {error && (() => {
+      {!profileMode && error && (() => {
         const friendly = friendlyResumeError(error);
         return (
           <div style={{ margin: "0 0 10px" }}>
@@ -275,7 +305,7 @@ export function JobMatchScorePanel({
             cursor: "pointer",
           }}
         >
-          See full comparison →
+          {profileMode ? "Compare your resume →" : "See full comparison →"}
         </button>
       )}
     </div>
