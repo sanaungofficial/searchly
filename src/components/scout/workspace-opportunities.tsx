@@ -21,7 +21,6 @@ import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { DataSourcesPopover } from "./data-sources-popover";
 import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
 import { PipelineStageJobsList } from "./pipeline-stage-jobs-list";
-import { PipelineNetworkSection } from "./pipeline-network-section";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
 import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
@@ -31,7 +30,6 @@ import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
   findKanbanCardByDbId,
   legacyOpportunitiesQueryToPath,
-  networkJobUrl,
   opportunitiesTabUrl,
   parseOpportunitiesLocation,
   pipelineJobUrl,
@@ -408,15 +406,6 @@ export function WorkspaceOpportunities() {
 
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
 
-  const openNetworkJob = useCallback((job: NetworkJobListing) => {
-    pendingNetworkNavRef.current = job.id;
-    loadedNetworkJobRef.current = job.id;
-    go(networkJobUrl(job.id));
-    const drawerId = -Math.abs(Date.now() % 1_000_000);
-    setNetworkProspectJob(job);
-    setNetworkProspectCard(buildNetworkProspectCard(job, drawerId, { internalView: networkInternalView }));
-  }, [networkInternalView, router]);
-
   useEffect(() => {
     if (!loc.networkJobId) {
       if (pendingNetworkNavRef.current) return;
@@ -570,8 +559,6 @@ export function WorkspaceOpportunities() {
               onChangeStage={changeStage}
               onOpenRecommended={openRecommendedJob}
               onSaveRecommended={saveRecommendedJob}
-              onOpenNetworkJob={openNetworkJob}
-              onSaveNetworkJob={addNetworkJobToPipeline}
               actingUserId={actingUserId}
             />
           )}
@@ -904,8 +891,6 @@ interface PipelineTabProps {
   onChangeStage: (id: number, stage: KanbanStage) => void;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
-  onOpenNetworkJob?: (job: NetworkJobListing) => void;
-  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
   actingUserId?: string | null;
   embedded?: boolean;
 }
@@ -916,8 +901,6 @@ function PipelineTab({
   onChangeStage,
   onOpenRecommended,
   onSaveRecommended,
-  onOpenNetworkJob,
-  onSaveNetworkJob,
   actingUserId,
   embedded,
 }: PipelineTabProps) {
@@ -968,8 +951,6 @@ function PipelineTab({
           pipelineCards={cards}
           onOpenJob={onOpenRecommended}
           onSaveJob={onSaveRecommended}
-          onOpenNetworkJob={onOpenNetworkJob}
-          onSaveNetworkJob={onSaveNetworkJob}
           actingUserId={actingUserId}
         />
       ) : (

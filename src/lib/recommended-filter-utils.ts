@@ -48,7 +48,56 @@ export function locationFieldsFromProfileString(raw: string | null | undefined):
   };
 }
 
-/** Profile-derived Hirebase filters for UI pre-fill (search filters panel — not auto-applied on API). */
+export const YEARS_OF_EXPERIENCE_OPTIONS = [
+  { label: "Any experience", yearsFrom: "", yearsTo: "" },
+  { label: "0–2 years", yearsFrom: "0", yearsTo: "2" },
+  { label: "2–5 years", yearsFrom: "2", yearsTo: "5" },
+  { label: "5–10 years", yearsFrom: "5", yearsTo: "10" },
+  { label: "10+ years", yearsFrom: "10", yearsTo: "" },
+] as const;
+
+export const RECOMMENDED_SORT_OPTIONS = [
+  { value: "recommended", label: "Recommended" },
+  { value: "newest", label: "Newest" },
+  { value: "match", label: "Best match" },
+] as const;
+
+export type RecommendedSortOption = (typeof RECOMMENDED_SORT_OPTIONS)[number]["value"];
+
+function uniqueTrimmed(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+/** Infer Hirebase experience levels from target role titles (best-effort). */
+export function inferExperienceLevelsFromRoles(roles: string[]): string[] {
+  const levels = new Set<string>();
+  for (const role of roles) {
+    const r = role.toLowerCase();
+    if (/\b(chief|ceo|cto|cfo|coo|president|evp|svp|vp|vice president|director|head of)\b/.test(r)) {
+      levels.add("Executive");
+      levels.add("Senior");
+    } else if (/\b(manager|lead|principal|staff)\b/.test(r)) {
+      levels.add("Senior");
+      levels.add("Mid");
+    } else if (/\b(associate|analyst|coordinator|specialist|junior|entry)\b/.test(r)) {
+      levels.add("Junior");
+      levels.add("Entry");
+    }
+  }
+  return [...levels];
+}
+
+/** Profile-derived Hirebase filters — pre-filled on Opportunities load and sent to the API. */
 export function profileDerivedSearchFilters(input: {
   profileLocation?: string | null;
   targetMarket?: string | null;
@@ -57,6 +106,9 @@ export function profileDerivedSearchFilters(input: {
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
+  targetRoles?: string[];
+  prioritizedRoles?: string[];
+  prioritizedCategories?: string[];
 }): VectorSearchFilters {
   const resolvedLocation = resolveProfileLocation({
     parsedLocation: input.profileLocation,
@@ -69,8 +121,15 @@ export function profileDerivedSearchFilters(input: {
     employmentStatus: input.employmentStatus,
     jobTimeline: input.jobTimeline,
     workAuthorization: input.workAuthorization,
-    profileLocation: null, // location applied via structured fields below, not API auto-inject
+    profileLocation: null,
   });
+
+  const roleTitles = uniqueTrimmed([
+    ...(input.prioritizedRoles ?? []),
+    ...(input.targetRoles ?? []),
+  ]);
+  const jobCategories = uniqueTrimmed(input.prioritizedCategories ?? []);
+  const experienceLevels = inferExperienceLevelsFromRoles(roleTitles);
 
   const locations =
     fields.city || fields.region || fields.country
@@ -84,9 +143,15 @@ export function profileDerivedSearchFilters(input: {
       : undefined;
 
   const locationRadiusMiles = fields.city ? 50 : undefined;
+  const jobTypes =
+    prefs.jobTypes?.length ? prefs.jobTypes : roleTitles.length ? ["Full Time"] : undefined;
 
   return {
     ...prefs,
+    jobTitles: roleTitles.length ? roleTitles : undefined,
+    jobCategories: jobCategories.length ? jobCategories : undefined,
+    experienceLevels: experienceLevels.length ? experienceLevels : undefined,
+    jobTypes,
     locations,
     locationRadiusMiles,
   };
@@ -121,7 +186,31 @@ export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   if (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0) {
     labels.push(locationRadiusLabel(filters.locationRadiusMiles));
   }
+  if (filters.jobCategories?.length) labels.push(`Categories: ${filters.jobCategories.join(", ")}`);
+  if (filters.yearsFrom != null || filters.yearsTo != null) {
+    const from = filters.yearsFrom ?? 0;
+    const to = filters.yearsTo != null ? `${filters.yearsTo}` : "+";
+    labels.push(`Experience: ${from}–${to} years`);
+  }
   return labels;
+}
+
+export function yearsExperienceLabel(yearsFrom: string, yearsTo: string): string {
+  const opt = YEARS_OF_EXPERIENCE_OPTIONS.find(
+    (o) => o.yearsFrom === yearsFrom && o.yearsTo === yearsTo,
+  );
+  if (opt) return opt.label;
+  if (yearsFrom && yearsTo) return `${yearsFrom}–${yearsTo} years`;
+  if (yearsFrom) return `${yearsFrom}+ years`;
+  return "Years of experience";
+}
+
+/** Compact pill label for a list of values — "First item +N". */
+export function multiValuePillLabel(items: string[], fallback: string): string {
+  const trimmed = items.map((i) => i.trim()).filter(Boolean);
+  if (!trimmed.length) return fallback;
+  if (trimmed.length === 1) return trimmed[0]!;
+  return `${trimmed[0]} +${trimmed.length - 1}`;
 }
 
 export function isEmptySearchFilters(filters: VectorSearchFilters): boolean {
