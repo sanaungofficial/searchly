@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { groupHirebaseJobCategories } from "@/lib/job-function-groups";
+import {
+  groupHirebaseJobCategories,
+  jobFunctionBreadcrumb,
+  displayJobFunctionLabel,
+} from "@/lib/job-function-groups";
 
 describe("groupHirebaseJobCategories", () => {
   it("groups engineering and product under software", () => {
@@ -26,5 +30,21 @@ describe("groupHirebaseJobCategories", () => {
     const software = groups.find((g) => g.id === "software");
     expect(software?.categories).toContain("Engineering Jobs");
     expect(software?.categories).not.toContain("Arts Jobs");
+  });
+
+  it("strips Jobs suffix for display", () => {
+    expect(displayJobFunctionLabel("Backend Engineer Jobs")).toBe("Backend Engineer");
+  });
+
+  it("builds breadcrumb with parent only for top-level categories", () => {
+    expect(jobFunctionBreadcrumb("Engineering Jobs", "Software / Internet / AI")).toBe(
+      "Software / Internet / AI",
+    );
+  });
+
+  it("builds breadcrumb with parent > child for specific roles", () => {
+    expect(jobFunctionBreadcrumb("Backend Engineer Jobs", "Software / Internet / AI")).toBe(
+      "Software / Internet / AI > Backend Engineer",
+    );
   });
 });

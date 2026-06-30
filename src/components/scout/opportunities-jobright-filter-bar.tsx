@@ -209,7 +209,7 @@ export function OpportunitiesJobrightFilterBar({
   appliedForm = form,
   setForm,
   toggleSet,
-  categorySuggestions,
+  categorySuggestions: _categorySuggestions,
   onQuickApply,
   onOpenAllFilters,
   activeFilterCount,
@@ -435,7 +435,6 @@ export function OpportunitiesJobrightFilterBar({
                   customJobFunctions: custom,
                 }))
               }
-              suggested={categorySuggestions}
             />
           </PopoverPad>
           <PopoverFooter

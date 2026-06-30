@@ -280,7 +280,7 @@ function BasicJobCriteriaFields({
   form,
   setForm,
   toggleSet,
-  categorySuggestions,
+  categorySuggestions: _categorySuggestions,
   isMobile,
 }: {
   form: RecommendedFilterForm;
@@ -293,7 +293,7 @@ function BasicJobCriteriaFields({
 
   return (
     <>
-      <FilterField label="Job Function">
+      <div style={{ marginBottom: 12 }}>
         <JobFunctionDropdown
           selected={jobFunctionSelected(form)}
           customSelected={form.customJobFunctions ?? []}
@@ -304,9 +304,9 @@ function BasicJobCriteriaFields({
               customJobFunctions: custom,
             }))
           }
-          suggested={categorySuggestions}
+          fullWidth
         />
-      </FilterField>
+      </div>
       <FilterField label="Excluded Title">
         <ExcludedTitleSearchField
           value={form.excludedJobTitles}
