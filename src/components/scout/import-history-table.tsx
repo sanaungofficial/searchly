@@ -15,6 +15,10 @@ type Props = {
   isMobile?: boolean;
   onDetails: (runId: string) => void;
   onRefresh?: () => void;
+  unavailable?: {
+    migrationPath: string;
+    migrationUrl: string;
+  } | null;
 };
 
 const thStyle: React.CSSProperties = {
@@ -64,7 +68,37 @@ function CountCell({ created, updated, skipped, failed }: Pick<ImportRunListItem
   );
 }
 
-export function ImportHistoryTable({ runs, loading, isMobile, onDetails, onRefresh }: Props) {
+export function ImportHistoryTable({ runs, loading, isMobile, onDetails, onRefresh, unavailable }: Props) {
+  if (unavailable) {
+    return (
+      <ScoutBox padding={20}>
+        <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>
+          Import history needs a one-time database setup
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 12px", lineHeight: 1.55 }}>
+          The <code style={{ fontSize: 13 }}>ImportRun</code> table has not been created yet. Run the migration in
+          Supabase Dashboard → SQL Editor (shared prod/dev database).
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, margin: "0 0 12px", lineHeight: 1.55 }}>
+          Migration file:{" "}
+          <a
+            href={unavailable.migrationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: color.forest, fontWeight: 600 }}
+          >
+            {unavailable.migrationPath}
+          </a>
+        </p>
+        {onRefresh && (
+          <ScoutSecondaryBtn type="button" onClick={onRefresh}>
+            Check again
+          </ScoutSecondaryBtn>
+        )}
+      </ScoutBox>
+    );
+  }
+
   if (loading) {
     return (
       <ScoutBox padding={20}>

@@ -11,6 +11,7 @@ import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs"
 import type { ImportRunDetail, ImportRunListItem } from "@/lib/client-import/import-run";
 import { withClientUserId } from "@/lib/workspace-urls";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
+import { IMPORT_HISTORY_UNAVAILABLE_CODE } from "@/lib/client-import/import-history-constants";
 import { color, fontSans } from "@/lib/typography";
 
 const STRATEGY_FILE_ACCEPT =
@@ -69,6 +70,10 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
   const [activeTab, setActiveTab] = useState<ImportTab>("new");
   const [selectedRun, setSelectedRun] = useState<ImportRunDetail | null>(null);
   const [historyRuns, setHistoryRuns] = useState<ImportRunListItem[]>([]);
+  const [historyUnavailable, setHistoryUnavailable] = useState<{
+    migrationPath: string;
+    migrationUrl: string;
+  } | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const [referenceFiles, setReferenceFiles] = useState<UserAssetListItem[]>([]);
@@ -101,7 +106,18 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
     try {
       const res = await fetch(api(`/api/admin/clients/${clientUserId}/import/history`));
       const data = await readResponseJson(res);
-      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to load import history"));
+      if (!res.ok) {
+        if (data.code === IMPORT_HISTORY_UNAVAILABLE_CODE) {
+          setHistoryUnavailable({
+            migrationPath: typeof data.migrationPath === "string" ? data.migrationPath : "",
+            migrationUrl: typeof data.migrationUrl === "string" ? data.migrationUrl : "",
+          });
+          setHistoryRuns([]);
+          return;
+        }
+        throw new Error(formatApiErrorMessage(data.error, "Failed to load import history"));
+      }
+      setHistoryUnavailable(null);
       setHistoryRuns(Array.isArray(data.runs) ? data.runs : []);
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to load import history"));
@@ -269,6 +285,7 @@ export function ProfileImportPanel({ clientUserId, onPatchProfile, isMobile }: P
             isMobile={isMobile}
             onDetails={(runId) => void loadRunDetail(runId)}
             onRefresh={() => void loadHistory()}
+            unavailable={historyUnavailable}
           />
         </div>
       )}
