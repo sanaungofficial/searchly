@@ -3,6 +3,7 @@ import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { profileDerivedSearchFilters, describeActiveFilters } from "@/lib/recommended-filter-utils";
 import { resolveProfileLocation } from "@/lib/profile-location";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import { searchPreferencesFromParsedData } from "@/lib/search-preferences";
 import { prisma } from "@/lib/prisma";
 
 /** Default Hirebase search filters derived from profile — for pre-filling the Filters panel. */
@@ -22,6 +23,14 @@ export async function GET(request: Request) {
     targetMarket: profile?.targetMarket,
   });
 
+  const experienceLevel =
+    typeof parsedData === "object" &&
+    parsedData &&
+    "experienceLevel" in parsedData &&
+    typeof (parsedData as { experienceLevel?: unknown }).experienceLevel === "string"
+      ? (parsedData as { experienceLevel: string }).experienceLevel
+      : null;
+
   const filters = profileDerivedSearchFilters({
     profileLocation: parsedData.location ?? null,
     targetMarket: profile?.targetMarket ?? null,
@@ -29,12 +38,22 @@ export async function GET(request: Request) {
     targetSalary: profile?.targetSalary,
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
+    experienceLevel,
+    targetRoles: profile?.targetRoles ?? [],
+    prioritizedRoles: profile?.prioritizedRoles ?? [],
+    prioritizedCategories: profile?.prioritizedCategories ?? [],
+    searchPreferences: searchPreferencesFromParsedData(parsedData),
   });
+
+  const searchPreferences = searchPreferencesFromParsedData(parsedData);
 
   return NextResponse.json({
     filters,
     labels: describeActiveFilters(filters),
     profileLocation,
     priorities: profile?.priorities ?? [],
+    targetRoles: profile?.targetRoles ?? [],
+    prioritizedCategories: profile?.prioritizedCategories ?? [],
+    searchPreferences,
   });
 }

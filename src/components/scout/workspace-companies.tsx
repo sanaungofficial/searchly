@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { getHirebaseProfileFromEnrichment } from "@/lib/hirebase-company-sync";
@@ -18,6 +19,7 @@ import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import { dedupeTrackedCompanies } from "@/lib/tracked-companies-dedupe";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
+import { INBOX_PATH } from "@/lib/workspace-urls";
 import { MatchWhyScorePopover, filterMatchReasons } from "@/components/scout/match-why-score-ui";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
@@ -1075,6 +1077,111 @@ function DrawerJobRow({
 
 // ── Company Detail Drawer ────────────────────────────────────────────────────
 
+function normalizeCompanyName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+type CompanyCrmContactRow = {
+  id: string;
+  email: string;
+  name: string | null;
+  company: string | null;
+  contacted: boolean | null;
+};
+
+function CompanyCrmContactsSection({ companyName }: { companyName: string }) {
+  const router = useRouter();
+  const { withClientScope } = useWorkspace();
+  const [contacts, setContacts] = useState<CompanyCrmContactRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const filters = JSON.stringify([
+          { category: "contact", field: "company", operator: "contains", value: companyName },
+        ]);
+        const params = new URLSearchParams({ pageSize: "50", filters });
+        const res = await fetch(withClientScope(`/api/user/inbox/contacts?${params.toString()}`));
+        const data = await res.json();
+        if (!res.ok || cancelled) return;
+        const rows = (data.contacts ?? []) as CompanyCrmContactRow[];
+        const target = normalizeCompanyName(companyName);
+        setContacts(rows.filter((c) => c.company && normalizeCompanyName(c.company) === target));
+      } catch {
+        if (!cancelled) setContacts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [companyName, withClientScope]);
+
+  function openInInbox(contactId: string) {
+    router.push(withClientScope(`${INBOX_PATH}?contactId=${encodeURIComponent(contactId)}`));
+  }
+
+  return (
+    <DrawerSection title="People in our CRM">
+      {loading ? (
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading contacts…</p>
+      ) : contacts.length === 0 ? (
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+          No CRM contacts at this company yet. Import a contacts spreadsheet or add people from Inbox.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {contacts.map((contact) => (
+            <button
+              key={contact.id}
+              type="button"
+              onClick={() => openInInbox(contact.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                width: "100%",
+                padding: "10px 12px",
+                border: border.line,
+                borderRadius: "var(--scout-radius)",
+                background: surface.inset,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span>
+                <span
+                  style={{
+                    display: "block",
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    fontWeight: 600,
+                    color: color.forest,
+                  }}
+                >
+                  {contact.name?.trim() || contact.email}
+                </span>
+                {contact.name?.trim() ? (
+                  <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>{contact.email}</span>
+                ) : null}
+              </span>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>
+                {contact.contacted ? "Contacted" : "Open in Inbox →"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </DrawerSection>
+  );
+}
+
 function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <ScoutBox style={{ marginBottom: 16 }}>
@@ -1267,6 +1374,8 @@ function CompanyDrawer({
               }}
             />
           </DrawerSection>
+
+          <CompanyCrmContactsSection companyName={company.name} />
 
           {/* Matching roles */}
           <DrawerSection title="Matching roles">

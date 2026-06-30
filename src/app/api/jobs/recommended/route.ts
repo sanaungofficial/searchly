@@ -5,6 +5,7 @@ import {
   hasProfileSignals,
 } from "@/lib/recommended-jobs-engine";
 import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
+import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
 import {
   RECOMMENDED_MATCH_SCORE_FLOOR,
   RECOMMENDED_SNAPSHOT_MAX_JOBS,
@@ -27,6 +28,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { readClientUserIdFromRequest, resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+
+export const maxDuration = 120;
 
 async function parseRecommendedFilters(request: Request): Promise<{
   filters: VectorSearchFilters;
@@ -85,8 +88,13 @@ async function handleRecommended(request: Request) {
   const targetRoles = roleTitlePreferences.targetRoles ?? [];
   const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
-  const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
-  const defaultFeed = isDefaultRecommendedFilters(searchFilters);
+  const explicitUserFilters = !isDefaultRecommendedFilters(filters);
+  const searchFilters = semanticQuery
+    ? sanitizeFiltersForHirebase({ ...filters, semanticQuery })
+    : explicitUserFilters
+      ? sanitizeFiltersForHirebase(filters)
+      : {};
+  const defaultFeed = !semanticQuery && !explicitUserFilters;
   const snapshotDate = utcSnapshotDate();
 
   const parsedData = mergeParsedWithReadback(

@@ -19,6 +19,8 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { RECOMMENDED_FETCH_POOL, RECOMMENDED_SIMILAR_JOB_SEED_COUNT } from "@/lib/recommended-jobs-config";
 import { resolveExpandedRoleTitles } from "@/lib/expanded-role-titles-cache";
+import { customJobFunctionsToSemanticQuery, mergeVSearchQueryParts } from "@/lib/profile-vsearch-query";
+import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
 import { profileRoleTitlesForMatch, type RoleTitlePreferences } from "@/lib/role-title-preferences";
 
 export type RecommendedFetchLane =
@@ -467,20 +469,28 @@ function buildVSearchFilters(
   filters?: VectorSearchFilters,
   semanticQuery?: string,
 ): { merged: VectorSearchFilters; query?: string } {
-  const jobTitles = filters?.jobTitles?.length
-    ? filters.jobTitles
-    : profileTargetRoles.length
-      ? profileTargetRoles
-      : undefined;
+  const sanitized = sanitizeFiltersForHirebase(filters ?? {});
+  const hasCategorySignal =
+    Boolean(sanitized.jobCategories?.length) || Boolean(sanitized.customJobFunctions?.length);
+  const explicitJobTitles = sanitized.jobTitles?.length ? sanitized.jobTitles : undefined;
+  const jobTitles =
+    explicitJobTitles ??
+    (!hasCategorySignal && profileTargetRoles.length ? profileTargetRoles : undefined);
 
-  const { semanticQuery: _omit, ...rest } = filters ?? {};
+  const { semanticQuery: _omit, customJobFunctions: _custom, ...rest } = sanitized;
+
+  const query = mergeVSearchQueryParts(
+    semanticQuery,
+    customJobFunctionsToSemanticQuery(filters?.customJobFunctions),
+  );
 
   return {
     merged: {
       ...rest,
       jobTitles,
+      customJobFunctions: filters?.customJobFunctions,
     },
-    query: semanticQuery?.trim() || undefined,
+    query: query || undefined,
   };
 }
 
@@ -501,11 +511,13 @@ export async function fetchRecommendedFromProfileRoles(input: {
     : input.profileTargetRoles;
 
   const semanticQuery = input.semanticQuery?.trim();
+  const customFnQuery = customJobFunctionsToSemanticQuery(filters?.customJobFunctions);
+  const roleSemanticQuery = mergeVSearchQueryParts(semanticQuery, customFnQuery);
   const matchRoles =
     roleBase.length > 0
       ? roleBase
-      : semanticQuery
-        ? semanticQuery.split(/\s+/).filter((w) => w.length >= 3).slice(0, 5)
+      : roleSemanticQuery
+        ? roleSemanticQuery.split(/\s+/).filter((w) => w.length >= 3).slice(0, 5)
         : [];
 
   if (!matchRoles.length) {
@@ -515,7 +527,7 @@ export async function fetchRecommendedFromProfileRoles(input: {
   try {
     const result = await fetchHirebaseRoleMatchingJobs({
       matchRoles,
-      semanticQuery: semanticQuery || undefined,
+      semanticQuery: roleSemanticQuery || undefined,
       filters: {
         ...filters,
         limit: maxJobs,

@@ -170,7 +170,7 @@ export function AdminNetworkRequestsPanel() {
                       </ScoutSecondaryBtn>
                     </>
                   )}
-                  <a href={`/opportunities/network/${encodeURIComponent(item.jobExternalId)}`} style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
+                  <a href={`/network/roles/jobs/${encodeURIComponent(item.jobExternalId)}`} style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
                     View role ↗
                   </a>
                 </div>

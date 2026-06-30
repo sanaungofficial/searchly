@@ -3,10 +3,12 @@ import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 
 function splitCsv(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
-    return value.map((v) => String(v).trim()).filter(Boolean);
+    const items = value.map((v) => String(v).trim()).filter(Boolean);
+    return items.length ? items : undefined;
   }
   if (typeof value === "string" && value.trim()) {
-    return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    const items = value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    return items.length ? items : undefined;
   }
   return undefined;
 }
@@ -30,6 +32,7 @@ export function parseVectorSearchFilters(body: Record<string, unknown>): VectorS
       typeof body.semanticQuery === "string"
         ? body.semanticQuery.trim().slice(0, 400) || undefined
         : undefined,
+    customJobFunctions: splitCsv(body.customJobFunctions),
     companyName: typeof body.companyName === "string" ? body.companyName : undefined,
     companySlug: typeof body.companySlug === "string" ? body.companySlug : undefined,
     jobSlug: typeof body.jobSlug === "string" ? body.jobSlug : undefined,
@@ -43,9 +46,13 @@ export function parseVectorSearchFilters(body: Record<string, unknown>): VectorS
     experienceLevels: splitCsv(body.experienceLevels),
     companySizeBuckets: splitCsv(body.companySizeBuckets),
     locationTypes: splitCsv(body.locationTypes),
-    locations: Array.isArray(body.locations)
-      ? (body.locations as Array<{ city?: string; region?: string; country?: string }>)
-      : undefined,
+    locations: (() => {
+      if (!Array.isArray(body.locations) || !body.locations.length) return undefined;
+      const locs = (body.locations as Array<{ city?: string; region?: string; country?: string }>).filter(
+        (loc) => loc.city?.trim() || loc.region?.trim() || loc.country?.trim(),
+      );
+      return locs.length ? locs : undefined;
+    })(),
     datePostedFrom: typeof body.datePostedFrom === "string" ? body.datePostedFrom : undefined,
     datePostedWithinDays: num(body.datePostedWithinDays),
     locationRadiusMiles: num(body.locationRadiusMiles),

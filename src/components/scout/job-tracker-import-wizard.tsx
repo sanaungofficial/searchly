@@ -488,7 +488,7 @@ export function JobTrackerImportWizard({
                 Coach Yes/No column
               </p>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 8px", lineHeight: 1.5 }}>
-                When coach approval is <strong>No</strong>, Applied/Applying stages are held at Saved until approved.
+                When coach approval is <strong>No</strong>, only in-progress Applying stages are held at Saved until approved. Submitted applications keep their imported stage.
               </p>
               {yesNoAnalysis.unrecognized.length > 0 && (
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#9a6b2f", margin: 0 }}>

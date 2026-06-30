@@ -501,14 +501,15 @@ export function buildPipelineJobsFromMapping(
     const appliedAtRaw = cellAt(rows, r, dateCol);
     const resumeRaw = cellAt(rows, r, resumeCol);
 
-    let stage = mapImportJobStage(
-      {
-        statusRaw,
-        approved: parseImportApproved(yesNoRaw),
-        appliedAt: appliedAtRaw || null,
-      },
-      opts?.statusValueMapping,
-    );
+    let stage =
+      mapImportJobStage(
+        {
+          statusRaw,
+          approved: parseImportApproved(yesNoRaw),
+          appliedAt: appliedAtRaw || null,
+        },
+        opts?.statusValueMapping,
+      ) ?? opts?.statusValueMapping?.defaultUnmatchedStage ?? "SAVED";
 
     if (opts?.inferInterviewStage) {
       for (const col of columns) {

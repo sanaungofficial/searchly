@@ -3,6 +3,7 @@ import { resolveAdminClientSubject, readClientUserIdFromRequest } from "@/lib/ad
 import { applyClientImport } from "@/lib/client-import/apply";
 import { recordImportRun } from "@/lib/client-import/import-run";
 import type { ClientImportApplyPayload } from "@/lib/client-import/types";
+import { importRunUnavailableResponse, isPrismaMissingRelationError } from "@/lib/prisma-errors";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -79,7 +80,10 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
 
     let runId: string | undefined;
-    if (acting.realDbUser) {
+    let historyWarning: string | undefined;
+    if (!acting.realDbUser) {
+      historyWarning = "Import history was not saved — admin user record missing.";
+    } else {
       try {
         const run = await recordImportRun({
           clientUserId: dbUser.id,
@@ -90,11 +94,18 @@ export async function POST(request: Request, { params }: RouteParams) {
         });
         runId = run.id;
       } catch (recordErr) {
+        if (isPrismaMissingRelationError(recordErr)) {
+          return importRunUnavailableResponse();
+        }
         console.error("[admin import apply] failed to record ImportRun", recordErr);
+        historyWarning =
+          recordErr instanceof Error
+            ? `Import succeeded but history was not saved: ${recordErr.message}`
+            : "Import succeeded but history was not saved.";
       }
     }
 
-    return NextResponse.json({ ...result, runId });
+    return NextResponse.json({ ...result, runId, historyWarning });
   } catch (err) {
     console.error("[admin import apply]", err);
     const message = err instanceof Error ? err.message : "Import apply failed";

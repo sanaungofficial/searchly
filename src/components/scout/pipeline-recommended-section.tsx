@@ -14,7 +14,6 @@ import {
   vectorJobToRoleListing,
   type RoleListing,
 } from "@/lib/role-listings";
-import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import {
   mergeRecommendationPriorities,
@@ -25,6 +24,8 @@ import {
   describeActiveFilters,
   formatProfileLocation,
   locationFieldsFromProfileString,
+  RECOMMENDED_SORT_OPTIONS,
+  type RecommendedSortOption,
 } from "@/lib/recommended-filter-utils";
 import { postedWithinDaysFormValue } from "@/lib/job-posted-filter";
 import type { KanbanCard } from "./workspace-data";
@@ -41,17 +42,7 @@ import {
   hasDefaultRecommendedFeedLoaded,
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
-import {
-  readPipelineNetworkMatchCache,
-  writePipelineNetworkMatchCache,
-  clearPipelineNetworkMatchCache,
-} from "@/lib/pipeline-network-match-cache";
-import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
 import { compareRoleSearchRelevance } from "@/lib/job-match";
-import type { NetworkJobListing } from "@/lib/network-job-display";
-import { networkAgencyDisplayName } from "@/lib/network-job-display";
-import type { NetworkMatchedJob } from "@/lib/network-job-match";
-import { NETWORK_JOB_CLIENT_BADGE } from "@/lib/network-source-labels";
 import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
@@ -61,17 +52,30 @@ import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scou
 import { ScoreExplainerLabel } from "./score-explainer-popover";
 import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
-  RecommendedFiltersDrawer,
-  RecommendedQuickFiltersBar,
   type RecommendedFilterForm,
 } from "./pipeline-recommended-filters";
-import { ProfileSuggestionsBanner } from "./pipeline-filters-ui";
+import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-bar";
+import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal";
+import {
+  OpportunitiesPrefConfirmModal,
+  shouldShowOpportunitiesPrefConfirm,
+} from "./opportunities-pref-confirm-modal";
+import {
+  applySearchPreferencesToFilterForm,
+  emptyExtendedFilterFields,
+  patchParsedDataSearchPreferences,
+  searchPreferencesFromFilterForm,
+  searchPreferencesFromParsedData,
+  type SearchPreferences,
+} from "@/lib/search-preferences";
+import {
+  loosenStackedHirebaseFilters,
+} from "@/lib/opportunities-hirebase-filters";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -95,91 +99,19 @@ type JobsApiResponse = {
   effectiveFilters?: VectorSearchFilters;
 };
 
-type UnifiedListing = RoleListing & {
-  _networkJob?: NetworkMatchedJob;
-};
-
-function networkJobToUnifiedListing(job: NetworkMatchedJob): UnifiedListing {
-  const company = networkAgencyDisplayName(job);
-  return {
-    dedupeKey: `network:${job.id ?? job.externalId}`,
-    source: "merged",
-    title: job.positionTitle,
-    companyName: company,
-    url: job.topEchelonUrl ?? null,
-    location: job.location ?? null,
-    cached: {
-      title: job.positionTitle,
-      companyName: company,
-      url: job.topEchelonUrl ?? null,
-      location: job.location ?? null,
-    } as unknown as RoleListing["cached"],
-    matchScore: job.matchScore,
-    matchLabel: job.matchLabel,
-    matchReasons: job.matchReasons,
-    matchedSkills: job.matchedSkills,
-    gapSkills: job.gapSkills,
-    _networkJob: job,
-  };
-}
-
-function ActiveFiltersBar({
-  labels,
-  onClear,
-}: {
-  labels: string[];
-  onClear?: () => void;
-}) {
-  if (!labels.length) return null;
-  return (
-    <ScoutInsetBox style={{ marginTop: 12 }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px", letterSpacing: "0.04em" }}>
-        Active search filters
-      </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: onClear ? 8 : 0 }}>
-        {labels.map((label) => (
-          <span
-            key={label}
-            style={{
-              ...scoutInsetChipStyle,
-              padding: "3px 8px",
-              fontSize: T.label,
-              color: color.ink,
-              background: surface.card,
-            }}
-          >
-            {label}
-          </span>
-        ))}
-      </div>
-      {onClear && (
-        <button
-          type="button"
-          onClick={onClear}
-          style={{
-            padding: 0,
-            border: "none",
-            background: "transparent",
-            fontFamily: fontSans,
-            fontSize: T.label,
-            color: color.muted,
-            textDecoration: "underline",
-            cursor: "pointer",
-          }}
-        >
-          Clear search filters
-        </button>
-      )}
-    </ScoutInsetBox>
-  );
-}
+type UnifiedListing = RoleListing;
 
 function splitInputList(value: string): string[] {
   return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
 }
 
-function filtersToForm(f: VectorSearchFilters) {
-  return {
+function splitInputListOrUndefined(value: string): string[] | undefined {
+  const items = splitInputList(value);
+  return items.length ? items : undefined;
+}
+
+function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) {
+  const base = {
     semanticQuery: f.semanticQuery ?? "",
     jobTitles: (f.jobTitles ?? []).join(", "),
     keywords: (f.keywords ?? []).join(", "),
@@ -205,7 +137,11 @@ function filtersToForm(f: VectorSearchFilters) {
     companySizeBuckets: new Set(f.companySizeBuckets ?? []),
     visaSponsored: f.visaSponsored === true,
     relocationPriorities: [] as string[],
+    ...emptyExtendedFilterFields(),
+    customJobFunctions: searchPrefs?.customJobFunctions ?? [],
+    locationAllInCountry: searchPrefs?.locationAllInCountry ?? false,
   };
+  return searchPrefs ? applySearchPreferencesToFilterForm(base, searchPrefs) : base;
 }
 
 type FilterForm = RecommendedFilterForm;
@@ -246,10 +182,7 @@ function profileLocationFromForm(form: FilterForm): string {
 }
 
 function defaultFeedForm(): FilterForm {
-  return {
-    ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
-    semanticQuery: "",
-  };
+  return { ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS), semanticQuery: "" };
 }
 
 function defaultFeedCacheKey(): string {
@@ -262,21 +195,34 @@ function readDefaultFeedCache(): RecommendedCacheEntry | null {
 
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
-  return {
+  const baseKeywords = splitInputListOrUndefined(form.keywords);
+  const customJobFunctions = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
+
+  const hasLocation =
+    form.locationAllInCountry && form.locationCountry.trim()
+      ? true
+      : locationParts.length > 0;
+
+  const raw: VectorSearchFilters = {
     ...DEFAULT_VECTOR_SEARCH_FILTERS,
     page,
     limit: VECTOR_SEARCH_RESULTS_MAX,
     semanticQuery: form.semanticQuery.trim() || undefined,
-    jobTitles: splitInputList(form.jobTitles),
-    keywords: splitInputList(form.keywords),
+    customJobFunctions: customJobFunctions.length ? customJobFunctions : undefined,
+    jobTitles: splitInputListOrUndefined(form.jobTitles),
+    keywords: baseKeywords,
     companyName: form.companyName.trim() || undefined,
-    industries: splitInputList(form.industries),
-    subindustries: splitInputList(form.subindustries),
-    jobCategories: splitInputList(form.jobCategories),
+    industries: splitInputListOrUndefined(form.industries),
+    subindustries: splitInputListOrUndefined(form.subindustries),
+    jobCategories: splitInputListOrUndefined(form.jobCategories),
     jobBoard: form.jobBoard.trim() || undefined,
     locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
     jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
-    experienceLevels: form.experienceLevels.size ? [...form.experienceLevels] : undefined,
+    experienceLevels: form.openToAllExperience
+      ? undefined
+      : form.experienceLevels.size
+        ? [...form.experienceLevels]
+        : undefined,
     companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
     visaSponsored: form.visaSponsored || undefined,
     datePostedWithinDays: form.datePostedWithinDays.trim()
@@ -286,14 +232,22 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     locationRadiusMiles: form.locationRadiusMiles.trim()
       ? Number(form.locationRadiusMiles)
       : undefined,
-    salaryFrom: form.salaryFrom.trim() ? Number(form.salaryFrom) : undefined,
-    salaryTo: form.salaryTo.trim() ? Number(form.salaryTo) : undefined,
-    yearsFrom: form.yearsFrom.trim() ? Number(form.yearsFrom) : undefined,
-    yearsTo: form.yearsTo.trim() ? Number(form.yearsTo) : undefined,
-    locations: locationParts.length
-      ? [{ city: form.locationCity.trim() || undefined, region: form.locationRegion.trim() || undefined, country: form.locationCountry.trim() || undefined }]
+    salaryFrom: form.openToAllSalary || !form.salaryFrom.trim() ? undefined : Number(form.salaryFrom),
+    salaryTo: form.openToAllSalary || !form.salaryTo.trim() ? undefined : Number(form.salaryTo),
+    yearsFrom: form.openToAllExperience || !form.yearsFrom.trim() ? undefined : Number(form.yearsFrom),
+    yearsTo: form.openToAllExperience || !form.yearsTo.trim() ? undefined : Number(form.yearsTo),
+    locations: hasLocation
+      ? [
+          {
+            city: form.locationAllInCountry ? undefined : form.locationCity.trim() || undefined,
+            region: form.locationAllInCountry ? undefined : form.locationRegion.trim() || undefined,
+            country: form.locationCountry.trim() || undefined,
+          },
+        ]
       : undefined,
   };
+
+  return loosenStackedHirebaseFilters(raw);
 }
 
 const inputStyle: React.CSSProperties = {
@@ -402,15 +356,12 @@ function IconDollar() {
 
 function MetadataGrid({
   row,
-  isNetwork: _isNetwork,
-  networkJob: _networkJob,
 }: {
   row: UnifiedListing;
-  isNetwork: boolean;
-  networkJob?: NetworkMatchedJob;
 }) {
   const c = row.cached;
   const items: { icon: JSX.Element; label: string }[] = [];
+  if (row.location) items.push({ icon: <IconHome />, label: row.location });
   if (c.locationType) items.push({ icon: <IconHome />, label: c.locationType });
   else if (c.remote) items.push({ icon: <IconHome />, label: "Remote" });
   if (c.jobType) items.push({ icon: <IconBriefcase />, label: c.jobType });
@@ -433,55 +384,32 @@ function MetadataGrid({
 function RecommendedJobCard({
   row,
   savingKey,
-  networkSavingId,
   onOpenRecommended,
   onSaveJob,
-  onOpenNetworkJob,
-  onSaveNetworkJob,
   setSavingKey,
-  setNetworkSavingId,
 }: {
   row: UnifiedListing;
   savingKey: string | null;
-  networkSavingId: string | null;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onOpenNetworkJob?: (job: NetworkJobListing) => void;
-  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
   setSavingKey: (key: string | null) => void;
-  setNetworkSavingId: (id: string | null) => void;
 }) {
-  const isNetwork = Boolean(row._networkJob);
-  const networkJob = row._networkJob;
-
   const handleOpen = () => {
-    if (isNetwork && networkJob && onOpenNetworkJob) {
-      onOpenNetworkJob(networkJob);
-    } else {
-      onOpenRecommended(roleListingToVectorMatchedJob(row));
-    }
+    onOpenRecommended(roleListingToVectorMatchedJob(row));
   };
 
   const handleSave = () => {
-    if (isNetwork && networkJob && onSaveNetworkJob) {
-      const nid = networkJob.id ?? networkJob.externalId ?? row.dedupeKey;
-      setNetworkSavingId(nid);
-      onSaveNetworkJob(networkJob).finally(() => setNetworkSavingId(null));
-    } else {
-      const matchJob = roleListingToVectorMatchedJob(row);
-      setSavingKey(row.dedupeKey);
-      onSaveJob(matchJob).finally(() => setSavingKey(null));
-    }
+    const matchJob = roleListingToVectorMatchedJob(row);
+    setSavingKey(row.dedupeKey);
+    onSaveJob(matchJob).finally(() => setSavingKey(null));
   };
 
-  const isSaving = isNetwork
-    ? networkSavingId === (networkJob?.id ?? networkJob?.externalId ?? row.dedupeKey)
-    : savingKey === row.dedupeKey;
+  const isSaving = savingKey === row.dedupeKey;
 
   const matchScore = row.matchScore ?? 0;
   const matchLabel = row.matchLabel ?? "";
 
-  const postedDays = !isNetwork && row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
+  const postedDays = row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
   const postedText =
     postedDays === null
       ? null
@@ -498,6 +426,7 @@ function RecommendedJobCard({
       style={{
         display: "flex",
         border: "1.5px solid #161616",
+        borderRadius: 8,
         background: surface.card,
         overflow: "hidden",
       }}
@@ -518,25 +447,9 @@ function RecommendedJobCard({
         >
           <>
               {/* Top badge row */}
-              {(isNetwork || postedText || row.isTrackedCompany) && (
+              {(postedText || row.isTrackedCompany) && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                  {isNetwork && networkJob?.sharedAt ? (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "3px 9px",
-                        fontSize: T.label,
-                        fontWeight: 500,
-                        color: color.muted,
-                        background: "rgba(0,0,0,0.04)",
-                        border: "1px solid rgba(0,0,0,0.07)",
-                        borderRadius: 4,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Shared {networkJob.sharedAtRelative || networkJob.sharedAtLabel}
-                    </span>
-                  ) : postedText ? (
+                  {postedText && (
                     <span
                       style={{
                         display: "inline-block",
@@ -551,24 +464,6 @@ function RecommendedJobCard({
                       }}
                     >
                       {postedText}
-                    </span>
-                  ) : null}
-                  {isNetwork && (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "3px 9px",
-                        fontSize: T.label,
-                        fontWeight: 700,
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                        color: "#7A4F00",
-                        background: "rgba(196,140,40,0.14)",
-                        border: "1px solid rgba(196,140,40,0.35)",
-                        borderRadius: 4,
-                      }}
-                    >
-                      {NETWORK_JOB_CLIENT_BADGE}
                     </span>
                   )}
                   {row.isTrackedCompany && (
@@ -594,14 +489,13 @@ function RecommendedJobCard({
               )}
               {/* Logo + Title + Company */}
               <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                <CompanyLogo {...(isNetwork ? { name: row.companyName, size: 44 } : { ...companyLogoFromJobData(row.companyName, row.cached), size: 44 })} />
+                <CompanyLogo {...companyLogoFromJobData(row.companyName, row.cached)} size={48} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
                   <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
                     {row.companyName}
-                    {row.location ? ` · ${row.location}` : ""}
                   </p>
-                  <MetadataGrid row={row} isNetwork={isNetwork} networkJob={networkJob} />
+                  <MetadataGrid row={row} />
                 </div>
               </div>
           </>
@@ -660,10 +554,6 @@ function RecommendedResultsList({
   savingKey,
   onOpenRecommended,
   onSaveJob,
-  onOpenNetworkJob,
-  onSaveNetworkJob,
-  networkSavingId,
-  setNetworkSavingId,
   setSavingKey,
   emptyMessage,
 }: {
@@ -671,10 +561,6 @@ function RecommendedResultsList({
   savingKey: string | null;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onOpenNetworkJob?: (job: NetworkJobListing) => void;
-  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
-  networkSavingId: string | null;
-  setNetworkSavingId: (id: string | null) => void;
   setSavingKey: (key: string | null) => void;
   emptyMessage: string;
 }) {
@@ -693,13 +579,9 @@ function RecommendedResultsList({
           key={row.dedupeKey}
           row={row}
           savingKey={savingKey}
-          networkSavingId={networkSavingId}
           onOpenRecommended={onOpenRecommended}
           onSaveJob={onSaveJob}
-          onOpenNetworkJob={onOpenNetworkJob}
-          onSaveNetworkJob={onSaveNetworkJob}
           setSavingKey={setSavingKey}
-          setNetworkSavingId={setNetworkSavingId}
         />
       ))}
     </div>
@@ -710,19 +592,13 @@ export function PipelineRecommendedSection({
   pipelineCards,
   onOpenJob,
   onSaveJob,
-  onOpenNetworkJob,
-  onSaveNetworkJob,
   actingUserId,
 }: {
-  /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onOpenNetworkJob?: (job: NetworkJobListing) => void;
-  onSaveNetworkJob?: (job: NetworkJobListing) => Promise<void>;
   actingUserId?: string | null;
 }) {
-  const isMobile = useIsMobile();
   const { withClientScope, isAdminReviewing, openPricing } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const hasProAccess = isPro || isAdmin;
@@ -737,6 +613,7 @@ export function PipelineRecommendedSection({
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [profileBaseline, setProfileBaseline] = useState<RecommendationPreferencesState | null>(null);
+  const [profileCountry, setProfileCountry] = useState("");
 
   const [jobs, setJobs] = useState<VectorMatchedJob[]>(() => readDefaultFeedCache()?.jobs ?? []);
   const [loading, setLoading] = useState(() => !readDefaultFeedCache());
@@ -747,10 +624,17 @@ export function PipelineRecommendedSection({
   const [hasLoadedOnce, setHasLoadedOnce] = useState(() => Boolean(readDefaultFeedCache()));
   const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
   const [activeFilterLabels, setActiveFilterLabels] = useState<string[]>([]);
-  const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
-  const [networkJobs, setNetworkJobs] = useState<NetworkMatchedJob[]>(() => readPipelineNetworkMatchCache()?.jobs ?? []);
-  const [networkSavingId, setNetworkSavingId] = useState<string | null>(null);
+  const [profileFormReady, setProfileFormReady] = useState(false);
+  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
+  const [sortOption, setSortOption] = useState<RecommendedSortOption>("recommended");
+  const [profileMeta, setProfileMeta] = useState<{
+    userId: string | null;
+    targetRoles: string[];
+    prioritizedCategories: string[];
+    searchPreferences: SearchPreferences;
+  }>({ userId: null, targetRoles: [], prioritizedCategories: [], searchPreferences: {} });
+  const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
 
   const initialFetchAttemptedRef = useRef(false);
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
@@ -769,11 +653,6 @@ export function PipelineRecommendedSection({
 
   const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
   const appliedFilters = useMemo(() => formToFilters(appliedForm, 1), [appliedForm]);
-  const isDefaultAppliedFeed = useMemo(
-    () => isDefaultRecommendedFilters(appliedFilters) && !appliedForm.semanticQuery.trim(),
-    [appliedFilters, appliedForm.semanticQuery],
-  );
-  const hasSearchFilters = !isDefaultAppliedFeed;
 
   const fetchRecommended = useCallback(
     async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
@@ -799,6 +678,7 @@ export function PipelineRecommendedSection({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: forceRefresh ? "no-store" : "default",
+          signal: AbortSignal.timeout(90_000),
           body: JSON.stringify({
             ...filters,
             preferCache: options?.preferCache ?? !forceRefresh,
@@ -840,70 +720,126 @@ export function PipelineRecommendedSection({
               preferCache: false,
               background: background || hasLoadedOnce,
             });
-            return;
-          }
-
-          setJobs(nextJobs);
-          setError(null);
-          setNotice(data.notice?.trim() || null);
-          const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
-          setActiveFilterLabels(describeActiveFilters(applied));
-          setSnapshotMeta({
-            fromSnapshot: data.fromSnapshot === true,
-            generatedAt: data.generatedAt ?? new Date().toISOString(),
-          });
-          writeRecommendedCache({
-            jobs: nextJobs,
-            filtersKey: cacheKey,
-            fetchedAt: Date.now(),
-            matchMode: data.matchMode,
-            error: null,
-          });
-          if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
-            markDefaultRecommendedFeedLoaded();
+          } else {
+            setJobs(nextJobs);
+            setError(null);
+            setNotice(data.notice?.trim() || null);
+            const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
+            setActiveFilterLabels(describeActiveFilters(applied));
+            setSnapshotMeta({
+              fromSnapshot: data.fromSnapshot === true,
+              generatedAt: data.generatedAt ?? new Date().toISOString(),
+            });
+            writeRecommendedCache({
+              jobs: nextJobs,
+              filtersKey: cacheKey,
+              fetchedAt: Date.now(),
+              matchMode: data.matchMode,
+              error: null,
+            });
+            if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
+              markDefaultRecommendedFeedLoaded();
+            }
           }
         }
-        setHasLoadedOnce(true);
       } catch (err) {
         if (gen !== fetchGenRef.current) return;
         setError(formatApiErrorMessage(err, "Couldn't load recommended roles — hit Refresh."));
         if (!background) setJobs([]);
-        setHasLoadedOnce(true);
       } finally {
         if (gen === fetchGenRef.current) {
+          setHasLoadedOnce(true);
           setLoading(false);
           setRevalidating(false);
         }
       }
     },
-    [withClientScope],
+    [withClientScope, hasLoadedOnce],
   );
 
   useEffect(() => {
     void fetch(withClientScope("/api/jobs/recommended/defaults"))
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { filters?: VectorSearchFilters; labels?: string[] } | null) => {
+      .then((data: {
+        filters?: VectorSearchFilters;
+        labels?: string[];
+        searchPreferences?: SearchPreferences;
+      } | null) => {
         if (data?.filters) {
-          defaultFormRef.current = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
-          setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
+          const searchPrefs = data.searchPreferences ?? {};
+          const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
+          defaultFormRef.current = profileForm;
+          setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
+          // Default feed API uses open filters — profile prefs drive matching server-side, not as Hirebase pre-filters.
+          setAppliedForm(defaultFeedForm());
+          setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
+        } else {
+          setAppliedForm(defaultFeedForm());
         }
+        setProfileFormReady(true);
         setDefaultsLoaded(true);
       })
-      .catch(() => setDefaultsLoaded(true));
+      .catch(() => {
+        setAppliedForm(defaultFeedForm());
+        setProfileFormReady(true);
+        setDefaultsLoaded(true);
+      });
+
+    void fetch(withClientScope("/api/jobs/categories"))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { categories?: string[] } | null) => {
+        if (data?.categories?.length) setCategorySuggestions(data.categories);
+      })
+      .catch(() => {});
 
     void fetch(withClientScope("/api/profile"))
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { parsedData?: { location?: string | null }; priorities?: string[] } | null) => {
+      .then((data: {
+        userId?: string;
+        parsedData?: Record<string, unknown> | null;
+        priorities?: string[];
+        targetRoles?: string[];
+        prioritizedCategories?: string[];
+      } | null) => {
         if (!data) return;
-        const fields = locationFieldsFromProfileString(data.parsedData?.location);
+        const fields = locationFieldsFromProfileString(
+          typeof data.parsedData?.location === "string" ? data.parsedData.location : null,
+        );
         const priorities = Array.isArray(data.priorities) ? data.priorities : [];
         setProfileBaseline({
           location: fields.display,
           priorities: [...priorities],
         });
+        setProfileCountry(fields.country);
+        const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
+        setProfileMeta({
+          userId: data.userId ?? actingUserId ?? null,
+          targetRoles: data.targetRoles ?? [],
+          prioritizedCategories: data.prioritizedCategories ?? [],
+          searchPreferences,
+        });
       })
       .catch(() => {});
   }, [actingUserId, withClientScope]);
+
+  useEffect(() => {
+    if (!hasLoadedOnce || !profileFormReady) return;
+    const onboardingJustFinished =
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("kimchi:onboarding-just-finished") === "1";
+    if (
+      shouldShowOpportunitiesPrefConfirm({
+        userId: profileMeta.userId,
+        targetRoles: profileMeta.targetRoles,
+        prioritizedCategories: profileMeta.prioritizedCategories,
+        searchPreferences: profileMeta.searchPreferences,
+        onboardingJustFinished,
+      })
+    ) {
+      setPrefConfirmOpen(true);
+      if (onboardingJustFinished) sessionStorage.removeItem("kimchi:onboarding-just-finished");
+    }
+  }, [hasLoadedOnce, profileFormReady, profileMeta]);
 
   useEffect(() => {
     fetch(withClientScope("/api/companies"))
@@ -916,26 +852,6 @@ export function PipelineRecommendedSection({
         /* optional suggestions */
       });
   }, [actingUserId, withClientScope]);
-
-  useEffect(() => {
-    if (!onOpenNetworkJob) return;
-
-    const cached = readPipelineNetworkMatchCache();
-    if (cached) {
-      setNetworkJobs(cached.jobs);
-      return;
-    }
-
-    fetch(withClientScope("/api/network-jobs/match?limit=50"))
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { jobs?: NetworkMatchedJob[] } | null) => {
-        if (data?.jobs) {
-          setNetworkJobs(data.jobs);
-          writePipelineNetworkMatchCache({ jobs: data.jobs, fetchedAt: Date.now() });
-        }
-      })
-      .catch(() => {});
-  }, [actingUserId, withClientScope, onOpenNetworkJob]);
 
   useEffect(() => {
     const prev = prevActingUserIdRef.current;
@@ -953,26 +869,22 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = false;
     setDefaultsLoaded(false);
+    setProfileFormReady(false);
     defaultFormRef.current = null;
     clearRecommendedCache();
-    clearPipelineNetworkMatchCache();
     setJobs([]);
-    setNetworkJobs([]);
     setHasLoadedOnce(false);
     setLoading(true);
     setError(null);
     setNotice(null);
     setActiveFilterLabels([]);
-    setProfileSuggestedLabels([]);
     const empty = filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS);
     setForm({ ...empty, semanticQuery: loadScopedSemanticQuery() });
     setAppliedForm({ ...empty, semanticQuery: "" });
   }, [actingUserId, hydrateFromCache]);
 
   useEffect(() => {
-    if (initialFetchAttemptedRef.current || !defaultsLoaded) return;
-    // Fetching before profile resolves actingUserId writes cache under scope "self", which remounts miss.
-    if (!isAdminReviewing && actingUserId == null) return;
+    if (initialFetchAttemptedRef.current || !defaultsLoaded || !profileFormReady) return;
 
     initialFetchAttemptedRef.current = true;
 
@@ -993,33 +905,63 @@ export function PipelineRecommendedSection({
     }
 
     void fetchRecommended(feedForm, { preferCache: true });
-  }, [fetchRecommended, defaultsLoaded, isAdminReviewing, hydrateFromCache, actingUserId]);
+  }, [fetchRecommended, defaultsLoaded, profileFormReady, isAdminReviewing, hydrateFromCache]);
+
+  // Last-resort: never leave the initial loader spinning if bootstrap or fetch stalls.
+  useEffect(() => {
+    if (hasLoadedOnce) return;
+    const timer = window.setTimeout(() => {
+      setHasLoadedOnce(true);
+      setLoading(false);
+      setRevalidating(false);
+      setError((prev) => prev ?? "Loading is taking longer than expected — hit Refresh or check your profile.");
+    }, 90_000);
+    return () => window.clearTimeout(timer);
+  }, [hasLoadedOnce]);
 
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
     const location = profileLocationFromForm(filtersForm);
     const priorities = profilePrioritiesFromForm(filtersForm);
+    const searchPreferences = searchPreferencesFromFilterForm(filtersForm);
     const unchanged =
       profileBaseline &&
       location.trim() === (profileBaseline.location ?? "").trim() &&
       JSON.stringify([...priorities].sort()) === JSON.stringify([...profileBaseline.priorities].sort());
-    if (unchanged) return;
+    const categories = splitInputList(filtersForm.jobCategories);
 
     const profileRes = await fetch(withClientScope("/api/profile"));
     const profile = (await profileRes.json().catch(() => ({}))) as {
       parsedData?: Record<string, unknown> | null;
+      prioritizedCategories?: string[];
     };
     if (!profileRes.ok) return;
 
-    const parsedData = {
-      ...(profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {}),
-      location: location.trim() || null,
-    };
+    const parsedData = patchParsedDataSearchPreferences(
+      profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {},
+      searchPreferences,
+    );
+    parsedData.location = location.trim() || null;
+
+    const patch: Record<string, unknown> = { parsedData, priorities };
+    if (categories.length) patch.prioritizedCategories = categories;
+
+    if (unchanged && !categories.length) {
+      // Still persist extended search prefs when only those changed
+      const prevPrefs = searchPreferencesFromParsedData(profile.parsedData);
+      if (JSON.stringify(prevPrefs) === JSON.stringify(searchPreferences)) return;
+    }
+
     await fetch(withClientScope("/api/profile"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parsedData, priorities }),
+      body: JSON.stringify(patch),
     });
     setProfileBaseline({ location: location.trim(), priorities: [...priorities] });
+    setProfileMeta((prev) => ({
+      ...prev,
+      prioritizedCategories: categories.length ? categories : prev.prioritizedCategories,
+      searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
+    }));
   }, [profileBaseline, withClientScope]);
 
   const toggleSet = (set: Set<string>, value: string) => {
@@ -1029,15 +971,6 @@ export function PipelineRecommendedSection({
     return next;
   };
 
-  const applyProfileSuggestions = () => {
-    const suggested = defaultFormRef.current;
-    if (!suggested) return;
-    setForm({
-      ...suggested,
-      semanticQuery: form.semanticQuery,
-    });
-    setFiltersDrawerOpen(true);
-  };
 
   const applyFilters = async (filtersForm = form) => {
     await saveProfileFromForm(filtersForm);
@@ -1064,23 +997,11 @@ export function PipelineRecommendedSection({
       return;
     }
     clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
-    clearPipelineNetworkMatchCache();
     void fetchRecommended(appliedForm, {
       forceRefresh: true,
       preferCache: false,
       background: false,
     });
-    if (onOpenNetworkJob) {
-      fetch(withClientScope("/api/network-jobs/match?limit=50"))
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: { jobs?: NetworkMatchedJob[] } | null) => {
-          if (data?.jobs) {
-            setNetworkJobs(data.jobs);
-            writePipelineNetworkMatchCache({ jobs: data.jobs, fetchedAt: Date.now() });
-          }
-        })
-        .catch(() => {});
-    }
   };
 
   const savedKeys = useMemo(() => {
@@ -1093,23 +1014,6 @@ export function PipelineRecommendedSection({
     return keys;
   }, [pipelineCards]);
 
-  const clearSearchFilters = () => {
-    const reset = defaultFeedForm();
-    setForm({ ...reset, semanticQuery: "" });
-    setAppliedForm(reset);
-    saveScopedSemanticQuery("");
-    setFiltersDrawerOpen(false);
-    setActiveFilterLabels([]);
-    const cached = readRecommendedCache(defaultFeedCacheKey());
-    if (cached) {
-      setJobs(cached.jobs);
-      setError(cached.error ?? null);
-      setHasLoadedOnce(true);
-      setLoading(false);
-      return;
-    }
-    void fetchRecommended(reset, { preferCache: false });
-  };
 
   const recommendedListings = useMemo(() => {
     const byKey = new Map<string, UnifiedListing>();
@@ -1125,14 +1029,8 @@ export function PipelineRecommendedSection({
       const scoreB = existing.matchScore ?? 0;
       if (scoreA > scoreB) byKey.set(listing.dedupeKey, listing);
     }
-    for (const nj of networkJobs) {
-      if (hasActiveSearch) break;
-      const listing = networkJobToUnifiedListing(nj);
-      if (byKey.has(listing.dedupeKey)) continue;
-      byKey.set(listing.dedupeKey, listing);
-    }
     return [...byKey.values()];
-  }, [jobs, networkJobs, savedKeys, hasActiveSearch]);
+  }, [jobs, savedKeys]);
 
   const filteredListings = useMemo(() => {
     const list = [...recommendedListings];
@@ -1140,8 +1038,15 @@ export function PipelineRecommendedSection({
       const query = appliedForm.semanticQuery.trim();
       return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
     }
+    if (sortOption === "newest") {
+      return list.sort((a, b) => {
+        const da = a.cached?.datePosted ? new Date(a.cached.datePosted).getTime() : 0;
+        const db = b.cached?.datePosted ? new Date(b.cached.datePosted).getTime() : 0;
+        return db - da;
+      });
+    }
     return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery]);
+  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery, sortOption]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
@@ -1158,140 +1063,131 @@ export function PipelineRecommendedSection({
 
   return (
     <div>
-      <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: isMobile ? "stretch" : "flex-start",
-            flexDirection: isMobile ? "column" : "row",
-            gap: 12,
-            marginBottom: 14,
+      <ScoutBox padding={14} style={{ marginBottom: 12 }}>
+        <ScoreExplainerLabel variant="vector-match">
+          <ScoutLabel>Roles</ScoutLabel>
+        </ScoreExplainerLabel>
+        {hasLoadedOnce && !showInitialLoader && (
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "4px 0 8px", lineHeight: 1.45 }}>
+            We found some roles for you — confirm these filters look right.
+          </p>
+        )}
+
+        <OpportunitiesJobrightFilterBar
+          form={form}
+          setForm={setForm}
+          toggleSet={toggleSet}
+          categorySuggestions={categorySuggestions}
+          onQuickApply={(nextForm) => void applyFilters(nextForm)}
+          onOpenAllFilters={() => setFiltersDrawerOpen(true)}
+          activeFilterCount={activeFilterLabels.length}
+          searchValue={form.semanticQuery}
+          onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
+          onSearchSubmit={() => void applyFilters()}
+          searching={loading || revalidating}
+          profileCountry={profileCountry}
+          trailingActions={
+            <>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={loading || revalidating}
+                style={{
+                  padding: "7px 14px",
+                  background: "transparent",
+                  color: "#161616",
+                  border: "1.5px solid #161616",
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.label,
+                  fontWeight: 600,
+                  cursor: loading || revalidating ? "not-allowed" : "pointer",
+                  opacity: loading || revalidating ? 0.65 : 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {loading || revalidating ? "Loading…" : "Refresh"}
+              </button>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as RecommendedSortOption)}
+                aria-label="Sort results"
+                style={{
+                  ...inputStyle,
+                  width: "auto",
+                  minWidth: 120,
+                  margin: 0,
+                  padding: "7px 10px",
+                  fontSize: T.label,
+                  cursor: "pointer",
+                }}
+              >
+                {RECOMMENDED_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </>
+          }
+        />
+
+        <OpportunitiesPrefConfirmModal
+          open={prefConfirmOpen}
+          userId={profileMeta.userId}
+          input={{
+            targetRoles: profileMeta.targetRoles,
+            prioritizedCategories: profileMeta.prioritizedCategories,
+            suggestedCategories: categorySuggestions.slice(0, 6),
+            experienceLevelLabels: profileMeta.searchPreferences.experienceLevelLabels,
+            roleMatchCount: profileMeta.targetRoles.length,
           }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <ScoreExplainerLabel variant="vector-match">
-              <ScoutLabel>Roles</ScoutLabel>
-            </ScoreExplainerLabel>
-            {hasLoadedOnce && !showInitialLoader && (
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
-                {snapshotMeta?.fromSnapshot ? "Daily snapshot" : "Live results"}
-                {snapshotMeta?.generatedAt
-                  ? ` · updated ${new Date(snapshotMeta.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
-                  : ""}
-                {" · "}
-                {filteredListings.length} role{filteredListings.length === 1 ? "" : "s"}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={loading || revalidating}
-            style={{
-              alignSelf: isMobile ? "flex-start" : "flex-end",
-              padding: "8px 16px",
-              background: "transparent",
-              color: "#161616",
-              border: "1.5px solid #161616",
-              borderRadius: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              cursor: loading || revalidating ? "not-allowed" : "pointer",
-              opacity: loading || revalidating ? 0.65 : 1,
-            }}
-          >
-            {loading || revalidating ? "Loading…" : "Refresh"}
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexDirection: isMobile ? "column" : "row" }}>
-          <input
-            style={{ ...inputStyle, flex: 1, margin: 0 }}
-            value={form.semanticQuery}
-            onChange={(e) => setForm((f) => ({ ...f, semanticQuery: e.target.value }))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                applyFilters();
-              }
-            }}
-            placeholder="Title, skill, or company"
-            aria-label="Search roles"
-            maxLength={400}
-          />
-          <button
-            type="button"
-            onClick={() => applyFilters()}
-            disabled={loading || revalidating}
-            style={{
-              flexShrink: 0,
-              minWidth: isMobile ? undefined : 96,
-              padding: "8px 16px",
-              background: "#AE7AFF",
-              color: "#FFFFFF",
-              border: "1.5px solid #161616",
-              borderRadius: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              cursor: loading || revalidating ? "not-allowed" : "pointer",
-              opacity: loading || revalidating ? 0.65 : 1,
-            }}
-          >
-            {loading || revalidating ? "Loading…" : "Search"}
-          </button>
-        </div>
-
-        <div
-          style={{
-            marginTop: 14,
-            paddingTop: 14,
-            borderTop: border.line,
+          onClose={() => setPrefConfirmOpen(false)}
+          onConfirm={async ({ prioritizedCategories, searchPreferences }) => {
+            const profileRes = await fetch(withClientScope("/api/profile"));
+            const profile = (await profileRes.json().catch(() => ({}))) as {
+              parsedData?: Record<string, unknown> | null;
+            };
+            if (!profileRes.ok) return;
+            const parsedData = patchParsedDataSearchPreferences(profile.parsedData ?? {}, searchPreferences);
+            await fetch(withClientScope("/api/profile"), {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prioritizedCategories, parsedData }),
+            });
+            setProfileMeta((prev) => ({
+              ...prev,
+              prioritizedCategories,
+              searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
+            }));
+            const nextForm = {
+              ...form,
+              jobCategories: prioritizedCategories.join(", "),
+            };
+            setForm(nextForm);
+            defaultFormRef.current = nextForm;
+            void applyFilters(nextForm);
           }}
-        >
-          <RecommendedQuickFiltersBar
-            form={form}
-            setForm={setForm}
-            toggleSet={toggleSet}
-            trackedCompanyNames={trackedCompanyNames}
-            onQuickApply={(nextForm) => void applyFilters(nextForm)}
-            onOpenAllFilters={() => setFiltersDrawerOpen(true)}
-            activeFilterCount={activeFilterLabels.length}
-          />
-        </div>
+        />
 
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 6 }}>
           <JobFreshnessLegend compact />
         </div>
 
-        {profileSuggestedLabels.length > 0 && isDefaultAppliedFeed && (
-          <ProfileSuggestionsBanner
-            labels={profileSuggestedLabels}
-            onApply={applyProfileSuggestions}
-            hint="Not applied automatically — click Apply & search to copy these into your filters, then adjust before searching."
-          />
-        )}
 
-        <RecommendedFiltersDrawer
+        <OpportunitiesAllFiltersModal
           open={filtersDrawerOpen}
           onClose={() => setFiltersDrawerOpen(false)}
           form={form}
           setForm={setForm}
           toggleSet={toggleSet}
           trackedCompanyNames={trackedCompanyNames}
+          categorySuggestions={categorySuggestions}
           applying={loading || revalidating}
-          onApply={() => {
+          appliedFilters={appliedFilters}
+          onConfirm={() => {
             void applyFilters().then(() => setFiltersDrawerOpen(false));
-          }}
-          onReset={() => {
-            const reset = defaultFeedForm();
-            setForm({ ...reset, semanticQuery: form.semanticQuery });
           }}
         />
 
-        <ActiveFiltersBar labels={activeFilterLabels} onClear={hasSearchFilters ? clearSearchFilters : undefined} />
 
         {error && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
@@ -1327,10 +1223,6 @@ export function PipelineRecommendedSection({
             savingKey={savingKey}
             onOpenRecommended={onOpenJob}
             onSaveJob={onSaveJob}
-            onOpenNetworkJob={onOpenNetworkJob}
-            onSaveNetworkJob={onSaveNetworkJob}
-            networkSavingId={networkSavingId}
-            setNetworkSavingId={setNetworkSavingId}
             setSavingKey={setSavingKey}
             emptyMessage={emptyMessage}
           />

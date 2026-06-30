@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import type { JobMeta } from "@/lib/job-meta";
-import { dbStageToKanban, KANBAN_TO_DB } from "@/lib/pipeline-kanban-stage";
+import { KANBAN_TO_DB, resolveDbJobKanbanStage } from "@/lib/pipeline-kanban-stage";
 import { withClientUserId } from "@/lib/workspace-urls";
 
 export type { JobMeta };
@@ -19,6 +19,7 @@ interface DbJob {
   companyLinkedinUrl: string | null;
   coverLetter?: string | null;
   fitAnalysis: string | null;
+  appliedAt: string | null;
   createdAt: string;
 }
 
@@ -39,7 +40,7 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     company: job.company,
     initials: job.company.slice(0, 2).toUpperCase(),
     role: job.role,
-    stage: dbStageToKanban(job.stage),
+    stage: resolveDbJobKanbanStage(job.stage, job.appliedAt),
     fit,
     jobRef: null,
     days: Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000),

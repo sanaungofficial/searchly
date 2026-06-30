@@ -2,7 +2,7 @@ import type { DrawerTool } from "@/contexts/workspace-context";
 import type { CachedJob } from "@/lib/cached-job";
 import { normalizeJobUrl } from "@/lib/cached-job";
 
-export type OppTab = "pipeline" | "network";
+export type OppTab = "pipeline";
 export type AboutSectionSlug = "personal" | "education" | "experience" | "skills";
 
 export type OpportunitiesNavItem = {
@@ -14,23 +14,36 @@ export type OpportunitiesNavItem = {
 
 export const INBOX_PATH = "/inbox";
 
+export const OPPORTUNITIES_PATH = "/opportunities";
+export const NETWORK_ROLES_PATH = "/network/roles";
+
 export const OPPORTUNITIES_NAV: OpportunitiesNavItem[] = [
   {
     id: "pipeline",
     label: "Open Roles",
-    path: "/opportunities",
-    match: (p) => p === "/opportunities" || p.startsWith("/opportunities/pipeline"),
-  },
-  {
-    id: "network",
-    label: "In-Network Roles",
-    path: "/opportunities/network",
-    match: (p) => p.startsWith("/opportunities/network"),
+    path: OPPORTUNITIES_PATH,
+    match: (p) => p === OPPORTUNITIES_PATH || p.startsWith("/opportunities/pipeline"),
   },
 ];
 
+export const NETWORK_ROLES_NAV: OpportunitiesNavItem = {
+  id: "network-roles",
+  label: "In-Network Roles",
+  path: NETWORK_ROLES_PATH,
+  match: (p) =>
+    p.startsWith(NETWORK_ROLES_PATH) ||
+    p.startsWith("/opportunities/network"),
+};
+
 export function matchOpportunitiesNavPath(pathname: string): boolean {
-  return pathname.startsWith("/opportunities");
+  return (
+    pathname.startsWith("/opportunities") &&
+    !pathname.startsWith("/opportunities/network")
+  );
+}
+
+export function matchNetworkRolesPath(pathname: string): boolean {
+  return NETWORK_ROLES_NAV.match(pathname);
 }
 
 export function matchInboxPath(pathname: string): boolean {
@@ -96,12 +109,15 @@ export function profileTargetCompaniesUrl(companyId?: string | null): string {
 }
 
 export function networkJobUrl(jobId: string): string {
+  return `${NETWORK_ROLES_PATH}/jobs/${encodeURIComponent(jobId)}`;
+}
+
+export function pipelineNetworkJobUrl(jobId: string): string {
   return `/opportunities/pipeline/network/${encodeURIComponent(jobId)}`;
 }
 
-export function opportunitiesTabUrl(tab: OppTab): string {
-  if (tab === "network") return "/opportunities/network";
-  return "/opportunities";
+export function opportunitiesTabUrl(_tab: OppTab = "pipeline"): string {
+  return OPPORTUNITIES_PATH;
 }
 
 export function profileAssetsUrl(assetId?: string | null): string {
@@ -129,7 +145,10 @@ export type OpportunitiesLocation = {
   networkJobId?: string;
 };
 
-/** @deprecated Legacy opportunities companies URLs — use profileTargetCompaniesUrl */
+export type NetworkRolesLocation = {
+  jobId?: string;
+};
+
 export function parseLegacyCompaniesRedirect(pathname: string): string | null {
   if (pathname === "/opportunities/companies") return profileTargetCompaniesUrl();
   if (pathname.startsWith("/opportunities/companies/")) {
@@ -178,13 +197,24 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
   return { tab: "pipeline" };
 }
 
+export function parseNetworkRolesLocation(pathname: string): NetworkRolesLocation {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] === "network" && segments[1] === "roles" && segments[2] === "jobs" && segments[3]) {
+    return { jobId: decodeURIComponent(segments[3]) };
+  }
+  if (segments[0] === "opportunities" && segments[1] === "network") {
+    const legacyJobId = segments[2] === "jobs" && segments[3] ? segments[3] : segments[2];
+    if (legacyJobId) return { jobId: decodeURIComponent(legacyJobId) };
+  }
+  return {};
+}
+
 export type ProfileLocation = {
   page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy" | "discoveryscore";
   preferencesSection?: "import";
   aboutSection?: AboutSectionSlug;
   assetId?: string;
   companyId?: string;
-  /** Set when admin is reviewing a client profile without impersonating */
   clientId?: string;
 };
 
@@ -204,7 +234,6 @@ export function parseAdminClientProfilePath(pathname: string): { clientId: strin
   return { clientId, suffix };
 }
 
-/** Admin reviewing a client profile — not the expert portal (coach tools). */
 export function isAdminClientReviewPath(pathname: string): boolean {
   return parseAdminClientProfilePath(pathname) !== null;
 }
@@ -257,7 +286,6 @@ export function profileBasePath(clientId?: string, opts?: { sessionScoped?: bool
   return "/profile";
 }
 
-/** Query param for admin profile review — survives refresh and deep links. */
 export const CLIENT_USER_ID_PARAM = "clientUserId";
 
 export function readClientUserIdFromBrowserSearch(search?: string): string | null {
@@ -267,7 +295,6 @@ export function readClientUserIdFromBrowserSearch(search?: string): string | nul
   return id?.trim() || null;
 }
 
-/** Append clientUserId for admin profile-review API calls (no impersonation). */
 export function withClientUserId(path: string, clientUserId?: string | null): string {
   if (!clientUserId) return path;
   const sep = path.includes("?") ? "&" : "?";
@@ -275,7 +302,6 @@ export function withClientUserId(path: string, clientUserId?: string | null): st
   return `${path}${sep}${CLIENT_USER_ID_PARAM}=${encodeURIComponent(clientUserId)}`;
 }
 
-/** Keep clientUserId on workspace page navigations during admin review. */
 export function withClientReviewPagePath(path: string, clientUserId?: string | null): string {
   if (!clientUserId) return path;
   const [base, hash = ""] = path.split("#");
@@ -331,7 +357,6 @@ export function profileTabPath(
   }
 }
 
-/** Legacy query links (?job=…&tool=…) → path URLs */
 export function legacyOpportunitiesQueryToPath(search: string): string | null {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const jobId = params.get("job");

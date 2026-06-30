@@ -18,6 +18,8 @@ export type VectorSearchFilters = {
   minScore?: number;
   /** Free-form text merged into the semantic vsearch query (profile + user focus). */
   semanticQuery?: string;
+  /** User-created job functions — merged into vsearch query, not Hirebase keywords. */
+  customJobFunctions?: string[];
   companyName?: string;
   companySlug?: string;
   jobTitles?: string[];

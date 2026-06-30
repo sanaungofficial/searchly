@@ -27,6 +27,8 @@ import { extractProfileSkills } from "@/lib/job-fit-ranking";
 import { formatProfileLocation } from "@/lib/recommended-filter-utils";
 import {
   buildProfileVSearchQuery,
+  customJobFunctionsToSemanticQuery,
+  mergeVSearchQueryParts,
   profileTextForMatchReasons,
   trimVSearchQuery,
 } from "@/lib/profile-vsearch-query";
@@ -61,6 +63,7 @@ import {
   searchTargetsExecutiveRoles,
 } from "@/lib/job-match";
 import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
+import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTokens, type ParsedResumeData } from "@/lib/resume-parse";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -551,6 +554,7 @@ async function fetchPrimaryRecommendedSources(input: {
         employmentStatus: input.profile?.employmentStatus,
         jobTimeline: input.profile?.jobTimeline,
         semanticQuery: input.semanticQuery || undefined,
+        customJobFunctions: input.filters.customJobFunctions,
       }) ?? trimVSearchQuery(input.targetRoles.join(", "));
 
     if (summaryQuery) {
@@ -694,17 +698,13 @@ export async function generateRecommendedJobsForUser(
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
-  /** Default feed uses profile location post-filter + country pre-filter on Hirebase fetch. */
-  let mergedFilters = normalizePostedDateFilters({
-    ...requestFilters,
-    semanticQuery: semanticQuery || undefined,
-  });
-  if (defaultFeed && !mergedFilters.locations?.length) {
-    const hirebaseLocations = profileLocationToHirebaseFilters(locationInput);
-    if (hirebaseLocations.length) {
-      mergedFilters = { ...mergedFilters, locations: hirebaseLocations };
-    }
-  }
+  /** Default feed: open Hirebase query — profile location applied as soft post-filter only. */
+  let mergedFilters = normalizePostedDateFilters(
+    sanitizeFiltersForHirebase({
+      ...requestFilters,
+      semanticQuery: semanticQuery || undefined,
+    }),
+  );
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
@@ -992,17 +992,32 @@ async function generateActiveRoleSearchForUser(
     roleTitlePreferences,
     profileSkills,
     nameMatchExcludeTerms,
+    profileLocation,
+    priorities,
+    relocationOpenness,
   } = await loadUserContext(input.userId);
 
-  const searchRoles = buildActiveRoleSearchTitles(semanticQuery, requestFilters.jobTitles);
+  const searchRoles = buildActiveRoleSearchTitles(
+    mergeVSearchQueryParts(semanticQuery, customJobFunctionsToSemanticQuery(requestFilters.customJobFunctions)) ?? semanticQuery,
+    requestFilters.jobTitles,
+  );
   if (!searchRoles.length) return null;
 
-  const mergedFilters = normalizePostedDateFilters({
-    ...requestFilters,
-    semanticQuery,
-    limit: maxJobs,
-    page: requestFilters.page ?? 1,
-  });
+  const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
+  let mergedFilters = normalizePostedDateFilters(
+    sanitizeFiltersForHirebase({
+      ...requestFilters,
+      semanticQuery,
+      limit: maxJobs,
+      page: requestFilters.page ?? 1,
+    }),
+  );
+  if (!mergedFilters.locations?.length) {
+    const hirebaseLocations = profileLocationToHirebaseFilters(locationInput);
+    if (hirebaseLocations.length) {
+      mergedFilters = { ...mergedFilters, locations: hirebaseLocations };
+    }
+  }
 
   try {
     const result = await fetchHirebaseRoleMatchingJobs({

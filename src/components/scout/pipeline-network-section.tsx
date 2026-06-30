@@ -39,14 +39,19 @@ import {
 } from "@/lib/network-jobs-cache";
 import { CompanyLogo } from "./company-logo";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
-import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
-import { ScoreExplainerPopover } from "./score-explainer-popover";
+import {
+  CircularMatchScore,
+  filterMatchReasons,
+  MatchScoreColumn,
+  MatchWhyScorePopover,
+  matchScorePanelBackground,
+} from "./match-why-score-ui";
 import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 import { NetworkFiltersDrawer, NetworkQuickFiltersBar } from "./pipeline-network-filters";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ActiveFiltersBar, FilterField, pipelineInputStyle, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
+import { ActiveFiltersBar, pipelineInputStyle, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
 
 const EMPTY_MATCH = {
   matchScore: 0,
@@ -67,6 +72,78 @@ interface PipelineNetworkSectionProps {
   embedded?: boolean;
 }
 
+function NetworkJobMetadataGrid({ job }: { job: NetworkMatchedJob }) {
+  const items: string[] = [];
+  if (job.location) items.push(job.location);
+  if (job.jobType) items.push(job.jobType);
+  if (job.remoteOption) items.push(job.remoteOption);
+  if (job.salary) items.push(job.salary);
+  if (!items.length) return null;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 18px", marginTop: 10 }}>
+      {items.map((label) => (
+        <span
+          key={label}
+          style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function NetworkMatchScoreStacked({
+  score,
+  label,
+  reasons,
+  matchedSkills,
+}: {
+  score: number;
+  label: string;
+  reasons: string[];
+  matchedSkills: string[];
+}) {
+  const filteredReasons = filterMatchReasons(reasons);
+  const skills = matchedSkills.slice(0, 6);
+  const panelBg = matchScorePanelBackground(score);
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      style={{
+        background: panelBg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px 18px",
+        borderTop: "1.5px solid rgba(255,255,255,0.07)",
+      }}
+    >
+      <MatchWhyScorePopover reasons={filteredReasons} matchedSkills={skills}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <CircularMatchScore score={score} />
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#FFFFFF",
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            {label} Match
+          </p>
+        </div>
+      </MatchWhyScorePopover>
+    </div>
+  );
+}
+
 function NetworkJobCard({
   job,
   internalView,
@@ -74,6 +151,7 @@ function NetworkJobCard({
   onSave,
   onRequestAction,
   saving,
+  isMobile,
 }: {
   job: NetworkMatchedJob;
   internalView: boolean;
@@ -81,6 +159,7 @@ function NetworkJobCard({
   onSave?: () => void;
   onRequestAction?: (kind: NetworkJobRequestModalKind) => void;
   saving?: boolean;
+  isMobile: boolean;
 }) {
   const company = networkAgencyDisplayName(job);
   const recruitingFirm = job.source === "EXECTHREAD" ? networkExecThreadRecruitingFirmLabel(job) : job.agencyName;
@@ -95,94 +174,164 @@ function NetworkJobCard({
   const partnerListingUrl = networkJobPartnerListingUrl(job, internalView);
   const showIntro = !internalView && networkJobHasRecruiter(job);
   const showSendProfile = networkJobShowSendProfile(job, internalView);
+  const matchScore = job.matchScore ?? 0;
+  const showMatch = matchScore > 0 && Boolean(job.matchLabel);
 
   return (
-    <ScoutBox padding={18}>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpen();
-          }
-        }}
-        style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
-      >
-        <CompanyLogo name={company} logoUrl={hasAgencyLogo ? job.agencyLogoUrl : null} website={hasAgencyLogo ? job.agencyWebsite : null} skipDomainLookup size={44} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                <span style={{ padding: "2px 8px", background: "rgba(196,168,106,0.15)", border: "1px solid rgba(196,168,106,0.35)", fontFamily: fontSans, fontSize: T.label, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#6B5A2A" }}>
-                  {NETWORK_JOB_CLIENT_BADGE}
-                </span>
-                <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontMono, fontSize: T.label, fontWeight: 700, color: color.forest }}>
-                  {networkSourceChannelCode(job.source)}
-                </span>
-                {internalView && job.networkStatusLabel && (
-                  <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>{job.networkStatusLabel}</span>
-                )}
-                {internalView && job.networkId && (
-                  <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{job.networkId}</span>
-                )}
-              </div>
-              <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
-                {company}
-                {job.location ? ` · ${job.location}` : ""}
-              </p>
-              {shareLabel && <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 8px" }}>{shareLabel}</p>}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: summary ? 10 : 0 }}>
-                {job.industries.map((industry) => (
-                  <span key={industry} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{industry}</span>
-                ))}
-                {recruitingFirm && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{recruitingFirm}</span>}
-                {job.jobType && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{job.jobType}</span>}
-                {job.remoteOption && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>{job.remoteOption}</span>}
-                {job.salary && <span style={{ padding: "2px 8px", border: "1px solid rgba(26,58,47,0.22)", background: "rgba(26,58,47,0.05)", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>{job.salary}</span>}
-                {internalView && job.fee && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>Fee: {job.fee}</span>}
-                {internalView && job.guaranteeLabel && <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>Guarantee: {job.guaranteeLabel}</span>}
-              </div>
-              {summary && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.55, margin: 0 }}>{summary}</p>}
-            </div>
-            {job.matchScore != null && job.matchScore > 0 && job.matchLabel && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                <ScoreExplainerPopover variant="network-match" align="right" />
-                <MatchScoreBadge score={job.matchScore} label={job.matchLabel} />
-                <ScoreSourceHint />
-              </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isMobile && showMatch ? "column" : "row",
+        border: "1.5px solid #161616",
+        borderRadius: 8,
+        background: surface.card,
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onOpen}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpen();
+            }
+          }}
+          style={{ flex: 1, padding: 18, cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+            <span
+              style={{
+                padding: "2px 8px",
+                background: "rgba(196,168,106,0.15)",
+                border: "1px solid rgba(196,168,106,0.35)",
+                fontFamily: fontSans,
+                fontSize: T.label,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#6B5A2A",
+              }}
+            >
+              {NETWORK_JOB_CLIENT_BADGE}
+            </span>
+            <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontMono, fontSize: T.label, fontWeight: 700, color: color.forest }}>
+              {networkSourceChannelCode(job.source)}
+            </span>
+            {internalView && job.networkStatusLabel && (
+              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>
+                {job.networkStatusLabel}
+              </span>
+            )}
+            {internalView && job.networkId && (
+              <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{job.networkId}</span>
             )}
           </div>
-          {job.matchScore != null && job.matchScore > 0 && <MatchFitCallout job={job} />}
+
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <CompanyLogo
+              name={company}
+              logoUrl={hasAgencyLogo ? job.agencyLogoUrl : null}
+              website={hasAgencyLogo ? job.agencyWebsite : null}
+              skipDomainLookup
+              size={48}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>{company}</p>
+              {shareLabel && (
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "6px 0 0" }}>{shareLabel}</p>
+              )}
+              <NetworkJobMetadataGrid job={job} />
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: summary ? 10 : 8 }}>
+                {job.industries.map((industry) => (
+                  <span key={industry} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                    {industry}
+                  </span>
+                ))}
+                {recruitingFirm && (
+                  <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                    {recruitingFirm}
+                  </span>
+                )}
+                {internalView && job.fee && (
+                  <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                    Fee: {job.fee}
+                  </span>
+                )}
+                {internalView && job.guaranteeLabel && (
+                  <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                    Guarantee: {job.guaranteeLabel}
+                  </span>
+                )}
+              </div>
+              {summary && (
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.55, margin: "10px 0 0" }}>
+                  {summary}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{ display: "flex", gap: 8, padding: "0 18px 16px", flexWrap: "wrap", alignItems: "center" }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {onSave && (
+            <ScoutPrimaryBtn onClick={() => onSave()} disabled={saving}>
+              {saving ? "Saving…" : "Save job"}
+            </ScoutPrimaryBtn>
+          )}
+          {showIntro && onRequestAction && (
+            <ScoutSecondaryBtn onClick={() => onRequestAction("intro")}>Request introduction</ScoutSecondaryBtn>
+          )}
+          {showSendProfile && onRequestAction && (
+            <ScoutSecondaryBtn onClick={() => onRequestAction("send-profile")}>Send your profile</ScoutSecondaryBtn>
+          )}
+          {clientApplyUrl && (
+            <a
+              href={clientApplyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
+            >
+              Apply ↗
+            </a>
+          )}
+          {partnerListingUrl && (
+            <a
+              href={partnerListingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
+            >
+              {networkSourceListingLinkLabel(job.source)}
+            </a>
+          )}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        {onSave && (
-          <ScoutPrimaryBtn onClick={() => onSave()} disabled={saving}>
-            {saving ? "Saving…" : "Save job"}
-          </ScoutPrimaryBtn>
-        )}
-        {showIntro && onRequestAction && (
-          <ScoutSecondaryBtn onClick={() => onRequestAction("intro")}>Request introduction</ScoutSecondaryBtn>
-        )}
-        {showSendProfile && onRequestAction && (
-          <ScoutSecondaryBtn onClick={() => onRequestAction("send-profile")}>Send your profile</ScoutSecondaryBtn>
-        )}
-        {clientApplyUrl && (
-          <a href={clientApplyUrl} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
-            Apply ↗
-          </a>
-        )}
-        {partnerListingUrl && (
-          <a href={partnerListingUrl} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
-            {networkSourceListingLinkLabel(job.source)}
-          </a>
-        )}
-      </div>
-    </ScoutBox>
+      {showMatch &&
+        (isMobile ? (
+          <NetworkMatchScoreStacked
+            score={matchScore}
+            label={job.matchLabel}
+            reasons={job.matchReasons ?? []}
+            matchedSkills={job.matchedSkills ?? []}
+          />
+        ) : (
+          <MatchScoreColumn
+            score={matchScore}
+            label={job.matchLabel}
+            reasons={job.matchReasons ?? []}
+            matchedSkills={job.matchedSkills ?? []}
+          />
+        ))}
+    </div>
   );
 }
 
@@ -403,21 +552,24 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     mountedRef.current = true;
 
     const cached = readNetworkJobsCache();
-    if (!cached) return;
+    if (cached) {
+      setJobs(cached.jobs);
+      setAppliedForm(cached.appliedForm);
+      setForm({ ...cached.appliedForm, search: loadScopedNetworkSearch() });
+      setTotal(cached.total);
+      setHasMore(cached.hasMore);
+      setPage(cached.page);
+      setNeedsProfile(Boolean(cached.needsProfile));
+      setProfileHint(cached.hint ?? null);
+      setProfileSuggestedLabels(cached.profileSuggestedLabels ?? []);
+      profileFormRef.current = cached.profileForm ?? null;
+      setHasLoadedOnce(true);
+      setLoading(false);
+      return;
+    }
 
-    setJobs(cached.jobs);
-    setAppliedForm(cached.appliedForm);
-    setForm({ ...cached.appliedForm, search: loadScopedNetworkSearch() });
-    setTotal(cached.total);
-    setHasMore(cached.hasMore);
-    setPage(cached.page);
-    setNeedsProfile(Boolean(cached.needsProfile));
-    setProfileHint(cached.hint ?? null);
-    setProfileSuggestedLabels(cached.profileSuggestedLabels ?? []);
-    profileFormRef.current = cached.profileForm ?? null;
-    setHasLoadedOnce(true);
-    setLoading(false);
-  }, [actingUserId]);
+    void loadJobs(createEmptyNetworkJobFilterForm());
+  }, [actingUserId, loadJobs]);
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);
@@ -600,6 +752,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
                 key={`${job.source}-${job.id}`}
                 job={job}
                 internalView={internalView}
+                isMobile={isMobile}
                 onOpen={() => onOpenJob(job)}
                 onSave={
                   onSaveJob

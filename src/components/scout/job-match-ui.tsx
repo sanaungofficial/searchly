@@ -16,8 +16,12 @@ export interface MatchData {
   yoeMatch: boolean;
   industries: string[];
   industryMatch: boolean;
+  industryTags?: { label: string; matched: boolean }[];
   keywords: { text: string; matched: boolean }[];
   summaryNote: string;
+  /** Profile/keyword comparison when AI is unavailable or failed. */
+  _fallback?: boolean;
+  _fallbackReason?: "no_ai" | "parse_error" | "ai_error";
 }
 
 export function matchDataToFitDisplay(data: MatchData): {
@@ -84,7 +88,7 @@ export function scoreLabel(score: number): string {
   if (band === "strong") return "Strong";
   if (band === "good") return "Good";
   if (band === "fair") return "Fair";
-  return "Poor";
+  return "Low";
 }
 
 export function percentColor(pct: number): string {

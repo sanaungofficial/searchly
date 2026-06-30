@@ -8,6 +8,7 @@ import {
   OnboardingCategoryFilterInput,
   TargetRoleAutocomplete,
 } from "@/components/scout/onboarding-suggest-input";
+import { JobFunctionPicker } from "@/components/scout/job-function-picker";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   UploadIcon,
@@ -1663,22 +1664,6 @@ export function ScreenTargetRoles({
 }: TargetRolesProps) {
   const canContinue = selectedTitles.length > 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [categoryQuery, setCategoryQuery] = useState("");
-  const [allCategories, setAllCategories] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!categoriesOpen || allCategories.length) return;
-    void fetch("/api/jobs/categories")
-      .then((res) => (res.ok ? res.json() : { categories: [] }))
-      .then((data: { categories?: string[] }) => setAllCategories(data.categories ?? []))
-      .catch(() => {});
-  }, [categoriesOpen, allCategories.length]);
-
-  const categoryPool = useMemo(
-    () => [...new Set([...allCategories, ...suggestedCategories])],
-    [allCategories, suggestedCategories],
-  );
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
@@ -1719,71 +1704,22 @@ export function ScreenTargetRoles({
                 marginTop: 0,
               }}
             >
-              Job categories
+              Job functions
             </p>
-            {prioritizedCategories.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                {prioritizedCategories.map((cat) => (
-                  <span
-                    key={cat}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "8px 12px",
-                      background: "rgba(26,58,47,0.08)",
-                      border: "1.5px solid rgba(26,58,47,0.25)",
-                      borderRadius: "var(--scout-radius)",
-                      fontFamily: "var(--font-ui)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "#1A3A2F",
-                    }}
-                  >
-                    {cat}
-                    <button
-                      type="button"
-                      onClick={() => onRemoveCategory(cat)}
-                      aria-label={`Remove ${cat}`}
-                      style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#1A3A2F" }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <SuggestedForYouChips
-              items={suggestedCategories}
-              exclude={prioritizedCategories}
-              onPick={onAddCategory}
+            <JobFunctionPicker
+              selected={prioritizedCategories}
+              onChange={(next) => {
+                const prevSet = new Set(prioritizedCategories.map((c) => c.toLowerCase()));
+                for (const cat of next) {
+                  if (!prevSet.has(cat.toLowerCase())) onAddCategory(cat);
+                }
+                for (const cat of prioritizedCategories) {
+                  if (!next.some((n) => n.toLowerCase() === cat.toLowerCase())) onRemoveCategory(cat);
+                }
+              }}
+              suggested={suggestedCategories}
+              variant="onboarding"
             />
-            {!categoriesOpen ? (
-              <button
-                type="button"
-                onClick={() => setCategoriesOpen(true)}
-                style={{
-                  padding: "8px 14px",
-                  background: "transparent",
-                  color: "#1A3A2F",
-                  border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  cursor: "pointer",
-                }}
-              >
-                + Add category
-              </button>
-            ) : (
-              <OnboardingCategoryFilterInput
-                query={categoryQuery}
-                onQueryChange={setCategoryQuery}
-                selectedCategories={prioritizedCategories}
-                categoryPool={categoryPool}
-                onAdd={onAddCategory}
-              />
-            )}
           </div>
         )}
 

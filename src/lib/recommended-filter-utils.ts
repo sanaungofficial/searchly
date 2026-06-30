@@ -1,8 +1,12 @@
 import { postedWithinDaysLabel } from "@/lib/job-posted-filter";
 import { locationRadiusLabel } from "@/lib/job-location-radius";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
+import { HIREBASE_EXPERIENCE_LEVELS } from "@/lib/vector-matched-job";
 import { parseProfileLocationString, resolveProfileLocation, type ParsedProfileLocation } from "@/lib/profile-location";
-import { profilePreferencesToFilters } from "@/lib/profile-preference-filters";
+import {
+  hirebaseLevelsFromJobrightLabels,
+  type SearchPreferences,
+} from "@/lib/search-preferences";
 
 export const HIREBASE_FILTER_COUNTRIES = [
   "United States",
@@ -30,6 +34,12 @@ export function formatProfileLocation(parsed: ParsedProfileLocation): string {
   return parts.join(", ");
 }
 
+/** True when profile or filter country is Canada (for location UX ordering). */
+export function isCanadianLocationCountry(country: string | null | undefined): boolean {
+  const norm = country?.trim().toLowerCase() ?? "";
+  return norm === "canada" || norm === "ca";
+}
+
 export function locationFieldsFromProfileString(raw: string | null | undefined): {
   city: string;
   region: string;
@@ -48,7 +58,45 @@ export function locationFieldsFromProfileString(raw: string | null | undefined):
   };
 }
 
-/** Profile-derived Hirebase filters for UI pre-fill (search filters panel — not auto-applied on API). */
+export const YEARS_OF_EXPERIENCE_OPTIONS = [
+  { label: "Any experience", yearsFrom: "", yearsTo: "" },
+  { label: "0–2 years", yearsFrom: "0", yearsTo: "2" },
+  { label: "2–5 years", yearsFrom: "2", yearsTo: "5" },
+  { label: "5–10 years", yearsFrom: "5", yearsTo: "10" },
+  { label: "10+ years", yearsFrom: "10", yearsTo: "" },
+] as const;
+
+export const RECOMMENDED_SORT_OPTIONS = [
+  { value: "recommended", label: "Recommended" },
+  { value: "newest", label: "Newest" },
+  { value: "match", label: "Best match" },
+] as const;
+
+export type RecommendedSortOption = (typeof RECOMMENDED_SORT_OPTIONS)[number]["value"];
+
+function uniqueTrimmed(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+/** Map an explicit profile/onboarding experience level to Hirebase levels — exact match only. */
+export function explicitExperienceLevelsFromProfile(raw: string | null | undefined): string[] | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  const match = HIREBASE_EXPERIENCE_LEVELS.find((level) => level.toLowerCase() === trimmed.toLowerCase());
+  return match ? [match] : undefined;
+}
+
+/** Profile-derived Hirebase filters — UI pre-fill for the filter panel; not auto-applied on the default feed API. */
 export function profileDerivedSearchFilters(input: {
   profileLocation?: string | null;
   targetMarket?: string | null;
@@ -57,20 +105,28 @@ export function profileDerivedSearchFilters(input: {
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
+  experienceLevel?: string | null;
+  targetRoles?: string[];
+  prioritizedRoles?: string[];
+  prioritizedCategories?: string[];
+  searchPreferences?: SearchPreferences;
 }): VectorSearchFilters {
   const resolvedLocation = resolveProfileLocation({
     parsedLocation: input.profileLocation,
     targetMarket: input.targetMarket,
   });
   const fields = locationFieldsFromProfileString(resolvedLocation);
-  const prefs = profilePreferencesToFilters({
-    priorities: input.priorities ?? [],
-    targetSalary: input.targetSalary,
-    employmentStatus: input.employmentStatus,
-    jobTimeline: input.jobTimeline,
-    workAuthorization: input.workAuthorization,
-    profileLocation: null, // location applied via structured fields below, not API auto-inject
-  });
+
+  const roleTitles = uniqueTrimmed([
+    ...(input.prioritizedRoles ?? []),
+    ...(input.targetRoles ?? []),
+  ]);
+  const jobCategories = uniqueTrimmed(input.prioritizedCategories ?? []);
+  const experienceLevels =
+    explicitExperienceLevelsFromProfile(input.experienceLevel) ??
+    (input.searchPreferences?.experienceLevelLabels?.length
+      ? hirebaseLevelsFromJobrightLabels(input.searchPreferences.experienceLevelLabels)
+      : undefined);
 
   const locations =
     fields.city || fields.region || fields.country
@@ -83,12 +139,11 @@ export function profileDerivedSearchFilters(input: {
         ]
       : undefined;
 
-  const locationRadiusMiles = fields.city ? 50 : undefined;
-
   return {
-    ...prefs,
+    jobTitles: roleTitles.length ? roleTitles : undefined,
+    jobCategories: jobCategories.length ? jobCategories : undefined,
+    experienceLevels: experienceLevels?.length ? experienceLevels : undefined,
     locations,
-    locationRadiusMiles,
   };
 }
 
@@ -100,6 +155,9 @@ function labelLocation(loc: NonNullable<VectorSearchFilters["locations"]>[number
 export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   const labels: string[] = [];
   if (filters.semanticQuery?.trim()) labels.push(`Search: ${filters.semanticQuery.trim()}`);
+  if (filters.customJobFunctions?.length) {
+    labels.push(`Job function: ${filters.customJobFunctions.join(", ")}`);
+  }
   if (filters.jobTitles?.length) labels.push(`Titles: ${filters.jobTitles.join(", ")}`);
   if (filters.keywords?.length) labels.push(`Keywords: ${filters.keywords.join(", ")}`);
   if (filters.companyName?.trim()) labels.push(`Company: ${filters.companyName.trim()}`);
@@ -121,7 +179,31 @@ export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   if (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0) {
     labels.push(locationRadiusLabel(filters.locationRadiusMiles));
   }
+  if (filters.jobCategories?.length) labels.push(`Categories: ${filters.jobCategories.join(", ")}`);
+  if (filters.yearsFrom != null || filters.yearsTo != null) {
+    const from = filters.yearsFrom ?? 0;
+    const to = filters.yearsTo != null ? `${filters.yearsTo}` : "+";
+    labels.push(`Experience: ${from}–${to} years`);
+  }
   return labels;
+}
+
+export function yearsExperienceLabel(yearsFrom: string, yearsTo: string): string {
+  const opt = YEARS_OF_EXPERIENCE_OPTIONS.find(
+    (o) => o.yearsFrom === yearsFrom && o.yearsTo === yearsTo,
+  );
+  if (opt) return opt.label;
+  if (yearsFrom && yearsTo) return `${yearsFrom}–${yearsTo} years`;
+  if (yearsFrom) return `${yearsFrom}+ years`;
+  return "Years of experience";
+}
+
+/** Compact pill label for a list of values — "First item +N". */
+export function multiValuePillLabel(items: string[], fallback: string): string {
+  const trimmed = items.map((i) => i.trim()).filter(Boolean);
+  if (!trimmed.length) return fallback;
+  if (trimmed.length === 1) return trimmed[0]!;
+  return `${trimmed[0]} +${trimmed.length - 1}`;
 }
 
 export function isEmptySearchFilters(filters: VectorSearchFilters): boolean {
