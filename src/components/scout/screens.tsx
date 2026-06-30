@@ -1695,22 +1695,8 @@ export function ScreenTargetRoles({
           onDropdownOpenChange={setDropdownOpen}
         />
 
-        {(suggestedCategories.length > 0 || prioritizedCategories.length > 0 || onAddCategory) && onAddCategory && onRemoveCategory && (
+        {(prioritizedCategories.length > 0 || onAddCategory) && onAddCategory && onRemoveCategory && (
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: ONBOARDING_FIELD_BORDER }}>
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: ONBOARDING_LABEL_COLOR,
-                letterSpacing: "0.6px",
-                textTransform: "uppercase",
-                marginBottom: 10,
-                marginTop: 0,
-              }}
-            >
-              Job functions
-            </p>
             <JobFunctionPicker
               selected={prioritizedCategories}
               onChange={(next) => {
@@ -1722,8 +1708,8 @@ export function ScreenTargetRoles({
                   if (!next.some((n) => n.toLowerCase() === cat.toLowerCase())) onRemoveCategory(cat);
                 }
               }}
-              suggested={suggestedCategories}
               variant="onboarding"
+              fullWidth
             />
           </div>
         )}

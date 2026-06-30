@@ -176,14 +176,11 @@ export function OpportunitiesPrefConfirmModal({ open, userId, input, onClose, on
           </section>
 
           <section style={{ marginBottom: 24 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Job functions
-            </p>
             <JobFunctionPicker
               selected={categories}
               onChange={setCategories}
-              suggested={input.suggestedCategories}
               variant="profile"
+              fullWidth
             />
           </section>
 

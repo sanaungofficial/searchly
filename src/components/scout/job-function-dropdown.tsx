@@ -3,41 +3,46 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import type { GroupedJobFunctions } from "@/lib/job-function-groups";
-import { fontSans, color, border, type as T } from "@/lib/typography";
+import {
+  displayJobFunctionLabel,
+  groupLabelForJobFunction,
+  jobFunctionBreadcrumb,
+} from "@/lib/job-function-groups";
+import { fontSans, color, border, surface, type as T } from "@/lib/typography";
 import { pipelineInputStyle } from "./pipeline-filters-ui";
 
-const MINT_TAG: React.CSSProperties = {
+const MINT_CHIP: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
   padding: "5px 10px",
   borderRadius: 999,
-  border: "1px solid rgba(45, 107, 74, 0.35)",
-  background: "rgba(45, 107, 74, 0.14)",
-  color: color.forest,
+  border: "1px solid rgba(76, 175, 80, 0.35)",
+  background: "rgba(76, 175, 80, 0.16)",
+  color: color.ink,
   fontFamily: fontSans,
   fontSize: T.caption,
   fontWeight: 600,
 };
 
-function displayCategoryLabel(cat: string): string {
-  return cat.replace(/ Jobs$/i, "");
-}
-
 type Props = {
   selected: string[];
   customSelected: string[];
   onChange: (taxonomy: string[], custom: string[]) => void;
-  suggested?: string[];
   maxSelections?: number;
+  /** Show `* Job Function` label (default true). */
+  showLabel?: boolean;
+  /** Stretch to container width (modals / drawer). */
+  fullWidth?: boolean;
 };
 
 export function JobFunctionDropdown({
   selected,
   customSelected,
   onChange,
-  suggested = [],
   maxSelections = 12,
+  showLabel = true,
+  fullWidth = false,
 }: Props) {
   const [query, setQuery] = useState("");
   const [groups, setGroups] = useState<GroupedJobFunctions[]>([]);
@@ -74,6 +79,7 @@ export function JobFunctionDropdown({
       }
       if (selected.length + customSelected.length >= maxSelections) return;
       onChange([...selected, normalized], customSelected);
+      setQuery("");
     },
     [allSelectedLower, selected, customSelected, onChange, maxSelections],
   );
@@ -103,58 +109,71 @@ export function JobFunctionDropdown({
     setQuery("");
   }, [query, allSelectedLower, selected, customSelected, onChange, maxSelections]);
 
-  const suggestions = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const pool = flatCategories.length ? flatCategories : suggested;
-    const filtered = q
-      ? pool.filter((cat) => cat.toLowerCase().includes(q) || displayCategoryLabel(cat).toLowerCase().includes(q))
-      : pool;
-    return filtered
-      .filter((cat) => !allSelectedLower.has(cat.toLowerCase()))
-      .slice(0, 8);
-  }, [query, flatCategories, suggested, allSelectedLower]);
+  const trimmedQuery = query.trim();
+  const queryLower = trimmedQuery.toLowerCase();
 
-  const groupLabelFor = (cat: string): string | null => {
-    for (const g of groups) {
-      if (g.categories.some((c) => c.toLowerCase() === cat.toLowerCase())) return g.label;
-    }
-    return null;
-  };
+  const filtered = useMemo(() => {
+    if (!queryLower) return [];
+    return flatCategories
+      .filter(
+        (cat) =>
+          cat.toLowerCase().includes(queryLower) ||
+          displayJobFunctionLabel(cat).toLowerCase().includes(queryLower),
+      )
+      .filter((cat) => !allSelectedLower.has(cat.toLowerCase()))
+      .slice(0, 24);
+  }, [queryLower, flatCategories, allSelectedLower]);
+
+  const exactTaxonomyMatch = useMemo(
+    () =>
+      queryLower
+        ? flatCategories.some(
+            (cat) =>
+              cat.toLowerCase() === queryLower ||
+              displayJobFunctionLabel(cat).toLowerCase() === queryLower,
+          )
+        : false,
+    [queryLower, flatCategories],
+  );
 
   const showCreate =
-    query.trim().length > 0 &&
-    !allSelectedLower.has(query.trim().toLowerCase()) &&
-    !suggestions.some((s) => s.toLowerCase() === query.trim().toLowerCase());
+    trimmedQuery.length > 0 &&
+    !allSelectedLower.has(queryLower) &&
+    !exactTaxonomyMatch;
+
+  const showResults = trimmedQuery.length > 0;
 
   return (
-    <div style={{ width: 320, maxWidth: "90vw" }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
-        <span style={{ color: "#C4574A" }}>*</span> Job Function
-      </p>
+    <div style={{ width: fullWidth ? "100%" : 320, maxWidth: fullWidth ? "100%" : "90vw" }}>
+      {showLabel && (
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.ink, margin: "0 0 8px" }}>
+          <span style={{ color: "#C4574A" }}>*</span> Job Function
+        </p>
+      )}
 
       {(selected.length > 0 || customSelected.length > 0) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {selected.map((cat) => (
-            <span key={`t-${cat}`} style={MINT_TAG}>
-              {displayCategoryLabel(cat)}
+            <span key={`t-${cat}`} style={MINT_CHIP}>
+              {displayJobFunctionLabel(cat)}
               <button
                 type="button"
                 aria-label={`Remove ${cat}`}
                 onClick={() => removeItem(cat, false)}
-                style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, lineHeight: 1, color: "inherit" }}
+                style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, lineHeight: 1, color: "inherit", fontSize: 16 }}
               >
                 ×
               </button>
             </span>
           ))}
           {customSelected.map((cat) => (
-            <span key={`c-${cat}`} style={MINT_TAG}>
+            <span key={`c-${cat}`} style={MINT_CHIP}>
               {cat}
               <button
                 type="button"
                 aria-label={`Remove ${cat}`}
                 onClick={() => removeItem(cat, true)}
-                style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, lineHeight: 1, color: "inherit" }}
+                style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, lineHeight: 1, color: "inherit", fontSize: 16 }}
               >
                 ×
               </button>
@@ -163,10 +182,19 @@ export function JobFunctionDropdown({
         </div>
       )}
 
-      <div style={{ position: "relative", marginBottom: 8 }}>
-        <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", opacity: 0.45 }} />
+      <div style={{ position: "relative", marginBottom: showResults || showCreate ? 0 : 0 }}>
+        <Search
+          size={14}
+          style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", opacity: 0.4, pointerEvents: "none" }}
+        />
         <input
-          style={{ ...pipelineInputStyle, paddingLeft: 32, margin: 0 }}
+          style={{
+            ...pipelineInputStyle,
+            paddingLeft: 32,
+            margin: 0,
+            background: surface.inset,
+            border: "1px solid rgba(0,0,0,0.08)",
+          }}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search job functions"
@@ -179,48 +207,51 @@ export function JobFunctionDropdown({
         />
       </div>
 
-      <div style={{ maxHeight: 220, overflowY: "auto", marginBottom: showCreate ? 8 : 0 }}>
-        {loading && (
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0" }}>
-            Loading suggestions…
-          </p>
-        )}
-        {!loading &&
-          suggestions.map((cat) => {
-            const groupLabel = groupLabelFor(cat);
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => toggleTaxonomy(cat)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 6px",
-                  border: "none",
-                  borderBottom: border.line,
-                  background: "transparent",
-                  cursor: "pointer",
-                }}
-              >
-                <span style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink }}>
-                  {displayCategoryLabel(cat)}
-                </span>
-                {groupLabel && (
-                  <span style={{ display: "block", fontFamily: fontSans, fontSize: T.label, color: color.muted, marginTop: 2 }}>
-                    {groupLabel}
+      {showResults && (
+        <div style={{ maxHeight: 220, overflowY: "auto", marginTop: 4 }}>
+          {loading && (
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 6px" }}>
+              Loading job functions…
+            </p>
+          )}
+          {!loading &&
+            filtered.map((cat) => {
+              const groupLabel = groupLabelForJobFunction(cat, groups);
+              const breadcrumb = groupLabel ? jobFunctionBreadcrumb(cat, groupLabel) : null;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => toggleTaxonomy(cat)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 6px",
+                    border: "none",
+                    borderBottom: border.line,
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.ink }}>
+                    {displayJobFunctionLabel(cat)}
                   </span>
-                )}
-              </button>
-            );
-          })}
-        {!loading && !suggestions.length && query.trim() && !showCreate && (
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0" }}>
-            No matches — create a custom function below.
-          </p>
-        )}
-      </div>
+                  {breadcrumb && (
+                    <span style={{ display: "block", fontFamily: fontSans, fontSize: T.label, color: color.muted, marginTop: 3 }}>
+                      {breadcrumb}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          {!loading && !filtered.length && !showCreate && (
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 6px" }}>
+              No matches — create a custom function below.
+            </p>
+          )}
+        </div>
+      )}
 
       {showCreate && (
         <button
@@ -229,9 +260,10 @@ export function JobFunctionDropdown({
           style={{
             width: "100%",
             padding: "10px 12px",
+            marginTop: showResults && filtered.length ? 0 : 4,
             border: "none",
             borderRadius: 8,
-            background: "rgba(255, 180, 120, 0.35)",
+            background: "rgba(255, 167, 120, 0.38)",
             color: color.ink,
             fontFamily: fontSans,
             fontSize: T.caption,
@@ -240,7 +272,7 @@ export function JobFunctionDropdown({
             textAlign: "left",
           }}
         >
-          + Create a custom job function with &ldquo;{query.trim()}&rdquo;
+          + Create a custom job function with &ldquo;{trimmedQuery}&rdquo;
         </button>
       )}
     </div>
@@ -248,7 +280,11 @@ export function JobFunctionDropdown({
 }
 
 export function jobFunctionPillItems(form: { jobCategories: string; customJobFunctions?: string[] }): string[] {
-  const taxonomy = form.jobCategories.split(/[,;|]/).map((s) => s.trim()).filter(Boolean).map(displayCategoryLabel);
+  const taxonomy = form.jobCategories
+    .split(/[,;|]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map(displayJobFunctionLabel);
   const custom = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
   return [...taxonomy, ...custom];
 }

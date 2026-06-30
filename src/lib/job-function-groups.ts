@@ -81,6 +81,60 @@ export type GroupedJobFunctions = {
   categories: string[];
 };
 
+/** Strip Hirebase " Jobs" suffix for display (Jobright title line). */
+export function displayJobFunctionLabel(category: string): string {
+  return category.trim().replace(/ Jobs$/i, "");
+}
+
+const TOP_LEVEL_JOB_FUNCTION_NAMES = new Set([
+  "engineering",
+  "product",
+  "design",
+  "data",
+  "marketing",
+  "sales",
+  "finance",
+  "accounting",
+  "operations",
+  "legal",
+  "consulting",
+  "customer success",
+  "customer support",
+  "support",
+  "human resources",
+  "recruiting",
+  "content",
+  "communications",
+  "arts",
+  "creative",
+  "entertainment",
+  "software",
+  "project management",
+  "security",
+  "other",
+]);
+
+/** Jobright breadcrumb: parent group, or `Parent > Child` for specific roles. */
+export function jobFunctionBreadcrumb(category: string, groupLabel: string): string {
+  const display = displayJobFunctionLabel(category);
+  if (TOP_LEVEL_JOB_FUNCTION_NAMES.has(display.toLowerCase())) {
+    return groupLabel;
+  }
+  return `${groupLabel} > ${display}`;
+}
+
+export function groupLabelForJobFunction(
+  category: string,
+  groups: GroupedJobFunctions[],
+): string | null {
+  for (const g of groups) {
+    if (g.categories.some((c) => c.toLowerCase() === category.trim().toLowerCase())) {
+      return g.label;
+    }
+  }
+  return null;
+}
+
 /** Assign Hirebase categories into display groups (stable sort). */
 export function groupHirebaseJobCategories(categories: string[]): GroupedJobFunctions[] {
   const byGroup = new Map<string, string[]>();
