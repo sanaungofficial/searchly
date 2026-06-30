@@ -81,6 +81,9 @@ import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTo
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 
+/** Cap explicit-filter relax attempts so one search cannot run dozens of Hirebase round-trips. */
+const EXPLICIT_FILTER_FALLBACK_MAX_STEPS = 3;
+
 export type GenerateRecommendedInput = {
   userId: string;
   filters?: VectorSearchFilters;
@@ -587,6 +590,8 @@ async function fetchPrimaryRecommendedSources(input: {
   maxJobs: number;
   preferCache: boolean;
   exclusions?: ListingExclusionPrefs;
+  /** Skip resume/summary neural search — use for explicit user filters (faster lexical path). */
+  skipPersonalizedVSearch?: boolean;
 }): Promise<PrimaryFetchResult> {
   const empty: PrimaryFetchResult = {
     sources: [],
@@ -603,7 +608,7 @@ async function fetchPrimaryRecommendedSources(input: {
   let notice: string | undefined;
   let resumeVSearch = false;
 
-  if (input.artifactId) {
+  if (input.artifactId && !input.skipPersonalizedVSearch) {
     try {
       const result = await fetchRecommendedViaResumeVSearch({
         userId: input.userId,
@@ -624,7 +629,7 @@ async function fetchPrimaryRecommendedSources(input: {
     }
   }
 
-  if (!sources.length) {
+  if (!sources.length && !input.skipPersonalizedVSearch) {
     const summaryQuery =
       buildProfileVSearchQuery({
         headline: input.profile?.headline,
@@ -689,7 +694,7 @@ async function fetchPrimaryRecommendedSources(input: {
   trackedWithMatches = Math.max(trackedWithMatches, tracked.trackedWithMatches);
   companyCount = Math.max(companyCount, tracked.companyCount);
 
-  if (sources.length) {
+  if (sources.length && !input.skipPersonalizedVSearch) {
     try {
       const similar = await fetchRecommendedFromSimilarJobs({
         seedSources: sources,
@@ -786,6 +791,7 @@ export async function generateRecommendedJobsForUser(
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
+  const skipPersonalizedVSearch = !defaultFeed;
 
   let effectiveFilters = mergedFilters;
   let primary = await fetchPrimaryRecommendedSources({
@@ -800,6 +806,7 @@ export async function generateRecommendedJobsForUser(
     maxJobs,
     preferCache,
     exclusions,
+    skipPersonalizedVSearch,
   });
 
   let { sources, matchMode, companyCount, trackedWithMatches, notice, resumeVSearch } = primary;
@@ -818,6 +825,7 @@ export async function generateRecommendedJobsForUser(
       maxJobs,
       preferCache,
       exclusions,
+      skipPersonalizedVSearch,
     });
     if (!primary.sources.length) return;
     sources = primary.sources;
@@ -843,7 +851,7 @@ export async function generateRecommendedJobsForUser(
     } else if (!defaultFeed && hasHardRestrictiveListingFilters(mergedFilters)) {
       const completedSteps: FallbackRelaxStep[] = [];
       let candidate = mergedFilters;
-      while (true) {
+      while (completedSteps.length < EXPLICIT_FILTER_FALLBACK_MAX_STEPS) {
         const next = nextRelaxedFilters(candidate, completedSteps, EXPLICIT_FILTER_FALLBACK_LADDER);
         if (!next) break;
         completedSteps.push(next.step);
@@ -860,6 +868,7 @@ export async function generateRecommendedJobsForUser(
           maxJobs,
           preferCache,
           exclusions,
+          skipPersonalizedVSearch,
         });
         if (!primary.sources.length) continue;
         sources = primary.sources;

@@ -1,8 +1,34 @@
+const ABORT_TIMEOUT_FALLBACK =
+  "This is taking longer than expected — hit Refresh or loosen your filters.";
+
+function isAbortTimeoutMessage(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("signal timed out") ||
+    lower.includes("aborted due to timeout") ||
+    lower.includes("timeout exceeded")
+  );
+}
+
+function isAbortTimeoutError(value: unknown): boolean {
+  if (!(value instanceof Error)) return false;
+  if (value.name === "TimeoutError" || value.name === "AbortError") return true;
+  return isAbortTimeoutMessage(value.message);
+}
+
 /** Coerce API / thrown errors into user-readable strings (never [object Object]). */
 export function formatApiErrorMessage(value: unknown, fallback = "Something went wrong."): string {
   if (value == null) return fallback;
-  if (typeof value === "string") return value.trim() || fallback;
-  if (value instanceof Error) return value.message.trim() || fallback;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return fallback;
+    if (isAbortTimeoutMessage(trimmed)) return ABORT_TIMEOUT_FALLBACK;
+    return trimmed;
+  }
+  if (value instanceof Error) {
+    if (isAbortTimeoutError(value)) return ABORT_TIMEOUT_FALLBACK;
+    return value.message.trim() || fallback;
+  }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
     if (typeof obj.message === "string" && obj.message.trim()) return obj.message.trim();
