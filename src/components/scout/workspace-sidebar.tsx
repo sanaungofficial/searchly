@@ -654,7 +654,7 @@ export function WorkspaceSidebar({
           <SidebarNavButton
             active={matchInboxPath(pathname)}
             onClick={() => navigate("/inbox")}
-            label="Inbox"
+            label="Networking"
             Icon={InboxIcon}
             isRail={isRail}
           />

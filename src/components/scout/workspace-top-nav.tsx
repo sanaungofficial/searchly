@@ -57,7 +57,7 @@ function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
   });
   links.push({
     id: "inbox",
-    label: "Inbox",
+    label: "Networking",
     path: INBOX_PATH,
     match: matchInboxPath,
   });

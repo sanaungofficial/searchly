@@ -1132,7 +1132,7 @@ function CompanyCrmContactsSection({ companyName }: { companyName: string }) {
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading contacts…</p>
       ) : contacts.length === 0 ? (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-          No CRM contacts at this company yet. Import a contacts spreadsheet or add people from Inbox.
+          No CRM contacts at this company yet. Import a contacts spreadsheet or add people from Networking.
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1172,7 +1172,7 @@ function CompanyCrmContactsSection({ companyName }: { companyName: string }) {
                 ) : null}
               </span>
               <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>
-                {contact.contacted ? "Contacted" : "Open in Inbox →"}
+                {contact.contacted ? "Contacted" : "Open in Networking →"}
               </span>
             </button>
           ))}
