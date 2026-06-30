@@ -1790,19 +1790,6 @@ export function JobDrawer({
           company={card.company}
           description={jobDescription}
           jobId={dbId ?? undefined}
-          initialMatchData={(() => {
-            if (!cardExt._fitAnalysis) return null;
-            try {
-              const parsed = JSON.parse(cardExt._fitAnalysis) as Partial<MatchData>;
-              if (typeof parsed.score === "number" && Array.isArray(parsed.keywords)) {
-                return parsed as MatchData;
-              }
-            } catch {
-              /* partial fitAnalysis from vector score only */
-            }
-            return null;
-          })()}
-          initialAssetId={null}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             setMatchDrawerOpen(false);

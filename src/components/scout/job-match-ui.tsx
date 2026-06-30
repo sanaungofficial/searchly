@@ -19,6 +19,9 @@ export interface MatchData {
   industryTags?: { label: string; matched: boolean }[];
   keywords: { text: string; matched: boolean }[];
   summaryNote: string;
+  /** Profile/keyword comparison when AI is unavailable or failed. */
+  _fallback?: boolean;
+  _fallbackReason?: "no_ai" | "parse_error" | "ai_error";
 }
 
 export function matchDataToFitDisplay(data: MatchData): {
