@@ -1,32 +1,24 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ScoutBox } from "@/components/scout/scout-box";
+import { ScoutBox, scoutPrimaryCtaStyle } from "@/components/scout/scout-box";
 import { CoachOnboardingHeader } from "./coach-onboarding-screens";
 import { coachVouchShareMessage } from "@/lib/coach-onboarding";
+import { bruddleHeadingStyle, color, fontSans, type as T } from "@/lib/typography";
 
 const CARD_PADDING = "clamp(16px, 4vw, 24px)";
 
-const DISPLAY_H2: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(1.875rem, 8vw, 3.125rem)",
-  fontWeight: 500,
-  fontStyle: "italic",
-  color: "#1A1A1A",
-  lineHeight: 1.05,
-};
-
 const PRIMARY_CTA: React.CSSProperties = {
+  ...scoutPrimaryCtaStyle,
   padding: "14px 24px",
-  background: "#1A3A2F",
-  color: "#E8D5A3",
-  border: "none",
-  borderRadius: "var(--scout-radius)",
-  fontFamily: "var(--font-ui)",
-  fontSize: 14,
-  fontWeight: 500,
+  fontFamily: fontSans,
+  fontSize: T.btnMd,
+  fontWeight: 700,
   cursor: "pointer",
   minHeight: 48,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const SHARE_CHANNELS = [
@@ -68,7 +60,7 @@ function SubmittedModal({ onClose }: { onClose: () => void }) {
         >
           ×
         </button>
-        <h2 id="coach-submitted-title" style={{ fontFamily: "var(--font-ui)", fontSize: 22, fontWeight: 600, margin: "0 0 12px", color: "#1A1A1A" }}>
+        <h2 id="coach-submitted-title" style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 12px" }}>
           Your profile has been submitted!
         </h2>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, lineHeight: 1.65, color: "#52493F", margin: "0 0 20px" }}>
@@ -145,7 +137,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
 
   if (loading) {
     return (
-      <div className="onboarding-loading" role="status">
+      <div className="onboarding-loading bruddle" role="status">
         <div className="onboarding-loading__spinner" aria-hidden="true" />
         <span>Loading…</span>
       </div>
@@ -156,7 +148,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
     <>
       {modalOpen && <SubmittedModal onClose={() => setModalOpen(false)} />}
 
-      <div style={{ background: "var(--scout-page)", minHeight: "100vh" }}>
+      <div className="bruddle" style={{ background: "var(--scout-page)", minHeight: "100vh" }}>
         <div className="onboarding-shell">
           <CoachOnboardingHeader screen={8} />
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#78716c", textAlign: "center", margin: "8px 0 0" }}>
@@ -166,7 +158,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
           <div className="onboarding-content" style={{ maxWidth: 720 }}>
             <div className="flex flex-col gap-5 onboarding-screen-gap">
               <ScoutBox padding={CARD_PADDING} className="anim-fade-up">
-                <h2 style={{ ...DISPLAY_H2, margin: "0 0 12px" }}>
+                <h2 style={{ ...bruddleHeadingStyle("h3"), fontStyle: "italic", margin: "0 0 12px", lineHeight: 1.05 }}>
                   You&apos;ve told us about you. Now we want to hear from your biggest champions.
                 </h2>
               </ScoutBox>
@@ -190,7 +182,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                           padding: "10px 12px",
                           fontFamily: "var(--font-mono, monospace)",
                           fontSize: 13,
-                          border: "1.5px solid rgba(26,58,47,0.2)",
+                          border: "var(--scout-border)",
                           background: "#fff",
                         }}
                       />
@@ -294,6 +286,6 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
 const SECONDARY_BTN: React.CSSProperties = {
   ...PRIMARY_CTA,
   background: "#fff",
-  color: "#1A1A1A",
-  border: "1.5px solid rgba(26,58,47,0.2)",
+  color: color.ink,
+  boxShadow: "var(--scout-shadow-bruddle)",
 };
