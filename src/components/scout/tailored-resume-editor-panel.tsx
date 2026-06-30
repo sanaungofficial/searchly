@@ -52,7 +52,7 @@ function SortableSkillChip({
         padding: "6px 10px 6px 6px",
         background: "#FFFFFF",
         border: `1px solid ${RT.border}`,
-        borderRadius: 999,
+        borderRadius: "var(--scout-radius)",
         fontSize: 12,
         color: RT.text,
         maxWidth: "100%",

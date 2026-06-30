@@ -16,7 +16,7 @@ import {
 } from "@/lib/coach-profile-experience";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn, BRUDDLE_BTN_CLASS } from "@/components/scout/scout-box";
 import { formatCoachNextAvailable } from "@/components/scout/coach-booking-modal";
 import type { CoachProfileDetail, CoachReviewItem, CoachBookingAvailability } from "@/lib/coach-types";
 import type { LiveSessionView } from "@/lib/live-session-types";
@@ -367,6 +367,7 @@ function GoldBookBtn({ children, onClick, style }: { children: ReactNode; onClic
   return (
     <button
       type="button"
+      className={BRUDDLE_BTN_CLASS}
       onClick={onClick}
       style={{
         width: "100%",
@@ -374,8 +375,9 @@ function GoldBookBtn({ children, onClick, style }: { children: ReactNode; onClic
         padding: "12px 16px",
         background: color.gold,
         color: color.ink,
-        border: line,
-        borderRadius: radius.px,
+        border: "var(--scout-border)",
+        borderRadius: "var(--scout-radius)",
+        boxShadow: "var(--scout-shadow-bruddle)",
         fontFamily: fontSans,
         fontSize: 14,
         fontWeight: 700,
@@ -543,13 +545,13 @@ export function CoachProfileView({
       <ScoutBox padding={20}>
         {bookingAllowed ? (
           <>
-            <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 10, borderRadius: 999, minHeight: 48 }}>Schedule a free intro call</GoldBookBtn>
-            <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 48, borderRadius: 999 }}>Book a session</ScoutSecondaryBtn>
+            <GoldBookBtn onClick={onBookIntro} style={{ marginBottom: 10, minHeight: 48 }}>Schedule a free intro call</GoldBookBtn>
+            <ScoutSecondaryBtn onClick={onBookSession} style={{ width: "100%", minHeight: 48 }}>Book a session</ScoutSecondaryBtn>
           </>
         ) : requestAllowed ? (
           <>
-            <GoldBookBtn onClick={onRequestBooking} style={{ marginBottom: 10, borderRadius: 999, minHeight: 48 }}>Request to book</GoldBookBtn>
-            <ScoutSecondaryBtn onClick={onRequestBooking} style={{ width: "100%", minHeight: 48, borderRadius: 999 }}>Request intro call</ScoutSecondaryBtn>
+            <GoldBookBtn onClick={onRequestBooking} style={{ marginBottom: 10, minHeight: 48 }}>Request to book</GoldBookBtn>
+            <ScoutSecondaryBtn onClick={onRequestBooking} style={{ width: "100%", minHeight: 48 }}>Request intro call</ScoutSecondaryBtn>
             {bookingAvailability?.summary && (
               <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, textAlign: "center", margin: "14px 0 0", lineHeight: 1.45 }}>
                 Typically available {bookingAvailability.summary.toLowerCase()}
@@ -566,7 +568,7 @@ export function CoachProfileView({
           </>
         ) : bookUrl ? (
           <a href={bookUrl} target="_blank" rel="noreferrer" style={{ display: "block", textDecoration: "none" }}>
-            <GoldBookBtn style={{ borderRadius: 999 }}>Schedule via calendar</GoldBookBtn>
+            <GoldBookBtn>Schedule via calendar</GoldBookBtn>
           </a>
         ) : (
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textAlign: "center", margin: 0, lineHeight: 1.45 }}>
@@ -791,7 +793,7 @@ export function CoachProfileView({
           </div>
           <GoldBookBtn
             onClick={bookingAllowed ? onBookIntro : onRequestBooking}
-            style={{ width: "auto", minWidth: 140, padding: "12px 20px", borderRadius: 999 }}
+            style={{ width: "auto", minWidth: 140, padding: "12px 20px" }}
           >
             {bookingAllowed ? "Schedule" : "Request"}
           </GoldBookBtn>

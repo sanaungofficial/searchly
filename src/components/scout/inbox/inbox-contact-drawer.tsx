@@ -797,7 +797,7 @@ export function InboxContactDrawer({
                   onClick={() => setFilter(f)}
                   style={{
                     padding: "8px 14px",
-                    borderRadius: 999,
+                    borderRadius: 0,
                     border: filter === f ? `1px solid ${color.forest}` : line,
                     background: filter === f ? "rgba(42,107,74,0.08)" : "#fff",
                     fontFamily: fontSans,

@@ -28,7 +28,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
-import { scoutPrimaryCtaStyle } from "./scout-box";
+import { scoutPrimaryCtaStyle, BRUDDLE_BTN_CLASS } from "./scout-box";
 import { MasterResumeGate } from "./master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1640,7 +1640,7 @@ export function ResumeMatchDrawer({
                             color: "#15803D",
                             background: "rgba(134,239,172,0.25)",
                             padding: "3px 10px",
-                            borderRadius: 999,
+                            borderRadius: "var(--scout-radius)",
                           }}
                         >
                           {tailoredData.injectedKeywords.length} keywords added
@@ -1734,7 +1734,7 @@ export function ResumeMatchDrawer({
                             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                               {tailoredData.tweaks.slice(0, 3).map((tweak) => (
                                 <button key={tweak.id} type="button" disabled={!!applyingTweakId} onClick={() => void applyTweak(tweak)}
-                                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: "#FFFFFF", border: `1px solid ${RT.border}`, borderRadius: 999, fontFamily: fontSans, fontSize: 12, color: RT.text, cursor: applyingTweakId ? "wait" : "pointer", textAlign: "left" }}>
+                                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: "#FFFFFF", border: `1px solid ${RT.border}`, borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 12, color: RT.text, cursor: applyingTweakId ? "wait" : "pointer", textAlign: "left" }}>
                                   <span>{applyingTweakId === tweak.id ? "Applying…" : tweak.label}</span>
                                   <ArrowUpRight size={14} color={RT.muted} />
                                 </button>
@@ -1790,14 +1790,16 @@ export function ResumeMatchDrawer({
           >
             <button
               type="button"
+              className={BRUDDLE_BTN_CLASS}
               onClick={handleAlign}
               style={{
                 width: "100%",
                 padding: "15px",
                 background: RT.green,
                 color: RT.text,
-                border: "none",
+                border: "var(--scout-border)",
                 borderRadius: RT.ctaPrimaryRadius,
+                boxShadow: "var(--scout-shadow-bruddle)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 700,

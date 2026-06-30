@@ -95,7 +95,7 @@ export function ExcludedTitleSearchField({
                     alignItems: "center",
                     gap: 6,
                     padding: "5px 10px",
-                    borderRadius: 999,
+                    borderRadius: 0,
                     background: "rgba(45, 107, 74, 0.14)",
                     border: "1px solid rgba(45, 107, 74, 0.35)",
                     fontFamily: fontSans,

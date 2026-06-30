@@ -146,7 +146,7 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
                           padding: "3px 8px",
                           background: "rgba(26,58,47,0.08)",
                           color: color.forest,
-                          borderRadius: 999,
+                          borderRadius: "var(--scout-radius)",
                         }}
                       >
                         Working together

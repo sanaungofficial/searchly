@@ -506,6 +506,44 @@
   --type-caption: 14px;
   --type-label: 12px;
   --scout-border: 1.5px solid var(--bruddle-ink);
+  --scout-shadow-bruddle-hover: 4px 4px 0 var(--bruddle-ink);
   font-family: var(--font-ui);
   font-size: var(--type-body);
+}
+
+/* Bruddle interactive hover — subtle landing-page lift (not too much pop) */
+.bruddle .bruddle-hover-lift,
+.bruddle .bruddle-btn-hover {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.bruddle .bruddle-hover-lift:hover:not(:disabled),
+.bruddle .bruddle-btn-hover:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--scout-shadow-bruddle-hover);
+}
+
+.bruddle .bruddle-card-hover {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.bruddle .bruddle-card-hover:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--bruddle-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bruddle .bruddle-hover-lift,
+  .bruddle .bruddle-hover-lift:hover,
+  .bruddle .bruddle-btn-hover,
+  .bruddle .bruddle-btn-hover:hover,
+  .bruddle .bruddle-card-hover,
+  .bruddle .bruddle-card-hover:hover {
+    transition: none !important;
+    transform: none !important;
+  }
 }

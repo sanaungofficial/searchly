@@ -243,7 +243,7 @@ export function CoachResourcesLibrary() {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 6,
-                    borderRadius: 999,
+                    borderRadius: "var(--scout-radius)",
                     padding: "4px 10px",
                     fontFamily: fontSans,
                     fontSize: 11,

@@ -10,6 +10,7 @@ import {
   resetOpportunitiesFilterForm,
 } from "@/lib/opportunities-filter-chips";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
+import { BRUDDLE_BTN_CLASS, scoutPrimaryCtaStyle } from "./scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
@@ -195,7 +196,7 @@ export function OpportunitiesAllFiltersModal({
               style={{
                 width: 36,
                 height: 4,
-                borderRadius: 999,
+                borderRadius: "var(--scout-radius)",
                 background: "rgba(17,17,17,0.18)",
               }}
             />
@@ -250,14 +251,14 @@ export function OpportunitiesAllFiltersModal({
           </p>
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={onConfirm}
             disabled={applying}
             style={{
               padding: "9px 22px",
-              border: "none",
-              borderRadius: 999,
-              background: color.forest,
-              color: color.gold,
+              border: "var(--scout-border)",
+              borderRadius: "var(--scout-radius)",
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: T.caption,
               fontWeight: 700,
@@ -291,7 +292,7 @@ export function OpportunitiesAllFiltersModal({
                   alignItems: "center",
                   gap: 6,
                   padding: "5px 10px 5px 12px",
-                  borderRadius: 999,
+                  borderRadius: "var(--scout-radius)",
                   background: surface.inset,
                   border: border.line,
                   fontFamily: fontSans,
@@ -314,7 +315,7 @@ export function OpportunitiesAllFiltersModal({
                     height: 18,
                     padding: 0,
                     border: "none",
-                    borderRadius: 999,
+                    borderRadius: "var(--scout-radius)",
                     background: "rgba(17,17,17,0.08)",
                     color: color.muted,
                     cursor: "pointer",
@@ -453,7 +454,7 @@ export function OpportunitiesAllFiltersModal({
                         style={{
                           flexShrink: 0,
                           padding: "7px 12px",
-                          borderRadius: 999,
+                          borderRadius: "var(--scout-radius)",
                           border: active ? "1px solid rgba(45, 107, 74, 0.35)" : border.line,
                           background: active ? "rgba(45, 107, 74, 0.12)" : surface.card,
                           fontFamily: fontSans,
