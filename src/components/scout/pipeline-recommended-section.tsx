@@ -195,9 +195,9 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
   const skillKeywords = splitInputListOrUndefined(form.skills);
   const baseKeywords = splitInputListOrUndefined(form.keywords) ?? [];
-  const customFnKeywords = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
-  const mergedKeywordList = [...baseKeywords, ...(skillKeywords ?? []), ...customFnKeywords];
+  const mergedKeywordList = [...baseKeywords, ...(skillKeywords ?? [])];
   const mergedKeywords = mergedKeywordList.length ? mergedKeywordList : undefined;
+  const customJobFunctions = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
 
   const hasLocation =
     form.locationAllInCountry && form.locationCountry.trim()
@@ -209,6 +209,7 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     page,
     limit: VECTOR_SEARCH_RESULTS_MAX,
     semanticQuery: form.semanticQuery.trim() || undefined,
+    customJobFunctions: customJobFunctions.length ? customJobFunctions : undefined,
     jobTitles: splitInputListOrUndefined(form.jobTitles),
     keywords: mergedKeywords,
     companyName: form.companyName.trim() || undefined,
@@ -606,6 +607,7 @@ export function PipelineRecommendedSection({
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [profileBaseline, setProfileBaseline] = useState<RecommendationPreferencesState | null>(null);
+  const [profileCountry, setProfileCountry] = useState("");
 
   const [jobs, setJobs] = useState<VectorMatchedJob[]>(() => readDefaultFeedCache()?.jobs ?? []);
   const [loading, setLoading] = useState(() => !readDefaultFeedCache());
@@ -802,6 +804,7 @@ export function PipelineRecommendedSection({
           location: fields.display,
           priorities: [...priorities],
         });
+        setProfileCountry(fields.country);
         const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
         setProfileMeta({
           userId: data.userId ?? actingUserId ?? null,
@@ -1127,6 +1130,7 @@ export function PipelineRecommendedSection({
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
           searching={loading || revalidating}
+          profileCountry={profileCountry}
         />
 
         <OpportunitiesPrefConfirmModal

@@ -369,8 +369,14 @@ export function AllFiltersSectionContent({
             />
           </FilterField>
         </div>
-        {form.locationCountry === "United States" && (
-          <FilterField label="All locations within the US">
+        {(form.locationCountry === "United States" || form.locationCountry === "Canada") && (
+          <FilterField
+            label={
+              form.locationCountry === "Canada"
+                ? "All locations within Canada"
+                : "All locations within the US"
+            }
+          >
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, cursor: "pointer" }}>
               <input
                 type="checkbox"
@@ -384,7 +390,9 @@ export function AllFiltersSectionContent({
                   }))
                 }
               />
-              Open to anywhere in the United States
+              {form.locationCountry === "Canada"
+                ? "Open to anywhere in Canada"
+                : "Open to anywhere in the United States"}
             </label>
           </FilterField>
         )}

@@ -15,6 +15,7 @@ import {
   HIREBASE_LOCATION_TYPES,
 } from "@/lib/vector-matched-job";
 import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
+import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
 import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
 
@@ -215,6 +216,7 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange,
   onSearchSubmit,
   searching,
+  profileCountry,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
@@ -227,10 +229,13 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   searching?: boolean;
+  /** Profile country — used to prioritize Canada in location quick filter. */
+  profileCountry?: string;
 }) {
   const isMobile = useIsMobile();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<RecommendedFilterForm>(form);
+  const preferCanada = isCanadianLocationCountry(form.locationCountry || profileCountry);
 
   const openDraft = (key: string) => {
     setDraft(form);
@@ -255,7 +260,12 @@ export function OpportunitiesJobrightFilterBar({
 
     let locationLabel = "Location";
     if (form.locationAllInCountry && form.locationCountry.trim()) {
-      locationLabel = `Anywhere in ${form.locationCountry === "United States" ? "the US" : form.locationCountry}`;
+      locationLabel =
+        form.locationCountry === "United States"
+          ? "Anywhere in the US"
+          : form.locationCountry === "Canada"
+            ? "Anywhere in Canada"
+            : `Anywhere in ${form.locationCountry}`;
     } else if (form.locationCountry.trim()) {
       locationLabel = form.locationCountry.trim();
     } else if (form.locationCity.trim()) {
@@ -317,35 +327,37 @@ export function OpportunitiesJobrightFilterBar({
             <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
               Country
             </p>
-            <RadioRow
-              label="United States"
-              checked={draft.locationCountry === "United States"}
-              onSelect={() =>
-                setDraft((d) => ({
-                  ...d,
-                  locationCountry: "United States",
-                }))
-              }
-            />
-            <RadioRow
-              label="Canada"
-              checked={draft.locationCountry === "Canada"}
-              onSelect={() =>
-                setDraft((d) => ({
-                  ...d,
-                  locationCountry: "Canada",
-                  locationAllInCountry: false,
-                  locationCity: "",
-                  locationRegion: "",
-                }))
-              }
-            />
+            {(preferCanada
+              ? ([
+                  { label: "Canada", value: "Canada" },
+                  { label: "United States", value: "United States" },
+                ] as const)
+              : ([
+                  { label: "United States", value: "United States" },
+                  { label: "Canada", value: "Canada" },
+                ] as const)
+            ).map(({ label, value }) => (
+              <RadioRow
+                key={value}
+                label={label}
+                checked={draft.locationCountry === value}
+                onSelect={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    locationCountry: value,
+                    ...(value === "Canada"
+                      ? { locationAllInCountry: false, locationCity: "", locationRegion: "" }
+                      : {}),
+                  }))
+                }
+              />
+            ))}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "12px 0 8px", flexWrap: "wrap", gap: 8 }}>
               <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: 0 }}>
                 Location
               </p>
-              {draft.locationCountry === "United States" && (
+              {(draft.locationCountry === "United States" || draft.locationCountry === "Canada") && (
                 <label
                   style={{
                     display: "flex",
@@ -369,7 +381,9 @@ export function OpportunitiesJobrightFilterBar({
                       }))
                     }
                   />
-                  All locations within the US
+                  {draft.locationCountry === "Canada"
+                    ? "All locations within Canada"
+                    : "All locations within the US"}
                 </label>
               )}
             </div>
@@ -379,7 +393,7 @@ export function OpportunitiesJobrightFilterBar({
                 style={pipelineInputStyle}
                 value={draft.locationCity}
                 onChange={(e) => setDraft((d) => ({ ...d, locationCity: e.target.value }))}
-                placeholder="Enter City"
+                placeholder={draft.locationCountry === "Canada" ? "Enter City or Province" : "Enter City"}
               />
             )}
           </PopoverPad>

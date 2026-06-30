@@ -15,7 +15,7 @@ export type SearchPreferences = {
   openToAllExperience?: boolean;
   /** JobRight-style experience level labels the user confirmed. */
   experienceLevelLabels?: string[];
-  /** User-created job functions not in Hirebase taxonomy — merged as search keywords. */
+  /** User-created job functions not in Hirebase taxonomy — merged into vsearch semantic query. */
   customJobFunctions?: string[];
   /** When true, location filter is country-wide (no city/region). */
   locationAllInCountry?: boolean;

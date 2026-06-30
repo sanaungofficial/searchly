@@ -32,6 +32,7 @@ export function parseVectorSearchFilters(body: Record<string, unknown>): VectorS
       typeof body.semanticQuery === "string"
         ? body.semanticQuery.trim().slice(0, 400) || undefined
         : undefined,
+    customJobFunctions: splitCsv(body.customJobFunctions),
     companyName: typeof body.companyName === "string" ? body.companyName : undefined,
     companySlug: typeof body.companySlug === "string" ? body.companySlug : undefined,
     jobSlug: typeof body.jobSlug === "string" ? body.jobSlug : undefined,

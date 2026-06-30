@@ -19,6 +19,7 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { RECOMMENDED_FETCH_POOL, RECOMMENDED_SIMILAR_JOB_SEED_COUNT } from "@/lib/recommended-jobs-config";
 import { resolveExpandedRoleTitles } from "@/lib/expanded-role-titles-cache";
+import { customJobFunctionsToSemanticQuery, mergeVSearchQueryParts } from "@/lib/profile-vsearch-query";
 import { profileRoleTitlesForMatch, type RoleTitlePreferences } from "@/lib/role-title-preferences";
 
 export type RecommendedFetchLane =
@@ -473,14 +474,19 @@ function buildVSearchFilters(
       ? profileTargetRoles
       : undefined;
 
-  const { semanticQuery: _omit, ...rest } = filters ?? {};
+  const { semanticQuery: _omit, customJobFunctions: _custom, ...rest } = filters ?? {};
+
+  const query = mergeVSearchQueryParts(
+    semanticQuery,
+    customJobFunctionsToSemanticQuery(filters?.customJobFunctions),
+  );
 
   return {
     merged: {
       ...rest,
       jobTitles,
     },
-    query: semanticQuery?.trim() || undefined,
+    query: query || undefined,
   };
 }
 
@@ -501,11 +507,13 @@ export async function fetchRecommendedFromProfileRoles(input: {
     : input.profileTargetRoles;
 
   const semanticQuery = input.semanticQuery?.trim();
+  const customFnQuery = customJobFunctionsToSemanticQuery(filters?.customJobFunctions);
+  const roleSemanticQuery = mergeVSearchQueryParts(semanticQuery, customFnQuery);
   const matchRoles =
     roleBase.length > 0
       ? roleBase
-      : semanticQuery
-        ? semanticQuery.split(/\s+/).filter((w) => w.length >= 3).slice(0, 5)
+      : roleSemanticQuery
+        ? roleSemanticQuery.split(/\s+/).filter((w) => w.length >= 3).slice(0, 5)
         : [];
 
   if (!matchRoles.length) {
@@ -515,7 +523,7 @@ export async function fetchRecommendedFromProfileRoles(input: {
   try {
     const result = await fetchHirebaseRoleMatchingJobs({
       matchRoles,
-      semanticQuery: semanticQuery || undefined,
+      semanticQuery: roleSemanticQuery || undefined,
       filters: {
         ...filters,
         limit: maxJobs,

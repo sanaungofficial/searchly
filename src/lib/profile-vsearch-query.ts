@@ -20,9 +20,26 @@ export type ProfileVSearchInput = {
   targetSalary?: number | null;
   /** User-entered focus text from Recommended search. */
   semanticQuery?: string | null;
+  /** Custom job functions — merged into vsearch query (not Hirebase keywords). */
+  customJobFunctions?: string[];
   /** Optional filter keywords — appended briefly, not as a long list. */
   filterKeywords?: string[];
 };
+
+/** Join custom job function labels into a short semantic vsearch fragment. */
+export function customJobFunctionsToSemanticQuery(customJobFunctions?: string[]): string | undefined {
+  const items = (customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
+  return items.length ? trimVSearchQuery(items.join(". ")) : undefined;
+}
+
+/** Merge multiple semantic query fragments for Hirebase vsearch. */
+export function mergeVSearchQueryParts(...parts: (string | null | undefined)[]): string | undefined {
+  const merged = parts
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(". ");
+  return merged ? trimVSearchQuery(merged) : undefined;
+}
 
 /** Build a short semantic query for Hirebase `/v2/jobs/vsearch` summary mode. */
 export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | null {
@@ -31,6 +48,9 @@ export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | n
 
   const semantic = input.semanticQuery?.trim();
   if (semantic) parts.push(semantic);
+
+  const customFns = input.customJobFunctions?.map((f) => f.trim()).filter(Boolean) ?? [];
+  if (customFns.length) parts.push(customFns.join(", "));
 
   const targetRoles = input.targetRoles?.map((r) => r.trim()).filter(Boolean).slice(0, 5) ?? [];
   if (targetRoles.length) parts.push(targetRoles.join(", "));

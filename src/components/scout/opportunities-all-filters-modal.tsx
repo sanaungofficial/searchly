@@ -80,6 +80,23 @@ export function OpportunitiesAllFiltersModal({
 
   if (!open) return null;
 
+  const sheetStyle: React.CSSProperties = isMobile
+    ? {
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        top: "auto",
+        maxHeight: "92vh",
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        boxShadow: "0 -8px 32px rgba(0,0,0,0.18)",
+      }
+    : {
+        position: "fixed",
+        inset: 0,
+      };
+
   return (
     <>
       <div
@@ -97,14 +114,34 @@ export function OpportunitiesAllFiltersModal({
         aria-modal="true"
         aria-label="All filters"
         style={{
-          position: "fixed",
-          inset: 0,
+          ...sheetStyle,
           zIndex: MODAL_Z + 1,
           display: "flex",
           flexDirection: "column",
           background: surface.card,
         }}
       >
+        {isMobile && (
+          <div
+            aria-hidden
+            style={{
+              flexShrink: 0,
+              paddingTop: 10,
+              paddingBottom: 4,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 999,
+                background: "rgba(17,17,17,0.18)",
+              }}
+            />
+          </div>
+        )}
         <div
           style={{
             display: "flex",
@@ -299,24 +336,42 @@ export function OpportunitiesAllFiltersModal({
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
             {isMobile && (
-              <select
-                value={section}
-                onChange={(e) => setSection(e.target.value as AllFiltersSectionId)}
+              <div
                 style={{
-                  margin: "12px 14px 0",
-                  padding: "8px 10px",
-                  border: border.line,
-                  borderRadius: 8,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
+                  display: "flex",
+                  gap: 8,
+                  overflowX: "auto",
+                  padding: "8px 14px 0",
+                  flexShrink: 0,
+                  WebkitOverflowScrolling: "touch",
                 }}
               >
-                {ALL_FILTER_SECTIONS.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
+                {ALL_FILTER_SECTIONS.map((item) => {
+                  const active = section === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSection(item.id)}
+                      style={{
+                        flexShrink: 0,
+                        padding: "7px 12px",
+                        borderRadius: 999,
+                        border: active ? "1px solid rgba(45, 107, 74, 0.35)" : border.line,
+                        background: active ? "rgba(45, 107, 74, 0.12)" : surface.card,
+                        fontFamily: fontSans,
+                        fontSize: T.label,
+                        fontWeight: active ? 700 : 500,
+                        color: active ? color.forest : color.ink,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.title}
+                    </button>
+                  );
+                })}
+              </div>
             )}
             <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "12px 14px 24px" : "20px 24px 32px" }}>
               <AllFiltersSectionContent

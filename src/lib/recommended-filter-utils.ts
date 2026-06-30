@@ -35,6 +35,12 @@ export function formatProfileLocation(parsed: ParsedProfileLocation): string {
   return parts.join(", ");
 }
 
+/** True when profile or filter country is Canada (for location UX ordering). */
+export function isCanadianLocationCountry(country: string | null | undefined): boolean {
+  const norm = country?.trim().toLowerCase() ?? "";
+  return norm === "canada" || norm === "ca";
+}
+
 export function locationFieldsFromProfileString(raw: string | null | undefined): {
   city: string;
   region: string;
@@ -162,6 +168,9 @@ function labelLocation(loc: NonNullable<VectorSearchFilters["locations"]>[number
 export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   const labels: string[] = [];
   if (filters.semanticQuery?.trim()) labels.push(`Search: ${filters.semanticQuery.trim()}`);
+  if (filters.customJobFunctions?.length) {
+    labels.push(`Job function: ${filters.customJobFunctions.join(", ")}`);
+  }
   if (filters.jobTitles?.length) labels.push(`Titles: ${filters.jobTitles.join(", ")}`);
   if (filters.keywords?.length) labels.push(`Keywords: ${filters.keywords.join(", ")}`);
   if (filters.companyName?.trim()) labels.push(`Company: ${filters.companyName.trim()}`);

@@ -4,7 +4,7 @@
  * | UI filter              | VectorSearchFilters field | Hirebase param        | Notes |
  * |------------------------|---------------------------|-----------------------|-------|
  * | Job function (taxonomy)| jobCategories             | job_categories        | Hirebase category strings |
- * | Custom job function    | keywords (merged)         | keywords              | Client-only label; sent as search keywords |
+ * | Custom job function    | customJobFunctions        | vsearch query         | Merged into semantic vsearch query, not keywords |
  * | Job type               | jobTypes                  | job_types             | Full Time, Part Time, Contract, Internship |
  * | Work model             | locationTypes             | —                     | Client-side post-filter via job-listing-filters |
  * | Location country       | locations[].country       | locations             | |
