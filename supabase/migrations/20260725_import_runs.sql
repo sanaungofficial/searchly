@@ -1,7 +1,12 @@
 -- Persist admin/client import runs for history and completion screens
-CREATE TYPE "ImportRunStatus" AS ENUM ('SUCCESS', 'SOME_FAILURES', 'FAILED');
 
-CREATE TABLE "ImportRun" (
+DO $$ BEGIN
+  CREATE TYPE "ImportRunStatus" AS ENUM ('SUCCESS', 'SOME_FAILURES', 'FAILED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "ImportRun" (
   "id" TEXT NOT NULL,
   "clientUserId" TEXT NOT NULL,
   "importedById" TEXT NOT NULL,
@@ -20,13 +25,21 @@ CREATE TABLE "ImportRun" (
   CONSTRAINT "ImportRun_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "ImportRun_clientUserId_createdAt_idx" ON "ImportRun"("clientUserId", "createdAt" DESC);
-CREATE INDEX "ImportRun_importedById_idx" ON "ImportRun"("importedById");
+CREATE INDEX IF NOT EXISTS "ImportRun_clientUserId_createdAt_idx" ON "ImportRun"("clientUserId", "createdAt" DESC);
+CREATE INDEX IF NOT EXISTS "ImportRun_importedById_idx" ON "ImportRun"("importedById");
 
-ALTER TABLE "ImportRun"
-  ADD CONSTRAINT "ImportRun_clientUserId_fkey"
-  FOREIGN KEY ("clientUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "ImportRun"
+    ADD CONSTRAINT "ImportRun_clientUserId_fkey"
+    FOREIGN KEY ("clientUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "ImportRun"
-  ADD CONSTRAINT "ImportRun_importedById_fkey"
-  FOREIGN KEY ("importedById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "ImportRun"
+    ADD CONSTRAINT "ImportRun_importedById_fkey"
+    FOREIGN KEY ("importedById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
