@@ -6,11 +6,15 @@ import {
   JobSearchEmailDashboard,
   type NetworkingSection,
 } from "@/components/scout/job-search-email-dashboard";
-import { WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
-import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs";
+import {
+  NETWORKING_SIDEBAR_TABS,
+  NetworkingLayoutSidebar,
+} from "@/components/scout/networking-layout-sidebar";
+import { ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
+import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
+import { color, fontSans, surface, type as T } from "@/lib/typography";
 import { INBOX_PATH } from "@/lib/workspace-urls";
 
 export function NetworkingPageClient() {
@@ -39,8 +43,8 @@ export function NetworkingPageClient() {
     setSection(next);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", next);
-    params.delete("messageId");
-    params.delete("contactId");
+    if (next !== "inbox") params.delete("messageId");
+    if (next !== "leads") params.delete("contactId");
     router.replace(withClientScope(`${INBOX_PATH}?${params.toString()}`), { scroll: false });
   }
 
@@ -54,29 +58,77 @@ export function NetworkingPageClient() {
         flexDirection: "column",
         overflow: "hidden",
         background: surface.page,
+        animation: "fadeIn 0.3s ease both",
       }}
     >
       <WorkspaceScroll style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <WorkspaceContent style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          <header style={{ marginBottom: isMobile ? 12 : 16, flexShrink: 0 }}>
-            <h1 style={bruddleHeadingStyle("h5")}>Networking</h1>
-            <p style={{ margin: "6px 0 0", fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.5 }}>
-              Manage leads and email outreach in one place.
-            </p>
-          </header>
+        <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {isMobile && (
+            <div style={{ marginBottom: 24, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+                <ScoutLabel>Networking</ScoutLabel>
+              </div>
+              <ScoutDisplayTitle size={28} style={{ marginBottom: 8 }}>
+                Leads &amp; inbox
+              </ScoutDisplayTitle>
+              <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+                Manage leads and email outreach in one place.
+              </p>
+            </div>
+          )}
 
-          <WorkspaceSegmentTabs
-            isMobile={isMobile}
-            variant="bruddle"
-            tabs={[
-              { id: "leads" as const, label: "Leads" },
-              { id: "inbox" as const, label: "Inbox" },
-            ]}
-            active={section}
-            onChange={selectSection}
-          />
+          {isMobile && (
+            <div
+              style={{
+                display: "flex",
+                border: "var(--scout-border)",
+                overflowX: "auto",
+                marginBottom: 24,
+                WebkitOverflowScrolling: "touch",
+                scrollbarWidth: "none",
+                flexShrink: 0,
+              }}
+            >
+              {NETWORKING_SIDEBAR_TABS.map(({ id, label }, i) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => selectSection(id)}
+                  style={{
+                    padding: "10px 14px",
+                    minHeight: 44,
+                    border: "none",
+                    borderRight: i < NETWORKING_SIDEBAR_TABS.length - 1 ? "var(--scout-border)" : "none",
+                    background: section === id ? color.forest : surface.card,
+                    color: section === id ? color.gold : color.muted,
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    fontWeight: section === id ? 600 : 500,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
-          <JobSearchEmailDashboard section={section} />
+          <div style={{ display: isMobile ? "block" : "flex", gap: 32, alignItems: "flex-start", flex: 1, minHeight: 0 }}>
+            {!isMobile && (
+              <NetworkingLayoutSidebar
+                tabs={NETWORKING_SIDEBAR_TABS}
+                activeSection={section}
+                onNavigate={selectSection}
+              />
+            )}
+
+            <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <JobSearchEmailDashboard section={section} />
+            </div>
+          </div>
         </WorkspaceContent>
       </WorkspaceScroll>
     </div>
