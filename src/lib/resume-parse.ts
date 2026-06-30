@@ -64,6 +64,10 @@ export interface ParsedResumeData {
   /** Hirebase `/v2/resumes/embed` artifact — use with `/v2/jobs/vsearch` search_type resume. */
   hirebaseArtifactId?: string | null;
   resumeStyle?: import("@/lib/resume-style").ResumeStyleSettings | null;
+  /** Job-search prefs stored alongside resume JSON (see search-preferences.ts). */
+  searchPreferences?: unknown;
+  /** Onboarding / profile experience band used for default Opportunities filters. */
+  experienceLevel?: string | null;
 }
 
 function asStringOrNull(value: unknown): string | null {
@@ -391,7 +395,18 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     normalized.skillGroups.length > 0 ||
     certifications.length > 0;
 
-  return hasContent ? normalized : null;
+  const hasExtensions = obj.searchPreferences !== undefined || asStringOrNull(obj.experienceLevel) !== null;
+  if (!hasContent && !hasExtensions) return null;
+
+  const result = hasContent ? normalized : emptyParsedResumeData();
+  if (obj.searchPreferences !== undefined) {
+    result.searchPreferences = obj.searchPreferences;
+  }
+  const experienceLevel = asStringOrNull(obj.experienceLevel);
+  if (experienceLevel) {
+    result.experienceLevel = experienceLevel;
+  }
+  return result;
 }
 
 export function reconcileParsedSkillsTools(data: ParsedResumeData): ParsedResumeData {
