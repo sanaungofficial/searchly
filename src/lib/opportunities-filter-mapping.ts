@@ -24,6 +24,7 @@
  * | Job titles (search)    | jobTitles                 | job_titles            | Role search path |
  * | Keywords / skills      | keywords                  | keywords              | |
  * | Excluded title         | keywords (-prefix)        | keywords              | Stored in searchPreferences |
+ * | Skills                 | —                         | —                     | Profile-only; not merged into keywords |
  *
  * Client-only (stored in searchPreferences, not sent to Hirebase):
  * - roleTypes (IC / Manager)

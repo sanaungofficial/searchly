@@ -5,6 +5,7 @@ import {
   hasProfileSignals,
 } from "@/lib/recommended-jobs-engine";
 import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
+import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
 import {
   RECOMMENDED_MATCH_SCORE_FLOOR,
   RECOMMENDED_SNAPSHOT_MAX_JOBS,
@@ -87,17 +88,13 @@ async function handleRecommended(request: Request) {
   const targetRoles = roleTitlePreferences.targetRoles ?? [];
   const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
-  // Default personalized feed: profile prefs drive matching server-side — not as Hirebase pre-filters.
+  const explicitUserFilters = !isDefaultRecommendedFilters(filters);
   const searchFilters = semanticQuery
-    ? { ...filters, semanticQuery }
-    : isDefaultRecommendedFilters(filters)
-      ? filters
-      : {
-          page: filters.page,
-          limit: filters.limit,
-          accuracy: filters.accuracy,
-        };
-  const defaultFeed = !semanticQuery && isDefaultRecommendedFilters(searchFilters);
+    ? sanitizeFiltersForHirebase({ ...filters, semanticQuery })
+    : explicitUserFilters
+      ? sanitizeFiltersForHirebase(filters)
+      : {};
+  const defaultFeed = !semanticQuery && !explicitUserFilters;
   const snapshotDate = utcSnapshotDate();
 
   const parsedData = mergeParsedWithReadback(
