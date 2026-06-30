@@ -624,13 +624,14 @@ function assignJobSearchFilters(body: Record<string, unknown>, input: VectorSear
   assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
   if (input.locations?.length) {
-    body.locations = input.locations
+    const locations = input.locations
       .map((loc) => ({
         city: loc.city?.trim() || undefined,
         region: loc.region?.trim() || undefined,
         country: loc.country?.trim() || undefined,
       }))
       .filter((loc) => loc.city || loc.region || loc.country);
+    if (locations.length) body.locations = locations;
   }
   assignIfPresent(body, "date_posted", resolveDatePostedFrom(input)?.trim());
   if (input.visaSponsored === true) body.visa_sponsored = true;
@@ -990,13 +991,14 @@ export async function fetchHirebaseVectorJobs(
   assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
   if (input.locations?.length) {
-    body.locations = input.locations
+    const locations = input.locations
       .map((loc) => ({
         city: loc.city?.trim() || undefined,
         region: loc.region?.trim() || undefined,
         country: loc.country?.trim() || undefined,
       }))
       .filter((loc) => loc.city || loc.region || loc.country);
+    if (locations.length) body.locations = locations;
   }
   assignIfPresent(body, "date_posted", resolveDatePostedFrom(input)?.trim());
   if (input.visaSponsored === true) body.visa_sponsored = true;

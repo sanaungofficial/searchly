@@ -87,7 +87,7 @@ export function explicitExperienceLevelsFromProfile(raw: string | null | undefin
   return match ? [match] : undefined;
 }
 
-/** Profile-derived Hirebase filters — pre-filled on Opportunities load and sent to the API. */
+/** Profile-derived Hirebase filters — UI pre-fill for the filter panel; not auto-applied on the default feed API. */
 export function profileDerivedSearchFilters(input: {
   profileLocation?: string | null;
   targetMarket?: string | null;
@@ -133,7 +133,6 @@ export function profileDerivedSearchFilters(input: {
         ]
       : undefined;
 
-  const locationRadiusMiles = fields.city ? 50 : undefined;
   const jobTypes = prefs.jobTypes?.length ? prefs.jobTypes : undefined;
 
   return {
@@ -143,7 +142,6 @@ export function profileDerivedSearchFilters(input: {
     experienceLevels: experienceLevels.length ? experienceLevels : undefined,
     jobTypes,
     locations,
-    locationRadiusMiles,
   };
 }
 

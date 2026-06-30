@@ -104,6 +104,8 @@ export function relaxRestrictiveFilters(filters: VectorSearchFilters): VectorSea
     locations: _loc,
     locationTypes: _lt,
     locationRadiusMiles: _lr,
+    jobCategories: _jc,
+    experienceLevels: _el,
     ...rest
   } = filters;
   return rest;
@@ -117,7 +119,9 @@ export function hasRestrictiveListingFilters(filters: VectorSearchFilters): bool
     (filters.datePostedWithinDays != null && filters.datePostedWithinDays > 0) ||
     Boolean(filters.locations?.length) ||
     Boolean(filters.locationTypes?.length) ||
-    (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0)
+    (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0) ||
+    Boolean(filters.jobCategories?.length) ||
+    Boolean(filters.experienceLevels?.length)
   );
 }
 

@@ -85,8 +85,17 @@ async function handleRecommended(request: Request) {
   const targetRoles = roleTitlePreferences.targetRoles ?? [];
   const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
-  const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
-  const defaultFeed = isDefaultRecommendedFilters(searchFilters);
+  // Default personalized feed: profile prefs drive matching server-side — not as Hirebase pre-filters.
+  const searchFilters = semanticQuery
+    ? { ...filters, semanticQuery }
+    : isDefaultRecommendedFilters(filters)
+      ? filters
+      : {
+          page: filters.page,
+          limit: filters.limit,
+          accuracy: filters.accuracy,
+        };
+  const defaultFeed = !semanticQuery && isDefaultRecommendedFilters(searchFilters);
   const snapshotDate = utcSnapshotDate();
 
   const parsedData = mergeParsedWithReadback(
