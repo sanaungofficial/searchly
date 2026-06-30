@@ -1,20 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { describeActiveFilters } from "@/lib/recommended-filter-utils";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import {
   ALL_FILTER_SECTIONS,
-  AllFiltersSectionContent,
+  AllFiltersScrollContent,
   type AllFiltersSectionId,
   type RecommendedFilterForm,
 } from "./pipeline-recommended-filters";
 import { jobFunctionPillItems } from "./job-function-dropdown";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 
-const MODAL_Z = 240;
+const DRAWER_WIDTH = "clamp(480px, 62vw, 900px)";
 
 function modalSummaryTitle(form: RecommendedFilterForm): string {
   const parts: string[] = [];
@@ -59,7 +60,9 @@ export function OpportunitiesAllFiltersModal({
   appliedFilters: VectorSearchFilters;
 }) {
   const isMobile = useIsMobile();
-  const [section, setSection] = useState<AllFiltersSectionId>("basic");
+  const [activeSection, setActiveSection] = useState<AllFiltersSectionId>("basic");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Partial<Record<AllFiltersSectionId, HTMLElement | null>>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -71,8 +74,39 @@ export function OpportunitiesAllFiltersModal({
   }, [open]);
 
   useEffect(() => {
-    if (open) setSection("basic");
+    if (!open) return;
+    setActiveSection("basic");
+    scrollRef.current?.scrollTo({ top: 0 });
   }, [open]);
+
+  useEffect(() => {
+    if (!open || isMobile) return;
+    const root = scrollRef.current;
+    if (!root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0));
+        const top = visible[0]?.target.getAttribute("data-section-id") as AllFiltersSectionId | null;
+        if (top) setActiveSection(top);
+      },
+      { root, rootMargin: "-20% 0px -55% 0px", threshold: [0, 0.15, 0.4] },
+    );
+
+    for (const section of ALL_FILTER_SECTIONS) {
+      const el = sectionRefs.current[section.id];
+      if (el) observer.observe(el);
+    }
+
+    return () => observer.disconnect();
+  }, [open, isMobile]);
+
+  const scrollToSection = useCallback((id: AllFiltersSectionId) => {
+    setActiveSection(id);
+    sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const chips = useMemo(() => activeChipLabels(form, appliedFilters), [form, appliedFilters]);
   const visibleChips = chips.slice(0, 6);
@@ -80,7 +114,7 @@ export function OpportunitiesAllFiltersModal({
 
   if (!open) return null;
 
-  const sheetStyle: React.CSSProperties = isMobile
+  const drawerStyle: React.CSSProperties = isMobile
     ? {
         position: "fixed",
         left: 0,
@@ -94,7 +128,11 @@ export function OpportunitiesAllFiltersModal({
       }
     : {
         position: "fixed",
-        inset: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: DRAWER_WIDTH,
+        boxShadow: "-8px 0 40px rgba(0,0,0,0.14)",
       };
 
   return (
@@ -106,7 +144,7 @@ export function OpportunitiesAllFiltersModal({
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.45)",
-          zIndex: MODAL_Z,
+          zIndex: DRAWER_BACKDROP_Z,
         }}
       />
       <div
@@ -114,8 +152,8 @@ export function OpportunitiesAllFiltersModal({
         aria-modal="true"
         aria-label="All filters"
         style={{
-          ...sheetStyle,
-          zIndex: MODAL_Z + 1,
+          ...drawerStyle,
+          zIndex: DRAWER_Z,
           display: "flex",
           flexDirection: "column",
           background: surface.card,
@@ -142,13 +180,13 @@ export function OpportunitiesAllFiltersModal({
             />
           </div>
         )}
+
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
             gap: 12,
-            padding: isMobile ? "12px 14px" : "14px 20px",
+            padding: isMobile ? "12px 14px" : "16px 20px",
             borderBottom: border.line,
             flexShrink: 0,
           }}
@@ -160,29 +198,27 @@ export function OpportunitiesAllFiltersModal({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
-              border: "none",
-              background: "transparent",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              border: border.line,
+              borderRadius: 8,
+              background: surface.card,
               cursor: "pointer",
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
               color: color.ink,
-              padding: 0,
+              flexShrink: 0,
             }}
           >
             <ArrowLeft size={18} />
-            Back
           </button>
           <p
             style={{
               fontFamily: fontSans,
-              fontSize: T.caption,
+              fontSize: T.body,
               fontWeight: 700,
               color: color.ink,
               margin: 0,
               flex: 1,
-              textAlign: "center",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -195,8 +231,8 @@ export function OpportunitiesAllFiltersModal({
             onClick={onConfirm}
             disabled={applying}
             style={{
-              padding: "8px 18px",
-              border: border.lineStrong,
+              padding: "9px 22px",
+              border: "none",
               borderRadius: 999,
               background: color.forest,
               color: color.gold,
@@ -229,7 +265,7 @@ export function OpportunitiesAllFiltersModal({
                 key={chip}
                 style={{
                   display: "inline-flex",
-                  padding: "5px 10px",
+                  padding: "5px 12px",
                   borderRadius: 999,
                   background: surface.inset,
                   border: border.line,
@@ -246,7 +282,7 @@ export function OpportunitiesAllFiltersModal({
               <span
                 style={{
                   display: "inline-flex",
-                  padding: "5px 10px",
+                  padding: "5px 12px",
                   borderRadius: 999,
                   background: "rgba(45, 107, 74, 0.12)",
                   fontFamily: fontSans,
@@ -266,69 +302,80 @@ export function OpportunitiesAllFiltersModal({
           {!isMobile && (
             <aside
               style={{
-                width: 260,
+                width: 220,
                 flexShrink: 0,
                 borderRight: border.line,
-                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
                 background: surface.inset,
-                padding: "12px 0",
               }}
             >
-              {ALL_FILTER_SECTIONS.map((item) => {
-                const active = section === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSection(item.id)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "12px 16px",
-                      border: "none",
-                      borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
-                      background: active ? surface.card : "transparent",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span
+              <nav style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+                {ALL_FILTER_SECTIONS.map((item) => {
+                  const active = activeSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => scrollToSection(item.id)}
                       style={{
                         display: "block",
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        fontWeight: active ? 700 : 600,
-                        color: active ? color.forest : color.ink,
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "14px 16px",
+                        border: "none",
+                        background: active ? "rgba(17,17,17,0.06)" : "transparent",
+                        cursor: "pointer",
                       }}
                     >
-                      {item.title}
-                    </span>
-                    <span
-                      style={{
-                        display: "block",
-                        fontFamily: fontSans,
-                        fontSize: T.label,
-                        color: color.muted,
-                        marginTop: 4,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {item.hint}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span
+                        style={{
+                          display: "block",
+                          fontFamily: fontSans,
+                          fontSize: T.caption,
+                          fontWeight: active ? 700 : 600,
+                          color: color.ink,
+                        }}
+                      >
+                        {item.title}
+                      </span>
+                      <span
+                        style={{
+                          display: "block",
+                          fontFamily: fontSans,
+                          fontSize: T.label,
+                          color: color.muted,
+                          marginTop: 4,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {item.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
               <div
                 style={{
-                  margin: "16px 12px 0",
-                  padding: "12px",
-                  borderRadius: 8,
-                  background: "rgba(45, 107, 74, 0.08)",
-                  border: "1px solid rgba(45, 107, 74, 0.2)",
+                  margin: "12px",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  background: "rgba(45, 107, 74, 0.1)",
+                  border: "1px solid rgba(45, 107, 74, 0.22)",
+                  flexShrink: 0,
                 }}
               >
-                <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0, lineHeight: 1.45 }}>
-                  Use Company Insights to search a specific company or exclude staffing agencies.
+                <p
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    color: color.forest,
+                    margin: 0,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Applying for specific companies? Use filters in the Company Insights section to find your target
+                  companies.
                 </p>
               </div>
             </aside>
@@ -347,12 +394,12 @@ export function OpportunitiesAllFiltersModal({
                 }}
               >
                 {ALL_FILTER_SECTIONS.map((item) => {
-                  const active = section === item.id;
+                  const active = activeSection === item.id;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSection(item.id)}
+                      onClick={() => scrollToSection(item.id)}
                       style={{
                         flexShrink: 0,
                         padding: "7px 12px",
@@ -373,37 +420,25 @@ export function OpportunitiesAllFiltersModal({
                 })}
               </div>
             )}
-            <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "12px 14px 24px" : "20px 24px 32px" }}>
-              <AllFiltersSectionContent
-                section={section}
+            <div
+              ref={scrollRef}
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: isMobile ? "12px 14px 28px" : "24px 28px 36px",
+              }}
+            >
+              <AllFiltersScrollContent
                 form={form}
                 setForm={setForm}
                 toggleSet={toggleSet}
                 trackedCompanyNames={trackedCompanyNames}
                 categorySuggestions={categorySuggestions}
+                sectionRefs={sectionRefs}
               />
             </div>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: "absolute",
-            top: isMobile ? 10 : 14,
-            right: isMobile ? 10 : 14,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            padding: 4,
-            color: color.muted,
-            display: isMobile ? "flex" : "none",
-          }}
-        >
-          <X size={20} />
-        </button>
       </div>
     </>
   );

@@ -63,6 +63,7 @@ import {
   searchTargetsExecutiveRoles,
 } from "@/lib/job-match";
 import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
+import { sanitizeFiltersForHirebase } from "@/lib/opportunities-hirebase-filters";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTokens, type ParsedResumeData } from "@/lib/resume-parse";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -697,17 +698,13 @@ export async function generateRecommendedJobsForUser(
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
-  /** Default feed uses profile location post-filter + country pre-filter on Hirebase fetch. */
-  let mergedFilters = normalizePostedDateFilters({
-    ...requestFilters,
-    semanticQuery: semanticQuery || undefined,
-  });
-  if (defaultFeed && !mergedFilters.locations?.length) {
-    const hirebaseLocations = profileLocationToHirebaseFilters(locationInput);
-    if (hirebaseLocations.length) {
-      mergedFilters = { ...mergedFilters, locations: hirebaseLocations };
-    }
-  }
+  /** Default feed: open Hirebase query — profile location applied as soft post-filter only. */
+  let mergedFilters = normalizePostedDateFilters(
+    sanitizeFiltersForHirebase({
+      ...requestFilters,
+      semanticQuery: semanticQuery || undefined,
+    }),
+  );
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
@@ -1007,12 +1004,14 @@ async function generateActiveRoleSearchForUser(
   if (!searchRoles.length) return null;
 
   const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
-  let mergedFilters = normalizePostedDateFilters({
-    ...requestFilters,
-    semanticQuery,
-    limit: maxJobs,
-    page: requestFilters.page ?? 1,
-  });
+  let mergedFilters = normalizePostedDateFilters(
+    sanitizeFiltersForHirebase({
+      ...requestFilters,
+      semanticQuery,
+      limit: maxJobs,
+      page: requestFilters.page ?? 1,
+    }),
+  );
   if (!mergedFilters.locations?.length) {
     const hirebaseLocations = profileLocationToHirebaseFilters(locationInput);
     if (hirebaseLocations.length) {

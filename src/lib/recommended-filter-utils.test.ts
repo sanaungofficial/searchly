@@ -32,7 +32,7 @@ describe("profileDerivedSearchFilters", () => {
     expect(filters.experienceLevels).toBeUndefined();
   });
 
-  it("pre-selects explicit profile fields only", () => {
+  it("pre-selects explicit onboarding/profile fields only", () => {
     const filters = profileDerivedSearchFilters({
       profileLocation: "Chicago, IL, United States",
       targetRoles: ["Product Manager"],
@@ -44,18 +44,20 @@ describe("profileDerivedSearchFilters", () => {
 
     expect(filters.jobTitles).toEqual(["Product Manager"]);
     expect(filters.jobCategories).toEqual(["Operations Jobs"]);
-    expect(filters.locationTypes).toEqual(["Remote"]);
     expect(filters.experienceLevels).toEqual(["Senior"]);
     expect(filters.jobTypes).toBeUndefined();
+    expect(filters.locationTypes).toBeUndefined();
+    expect(filters.visaSponsored).toBeUndefined();
+    expect(filters.salaryFrom).toBeUndefined();
     expect(filters.locations?.[0]?.country).toBe("United States");
     expect(filters.locationRadiusMiles).toBeUndefined();
   });
 
-  it("maps contract preference from employment status text", () => {
+  it("does not infer contract job type from employment status", () => {
     const filters = profileDerivedSearchFilters({
       employmentStatus: "Freelance / contract",
     });
-    expect(filters.jobTypes).toEqual(["Contract"]);
+    expect(filters.jobTypes).toBeUndefined();
   });
 
   it("describeActiveFilters omits unset dimensions", () => {

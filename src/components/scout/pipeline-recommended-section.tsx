@@ -73,6 +73,9 @@ import {
   searchPreferencesFromParsedData,
   type SearchPreferences,
 } from "@/lib/search-preferences";
+import {
+  loosenStackedHirebaseFilters,
+} from "@/lib/opportunities-hirebase-filters";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -192,10 +195,7 @@ function readDefaultFeedCache(): RecommendedCacheEntry | null {
 
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
-  const skillKeywords = splitInputListOrUndefined(form.skills);
-  const baseKeywords = splitInputListOrUndefined(form.keywords) ?? [];
-  const mergedKeywordList = [...baseKeywords, ...(skillKeywords ?? [])];
-  const mergedKeywords = mergedKeywordList.length ? mergedKeywordList : undefined;
+  const baseKeywords = splitInputListOrUndefined(form.keywords);
   const customJobFunctions = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
 
   const hasLocation =
@@ -203,14 +203,14 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
       ? true
       : locationParts.length > 0;
 
-  return {
+  const raw: VectorSearchFilters = {
     ...DEFAULT_VECTOR_SEARCH_FILTERS,
     page,
     limit: VECTOR_SEARCH_RESULTS_MAX,
     semanticQuery: form.semanticQuery.trim() || undefined,
     customJobFunctions: customJobFunctions.length ? customJobFunctions : undefined,
     jobTitles: splitInputListOrUndefined(form.jobTitles),
-    keywords: mergedKeywords,
+    keywords: baseKeywords,
     companyName: form.companyName.trim() || undefined,
     industries: splitInputListOrUndefined(form.industries),
     subindustries: splitInputListOrUndefined(form.subindustries),
@@ -218,7 +218,11 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     jobBoard: form.jobBoard.trim() || undefined,
     locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
     jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
-    experienceLevels: form.openToAllExperience ? undefined : form.experienceLevels.size ? [...form.experienceLevels] : undefined,
+    experienceLevels: form.openToAllExperience
+      ? undefined
+      : form.experienceLevels.size
+        ? [...form.experienceLevels]
+        : undefined,
     companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
     visaSponsored: form.visaSponsored || undefined,
     datePostedWithinDays: form.datePostedWithinDays.trim()
@@ -233,13 +237,17 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     yearsFrom: form.openToAllExperience || !form.yearsFrom.trim() ? undefined : Number(form.yearsFrom),
     yearsTo: form.openToAllExperience || !form.yearsTo.trim() ? undefined : Number(form.yearsTo),
     locations: hasLocation
-      ? [{
-          city: form.locationAllInCountry ? undefined : form.locationCity.trim() || undefined,
-          region: form.locationAllInCountry ? undefined : form.locationRegion.trim() || undefined,
-          country: form.locationCountry.trim() || undefined,
-        }]
+      ? [
+          {
+            city: form.locationAllInCountry ? undefined : form.locationCity.trim() || undefined,
+            region: form.locationAllInCountry ? undefined : form.locationRegion.trim() || undefined,
+            country: form.locationCountry.trim() || undefined,
+          },
+        ]
       : undefined,
   };
+
+  return loosenStackedHirebaseFilters(raw);
 }
 
 const inputStyle: React.CSSProperties = {

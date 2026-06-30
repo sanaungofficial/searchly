@@ -3,7 +3,6 @@ import { locationRadiusLabel } from "@/lib/job-location-radius";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { HIREBASE_EXPERIENCE_LEVELS } from "@/lib/vector-matched-job";
 import { parseProfileLocationString, resolveProfileLocation, type ParsedProfileLocation } from "@/lib/profile-location";
-import { profilePreferencesToFilters } from "@/lib/profile-preference-filters";
 import {
   hirebaseLevelsFromJobrightLabels,
   type SearchPreferences,
@@ -117,14 +116,6 @@ export function profileDerivedSearchFilters(input: {
     targetMarket: input.targetMarket,
   });
   const fields = locationFieldsFromProfileString(resolvedLocation);
-  const prefs = profilePreferencesToFilters({
-    priorities: input.priorities ?? [],
-    targetSalary: input.targetSalary,
-    employmentStatus: input.employmentStatus,
-    jobTimeline: input.jobTimeline,
-    workAuthorization: input.workAuthorization,
-    profileLocation: null,
-  });
 
   const roleTitles = uniqueTrimmed([
     ...(input.prioritizedRoles ?? []),
@@ -148,14 +139,10 @@ export function profileDerivedSearchFilters(input: {
         ]
       : undefined;
 
-  const jobTypes = prefs.jobTypes?.length ? prefs.jobTypes : undefined;
-
   return {
-    ...prefs,
     jobTitles: roleTitles.length ? roleTitles : undefined,
     jobCategories: jobCategories.length ? jobCategories : undefined,
     experienceLevels: experienceLevels?.length ? experienceLevels : undefined,
-    jobTypes,
     locations,
   };
 }
