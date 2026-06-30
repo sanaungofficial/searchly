@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "sync:topechelon": "npx --yes tsx src/scripts/sync-topechelon.ts",
-    "sync:execthread": "npx --yes tsx src/scripts/sync-execthread.ts"
+    "sync:execthread": "npx --yes tsx src/scripts/sync-execthread.ts",
+    "fix:saved-pipeline-stages": "npx --yes tsx src/scripts/fix-saved-pipeline-stages.ts"
   },
   "dependencies": {
     "@100mslive/react-sdk": "^0.12.4",

@@ -24,3 +24,13 @@ export const KANBAN_TO_DB: Record<KanbanStage, string> = {
 export function dbStageToKanban(stage: string): KanbanStage {
   return DB_TO_KANBAN[stage] ?? "saved";
 }
+
+/** Resolve kanban tab from DB row — Saved tab is pre-application only. */
+export function resolveDbJobKanbanStage(
+  stage: string,
+  appliedAt?: string | Date | null,
+): KanbanStage {
+  const kanban = dbStageToKanban(stage);
+  if (kanban === "saved" && appliedAt) return "applied";
+  return kanban;
+}
