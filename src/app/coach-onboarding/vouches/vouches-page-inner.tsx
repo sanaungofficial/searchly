@@ -33,7 +33,7 @@ export default function CoachVouchesPageInner() {
 
   if (!ready) {
     return (
-      <div className="onboarding-loading" role="status">
+      <div className="onboarding-loading bruddle" role="status">
         <div className="onboarding-loading__spinner" aria-hidden="true" />
         <span>Loading…</span>
       </div>

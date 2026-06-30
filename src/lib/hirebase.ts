@@ -1,3 +1,4 @@
+import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
 import { jobListingUrlDedupeKey } from "@/lib/cached-job";
@@ -622,7 +623,13 @@ function assignJobSearchFilters(body: Record<string, unknown>, input: VectorSear
   assignIfPresent(body, "job_categories", input.jobCategories?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "job_types", input.jobTypes?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
-  assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
+  const companyTypes = input.companyTypes?.length
+    ? input.companyTypes
+    : input.companySizeBuckets?.length
+      ? input.companySizeBuckets
+      : undefined;
+  assignIfPresent(body, "company_types", companyTypes?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "location_types", input.locationTypes?.map((t) => t.trim()).filter(Boolean));
   if (input.locations?.length) {
     const locations = input.locations
       .map((loc) => ({
@@ -639,6 +646,121 @@ function assignJobSearchFilters(body: Record<string, unknown>, input: VectorSear
   if (input.salaryTo != null) body.salary_to = input.salaryTo;
   if (input.yearsFrom != null) body.years_from = input.yearsFrom;
   if (input.yearsTo != null) body.years_to = input.yearsTo;
+}
+
+/** Lexical block for POST /v2/jobs/neural-search and modern /v2/jobs/search body shape. */
+export function buildHirebaseLexicalFilters(input: VectorSearchFilters): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  assignIfPresent(body, "company_name", input.companyName?.trim());
+  assignIfPresent(body, "company_slug", input.companySlug?.trim());
+  if (input.jobTitles?.length) body.job_titles = input.jobTitles.map((t) => t.trim()).filter(Boolean);
+  if (input.keywords?.length) body.keywords = input.keywords.map((t) => t.trim()).filter(Boolean);
+  assignIfPresent(body, "job_category", input.jobCategories?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "job_types", input.jobTypes?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
+  const companyTypes = input.companyTypes?.length ? input.companyTypes : input.companySizeBuckets;
+  assignIfPresent(body, "company_types", companyTypes?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "location_types", input.locationTypes?.map((t) => t.trim()).filter(Boolean));
+  if (input.industries?.length) body.industry = input.industries.map((t) => t.trim()).filter(Boolean);
+  if (input.subindustries?.length) {
+    body.sub_industry = input.subindustries.map((t) => t.trim()).filter(Boolean);
+  }
+  if (input.locations?.length) {
+    const geo = input.locations
+      .map((loc) => ({
+        city: loc.city?.trim() || undefined,
+        region: loc.region?.trim() || undefined,
+        country: loc.country?.trim() || undefined,
+      }))
+      .filter((loc) => loc.city || loc.region || loc.country);
+    if (geo.length) body.geo_locations = geo;
+  }
+  if (input.datePostedWithinDays != null && input.datePostedWithinDays > 0) {
+    body.days_ago = input.datePostedWithinDays;
+  } else if (input.datePostedFrom?.trim()) {
+    body.date_posted = input.datePostedFrom.trim();
+  }
+  if (input.salaryFrom != null || input.salaryTo != null) {
+    body.salary = {
+      ...(input.salaryFrom != null ? { min: input.salaryFrom } : {}),
+      ...(input.salaryTo != null ? { max: input.salaryTo } : {}),
+    };
+  }
+  if (input.yearsFrom != null || input.yearsTo != null) {
+    body.yoe = {
+      ...(input.yearsFrom != null ? { min: input.yearsFrom } : {}),
+      ...(input.yearsTo != null ? { max: input.yearsTo } : {}),
+    };
+  }
+  if (input.visaSponsored === true) body.visa = "true";
+  if (input.jobBoard?.trim()) body.job_board = [input.jobBoard.trim()];
+  return body;
+}
+
+export type HirebaseNeuralSearchInput = VectorSearchFilters & {
+  /** Natural-language or profile-derived query for the vector block. */
+  query?: string;
+  artifactId?: string;
+  limit?: number;
+  page?: number;
+};
+
+/** Hybrid semantic + lexical search — honors filters unlike vsearch alone. */
+export async function fetchHirebaseNeuralJobs(
+  input: HirebaseNeuralSearchInput,
+): Promise<{
+  jobs: CachedJob[];
+  rawJobs: HirebaseJob[];
+  companyNames: string[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const page = Math.max(1, input.page ?? 1);
+  const limit = Math.max(1, Math.min(input.limit ?? VECTOR_SEARCH_RESULTS_MAX, 100));
+  const lexical = buildHirebaseLexicalFilters(input);
+  lexical.limit = limit;
+  lexical.page = page;
+  lexical.sort_by = "relevance";
+  lexical.sort_order = "desc";
+
+  const vector: Record<string, unknown> = {};
+  const artifactId = input.artifactId?.trim();
+  const query = input.query?.trim();
+  if (artifactId) {
+    vector.artifact_id = artifactId;
+  } else if (query) {
+    vector.query = trimVSearchQuery(query);
+  }
+
+  if (!Object.keys(vector).length && !Object.keys(lexical).length) {
+    return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page, limit: 0, totalPages: 0 };
+  }
+
+  const body: Record<string, unknown> = {};
+  if (Object.keys(vector).length) body.vector = vector;
+  if (Object.keys(lexical).length) body.lexical = lexical;
+
+  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/neural-search", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? []).slice(0, limit);
+  const jobs = rawJobs.map(mapHirebaseJob);
+  const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
+
+  return {
+    jobs,
+    rawJobs,
+    companyNames,
+    totalCount: data.total_count ?? jobs.length,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    totalPages: data.total_pages ?? 1,
+  };
 }
 
 /** Global role-based job search — same Hirebase `/v2/jobs/search` path as Companies matching. */
@@ -989,7 +1111,9 @@ export async function fetchHirebaseVectorJobs(
   assignIfPresent(body, "job_categories", input.jobCategories?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "job_types", input.jobTypes?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
-  assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
+  const companyTypes = input.companyTypes?.length ? input.companyTypes : input.companySizeBuckets;
+  assignIfPresent(body, "company_types", companyTypes?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "location_types", input.locationTypes?.map((t) => t.trim()).filter(Boolean));
   if (input.locations?.length) {
     const locations = input.locations
       .map((loc) => ({
@@ -1067,6 +1191,78 @@ export async function fetchHirebaseJobsSearch(
 type HirebaseCategoryListResponse = {
   categories?: string[];
 };
+
+type HirebaseIndustryListResponse = {
+  industries?: string[];
+};
+
+type HirebaseSubindustryListResponse = {
+  subindustries?: string[];
+};
+
+export type HirebaseIndustryOption = {
+  label: string;
+  value: string;
+  kind: "industry" | "subindustry";
+};
+
+let industryListCache: HirebaseIndustryOption[] | null = null;
+let subindustryListCache: HirebaseIndustryOption[] | null = null;
+let industryCacheExpiresAt = 0;
+const INDUSTRY_CACHE_MS = 1000 * 60 * 60 * 6;
+
+async function loadIndustryKindList(
+  path: string,
+  key: "industries" | "subindustries",
+  kind: HirebaseIndustryOption["kind"],
+): Promise<HirebaseIndustryOption[]> {
+  const data = await hirebaseFetch<Record<string, string[]>>(
+    path,
+    { method: "GET", signal: AbortSignal.timeout(15000) },
+  );
+  return (data[key] ?? [])
+    .map((label) => label.trim())
+    .filter(Boolean)
+    .map((label) => ({ label, value: label, kind }));
+}
+
+/** Official Hirebase industry list — same values accepted by job search filters. */
+export async function fetchHirebaseIndustryList(
+  ctx?: { userId?: string | null },
+): Promise<HirebaseIndustryOption[]> {
+  if (industryListCache && Date.now() < industryCacheExpiresAt) return industryListCache;
+  industryListCache = await loadIndustryKindList("/v2/jobs/data/industries", "industries", "industry");
+  industryCacheExpiresAt = Date.now() + INDUSTRY_CACHE_MS;
+  void ctx;
+  return industryListCache;
+}
+
+/** Official Hirebase subindustry list — flat-searchable alongside industries. */
+export async function fetchHirebaseSubindustryList(
+  ctx?: { userId?: string | null },
+): Promise<HirebaseIndustryOption[]> {
+  if (subindustryListCache && Date.now() < industryCacheExpiresAt) return subindustryListCache;
+  subindustryListCache = await loadIndustryKindList(
+    "/v2/jobs/data/subindustries",
+    "subindustries",
+    "subindustry",
+  );
+  industryCacheExpiresAt = Date.now() + INDUSTRY_CACHE_MS;
+  void ctx;
+  return subindustryListCache;
+}
+
+export async function fetchHirebaseFlatIndustryOptions(): Promise<HirebaseIndustryOption[]> {
+  const [industries, subindustries] = await Promise.all([
+    fetchHirebaseIndustryList(),
+    fetchHirebaseSubindustryList(),
+  ]);
+  const byLabel = new Map<string, HirebaseIndustryOption>();
+  for (const opt of [...industries, ...subindustries]) {
+    byLabel.set(opt.label.toLowerCase(), opt);
+  }
+  return [...byLabel.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
 
 /** Official Hirebase category list — same values accepted by job search filters. */
 export async function fetchHirebaseJobCategoryList(

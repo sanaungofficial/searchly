@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
-import { profileDerivedSearchFilters, describeActiveFilters } from "@/lib/recommended-filter-utils";
+import {
+  profileLocationAllInCountry,
+  profileSearchConstraints,
+} from "@/lib/profile-search-constraints";
+import { describeActiveFilters } from "@/lib/recommended-filter-utils";
 import { resolveProfileLocation } from "@/lib/profile-location";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { searchPreferencesFromParsedData } from "@/lib/search-preferences";
@@ -31,21 +35,22 @@ export async function GET(request: Request) {
       ? (parsedData as { experienceLevel: string }).experienceLevel
       : null;
 
-  const filters = profileDerivedSearchFilters({
+  const parsedPrefs = searchPreferencesFromParsedData(parsedData);
+  const filters = profileSearchConstraints({
     profileLocation: parsedData.location ?? null,
     targetMarket: profile?.targetMarket ?? null,
     priorities: profile?.priorities ?? [],
-    targetSalary: profile?.targetSalary,
-    employmentStatus: profile?.employmentStatus,
-    jobTimeline: profile?.jobTimeline,
     experienceLevel,
     targetRoles: profile?.targetRoles ?? [],
-    prioritizedRoles: profile?.prioritizedRoles ?? [],
     prioritizedCategories: profile?.prioritizedCategories ?? [],
-    searchPreferences: searchPreferencesFromParsedData(parsedData),
+    searchPreferences: parsedPrefs,
   });
 
-  const searchPreferences = searchPreferencesFromParsedData(parsedData);
+  const country = filters.locations?.[0]?.country;
+  const searchPreferences = {
+    ...parsedPrefs,
+    ...(profileLocationAllInCountry(parsedPrefs, country) ? { locationAllInCountry: true } : {}),
+  };
 
   return NextResponse.json({
     filters,

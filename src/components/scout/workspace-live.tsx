@@ -268,7 +268,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
   );
 
   if (embedded) {
-    return <WorkspaceSubpageShell>{body}</WorkspaceSubpageShell>;
+    return <WorkspaceSubpageShell bruddle>{body}</WorkspaceSubpageShell>;
   }
 
   return (

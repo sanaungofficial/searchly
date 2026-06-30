@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
-import { color, fontSans, border as B } from "@/lib/typography";
+import { scoutPrimaryCtaStyle } from "@/components/scout/scout-box";
+import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
 
 export function LiveSessionReplayPage({
   session,
@@ -20,7 +21,7 @@ export function LiveSessionReplayPage({
       <div
         style={{
           background: session.bgColor,
-          border: B.lineStrong,
+          border: "var(--scout-border)",
           padding: "24px 22px",
           marginBottom: 24,
           color: session.accentColor,
@@ -29,7 +30,7 @@ export function LiveSessionReplayPage({
         <p
           style={{
             fontFamily: fontSans,
-            fontSize: 11,
+            fontSize: T.label,
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
@@ -41,24 +42,20 @@ export function LiveSessionReplayPage({
         </p>
         <h1
           style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 28,
-            fontWeight: 500,
-            fontStyle: "italic",
+            ...bruddleHeadingStyle("h4"),
             color: "#fff",
             margin: "0 0 10px",
-            lineHeight: 1.2,
           }}
         >
           {session.title}
         </h1>
-        <p style={{ fontFamily: fontSans, fontSize: 14, opacity: 0.85, margin: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, opacity: 0.85, margin: 0 }}>
           with {session.host} · {session.date}
         </p>
       </div>
 
       {replayUrl ? (
-        <div style={{ marginBottom: 24, border: B.lineStrong, background: "#000" }}>
+        <div style={{ marginBottom: 24, border: "var(--scout-border)", background: "#000" }}>
           <video
             controls
             playsInline
@@ -70,13 +67,13 @@ export function LiveSessionReplayPage({
         <div
           style={{
             padding: "32px 24px",
-            background: "rgba(26,58,47,0.06)",
-            border: B.line,
+            background: surface.inset,
+            border: "var(--scout-border)",
             marginBottom: 24,
             textAlign: "center",
           }}
         >
-          <p style={{ fontFamily: fontSans, fontSize: 15, color: color.stone, margin: 0, lineHeight: 1.6 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.stone, margin: 0, lineHeight: 1.6 }}>
             The replay is still processing. Check back soon — we&apos;ll email you when it&apos;s ready.
           </p>
         </div>
@@ -85,7 +82,7 @@ export function LiveSessionReplayPage({
       <p
         style={{
           fontFamily: fontSans,
-          fontSize: 15,
+          fontSize: T.body,
           color: color.stone,
           lineHeight: 1.65,
           marginBottom: 24,
@@ -103,13 +100,11 @@ export function LiveSessionReplayPage({
             justifyContent: "center",
             minHeight: 48,
             padding: "12px 20px",
-            background: color.forest,
-            color: color.gold,
-            border: B.lineStrong,
             fontFamily: fontSans,
-            fontSize: 14,
-            fontWeight: 600,
+            fontSize: T.btnMd,
+            fontWeight: 700,
             textDecoration: "none",
+            ...scoutPrimaryCtaStyle,
           }}
         >
           Book time with {session.host} →
@@ -118,7 +113,7 @@ export function LiveSessionReplayPage({
           href={`/live/${routeId}`}
           style={{
             fontFamily: fontSans,
-            fontSize: 14,
+            fontSize: T.bodySm,
             color: color.forest,
             textDecoration: "underline",
             textUnderlineOffset: 3,

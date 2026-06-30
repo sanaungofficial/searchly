@@ -5,7 +5,7 @@ export default function PublicVouchPage() {
   return (
     <Suspense
       fallback={
-        <div className="onboarding-loading">
+        <div className="onboarding-loading bruddle">
           <div className="onboarding-loading__spinner" aria-hidden="true" />
           <span>Loading…</span>
         </div>

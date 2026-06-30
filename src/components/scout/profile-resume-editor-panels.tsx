@@ -34,25 +34,28 @@ import {
   type ParsedWorkEntry,
   type ResumeSectionId,
 } from "@/lib/resume-parse";
-import { border, color, surface, fontSans } from "@/lib/typography";
+import { border, fontSans } from "@/lib/typography";
+import { RP } from "@/lib/resume-page-tokens";
 
-/** Resume editor tokens — Citebound-aligned (replaces JobRight green) */
+/** Resume editor tokens — Jobright-aligned mint palette. */
 export const JR = {
-  green: color.forest,
-  greenDark: "#2D6B4A",
-  greenLight: "rgba(26,58,47,0.08)",
-  gold: color.gold,
-  bg: surface.page,
-  panel: surface.card,
-  border: "rgba(17,17,17,0.14)",
-  text: color.ink,
-  muted: color.muted,
-  urgent: "#C4574A",
-  urgentBg: "rgba(196,87,74,0.08)",
-  critical: "#C4A86A",
-  criticalBg: "rgba(196,168,106,0.12)",
-  optional: color.muted,
-  optionalBg: surface.inset,
+  green: RP.mint,
+  greenDark: "#0D5C3D",
+  greenLight: RP.mintTint,
+  gold: RP.gradeGoldText,
+  bg: RP.pageBg,
+  panel: RP.panelBg,
+  border: RP.border,
+  text: RP.text,
+  muted: RP.textMuted,
+  urgent: RP.urgent,
+  urgentBg: RP.urgentBg,
+  critical: RP.critical,
+  criticalBg: RP.criticalBg,
+  optional: RP.optional,
+  optionalBg: RP.optionalBg,
+  previewBg: RP.previewBg,
+  scoreBannerBg: RP.scoreBannerBg,
 };
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {

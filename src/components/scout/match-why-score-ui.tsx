@@ -6,11 +6,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useHoverCapable } from "@/hooks/use-hover-capable";
 import { isLowQualityMatchReason } from "@/lib/match-score";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
+import { JR } from "@/lib/opportunities-jobright-tokens";
+
+const MATCH_RING = JR.mint;
 
 export function matchScorePanelBackground(score: number): string {
-  if (score >= 75) return "#0D2419";
-  if (score >= 60) return "#1F1508";
-  return "#1A1A1A";
+  if (score >= 75) return JR.matchPanelHigh;
+  if (score >= 60) return JR.matchPanelMid;
+  return JR.matchPanelLow;
 }
 
 export function filterMatchReasons(reasons: string[], max = 4): string[] {
@@ -30,7 +33,7 @@ export function CircularMatchScore({ score }: { score: number }) {
           cy="40"
           r={radius}
           fill="none"
-          stroke="#44E8A4"
+          stroke={MATCH_RING}
           strokeWidth="5"
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
@@ -62,7 +65,7 @@ export function WhyMatchPanel({
     <div style={{ padding: "4px 0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
-          <path d="M7.5 1L9 6H14.5L10 9.5L11.5 14.5L7.5 11.5L3.5 14.5L5 9.5L0.5 6H6L7.5 1Z" fill="#44E8A4" stroke="#44E8A4" strokeWidth="0.5" strokeLinejoin="round"/>
+          <path d="M7.5 1L9 6H14.5L10 9.5L11.5 14.5L7.5 11.5L3.5 14.5L5 9.5L0.5 6H6L7.5 1Z" fill={MATCH_RING} stroke={MATCH_RING} strokeWidth="0.5" strokeLinejoin="round"/>
         </svg>
         <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
           {title}
@@ -72,7 +75,7 @@ export function WhyMatchPanel({
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: matchedSkills.length > 0 ? 14 : 0 }}>
           {reasons.map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-              <span style={{ color: "#44E8A4", fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>✓</span>
+              <span style={{ color: MATCH_RING, fontSize: 13, lineHeight: "1.45", flexShrink: 0, fontWeight: 700 }}>✓</span>
               <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.45 }}>{r}</span>
             </div>
           ))}
@@ -85,7 +88,7 @@ export function WhyMatchPanel({
           </p>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             {matchedSkills.map((skill) => (
-              <span key={skill} style={{ display: "inline-block", padding: "3px 10px", fontSize: T.label, fontWeight: 600, color: "#44E8A4", background: "rgba(68,232,164,0.12)", border: "1px solid rgba(68,232,164,0.35)", borderRadius: 4 }}>
+              <span key={skill} style={{ display: "inline-block", padding: "3px 10px", fontSize: T.label, fontWeight: 600, color: MATCH_RING, background: JR.mintTintStrong, border: `1px solid ${JR.mintBorder}`, borderRadius: 4 }}>
                 {skill}
               </span>
             ))}
@@ -221,7 +224,8 @@ export function MatchScoreColumn({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        borderLeft: "1.5px solid rgba(255,255,255,0.07)",
+        borderLeft: "none",
+        borderRadius: "0 16px 16px 0",
       }}
     >
       <MatchWhyScorePopover
@@ -244,7 +248,7 @@ export function MatchScoreColumn({
             padding: "0 8px 20px",
           }}
         >
-          {label} Match
+          {label ? `${label.toUpperCase()} MATCH` : "MATCH"}
         </p>
       </MatchWhyScorePopover>
     </div>

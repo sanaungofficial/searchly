@@ -8,9 +8,8 @@ import {
   type VectorMatchedJob,
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
-import { cachedJobToMeta, companyLogoFromJobData, jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
+import { cachedJobToMeta, jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
 import {
-  roleListingToVectorMatchedJob,
   vectorJobToRoleListing,
   type RoleListing,
 } from "@/lib/role-listings";
@@ -24,13 +23,13 @@ import {
   describeActiveFilters,
   formatProfileLocation,
   locationFieldsFromProfileString,
+  defaultLocationAllInCountry,
   RECOMMENDED_SORT_OPTIONS,
   type RecommendedSortOption,
 } from "@/lib/recommended-filter-utils";
 import { postedWithinDaysFormValue } from "@/lib/job-posted-filter";
 import type { KanbanCard } from "./workspace-data";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { useSubscription } from "@/hooks/useSubscription";
 import {
   filtersCacheKey,
   readRecommendedCache,
@@ -47,11 +46,8 @@ import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
-import { CompanyLogo } from "./company-logo";
-import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
-import { ScoreExplainerLabel } from "./score-explainer-popover";
-import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
-import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { ScoutInsetBox } from "./scout-box";
+import { fontSans, color, surface, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
@@ -61,13 +57,21 @@ import {
 } from "./pipeline-recommended-filters";
 import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-bar";
 import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal";
+import { RecommendedJobCard } from "./recommended-job-card";
+import { JR } from "@/lib/opportunities-jobright-tokens";
+import { buildOpportunitiesFilterChips } from "@/lib/opportunities-filter-chips";
 import {
+  dismissOpportunitiesPrefConfirm,
+  hasOpportunitiesSearchPrefs,
   OpportunitiesPrefConfirmModal,
   shouldShowOpportunitiesPrefConfirm,
 } from "./opportunities-pref-confirm-modal";
 import {
   applySearchPreferencesToFilterForm,
   emptyExtendedFilterFields,
+  hirebaseCompanyTypesFromStages,
+  hirebaseLevelsFromExperienceLabelSet,
+  mergeSearchPreferencesIntoFilters,
   patchParsedDataSearchPreferences,
   searchPreferencesFromFilterForm,
   searchPreferencesFromParsedData,
@@ -76,6 +80,8 @@ import {
 import {
   loosenStackedHirebaseFilters,
 } from "@/lib/opportunities-hirebase-filters";
+
+type ViewMode = "recommended" | "search";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -111,6 +117,10 @@ function splitInputListOrUndefined(value: string): string[] | undefined {
 }
 
 function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) {
+  const loc = f.locations?.[0];
+  const locationAllInCountry =
+    searchPrefs?.locationAllInCountry === true ||
+    defaultLocationAllInCountry(searchPrefs, loc?.country);
   const base = {
     semanticQuery: f.semanticQuery ?? "",
     jobTitles: (f.jobTitles ?? []).join(", "),
@@ -119,9 +129,9 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     industries: (f.industries ?? []).join(", "),
     subindustries: (f.subindustries ?? []).join(", "),
     jobCategories: (f.jobCategories ?? []).join(", "),
-    locationCity: f.locations?.[0]?.city ?? "",
-    locationRegion: f.locations?.[0]?.region ?? "",
-    locationCountry: f.locations?.[0]?.country ?? "",
+    locationCity: locationAllInCountry ? "" : (loc?.city ?? ""),
+    locationRegion: locationAllInCountry ? "" : (loc?.region ?? ""),
+    locationCountry: loc?.country ?? "",
     locationRadiusMiles:
       f.locationRadiusMiles != null && f.locationRadiusMiles > 0 ? String(f.locationRadiusMiles) : "",
     datePostedWithinDays: postedWithinDaysFormValue(f),
@@ -134,12 +144,13 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     locationTypes: new Set(f.locationTypes ?? []),
     jobTypes: new Set(f.jobTypes ?? []),
     experienceLevels: new Set(f.experienceLevels ?? []),
+    experienceLevelLabels: new Set(searchPrefs?.experienceLevelLabels ?? []),
     companySizeBuckets: new Set(f.companySizeBuckets ?? []),
     visaSponsored: f.visaSponsored === true,
     relocationPriorities: [] as string[],
     ...emptyExtendedFilterFields(),
-    customJobFunctions: searchPrefs?.customJobFunctions ?? [],
-    locationAllInCountry: searchPrefs?.locationAllInCountry ?? false,
+    customJobFunctions: f.customJobFunctions ?? [],
+    locationAllInCountry,
   };
   return searchPrefs ? applySearchPreferencesToFilterForm(base, searchPrefs) : base;
 }
@@ -196,7 +207,12 @@ function readDefaultFeedCache(): RecommendedCacheEntry | null {
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
   const baseKeywords = splitInputListOrUndefined(form.keywords);
+  const skillKeywords = splitInputListOrUndefined(form.skills);
   const customJobFunctions = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
+  const mergedKeywords =
+    baseKeywords || skillKeywords
+      ? [...new Set([...(baseKeywords ?? []), ...(skillKeywords ?? [])])]
+      : undefined;
 
   const hasLocation =
     form.locationAllInCountry && form.locationCountry.trim()
@@ -210,20 +226,25 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     semanticQuery: form.semanticQuery.trim() || undefined,
     customJobFunctions: customJobFunctions.length ? customJobFunctions : undefined,
     jobTitles: splitInputListOrUndefined(form.jobTitles),
-    keywords: baseKeywords,
+    keywords: mergedKeywords,
     companyName: form.companyName.trim() || undefined,
     industries: splitInputListOrUndefined(form.industries),
-    subindustries: splitInputListOrUndefined(form.subindustries),
+    subindustries: undefined,
     jobCategories: splitInputListOrUndefined(form.jobCategories),
     jobBoard: form.jobBoard.trim() || undefined,
     locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
     jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
     experienceLevels: form.openToAllExperience
       ? undefined
-      : form.experienceLevels.size
-        ? [...form.experienceLevels]
-        : undefined,
-    companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
+      : form.experienceLevelLabels.size
+        ? hirebaseLevelsFromExperienceLabelSet(form.experienceLevelLabels)
+        : form.experienceLevels.size
+          ? [...form.experienceLevels]
+          : undefined,
+    companySizeBuckets: undefined,
+    companyTypes: form.companyStages.size
+      ? hirebaseCompanyTypesFromStages([...form.companyStages])
+      : undefined,
     visaSponsored: form.visaSponsored || undefined,
     datePostedWithinDays: form.datePostedWithinDays.trim()
       ? Number(form.datePostedWithinDays)
@@ -247,7 +268,8 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
       : undefined,
   };
 
-  return loosenStackedHirebaseFilters(raw);
+  const prefs = searchPreferencesFromFilterForm(form);
+  return mergeSearchPreferencesIntoFilters(prefs, loosenStackedHirebaseFilters(raw));
 }
 
 const inputStyle: React.CSSProperties = {
@@ -263,9 +285,9 @@ const inputStyle: React.CSSProperties = {
 
 function RecommendedResultsLoader() {
   return (
-    <ScoutBox padding={28} style={{ marginBottom: 12 }}>
+    <div style={{ padding: 28, marginBottom: 12, background: JR.pageBg, borderRadius: JR.cardRadius }}>
       <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
-    </ScoutBox>
+    </div>
   );
 }
 
@@ -306,248 +328,6 @@ function recommendedDedupeKey(job: VectorMatchedJob): string {
   });
 }
 
-function IconBriefcase() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="4" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M4.5 4V3a2 2 0 0 1 4 0v1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="1" y1="7.5" x2="12" y2="7.5" stroke="currentColor" strokeWidth="1.2"/>
-    </svg>
-  );
-}
-
-function IconBarChart() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="7" width="2.5" height="5" rx="0.5" fill="currentColor"/>
-      <rect x="5" y="4" width="2.5" height="8" rx="0.5" fill="currentColor"/>
-      <rect x="9" y="1" width="2.5" height="11" rx="0.5" fill="currentColor"/>
-    </svg>
-  );
-}
-
-function IconHome() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M1.5 6L6.5 1.5L11.5 6V12H8.5V9H4.5V12H1.5V6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function IconCalendar() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="1" y1="6" x2="12" y2="6" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="4" y1="1" x2="4" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="9" y1="1" x2="9" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function IconDollar() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M6.5 3V10M4.5 8.5C4.5 8.5 5 9.5 6.5 9.5C8 9.5 8.5 8.5 8.5 7.5C8.5 6 6.5 6 6.5 6C6.5 6 4.5 6 4.5 4.5C4.5 3.5 5 3 6.5 3C8 3 8.5 4 8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function MetadataGrid({
-  row,
-}: {
-  row: UnifiedListing;
-}) {
-  const c = row.cached;
-  const items: { icon: JSX.Element; label: string }[] = [];
-  if (row.location) items.push({ icon: <IconHome />, label: row.location });
-  if (c.locationType) items.push({ icon: <IconHome />, label: c.locationType });
-  else if (c.remote) items.push({ icon: <IconHome />, label: "Remote" });
-  if (c.jobType) items.push({ icon: <IconBriefcase />, label: c.jobType });
-  if (c.seniority) items.push({ icon: <IconBarChart />, label: c.seniority });
-  if (c.salary) items.push({ icon: <IconDollar />, label: c.salary });
-  if (c.experienceLevel) items.push({ icon: <IconCalendar />, label: c.experienceLevel });
-  if (!items.length) return null;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 18px", marginTop: 10 }}>
-      {items.map(({ icon, label }, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: color.muted }}>
-          <span style={{ display: "flex", flexShrink: 0, opacity: 0.65 }}>{icon}</span>
-          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>{label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RecommendedJobCard({
-  row,
-  savingKey,
-  onOpenRecommended,
-  onSaveJob,
-  setSavingKey,
-}: {
-  row: UnifiedListing;
-  savingKey: string | null;
-  onOpenRecommended: (job: VectorMatchedJob) => void;
-  onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  setSavingKey: (key: string | null) => void;
-}) {
-  const handleOpen = () => {
-    onOpenRecommended(roleListingToVectorMatchedJob(row));
-  };
-
-  const handleSave = () => {
-    const matchJob = roleListingToVectorMatchedJob(row);
-    setSavingKey(row.dedupeKey);
-    onSaveJob(matchJob).finally(() => setSavingKey(null));
-  };
-
-  const isSaving = savingKey === row.dedupeKey;
-
-  const matchScore = row.matchScore ?? 0;
-  const matchLabel = row.matchLabel ?? "";
-
-  const postedDays = row.cached?.datePosted ? daysSincePosted(row.cached.datePosted) : null;
-  const postedText =
-    postedDays === null
-      ? null
-      : postedDays === 0
-        ? "Posted today"
-        : postedDays === 1
-          ? "Posted 1 day ago"
-          : `Posted ${postedDays} days ago`;
-  const isRecentPost = postedDays !== null && postedDays <= 3;
-
-  return (
-    <div
-      key={row.dedupeKey}
-      style={{
-        display: "flex",
-        border: "1.5px solid #161616",
-        borderRadius: 8,
-        background: surface.card,
-        overflow: "hidden",
-      }}
-    >
-      {/* Left: job content area — swaps to "Why Match" when hovering score panel */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleOpen}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleOpen();
-            }
-          }}
-          style={{ flex: 1, padding: 18, cursor: "pointer" }}
-        >
-          <>
-              {/* Top badge row */}
-              {(postedText || row.isTrackedCompany) && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                  {postedText && (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "3px 9px",
-                        fontSize: T.label,
-                        fontWeight: 500,
-                        color: isRecentPost ? color.forest : color.muted,
-                        background: isRecentPost ? "rgba(26,58,47,0.07)" : "rgba(0,0,0,0.04)",
-                        border: `1px solid ${isRecentPost ? "rgba(26,58,47,0.15)" : "rgba(0,0,0,0.07)"}`,
-                        borderRadius: 4,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {postedText}
-                    </span>
-                  )}
-                  {row.isTrackedCompany && (
-                    <span
-                      style={{
-                        ...scoutInsetChipStyle,
-                        display: "inline-block",
-                        padding: "3px 9px",
-                        fontSize: T.label,
-                        fontWeight: 600,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: color.forest,
-                        background: "rgba(26,58,47,0.08)",
-                        border: border.lineStrong,
-                        borderRadius: 4,
-                      }}
-                    >
-                      Watchlist
-                    </span>
-                  )}
-                </div>
-              )}
-              {/* Logo + Title + Company */}
-              <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                <CompanyLogo {...companyLogoFromJobData(row.companyName, row.cached)} size={48} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{row.title}</p>
-                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-                    {row.companyName}
-                  </p>
-                  <MetadataGrid row={row} />
-                </div>
-              </div>
-          </>
-        </div>
-        <div
-          style={{ display: "flex", gap: 8, padding: "0 18px 16px", flexWrap: "wrap", alignItems: "center" }}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              padding: "8px 16px",
-              background: isSaving ? "#888" : "#AE7AFF",
-              color: "#FFFFFF",
-              border: "1.5px solid #161616",
-              borderRadius: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              cursor: isSaving ? "not-allowed" : "pointer",
-              opacity: isSaving ? 0.65 : 1,
-            }}
-          >
-            {isSaving ? "Saving…" : "Save job"}
-          </button>
-          {row.url && (
-            <a
-              href={row.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
-            >
-              Open posting ↗
-            </a>
-          )}
-        </div>
-      </div>
-      {matchScore > 0 && (
-        <MatchScoreColumn
-          score={matchScore}
-          label={matchLabel}
-          reasons={row.matchReasons ?? []}
-          matchedSkills={row.matchedSkills ?? []}
-        />
-      )}
-    </div>
-  );
-}
 
 function RecommendedResultsList({
   listings,
@@ -566,14 +346,21 @@ function RecommendedResultsList({
 }) {
   if (!listings.length) {
     return (
-      <ScoutBox style={{ padding: 40, textAlign: "center", border: "1.5px solid #161616" }}>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>{emptyMessage}</p>
-      </ScoutBox>
+      <div
+        style={{
+          padding: 40,
+          textAlign: "center",
+          background: JR.cardBg,
+          borderRadius: JR.cardRadius,
+        }}
+      >
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: JR.textMuted, margin: 0 }}>{emptyMessage}</p>
+      </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {listings.map((row) => (
         <RecommendedJobCard
           key={row.dedupeKey}
@@ -599,9 +386,7 @@ export function PipelineRecommendedSection({
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
 }) {
-  const { withClientScope, isAdminReviewing, openPricing } = useWorkspace();
-  const { isPro, isAdmin } = useSubscription();
-  const hasProAccess = isPro || isAdmin;
+  const { withClientScope, isAdminReviewing } = useWorkspace();
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadScopedSemanticQuery(),
@@ -611,6 +396,7 @@ export function PipelineRecommendedSection({
     semanticQuery: "",
   }));
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
+  const drawerAppliedSnapshotRef = useRef<FilterForm | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [profileBaseline, setProfileBaseline] = useState<RecommendationPreferencesState | null>(null);
   const [profileCountry, setProfileCountry] = useState("");
@@ -632,14 +418,26 @@ export function PipelineRecommendedSection({
     userId: string | null;
     targetRoles: string[];
     prioritizedCategories: string[];
+    experienceLevel: string | null;
     searchPreferences: SearchPreferences;
-  }>({ userId: null, targetRoles: [], prioritizedCategories: [], searchPreferences: {} });
+  }>({
+    userId: null,
+    targetRoles: [],
+    prioritizedCategories: [],
+    experienceLevel: null,
+    searchPreferences: {},
+  });
   const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
+  const [profileMetaLoaded, setProfileMetaLoaded] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("recommended");
 
   const initialFetchAttemptedRef = useRef(false);
   const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
   const fetchGenRef = useRef(0);
   const defaultFormRef = useRef<FilterForm | null>(null);
+  const prefsConfirmedRef = useRef(false);
+  const prefConfirmHandledRef = useRef(false);
+  const prefConfirmMigratedRef = useRef(false);
 
   const hydrateFromCache = useCallback((filtersKey: string) => {
     const cached = readRecommendedCache(filtersKey);
@@ -651,13 +449,14 @@ export function PipelineRecommendedSection({
     return true;
   }, []);
 
-  const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
-  const appliedFilters = useMemo(() => formToFilters(appliedForm, 1), [appliedForm]);
+  const hasActiveSearch = viewMode === "search";
+
+  const fetchRecommendedRef = useRef<
+    ((options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => Promise<void>) | null
+  >(null);
 
   const fetchRecommended = useCallback(
-    async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
-      const filters = formToFilters(filtersForm, 1);
-      const cacheKey = filtersCacheKey(filters);
+    async (options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
       const forceRefresh = options?.forceRefresh === true;
       const background = options?.background === true;
       const gen = ++fetchGenRef.current;
@@ -670,23 +469,21 @@ export function PipelineRecommendedSection({
         setRevalidating(true);
       }
 
-      const semanticQuery = filtersForm.semanticQuery.trim();
-      saveScopedSemanticQuery(semanticQuery);
-
       try {
         const res = await fetch(withClientScope("/api/jobs/recommended"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: forceRefresh ? "no-store" : "default",
-          signal: AbortSignal.timeout(90_000),
+          signal: AbortSignal.timeout(115_000),
           body: JSON.stringify({
-            ...filters,
             preferCache: options?.preferCache ?? !forceRefresh,
             forceRefresh,
           }),
         });
         const data = (await res.json()) as JobsApiResponse;
         if (gen !== fetchGenRef.current) return;
+
+        const cacheKey = defaultFeedCacheKey();
 
         if (!res.ok) {
           const rawMsg = formatApiErrorMessage(data.error, "Couldn't load recommended roles.");
@@ -699,7 +496,6 @@ export function PipelineRecommendedSection({
           if (applied) {
             setActiveFilterLabels(describeActiveFilters(applied));
           }
-          if (msg) setFiltersDrawerOpen(true);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -716,7 +512,7 @@ export function PipelineRecommendedSection({
             (options?.preferCache ?? true);
 
           if (snapshotPending) {
-            void fetchRecommended(filtersForm, {
+            void fetchRecommendedRef.current?.({
               preferCache: false,
               background: background || hasLoadedOnce,
             });
@@ -724,8 +520,8 @@ export function PipelineRecommendedSection({
             setJobs(nextJobs);
             setError(null);
             setNotice(data.notice?.trim() || null);
-            const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
-            setActiveFilterLabels(describeActiveFilters(applied));
+            const applied = data.effectiveFilters ?? data.filtersApplied;
+            if (applied) setActiveFilterLabels(describeActiveFilters(applied));
             setSnapshotMeta({
               fromSnapshot: data.fromSnapshot === true,
               generatedAt: data.generatedAt ?? new Date().toISOString(),
@@ -737,7 +533,7 @@ export function PipelineRecommendedSection({
               matchMode: data.matchMode,
               error: null,
             });
-            if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
+            if (nextJobs.length > 0) {
               markDefaultRecommendedFeedLoaded();
             }
           }
@@ -758,6 +554,75 @@ export function PipelineRecommendedSection({
   );
 
   useEffect(() => {
+    fetchRecommendedRef.current = fetchRecommended;
+  }, [fetchRecommended]);
+
+  const fetchSearch = useCallback(
+    async (filtersForm: FilterForm, options?: { background?: boolean }) => {
+      const filters = formToFilters(filtersForm, 1);
+      const cacheKey = filtersCacheKey(filters);
+      const background = options?.background === true;
+      const gen = ++fetchGenRef.current;
+
+      if (!background) {
+        setLoading(true);
+        setError(null);
+        setNotice(null);
+      } else {
+        setRevalidating(true);
+      }
+
+      const semanticQuery = filtersForm.semanticQuery.trim();
+      saveScopedSemanticQuery(semanticQuery);
+
+      try {
+        const res = await fetch(withClientScope("/api/jobs/search"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          signal: AbortSignal.timeout(115_000),
+          body: JSON.stringify(filters),
+        });
+        const data = (await res.json()) as JobsApiResponse;
+        if (gen !== fetchGenRef.current) return;
+
+        if (!res.ok) {
+          const msg = formatApiErrorMessage(data.error, "Couldn't run job search.");
+          setError(data.hint ? `${msg} ${data.hint}` : msg);
+          setNotice(null);
+          if (!background) setJobs([]);
+        } else {
+          const nextJobs = data.jobs ?? [];
+          setJobs(nextJobs);
+          setError(null);
+          setNotice(data.notice?.trim() || null);
+          const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
+          setActiveFilterLabels(describeActiveFilters(applied));
+          setSnapshotMeta(null);
+          writeRecommendedCache({
+            jobs: nextJobs,
+            filtersKey: cacheKey,
+            fetchedAt: Date.now(),
+            matchMode: data.matchMode,
+            error: null,
+          });
+        }
+      } catch (err) {
+        if (gen !== fetchGenRef.current) return;
+        setError(formatApiErrorMessage(err, "Couldn't run job search — try again."));
+        if (!background) setJobs([]);
+      } finally {
+        if (gen === fetchGenRef.current) {
+          setHasLoadedOnce(true);
+          setLoading(false);
+          setRevalidating(false);
+        }
+      }
+    },
+    [withClientScope],
+  );
+
+  useEffect(() => {
     void fetch(withClientScope("/api/jobs/recommended/defaults"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: {
@@ -767,13 +632,15 @@ export function PipelineRecommendedSection({
       } | null) => {
         if (data?.filters) {
           const searchPrefs = data.searchPreferences ?? {};
+          prefsConfirmedRef.current = Boolean(searchPrefs.opportunitiesPrefConfirmedAt);
           const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
-          // Default feed API uses open filters — profile prefs drive matching server-side, not as Hirebase pre-filters.
-          setAppliedForm(defaultFeedForm());
-          setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
+          const confirmedApplied = { ...profileForm, semanticQuery: "" };
+          setAppliedForm(confirmedApplied);
+          setActiveFilterLabels(describeActiveFilters(formToFilters(confirmedApplied, 1)));
         } else {
+          prefsConfirmedRef.current = false;
           setAppliedForm(defaultFeedForm());
         }
         setProfileFormReady(true);
@@ -801,45 +668,94 @@ export function PipelineRecommendedSection({
         targetRoles?: string[];
         prioritizedCategories?: string[];
       } | null) => {
-        if (!data) return;
-        const fields = locationFieldsFromProfileString(
-          typeof data.parsedData?.location === "string" ? data.parsedData.location : null,
-        );
-        const priorities = Array.isArray(data.priorities) ? data.priorities : [];
-        setProfileBaseline({
-          location: fields.display,
-          priorities: [...priorities],
-        });
-        setProfileCountry(fields.country);
-        const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
-        setProfileMeta({
-          userId: data.userId ?? actingUserId ?? null,
-          targetRoles: data.targetRoles ?? [],
-          prioritizedCategories: data.prioritizedCategories ?? [],
-          searchPreferences,
-        });
+        if (data) {
+          const fields = locationFieldsFromProfileString(
+            typeof data.parsedData?.location === "string" ? data.parsedData.location : null,
+          );
+          const priorities = Array.isArray(data.priorities) ? data.priorities : [];
+          setProfileBaseline({
+            location: fields.display,
+            priorities: [...priorities],
+          });
+          setProfileCountry(fields.country);
+          const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
+          const experienceLevel =
+            typeof data.parsedData?.experienceLevel === "string" ? data.parsedData.experienceLevel : null;
+          setProfileMeta({
+            userId: data.userId ?? actingUserId ?? null,
+            targetRoles: data.targetRoles ?? [],
+            prioritizedCategories: data.prioritizedCategories ?? [],
+            experienceLevel,
+            searchPreferences,
+          });
+        }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setProfileMetaLoaded(true));
   }, [actingUserId, withClientScope]);
 
   useEffect(() => {
-    if (!hasLoadedOnce || !profileFormReady) return;
+    if (!hasLoadedOnce || !profileFormReady || !profileMetaLoaded) return;
+    if (prefConfirmHandledRef.current) return;
     const onboardingJustFinished =
       typeof window !== "undefined" &&
       sessionStorage.getItem("kimchi:onboarding-just-finished") === "1";
-    if (
-      shouldShowOpportunitiesPrefConfirm({
-        userId: profileMeta.userId,
-        targetRoles: profileMeta.targetRoles,
-        prioritizedCategories: profileMeta.prioritizedCategories,
-        searchPreferences: profileMeta.searchPreferences,
-        onboardingJustFinished,
-      })
-    ) {
+    const shouldShow = shouldShowOpportunitiesPrefConfirm({
+      userId: profileMeta.userId,
+      targetRoles: profileMeta.targetRoles,
+      prioritizedCategories: profileMeta.prioritizedCategories,
+      experienceLevel: profileMeta.experienceLevel,
+      searchPreferences: profileMeta.searchPreferences,
+      onboardingJustFinished,
+    });
+    if (shouldShow) {
       setPrefConfirmOpen(true);
       if (onboardingJustFinished) sessionStorage.removeItem("kimchi:onboarding-just-finished");
+    } else {
+      prefConfirmHandledRef.current = true;
+      setPrefConfirmOpen(false);
     }
-  }, [hasLoadedOnce, profileFormReady, profileMeta]);
+  }, [hasLoadedOnce, profileFormReady, profileMetaLoaded, profileMeta]);
+
+  // Existing users with complete prefs but no confirm timestamp — migrate silently once.
+  useEffect(() => {
+    if (!profileMetaLoaded || prefConfirmMigratedRef.current) return;
+    if (profileMeta.searchPreferences.opportunitiesPrefConfirmedAt) return;
+    if (!hasOpportunitiesSearchPrefs(profileMeta)) return;
+
+    prefConfirmMigratedRef.current = true;
+    prefsConfirmedRef.current = true;
+    setPrefConfirmOpen(false);
+
+    const confirmedAt = new Date().toISOString();
+    void (async () => {
+      try {
+        const profileRes = await fetch(withClientScope("/api/profile"));
+        const profile = (await profileRes.json().catch(() => ({}))) as {
+          parsedData?: Record<string, unknown> | null;
+        };
+        if (!profileRes.ok) return;
+        const parsedData = patchParsedDataSearchPreferences(profile.parsedData ?? {}, {
+          opportunitiesPrefConfirmedAt: confirmedAt,
+        });
+        const patchRes = await fetch(withClientScope("/api/profile"), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parsedData }),
+        });
+        if (!patchRes.ok) return;
+        setProfileMeta((prev) => ({
+          ...prev,
+          searchPreferences: {
+            ...prev.searchPreferences,
+            opportunitiesPrefConfirmedAt: confirmedAt,
+          },
+        }));
+      } catch {
+        /* non-blocking migration */
+      }
+    })();
+  }, [profileMetaLoaded, profileMeta, withClientScope]);
 
   useEffect(() => {
     fetch(withClientScope("/api/companies"))
@@ -870,7 +786,11 @@ export function PipelineRecommendedSection({
     initialFetchAttemptedRef.current = false;
     setDefaultsLoaded(false);
     setProfileFormReady(false);
+    setProfileMetaLoaded(false);
     defaultFormRef.current = null;
+    prefConfirmHandledRef.current = false;
+    prefConfirmMigratedRef.current = false;
+    setPrefConfirmOpen(false);
     clearRecommendedCache();
     setJobs([]);
     setHasLoadedOnce(false);
@@ -888,15 +808,12 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = true;
 
-    const feedForm = defaultFeedForm();
-    const defaultKey = defaultFeedCacheKey();
-
     if (isAdminReviewing) {
-      void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
+      void fetchRecommended({ preferCache: false, forceRefresh: true });
       return;
     }
 
-    if (hydrateFromCache(defaultKey)) return;
+    if (hydrateFromCache(defaultFeedCacheKey())) return;
 
     if (hasDefaultRecommendedFeedLoaded()) {
       setHasLoadedOnce(true);
@@ -904,7 +821,7 @@ export function PipelineRecommendedSection({
       return;
     }
 
-    void fetchRecommended(feedForm, { preferCache: true });
+    void fetchRecommended({ preferCache: true });
   }, [fetchRecommended, defaultsLoaded, profileFormReady, isAdminReviewing, hydrateFromCache]);
 
   // Last-resort: never leave the initial loader spinning if bootstrap or fetch stalls.
@@ -915,14 +832,21 @@ export function PipelineRecommendedSection({
       setLoading(false);
       setRevalidating(false);
       setError((prev) => prev ?? "Loading is taking longer than expected — hit Refresh or check your profile.");
-    }, 90_000);
+    }, 115_000);
     return () => window.clearTimeout(timer);
   }, [hasLoadedOnce]);
 
-  const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
+  const saveProfileFromForm = useCallback(async (filtersForm: FilterForm, options?: { markPrefsConfirmed?: boolean }) => {
     const location = profileLocationFromForm(filtersForm);
     const priorities = profilePrioritiesFromForm(filtersForm);
     const searchPreferences = searchPreferencesFromFilterForm(filtersForm);
+    if (
+      options?.markPrefsConfirmed &&
+      !searchPreferences.opportunitiesPrefConfirmedAt &&
+      !profileMeta.searchPreferences.opportunitiesPrefConfirmedAt
+    ) {
+      searchPreferences.opportunitiesPrefConfirmedAt = new Date().toISOString();
+    }
     const unchanged =
       profileBaseline &&
       location.trim() === (profileBaseline.location ?? "").trim() &&
@@ -962,7 +886,7 @@ export function PipelineRecommendedSection({
       prioritizedCategories: categories.length ? categories : prev.prioritizedCategories,
       searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
     }));
-  }, [profileBaseline, withClientScope]);
+  }, [profileBaseline, profileMeta.searchPreferences.opportunitiesPrefConfirmedAt, withClientScope]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -973,35 +897,37 @@ export function PipelineRecommendedSection({
 
 
   const applyFilters = async (filtersForm = form) => {
-    await saveProfileFromForm(filtersForm);
+    await saveProfileFromForm(filtersForm, { markPrefsConfirmed: true });
+    prefsConfirmedRef.current = true;
     setAppliedForm(filtersForm);
     setActiveFilterLabels(describeActiveFilters(formToFilters(filtersForm, 1)));
-    const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
-    const isDefaultFeed =
-      cacheKey === defaultFeedCacheKey() && !filtersForm.semanticQuery.trim();
+    setViewMode("search");
+    void fetchSearch(filtersForm, { background: jobs.length > 0 });
+  };
 
-    if (isDefaultFeed) {
-      void fetchRecommended(filtersForm, { preferCache: false, forceRefresh: isAdminReviewing });
-      return;
-    }
-
-    void fetchRecommended(filtersForm, {
-      preferCache: false,
-      background: jobs.length > 0,
-    });
+  const clearSearch = () => {
+    const profileForm = defaultFormRef.current ?? defaultFeedForm();
+    setForm((f) => ({ ...profileForm, semanticQuery: "" }));
+    setAppliedForm({ ...profileForm, semanticQuery: "" });
+    setActiveFilterLabels(describeActiveFilters(formToFilters(profileForm, 1)));
+    setViewMode("recommended");
+    setError(null);
+    setNotice(null);
+    if (hydrateFromCache(defaultFeedCacheKey())) return;
+    void fetchRecommended({ preferCache: true, background: jobs.length > 0 });
   };
 
   const handleRefresh = () => {
-    if (!hasProAccess) {
-      openPricing();
-      return;
-    }
     clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
-    void fetchRecommended(appliedForm, {
-      forceRefresh: true,
-      preferCache: false,
-      background: false,
-    });
+    if (viewMode === "search") {
+      void fetchSearch(appliedForm, { background: false });
+    } else {
+      void fetchRecommended({
+        forceRefresh: true,
+        preferCache: false,
+        background: false,
+      });
+    }
   };
 
   const savedKeys = useMemo(() => {
@@ -1032,9 +958,17 @@ export function PipelineRecommendedSection({
     return [...byKey.values()];
   }, [jobs, savedKeys]);
 
+  const appliedFilterCount = useMemo(
+    () =>
+      buildOpportunitiesFilterChips(appliedForm, {
+        excludeTargetRoleBleed: profileMeta.targetRoles,
+      }).length,
+    [appliedForm, profileMeta.targetRoles],
+  );
+
   const filteredListings = useMemo(() => {
-    const list = [...recommendedListings];
-    if (hasActiveSearch) {
+    let list = [...recommendedListings];
+    if (hasActiveSearch && appliedForm.semanticQuery.trim()) {
       const query = appliedForm.semanticQuery.trim();
       return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
     }
@@ -1050,37 +984,73 @@ export function PipelineRecommendedSection({
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
-    : notice
-      ? "Review the note above — these are broader matches while we refine your personalized feed."
-      : hasActiveSearch
-        ? "Nothing matched — try different keywords or loosen your filters."
-        : recommendedListings.length === 0 && jobs.length > 0
-          ? "You've saved everything in today's list — check back after the daily refresh."
-          : "No matches right now — add target roles or upload a resume under Profile, then refresh.";
+    : viewMode === "search"
+      ? "No roles matched your filters — try loosening location, experience, or job function, or clear search to return to your feed."
+      : recommendedListings.length === 0 && jobs.length > 0
+        ? "You've saved everything in today's list — check back after the daily refresh."
+        : "No matches right now — add target roles or job functions under Profile, then refresh.";
 
   const showInitialLoader = (loading || revalidating) && !hasLoadedOnce;
   const showRefreshLoader = (loading || revalidating) && hasLoadedOnce && jobs.length > 0;
 
+  const jrActionBtn: React.CSSProperties = {
+    padding: "7px 14px",
+    background: JR.cardBg,
+    color: JR.text,
+    border: `1px solid ${JR.border}`,
+    borderRadius: JR.pillRadius,
+    fontFamily: fontSans,
+    fontSize: T.label,
+    fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+
   return (
     <div>
-      <ScoutBox padding={14} style={{ marginBottom: 12 }}>
-        <ScoreExplainerLabel variant="vector-match">
-          <ScoutLabel>Roles</ScoutLabel>
-        </ScoreExplainerLabel>
+      <div
+        style={{
+          background: JR.cardBg,
+          borderRadius: JR.cardRadius,
+          padding: "14px 16px",
+          marginBottom: 10,
+        }}
+      >
         {hasLoadedOnce && !showInitialLoader && (
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "4px 0 8px", lineHeight: 1.45 }}>
-            We found some roles for you — confirm these filters look right.
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 15,
+              fontWeight: 600,
+              color: JR.text,
+              margin: "0 0 10px",
+              lineHeight: 1.35,
+            }}
+          >
+            {viewMode === "search"
+              ? `Search results (${filteredListings.length})`
+              : "Recommended"}
+          </p>
+        )}
+        {hasLoadedOnce && !showInitialLoader && viewMode === "recommended" && (
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: JR.textMuted, margin: "0 0 10px", lineHeight: 1.45 }}>
+            Roles matched to your profile filters, ranked by fit.
           </p>
         )}
 
         <OpportunitiesJobrightFilterBar
           form={form}
+          appliedForm={appliedForm}
           setForm={setForm}
           toggleSet={toggleSet}
           categorySuggestions={categorySuggestions}
           onQuickApply={(nextForm) => void applyFilters(nextForm)}
-          onOpenAllFilters={() => setFiltersDrawerOpen(true)}
-          activeFilterCount={activeFilterLabels.length}
+          onOpenAllFilters={() => {
+            drawerAppliedSnapshotRef.current = appliedForm;
+            setForm((f) => ({ ...appliedForm, semanticQuery: f.semanticQuery }));
+            setFiltersDrawerOpen(true);
+          }}
+          activeFilterCount={appliedFilterCount}
           searchValue={form.semanticQuery}
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
@@ -1088,22 +1058,28 @@ export function PipelineRecommendedSection({
           profileCountry={profileCountry}
           trailingActions={
             <>
+              {viewMode === "search" && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  disabled={loading || revalidating}
+                  style={{
+                    ...jrActionBtn,
+                    cursor: loading || revalidating ? "not-allowed" : "pointer",
+                    opacity: loading || revalidating ? 0.65 : 1,
+                  }}
+                >
+                  Clear search
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleRefresh}
                 disabled={loading || revalidating}
                 style={{
-                  padding: "7px 14px",
-                  background: "transparent",
-                  color: "#161616",
-                  border: "1.5px solid #161616",
-                  borderRadius: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.label,
-                  fontWeight: 600,
+                  ...jrActionBtn,
                   cursor: loading || revalidating ? "not-allowed" : "pointer",
                   opacity: loading || revalidating ? 0.65 : 1,
-                  whiteSpace: "nowrap",
                 }}
               >
                 {loading || revalidating ? "Loading…" : "Refresh"}
@@ -1120,6 +1096,9 @@ export function PipelineRecommendedSection({
                   padding: "7px 10px",
                   fontSize: T.label,
                   cursor: "pointer",
+                  borderRadius: JR.pillRadius,
+                  border: `1px solid ${JR.border}`,
+                  background: JR.cardBg,
                 }}
               >
                 {RECOMMENDED_SORT_OPTIONS.map((opt) => (
@@ -1138,33 +1117,48 @@ export function PipelineRecommendedSection({
             prioritizedCategories: profileMeta.prioritizedCategories,
             suggestedCategories: categorySuggestions.slice(0, 6),
             experienceLevelLabels: profileMeta.searchPreferences.experienceLevelLabels,
+            experienceLevel: profileMeta.experienceLevel,
             roleMatchCount: profileMeta.targetRoles.length,
           }}
-          onClose={() => setPrefConfirmOpen(false)}
+          onClose={() => {
+            prefConfirmHandledRef.current = true;
+            dismissOpportunitiesPrefConfirm(profileMeta.userId);
+            setPrefConfirmOpen(false);
+          }}
           onConfirm={async ({ prioritizedCategories, searchPreferences }) => {
             const profileRes = await fetch(withClientScope("/api/profile"));
             const profile = (await profileRes.json().catch(() => ({}))) as {
               parsedData?: Record<string, unknown> | null;
             };
-            if (!profileRes.ok) return;
+            if (!profileRes.ok) throw new Error("Failed to load profile");
             const parsedData = patchParsedDataSearchPreferences(profile.parsedData ?? {}, searchPreferences);
-            await fetch(withClientScope("/api/profile"), {
+            const patchRes = await fetch(withClientScope("/api/profile"), {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ prioritizedCategories, parsedData }),
             });
+            if (!patchRes.ok) throw new Error("Failed to save preferences");
+            const mergedPrefs = { ...profileMeta.searchPreferences, ...searchPreferences };
+            prefConfirmHandledRef.current = true;
+            prefsConfirmedRef.current = true;
             setProfileMeta((prev) => ({
               ...prev,
               prioritizedCategories,
-              searchPreferences: { ...prev.searchPreferences, ...searchPreferences },
+              searchPreferences: mergedPrefs,
             }));
-            const nextForm = {
-              ...form,
-              jobCategories: prioritizedCategories.join(", "),
-            };
+            const base = defaultFormRef.current ?? form;
+            const nextForm = applySearchPreferencesToFilterForm(
+              {
+                ...base,
+                jobCategories: prioritizedCategories.join(", "),
+              },
+              mergedPrefs,
+            );
             setForm(nextForm);
             defaultFormRef.current = nextForm;
-            void applyFilters(nextForm);
+            setAppliedForm({ ...nextForm, semanticQuery: "" });
+            setViewMode("recommended");
+            void fetchRecommended({ preferCache: false, forceRefresh: true });
           }}
         />
 
@@ -1175,16 +1169,31 @@ export function PipelineRecommendedSection({
 
         <OpportunitiesAllFiltersModal
           open={filtersDrawerOpen}
-          onClose={() => setFiltersDrawerOpen(false)}
+          onClose={() => {
+            if (drawerAppliedSnapshotRef.current) {
+              const snapshot = drawerAppliedSnapshotRef.current;
+              setForm((f) => ({ ...snapshot, semanticQuery: f.semanticQuery }));
+            }
+            drawerAppliedSnapshotRef.current = null;
+            setFiltersDrawerOpen(false);
+          }}
           form={form}
+          appliedForm={appliedForm}
           setForm={setForm}
           toggleSet={toggleSet}
           trackedCompanyNames={trackedCompanyNames}
           categorySuggestions={categorySuggestions}
           applying={loading || revalidating}
-          appliedFilters={appliedFilters}
+          excludeTargetRoleBleed={profileMeta.targetRoles}
+          onResetAll={() => {
+            const empty = defaultFeedForm();
+            setForm((f) => ({ ...empty, semanticQuery: f.semanticQuery }));
+          }}
           onConfirm={() => {
-            void applyFilters().then(() => setFiltersDrawerOpen(false));
+            void applyFilters(form).then(() => {
+              drawerAppliedSnapshotRef.current = null;
+              setFiltersDrawerOpen(false);
+            });
           }}
         />
 
@@ -1193,17 +1202,19 @@ export function PipelineRecommendedSection({
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
         )}
         {notice && (
-          <ScoutInsetBox style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
+          <ScoutInsetBox style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.caption, color: JR.textMuted, lineHeight: 1.45 }}>
             {notice}
           </ScoutInsetBox>
         )}
-        {hasActiveSearch && !error && hasLoadedOnce && !showInitialLoader && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            Custom filters run a live search — results may differ from your daily snapshot.
-          </p>
-        )}
-      </ScoutBox>
+      </div>
 
+      <div
+        style={{
+          background: JR.pageBg,
+          borderRadius: JR.cardRadius,
+          padding: 10,
+        }}
+      >
       {showInitialLoader ? (
         <RecommendedResultsLoader />
       ) : (
@@ -1228,6 +1239,7 @@ export function PipelineRecommendedSection({
           />
         </>
       )}
+      </div>
     </div>
   );
 }

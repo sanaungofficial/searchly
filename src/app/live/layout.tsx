@@ -1,24 +1,33 @@
 import Link from "next/link";
-import { color, fontSans, surface } from "@/lib/typography";
+import { bruddleHeadingStyle, color, fontSans, surface } from "@/lib/typography";
 
 export default function PublicLiveLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: surface.page, display: "flex", flexDirection: "column" }}>
+    <div
+      className="bruddle"
+      style={{ minHeight: "100vh", background: surface.page, display: "flex", flexDirection: "column" }}
+    >
       <header
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           padding: "14px 20px",
-          borderBottom: "1px solid rgba(26,58,47,0.12)",
-          background: "#fff",
+          borderBottom: "var(--scout-border)",
+          background: surface.card,
         }}
       >
-        <Link href="/" style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 700, color: color.forest, textDecoration: "none" }}>
+        <Link
+          href="/"
+          style={{ ...bruddleHeadingStyle("h6"), color: color.forest, textDecoration: "none" }}
+        >
           Kimchi
         </Link>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <Link href="/live" style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.stone, textDecoration: "none" }}>
+          <Link
+            href="/live"
+            style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.stone, textDecoration: "none" }}
+          >
             Live webinars
           </Link>
           <Link
@@ -26,11 +35,12 @@ export default function PublicLiveLayout({ children }: { children: React.ReactNo
             style={{
               fontFamily: fontSans,
               fontSize: 14,
-              fontWeight: 600,
-              color: "#fff",
-              background: color.forest,
+              fontWeight: 700,
+              color: "var(--scout-cta-foreground)",
+              background: "var(--scout-cta)",
               padding: "8px 14px",
-              borderRadius: 6,
+              border: "var(--scout-border)",
+              boxShadow: "var(--scout-shadow-bruddle)",
               textDecoration: "none",
             }}
           >

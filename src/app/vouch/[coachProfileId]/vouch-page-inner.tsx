@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachPublic = {
   displayName: string;
@@ -26,9 +28,9 @@ const fieldStyle: React.CSSProperties = {
   width: "100%",
   marginTop: 6,
   padding: "10px 12px",
-  fontFamily: "var(--font-ui)",
-  fontSize: 15,
-  border: "1.5px solid rgba(26,58,47,0.2)",
+  fontFamily: fontSans,
+  fontSize: T.body,
+  border: "var(--scout-border)",
   background: "var(--scout-inset)",
   boxSizing: "border-box",
 };
@@ -94,9 +96,10 @@ function VouchFormModal({
       onClick={onClose}
     >
       <div
+        className="bruddle"
         style={{
-          background: "#fff",
-          border: "1px solid rgba(26,58,47,0.14)",
+          background: surface.card,
+          border: "var(--scout-border)",
           maxWidth: 520,
           width: "100%",
           maxHeight: "90vh",
@@ -114,7 +117,7 @@ function VouchFormModal({
         >
           ×
         </button>
-        <h2 id="vouch-modal-title" style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 500, margin: "0 0 8px" }}>
+        <h2 id="vouch-modal-title" style={{ ...bruddleHeadingStyle("h5"), margin: "0 0 8px" }}>
           Vouch for {coach.displayName}
         </h2>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", lineHeight: 1.6, margin: "0 0 20px" }}>
@@ -150,12 +153,13 @@ function VouchFormModal({
             disabled={submitting}
             style={{
               padding: "14px 24px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              fontFamily: "var(--font-ui)",
-              fontSize: 14,
-              fontWeight: 500,
+              background: "var(--scout-cta)",
+              color: "var(--scout-cta-foreground)",
+              border: "var(--scout-border)",
+              boxShadow: "var(--scout-shadow-bruddle)",
+              fontFamily: fontSans,
+              fontSize: T.btnMd,
+              fontWeight: 700,
               cursor: submitting ? "default" : "pointer",
               opacity: submitting ? 0.6 : 1,
             }}
@@ -182,8 +186,8 @@ function ProfileCard({
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid rgba(26,58,47,0.12)",
+        background: surface.card,
+        border: "var(--scout-border)",
         padding: 24,
         position: "sticky",
         top: 24,
@@ -191,46 +195,31 @@ function ProfileCard({
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: 20 }}>
         {coach.photoUrl ? (
-          <img src={coach.photoUrl} alt="" style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", marginBottom: 14 }} />
+          <img src={coach.photoUrl} alt="" style={{ width: 96, height: 96, objectFit: "cover", marginBottom: 14, border: "var(--scout-border)" }} />
         ) : (
-          <div style={{ width: 96, height: 96, borderRadius: "50%", background: "var(--scout-inset)", marginBottom: 14 }} />
+          <div style={{ width: 96, height: 96, background: "var(--scout-inset)", marginBottom: 14, border: "var(--scout-border)" }} />
         )}
-        <p style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 18, margin: "0 0 6px", color: "#1A1A1A" }}>{coach.displayName}</p>
+        <p style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 6px" }}>{coach.displayName}</p>
         {coach.headline && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#78716c", margin: "0 0 10px", lineHeight: 1.5 }}>{coach.headline}</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 10px", lineHeight: 1.5 }}>{coach.headline}</p>
         )}
         {isPending && (
-          <span style={{ fontSize: 12, fontFamily: "var(--font-ui)", fontWeight: 600, color: "#b45309", background: "rgba(180,83,9,0.1)", padding: "4px 10px", borderRadius: 999 }}>
+          <span style={{ fontSize: T.label, fontFamily: fontSans, fontWeight: 600, color: "#b45309", background: "rgba(180,83,9,0.1)", padding: "4px 10px", border: "var(--scout-border)" }}>
             Pending expert
           </span>
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onVouch}
-        style={{
-          width: "100%",
-          padding: "14px 20px",
-          background: "#E8D5A3",
-          color: "#1A3A2F",
-          border: "none",
-          fontFamily: "var(--font-ui)",
-          fontSize: 15,
-          fontWeight: 600,
-          cursor: "pointer",
-          marginBottom: 12,
-        }}
-      >
+      <ScoutPrimaryBtn onClick={onVouch} style={{ width: "100%", justifyContent: "center", minHeight: 48, marginBottom: 12, fontSize: T.btnMd }}>
         Vouch for {firstName}
-      </button>
-      <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#78716c", lineHeight: 1.55, margin: "0 0 20px", textAlign: "center" }}>
+      </ScoutPrimaryBtn>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: "0 0 20px", textAlign: "center" }}>
         Vouching helps us verify that {firstName} would be a great coach on Kimchi.
       </p>
 
-      <div style={{ borderTop: "1px solid rgba(26,58,47,0.08)", paddingTop: 16 }}>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#78716c", margin: "0 0 4px" }}>Vouches for {firstName}</p>
-        <p style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, margin: 0, color: "#1A1A1A" }}>{coach.vouchCount}</p>
+      <div style={{ borderTop: "var(--scout-border)", paddingTop: 16 }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>Vouches for {firstName}</p>
+        <p style={{ ...bruddleHeadingStyle("h4"), margin: 0 }}>{coach.vouchCount}</p>
       </div>
     </div>
   );
@@ -262,7 +251,7 @@ export default function PublicVouchPageInner() {
 
   if (loading) {
     return (
-      <div className="onboarding-loading">
+      <div className="onboarding-loading bruddle" role="status">
         <div className="onboarding-loading__spinner" aria-hidden="true" />
         <span>Loading…</span>
       </div>
@@ -271,8 +260,8 @@ export default function PublicVouchPageInner() {
 
   if (error || !coach) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--scout-page)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <p style={{ fontFamily: "var(--font-ui)", color: "#78716c" }}>{error ?? "Coach not found"}</p>
+      <div className="bruddle" style={{ minHeight: "100vh", background: surface.page, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <p style={{ fontFamily: fontSans, color: color.muted }}>{error ?? "Coach not found"}</p>
       </div>
     );
   }
@@ -282,11 +271,11 @@ export default function PublicVouchPageInner() {
 
   if (submitted) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--scout-page)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ maxWidth: 440, background: "#fff", border: "1px solid rgba(26,58,47,0.14)", padding: 32, textAlign: "center" }}>
+      <div className="bruddle" style={{ minHeight: "100vh", background: surface.page, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ maxWidth: 440, background: surface.card, border: "var(--scout-border)", padding: 32, textAlign: "center" }}>
           <p style={{ fontSize: 40, margin: "0 0 16px" }}>✓</p>
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, margin: "0 0 12px" }}>Thank you!</h1>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, color: "#52493F", lineHeight: 1.65, margin: 0 }}>
+          <h1 style={{ ...bruddleHeadingStyle("h4"), margin: "0 0 12px" }}>Thank you!</h1>
+          <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.stone, lineHeight: 1.65, margin: 0 }}>
             Your vouch for {coach.displayName} has been submitted. It helps them get approved to coach on Kimchi.
           </p>
         </div>
@@ -295,13 +284,13 @@ export default function PublicVouchPageInner() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--scout-page)", paddingBottom: 80 }}>
-      <header style={{ background: "#fff", borderBottom: "1px solid rgba(26,58,47,0.1)", padding: "16px clamp(20px, 5vw, 48px)" }}>
-        <p style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, margin: 0, color: "#1A1A1A" }}>Kimchi</p>
+    <div className="bruddle" style={{ minHeight: "100vh", background: surface.page, paddingBottom: 80 }}>
+      <header style={{ background: surface.card, borderBottom: "var(--scout-border)", padding: "16px clamp(20px, 5vw, 48px)" }}>
+        <p style={{ ...bruddleHeadingStyle("h6"), margin: 0, color: color.forest }}>Kimchi</p>
       </header>
 
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px, 5vw, 48px) clamp(20px, 5vw, 48px)" }}>
-        <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 500, fontStyle: "italic", margin: "0 0 32px", color: "#1A1A1A", lineHeight: 1.2 }}>
+        <h1 style={{ ...bruddleHeadingStyle("h4"), fontStyle: "italic", margin: "0 0 32px", lineHeight: 1.2 }}>
           Make your voice heard. Vouching for {firstName}&apos;s expertise will help them get approved.
         </h1>
 
@@ -310,13 +299,13 @@ export default function PublicVouchPageInner() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {coach.specialties.length > 0 && (
-              <section style={{ background: "#fff", border: "1px solid rgba(26,58,47,0.12)", padding: "24px 28px" }}>
-                <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, margin: "0 0 16px", color: "#1A1A1A" }}>
+              <section style={{ background: surface.card, border: "var(--scout-border)", padding: "24px 28px" }}>
+                <h2 style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 16px" }}>
                   {coach.displayName}&apos;s {categoryLabel} qualifications
                 </h2>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {coach.specialties.map((s) => (
-                    <span key={s} style={{ padding: "6px 12px", background: "var(--scout-inset)", border: "1px solid rgba(26,58,47,0.12)", fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A1A1A" }}>
+                    <span key={s} style={{ padding: "6px 12px", background: "var(--scout-inset)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink }}>
                       {s}
                     </span>
                   ))}
@@ -325,15 +314,15 @@ export default function PublicVouchPageInner() {
             )}
 
             {coach.bio && (
-              <section style={{ background: "#fff", border: "1px solid rgba(26,58,47,0.12)", padding: "24px 28px" }}>
-                <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, margin: "0 0 12px", color: "#1A1A1A" }}>About</h2>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, color: "#52493F", lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap" }}>{coach.bio}</p>
+              <section style={{ background: surface.card, border: "var(--scout-border)", padding: "24px 28px" }}>
+                <h2 style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 12px" }}>About</h2>
+                <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.stone, lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap" }}>{coach.bio}</p>
               </section>
             )}
 
             {(coach.currentRole || coach.currentCompany) && (
-              <section style={{ background: "#fff", border: "1px solid rgba(26,58,47,0.12)", padding: "24px 28px" }}>
-                <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, margin: "0 0 16px", color: "#1A1A1A" }}>Experience</h2>
+              <section style={{ background: surface.card, border: "var(--scout-border)", padding: "24px 28px" }}>
+                <h2 style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 16px" }}>Experience</h2>
                 <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                   <div style={{ width: 40, height: 40, background: "var(--scout-inset)", border: "1px solid rgba(26,58,47,0.1)", flexShrink: 0 }} />
                   <div>
@@ -346,8 +335,8 @@ export default function PublicVouchPageInner() {
             )}
 
             {coach.schools.length > 0 && (
-              <section style={{ background: "#fff", border: "1px solid rgba(26,58,47,0.12)", padding: "24px 28px" }}>
-                <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, margin: "0 0 16px", color: "#1A1A1A" }}>Education</h2>
+              <section style={{ background: surface.card, border: "var(--scout-border)", padding: "24px 28px" }}>
+                <h2 style={{ ...bruddleHeadingStyle("h6"), margin: "0 0 16px" }}>Education</h2>
                 {coach.schools.map((school) => (
                   <div key={school} style={{ display: "flex", gap: 14, marginBottom: 12 }}>
                     <div style={{ width: 40, height: 40, background: "var(--scout-inset)", border: "1px solid rgba(26,58,47,0.1)", flexShrink: 0 }} />
@@ -366,14 +355,10 @@ export default function PublicVouchPageInner() {
         </div>
       </div>
 
-      <div className="vouch-mobile-cta" style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", background: "#fff", borderTop: "1px solid rgba(26,58,47,0.12)", zIndex: 50 }}>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          style={{ width: "100%", padding: "14px 20px", background: "#E8D5A3", color: "#1A3A2F", border: "none", fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, cursor: "pointer" }}
-        >
+      <div className="vouch-mobile-cta" style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", background: surface.card, borderTop: "var(--scout-border)", zIndex: 50 }}>
+        <ScoutPrimaryBtn onClick={() => setModalOpen(true)} style={{ width: "100%", justifyContent: "center", minHeight: 48, fontSize: T.btnMd }}>
           Vouch for {firstName}
-        </button>
+        </ScoutPrimaryBtn>
       </div>
 
       {modalOpen && (

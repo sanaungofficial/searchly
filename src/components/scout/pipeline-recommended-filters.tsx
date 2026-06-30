@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  HIREBASE_EXPERIENCE_LEVELS,
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
 } from "@/lib/vector-matched-job";
@@ -15,7 +14,13 @@ import {
 import { POSTED_WITHIN_OPTIONS } from "@/lib/job-posted-filter";
 import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
 import { JobFunctionDropdown } from "@/components/scout/job-function-dropdown";
-import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
+import { IndustrySearchField } from "@/components/scout/industry-search-field";
+import { ExcludedTitleSearchField } from "@/components/scout/excluded-title-search-field";
+import {
+  JOBRIGHT_EXPERIENCE_LEVELS,
+  hirebaseLevelsFromExperienceLabelSet,
+  toggleJobrightExperienceLabel,
+} from "@/lib/search-preferences";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
@@ -28,7 +33,6 @@ import {
   FilterBlockTitle,
   FilterField,
   FilterSectionHeader,
-  RoleTypeToggle,
   SalarySliderField,
   TagListField,
   pipelineInputStyle,
@@ -61,6 +65,7 @@ export type RecommendedFilterForm = {
   locationTypes: Set<string>;
   jobTypes: Set<string>;
   experienceLevels: Set<string>;
+  experienceLevelLabels: Set<string>;
   companySizeBuckets: Set<string>;
   companyStages: Set<string>;
   roleTypes: Set<string>;
@@ -226,13 +231,13 @@ function quickFilterLabel(form: RecommendedFilterForm) {
     ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date posted"
     : "Date posted";
 
-  const expLevels = [...form.experienceLevels];
+  const expLabels = [...form.experienceLevelLabels];
   const expLabel =
-    expLevels.length === 0
+    expLabels.length === 0
       ? "Experience level"
-      : expLevels.length <= 2
-        ? expLevels.join(", ")
-        : `${expLevels.length} levels`;
+      : expLabels.length <= 2
+        ? expLabels.join(", ")
+        : `${expLabels.length} levels`;
 
   const salaryOpt = SALARY_QUICK_OPTIONS.find((o) => o.value === form.salaryFrom);
   const salaryLabel = salaryOpt && salaryOpt.value ? salaryOpt.label : form.salaryFrom ? `$${Number(form.salaryFrom).toLocaleString()}+` : "Salary";
@@ -267,7 +272,7 @@ export type AllFiltersSectionId =
 export const ALL_FILTER_SECTIONS: { id: AllFiltersSectionId; title: string; hint: string }[] = [
   { id: "basic", title: "Basic Job Criteria", hint: "Job Function / Job Type / Work Model…" },
   { id: "compensation", title: "Compensation & Sponsorship", hint: "Annual Salary / H1B Sponsorship" },
-  { id: "interests", title: "Areas of Interests", hint: "Industry / Skill / Role (IC/Manager)…" },
+  { id: "interests", title: "Areas of Interests", hint: "Industry / Skill…" },
   { id: "company", title: "Company Insights", hint: "Company Search / Exclude Staffing Agency…" },
 ];
 
@@ -275,7 +280,7 @@ function BasicJobCriteriaFields({
   form,
   setForm,
   toggleSet,
-  categorySuggestions,
+  categorySuggestions: _categorySuggestions,
   isMobile,
 }: {
   form: RecommendedFilterForm;
@@ -288,7 +293,7 @@ function BasicJobCriteriaFields({
 
   return (
     <>
-      <FilterField label="Job Function">
+      <div style={{ marginBottom: 12 }}>
         <JobFunctionDropdown
           selected={jobFunctionSelected(form)}
           customSelected={form.customJobFunctions ?? []}
@@ -299,19 +304,14 @@ function BasicJobCriteriaFields({
               customJobFunctions: custom,
             }))
           }
-          suggested={categorySuggestions}
+          fullWidth
         />
-      </FilterField>
+      </div>
       <FilterField label="Excluded Title">
-        <input
-          style={pipelineInputStyle}
+        <ExcludedTitleSearchField
           value={form.excludedJobTitles}
-          onChange={(e) => setForm((f) => ({ ...f, excludedJobTitles: e.target.value }))}
-          placeholder="Intern, Sales Rep"
+          onChange={(excludedJobTitles) => setForm((f) => ({ ...f, excludedJobTitles }))}
         />
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>
-          Saved to profile — applied as negative keywords, not a Hirebase title filter.
-        </p>
       </FilterField>
       <FilterField label="Job Type">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -337,111 +337,174 @@ function BasicJobCriteriaFields({
           ))}
         </div>
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>
-          Applied after Hirebase results — not sent as an API param.
+          Sent to Hirebase as location_types — client backup if API omits a match.
         </p>
       </FilterField>
       <FilterSectionHeader title="Location" hint="" />
-      <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
-        <FilterField label="City">
-          <input
-            style={pipelineInputStyle}
-            value={form.locationCity}
-            onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value, locationAllInCountry: false }))}
-            placeholder="Baltimore"
-            disabled={form.locationAllInCountry}
-          />
-        </FilterField>
-        <FilterField label="State / region">
-          <DatalistInput
-            value={form.locationRegion}
-            onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion, locationAllInCountry: false }))}
-            listId="drawer-region-suggestions"
-            options={[...HIREBASE_FILTER_US_STATES]}
-            placeholder="Maryland"
-          />
-        </FilterField>
-        <FilterField label="Country">
-          <DatalistInput
-            value={form.locationCountry}
-            onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
-            listId="drawer-country-suggestions"
-            options={[...HIREBASE_FILTER_COUNTRIES]}
-            placeholder="United States"
-          />
-        </FilterField>
-      </div>
-      {(form.locationCountry === "United States" || form.locationCountry === "Canada") && (
-        <FilterField
-          label={
-            form.locationCountry === "Canada" ? "All locations within Canada" : "All locations within the US"
-          }
-        >
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              cursor: "pointer",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.locationAllInCountry}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  locationAllInCountry: e.target.checked,
-                  locationCity: e.target.checked ? "" : f.locationCity,
-                  locationRegion: e.target.checked ? "" : f.locationRegion,
-                }))
-              }
-            />
-            {form.locationCountry === "Canada"
-              ? "Open to anywhere in Canada"
-              : "Open to anywhere in the United States"}
-          </label>
-        </FilterField>
-      )}
-      <FilterField label="Within radius">
+      <FilterField label="Country">
         <select
           style={pipelineInputStyle}
-          value={form.locationRadiusMiles}
-          onChange={(e) => setForm((f) => ({ ...f, locationRadiusMiles: e.target.value }))}
+          value={form.locationCountry}
+          onChange={(e) => {
+            const value = e.target.value;
+            setForm((f) => ({
+              ...f,
+              locationCountry: value,
+              ...(value === "Canada"
+                ? { locationAllInCountry: false, locationCity: "", locationRegion: "" }
+                : {}),
+            }));
+          }}
         >
-          {LOCATION_RADIUS_OPTIONS.map((opt) => (
-            <option key={opt.miles} value={opt.miles > 0 ? String(opt.miles) : ""}>
-              {opt.label}
+          <option value="">Select country</option>
+          <option value="United States">United States</option>
+          <option value="Canada">Canada</option>
+          {HIREBASE_FILTER_COUNTRIES.filter((c) => c !== "United States" && c !== "Canada").map((country) => (
+            <option key={country} value={country}>
+              {country}
             </option>
           ))}
         </select>
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "6px 0 0" }}>
-          Client-side only — applied after Hirebase results.
-        </p>
       </FilterField>
+
+      {(form.locationCountry === "United States" || form.locationCountry === "Canada") && (
+        <>
+          <FilterField
+            label={
+              form.locationCountry === "Canada" ? "All locations within Canada" : "All locations within the US"
+            }
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                cursor: "pointer",
+                marginBottom: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.locationAllInCountry}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    locationAllInCountry: e.target.checked,
+                    locationCity: e.target.checked ? "" : f.locationCity,
+                    locationRegion: e.target.checked ? "" : f.locationRegion,
+                  }))
+                }
+              />
+              {form.locationCountry === "Canada"
+                ? "Open to anywhere in Canada"
+                : "Open to anywhere in the United States"}
+            </label>
+          </FilterField>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1.4fr 0.8fr",
+              gap: 12,
+              marginBottom: 8,
+              alignItems: "end",
+            }}
+          >
+            <FilterField label={form.locationAllInCountry ? "Location" : "City"}>
+              {form.locationAllInCountry ? (
+                <input
+                  style={pipelineInputStyle}
+                  value={
+                    form.locationCountry === "United States"
+                      ? "Anywhere in the US"
+                      : "Anywhere in Canada"
+                  }
+                  readOnly
+                  aria-readonly
+                />
+              ) : (
+                <input
+                  style={pipelineInputStyle}
+                  value={form.locationCity}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      locationCity: e.target.value,
+                      locationAllInCountry: false,
+                    }))
+                  }
+                  placeholder="Enter City"
+                />
+              )}
+            </FilterField>
+            <FilterField label="Within radius">
+              <select
+                style={pipelineInputStyle}
+                value={form.locationRadiusMiles}
+                onChange={(e) => setForm((f) => ({ ...f, locationRadiusMiles: e.target.value }))}
+              >
+                {LOCATION_RADIUS_OPTIONS.map((opt) => (
+                  <option key={opt.miles} value={opt.miles > 0 ? String(opt.miles) : ""}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+          </div>
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "0 0 14px" }}>
+            Radius is applied after Hirebase results.
+          </p>
+        </>
+      )}
+
+      {form.locationCountry &&
+        form.locationCountry !== "United States" &&
+        form.locationCountry !== "Canada" && (
+          <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
+            <FilterField label="City">
+              <input
+                style={pipelineInputStyle}
+                value={form.locationCity}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, locationCity: e.target.value, locationAllInCountry: false }))
+                }
+                placeholder="Enter City"
+              />
+            </FilterField>
+            <FilterField label="State / region">
+              <DatalistInput
+                value={form.locationRegion}
+                onChange={(locationRegion) =>
+                  setForm((f) => ({ ...f, locationRegion, locationAllInCountry: false }))
+                }
+                listId="drawer-region-suggestions"
+                options={[...HIREBASE_FILTER_US_STATES]}
+                placeholder="Region"
+              />
+            </FilterField>
+          </div>
+        )}
       <FilterField label="Experience Level">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label, hirebase }) => {
-            const active = hirebase.some((hb) => form.experienceLevels.has(hb));
-            return (
-              <ChipToggle
-                key={label}
-                label={label}
-                active={active}
-                onClick={() => {
-                  setForm((f) => {
-                    const next = new Set(f.experienceLevels);
-                    for (const hb of hirebase) {
-                      if (active) next.delete(hb);
-                      else next.add(hb);
-                    }
-                    return { ...f, experienceLevels: next };
-                  });
-                }}
-              />
-            );
-          })}
+          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label }) => (
+            <ChipToggle
+              key={label}
+              label={label}
+              active={form.experienceLevelLabels.has(label)}
+              onClick={() => {
+                setForm((f) => {
+                  const experienceLevelLabels = toggleJobrightExperienceLabel(f.experienceLevelLabels, label);
+                  return {
+                    ...f,
+                    experienceLevelLabels,
+                    experienceLevels: new Set(hirebaseLevelsFromExperienceLabelSet(experienceLevelLabels)),
+                  };
+                });
+              }}
+            />
+          ))}
         </div>
       </FilterField>
       <FilterField label="Required Experience">
@@ -614,17 +677,16 @@ function InterestsFields({
 }) {
   return (
     <>
-      <TagListField
+      <IndustrySearchField
         title="Industry"
         value={form.industries}
-        onChange={(industries) => setForm((f) => ({ ...f, industries }))}
-        placeholder="Software, Healthcare"
+        onChange={(industries) => setForm((f) => ({ ...f, industries, subindustries: "" }))}
       />
-      <CollapsibleTagListField
+      <IndustrySearchField
         title="Excluded Industry"
         value={form.excludedIndustries}
         onChange={(excludedIndustries) => setForm((f) => ({ ...f, excludedIndustries }))}
-        placeholder="Staffing, Retail"
+        collapsible
       />
       <TagListField
         title="Skill"
@@ -638,20 +700,6 @@ function InterestsFields({
         onChange={(excludedSkills) => setForm((f) => ({ ...f, excludedSkills }))}
         placeholder="Cold calling"
       />
-      <div style={{ marginBottom: 8 }}>
-        <FilterBlockTitle
-          title="Role Type"
-          onClear={() => setForm((f) => ({ ...f, roleTypes: new Set() }))}
-          clearDisabled={form.roleTypes.size === 0}
-        />
-        <RoleTypeToggle
-          selected={form.roleTypes}
-          onToggle={(rt) => setForm((f) => ({ ...f, roleTypes: toggleSet(f.roleTypes, rt) }))}
-        />
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0 0" }}>
-          Saved to profile — not sent to Hirebase.
-        </p>
-      </div>
     </>
   );
 }
@@ -686,7 +734,7 @@ function CompanyInsightsFields({
           onToggle={(stage) => setForm((f) => ({ ...f, companyStages: toggleSet(f.companyStages, stage) }))}
         />
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 0 0" }}>
-          Saved to profile — Hirebase company-stage filter not available.
+          Mapped to Hirebase company_types (Startup, Public Company, …).
         </p>
       </div>
       <div style={{ marginBottom: 20 }}>
@@ -724,6 +772,50 @@ function CompanyInsightsFields({
   );
 }
 
+function sectionHasActiveFilters(section: AllFiltersSectionId, form: RecommendedFilterForm): boolean {
+  switch (section) {
+    case "basic":
+      return (
+        Boolean(form.jobCategories.trim()) ||
+        (form.customJobFunctions?.length ?? 0) > 0 ||
+        Boolean(form.excludedJobTitles.trim()) ||
+        form.jobTypes.size > 0 ||
+        form.locationTypes.size > 0 ||
+        Boolean(form.locationCountry.trim()) ||
+        Boolean(form.locationCity.trim()) ||
+        Boolean(form.locationRegion.trim()) ||
+        form.locationAllInCountry ||
+        Boolean(form.locationRadiusMiles.trim()) ||
+        form.experienceLevelLabels.size > 0 ||
+        Boolean(form.yearsFrom.trim()) ||
+        Boolean(form.datePostedWithinDays.trim())
+      );
+    case "compensation":
+      return (
+        Boolean(form.salaryFrom.trim()) ||
+        form.visaSponsored ||
+        form.excludeSecurityClearance ||
+        form.excludeUsCitizenOnly
+      );
+    case "interests":
+      return (
+        Boolean(form.industries.trim()) ||
+        Boolean(form.excludedIndustries.trim()) ||
+        Boolean(form.skills.trim()) ||
+        Boolean(form.excludedSkills.trim())
+      );
+    case "company":
+      return (
+        Boolean(form.companyName.trim()) ||
+        form.companyStages.size > 0 ||
+        form.excludeStaffingAgency ||
+        Boolean(form.excludedCompany.trim())
+      );
+    default:
+      return false;
+  }
+}
+
 export function AllFiltersScrollContent({
   form,
   setForm,
@@ -731,6 +823,7 @@ export function AllFiltersScrollContent({
   trackedCompanyNames,
   categorySuggestions,
   sectionRefs,
+  onClearSection,
 }: {
   form: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
@@ -738,6 +831,7 @@ export function AllFiltersScrollContent({
   trackedCompanyNames: string[];
   categorySuggestions?: string[];
   sectionRefs?: React.MutableRefObject<Partial<Record<AllFiltersSectionId, HTMLElement | null>>>;
+  onClearSection?: (section: AllFiltersSectionId) => void;
 }) {
   const isMobile = useIsMobile();
 
@@ -752,6 +846,8 @@ export function AllFiltersScrollContent({
         title="Basic Job Criteria"
         hint="Job Function / Job Type / Work Model / Location / Experience"
         sectionRef={bindRef("basic")}
+        onClearAll={onClearSection ? () => onClearSection("basic") : undefined}
+        clearDisabled={!sectionHasActiveFilters("basic", form)}
       >
         <BasicJobCriteriaFields
           form={form}
@@ -767,6 +863,8 @@ export function AllFiltersScrollContent({
         title="Compensation & Sponsorship"
         hint="Annual Salary / H1B Sponsorship / Job limitations"
         sectionRef={bindRef("compensation")}
+        onClearAll={onClearSection ? () => onClearSection("compensation") : undefined}
+        clearDisabled={!sectionHasActiveFilters("compensation", form)}
       >
         <CompensationFields form={form} setForm={setForm} />
       </AllFiltersSectionAnchor>
@@ -774,8 +872,10 @@ export function AllFiltersScrollContent({
       <AllFiltersSectionAnchor
         id="interests"
         title="Areas of Interests"
-        hint="Industry / Skill / Role (IC/Manager)"
+        hint="Industry / Skill"
         sectionRef={bindRef("interests")}
+        onClearAll={onClearSection ? () => onClearSection("interests") : undefined}
+        clearDisabled={!sectionHasActiveFilters("interests", form)}
       >
         <InterestsFields form={form} setForm={setForm} toggleSet={toggleSet} />
       </AllFiltersSectionAnchor>
@@ -785,6 +885,8 @@ export function AllFiltersScrollContent({
         title="Company Insights"
         hint="Company Search / Company Stage / Job Source"
         sectionRef={bindRef("company")}
+        onClearAll={onClearSection ? () => onClearSection("company") : undefined}
+        clearDisabled={!sectionHasActiveFilters("company", form)}
       >
         <CompanyInsightsFields
           form={form}
@@ -1148,20 +1250,22 @@ export function RecommendedQuickFiltersBar({
 
       <FilterPill
         label={labels.expLabel}
-        active={form.experienceLevels.size > 0}
+        active={form.experienceLevelLabels.size > 0}
         open={openKey === "experience"}
         onOpenChange={(o) => setOpenKey(o ? "experience" : null)}
       >
         <PopoverSection title="Experience level">
-          {HIREBASE_EXPERIENCE_LEVELS.map((level) => (
+          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label }) => (
             <CheckboxOption
-              key={level}
-              label={level}
-              checked={form.experienceLevels.has(level)}
+              key={label}
+              label={label}
+              checked={form.experienceLevelLabels.has(label)}
               onToggle={() => {
+                const experienceLevelLabels = toggleJobrightExperienceLabel(form.experienceLevelLabels, label);
                 const next = {
                   ...form,
-                  experienceLevels: toggleSet(form.experienceLevels, level),
+                  experienceLevelLabels,
+                  experienceLevels: new Set(hirebaseLevelsFromExperienceLabelSet(experienceLevelLabels)),
                 };
                 setForm(next);
               }}

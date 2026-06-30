@@ -6,19 +6,34 @@ import {
   JOBRIGHT_EXPERIENCE_LEVELS,
   type SearchPreferences,
 } from "@/lib/search-preferences";
+import { explicitExperienceLevelsFromProfile } from "@/lib/recommended-filter-utils";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
 const LS_KEY_PREFIX = "kimchi:opportunities-pref-confirm:";
+const SS_KEY_PREFIX = "kimchi:opportunities-pref-confirm-session:";
 
 export function opportunitiesPrefConfirmStorageKey(userId: string | null | undefined): string {
   return `${LS_KEY_PREFIX}${userId ?? "anonymous"}`;
+}
+
+export function opportunitiesPrefConfirmSessionKey(userId: string | null | undefined): string {
+  return `${SS_KEY_PREFIX}${userId ?? "anonymous"}`;
 }
 
 export function readOpportunitiesPrefDismissed(userId: string | null | undefined): boolean {
   if (typeof window === "undefined") return false;
   try {
     return localStorage.getItem(opportunitiesPrefConfirmStorageKey(userId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function readOpportunitiesPrefDismissedSession(userId: string | null | undefined): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(opportunitiesPrefConfirmSessionKey(userId)) === "1";
   } catch {
     return false;
   }
@@ -33,11 +48,21 @@ export function markOpportunitiesPrefDismissed(userId: string | null | undefined
   }
 }
 
+export function markOpportunitiesPrefDismissedSession(userId: string | null | undefined): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(opportunitiesPrefConfirmSessionKey(userId), "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 export type OpportunitiesPrefConfirmInput = {
   targetRoles: string[];
   prioritizedCategories: string[];
   suggestedCategories?: string[];
   experienceLevelLabels?: string[];
+  experienceLevel?: string | null;
   roleMatchCount?: number;
 };
 
@@ -51,6 +76,24 @@ type Props = {
     searchPreferences: Partial<SearchPreferences>;
   }) => Promise<void>;
 };
+
+/** Profile already has job functions + experience — unified search can run without prompting. */
+export function hasOpportunitiesSearchPrefs(input: {
+  prioritizedCategories: string[];
+  searchPreferences: SearchPreferences;
+  experienceLevel?: string | null;
+}): boolean {
+  const hasFunctions = input.prioritizedCategories.length > 0;
+  const hasExperience =
+    (input.searchPreferences.experienceLevelLabels?.length ?? 0) > 0 ||
+    Boolean(explicitExperienceLevelsFromProfile(input.experienceLevel ?? null)?.length);
+  return hasFunctions && hasExperience;
+}
+
+export function dismissOpportunitiesPrefConfirm(userId: string | null | undefined): void {
+  markOpportunitiesPrefDismissed(userId);
+  markOpportunitiesPrefDismissedSession(userId);
+}
 
 export function OpportunitiesPrefConfirmModal({ open, userId, input, onClose, onConfirm }: Props) {
   const [categories, setCategories] = useState<string[]>(input.prioritizedCategories);
@@ -76,6 +119,11 @@ export function OpportunitiesPrefConfirmModal({ open, userId, input, onClose, on
   }, [open, onClose]);
 
   const roleCount = input.roleMatchCount ?? input.targetRoles.length;
+  const profilePrefilled = hasOpportunitiesSearchPrefs({
+    prioritizedCategories: input.prioritizedCategories,
+    searchPreferences: { experienceLevelLabels: input.experienceLevelLabels },
+    experienceLevel: input.experienceLevel,
+  });
 
   const toggleExperience = (label: string) => {
     setExperienceLabels((prev) =>
@@ -95,7 +143,7 @@ export function OpportunitiesPrefConfirmModal({ open, userId, input, onClose, on
           opportunitiesPrefConfirmedAt: new Date().toISOString(),
         },
       });
-      markOpportunitiesPrefDismissed(userId);
+      dismissOpportunitiesPrefConfirm(userId);
       onClose();
     } finally {
       setSaving(false);
@@ -138,7 +186,9 @@ export function OpportunitiesPrefConfirmModal({ open, userId, input, onClose, on
           }}
         >
           <h2 id="opp-pref-confirm-title" style={{ ...displayTitleStyle(22), margin: "0 0 8px" }}>
-            We found {roleCount > 0 ? roleCount : "several"} role{roleCount === 1 ? "" : "s"} that fit you best
+            {profilePrefilled
+              ? "Review your search preferences"
+              : `We found ${roleCount > 0 ? roleCount : "several"} role${roleCount === 1 ? "" : "s"} that fit you best`}
           </h2>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 20px", lineHeight: 1.55 }}>
             Confirm your job functions and experience levels so we can personalize your feed. You can change these anytime under Profile.
@@ -176,14 +226,11 @@ export function OpportunitiesPrefConfirmModal({ open, userId, input, onClose, on
           </section>
 
           <section style={{ marginBottom: 24 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Job functions
-            </p>
             <JobFunctionPicker
               selected={categories}
               onChange={setCategories}
-              suggested={input.suggestedCategories}
               variant="profile"
+              fullWidth
             />
           </section>
 
@@ -207,15 +254,23 @@ export function shouldShowOpportunitiesPrefConfirm(input: {
   targetRoles: string[];
   prioritizedCategories: string[];
   searchPreferences: SearchPreferences;
+  experienceLevel?: string | null;
   onboardingJustFinished?: boolean;
+  /** Test hook — skip browser storage reads. */
+  skipStorage?: boolean;
 }): boolean {
-  if (readOpportunitiesPrefDismissed(input.userId)) return false;
+  if (!input.skipStorage) {
+    if (readOpportunitiesPrefDismissed(input.userId)) return false;
+    if (readOpportunitiesPrefDismissedSession(input.userId)) return false;
+  }
   if (input.searchPreferences.opportunitiesPrefConfirmedAt) return false;
+  if (hasOpportunitiesSearchPrefs(input)) return false;
   if (input.onboardingJustFinished) return true;
   const missingFunctions = input.prioritizedCategories.length === 0;
-  const missingRoles = input.targetRoles.length === 0;
-  const missingExperience = !(input.searchPreferences.experienceLevelLabels?.length);
-  return missingFunctions || missingRoles || missingExperience;
+  const missingExperience =
+    !(input.searchPreferences.experienceLevelLabels?.length) &&
+    !explicitExperienceLevelsFromProfile(input.experienceLevel ?? null)?.length;
+  return missingFunctions || missingExperience;
 }
 
 export function useOpportunitiesPrefConfirmVisible(

@@ -17,11 +17,74 @@ export interface TailoredResumeSection {
   content: string;
 }
 
+export interface TailoredSkillGroup {
+  id: string;
+  label: string;
+  skills: string[];
+}
+
+const SKILLS_SECTION_RE = /skill|emphasis|competenc|core competency|qualification/i;
+
+export function isSkillsEmphasisSection(section: TailoredResumeSection): boolean {
+  return SKILLS_SECTION_RE.test(section.title);
+}
+
+/** Parse chip-oriented Areas of Emphasis content into labeled groups. */
+export function parseSkillsSectionContent(content: string): TailoredSkillGroup[] {
+  const lines = content
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (!lines.length) return [{ id: "sg_0", label: "Skills", skills: [] }];
+
+  const groups: TailoredSkillGroup[] = [];
+  let current: TailoredSkillGroup | null = null;
+
+  for (const raw of lines) {
+    const line = raw.replace(/^[-•*–]\s+/, "");
+    const looksLikeGroupLabel =
+      line.length <= 52 &&
+      !/^[-•*]/.test(raw) &&
+      (line.endsWith(":") ||
+        (line.includes(" & ") && !/\([^)]{8,}\)/.test(line)) ||
+        (/^[A-Z][A-Za-z0-9\s/&\-–—]+$/.test(line) &&
+          line.split(/[,;|]/).length === 1 &&
+          line.split(/\s+/).length <= 6 &&
+          !/\(\)/.test(line) &&
+          !/^\d/.test(line)));
+
+    if (looksLikeGroupLabel) {
+      if (current?.skills.length) groups.push(current);
+      current = { id: `sg_${groups.length}`, label: line.replace(/:$/, ""), skills: [] };
+      continue;
+    }
+
+    if (!current) current = { id: "sg_0", label: "Skills", skills: [] };
+    current.skills.push(line);
+  }
+
+  if (current) groups.push(current);
+  return groups.filter((g) => g.label || g.skills.length);
+}
+
+export function serializeSkillsSectionContent(groups: TailoredSkillGroup[]): string {
+  return groups
+    .flatMap((g) => {
+      const header = g.label && g.label !== "Skills" ? [g.label] : [];
+      return [...header, ...g.skills];
+    })
+    .join("\n");
+}
+
 export interface TailoredResumeMeta {
   sourceAssetId: string | null;
   sourceFingerprint: string;
   injectedKeywords?: string[];
   resumeStyle?: import("@/lib/resume-style").ResumeStyleSettings | null;
+  /** AI change summaries from tailor flow */
+  changes?: string[];
+  previousScore?: number;
+  newScore?: number;
 }
 
 function isSectionHeader(line: string): boolean {
@@ -114,6 +177,21 @@ export function plainTextToResumeSections(text: string): TailoredResumeSection[]
   }
 
   return sections;
+}
+
+/** Flatten editor sections back to plain text for export / AI routes. */
+export function sectionsToPlainText(sections: TailoredResumeSection[]): string {
+  const display = filterDisplaySections(sections);
+  const parts: string[] = [];
+  for (const s of display) {
+    if (s.type === "header") {
+      parts.push(s.content.trim());
+    } else {
+      const header = s.title.trim().toUpperCase();
+      parts.push(`${header}\n${s.content.trim()}`);
+    }
+  }
+  return parts.join("\n\n").trim();
 }
 
 export function filterDisplaySections(sections: unknown): TailoredResumeSection[] {

@@ -9,9 +9,14 @@ export type JobFunctionGroup = {
 
 export const JOB_FUNCTION_GROUPS: JobFunctionGroup[] = [
   {
+    id: "creative",
+    label: "Creative & Arts",
+    patterns: [/\barts\b/i, /creative/i, /entertainment/i, /performing/i, /fine art/i, /music/i, /film/i],
+  },
+  {
     id: "software",
     label: "Software / Internet / AI",
-    patterns: [/engineering/i, /product/i, /data/i, /design/i, /software/i],
+    patterns: [/engineering/i, /\bproduct\b/i, /\bdata\b/i, /design/i, /software/i, /internet/i, /\bai\b/i],
   },
   {
     id: "marketing",
@@ -19,19 +24,19 @@ export const JOB_FUNCTION_GROUPS: JobFunctionGroup[] = [
     patterns: [/marketing/i, /communications/i, /content/i],
   },
   {
+    id: "finance",
+    label: "Finance & Accounting",
+    patterns: [/finance/i, /accounting/i, /investment/i, /audit/i],
+  },
+  {
     id: "sales",
     label: "Sales & BD",
-    patterns: [/sales/i, /business development/i, /account/i],
+    patterns: [/sales/i, /business development/i, /\baccount executive\b/i, /\baccount manager\b/i],
   },
   {
     id: "operations",
     label: "Operations & PM",
     patterns: [/operations/i, /project management/i, /supply/i, /logistics/i],
-  },
-  {
-    id: "finance",
-    label: "Finance & Accounting",
-    patterns: [/finance/i, /accounting/i, /investment/i],
   },
   {
     id: "people",
@@ -75,6 +80,60 @@ export type GroupedJobFunctions = {
   label: string;
   categories: string[];
 };
+
+/** Strip Hirebase " Jobs" suffix for display (Jobright title line). */
+export function displayJobFunctionLabel(category: string): string {
+  return category.trim().replace(/ Jobs$/i, "");
+}
+
+const TOP_LEVEL_JOB_FUNCTION_NAMES = new Set([
+  "engineering",
+  "product",
+  "design",
+  "data",
+  "marketing",
+  "sales",
+  "finance",
+  "accounting",
+  "operations",
+  "legal",
+  "consulting",
+  "customer success",
+  "customer support",
+  "support",
+  "human resources",
+  "recruiting",
+  "content",
+  "communications",
+  "arts",
+  "creative",
+  "entertainment",
+  "software",
+  "project management",
+  "security",
+  "other",
+]);
+
+/** Jobright breadcrumb: parent group, or `Parent > Child` for specific roles. */
+export function jobFunctionBreadcrumb(category: string, groupLabel: string): string {
+  const display = displayJobFunctionLabel(category);
+  if (TOP_LEVEL_JOB_FUNCTION_NAMES.has(display.toLowerCase())) {
+    return groupLabel;
+  }
+  return `${groupLabel} > ${display}`;
+}
+
+export function groupLabelForJobFunction(
+  category: string,
+  groups: GroupedJobFunctions[],
+): string | null {
+  for (const g of groups) {
+    if (g.categories.some((c) => c.toLowerCase() === category.trim().toLowerCase())) {
+      return g.label;
+    }
+  }
+  return null;
+}
 
 /** Assign Hirebase categories into display groups (stable sort). */
 export function groupHirebaseJobCategories(categories: string[]): GroupedJobFunctions[] {

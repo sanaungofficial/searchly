@@ -9,6 +9,7 @@ import {
   TargetRoleAutocomplete,
 } from "@/components/scout/onboarding-suggest-input";
 import { JobFunctionPicker } from "@/components/scout/job-function-picker";
+import { IndustrySearchField } from "@/components/scout/industry-search-field";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   UploadIcon,
@@ -1580,6 +1581,8 @@ interface TargetRolesProps {
   suggestionLabel?: string;
   prioritizedCategories?: string[];
   suggestedCategories?: string[];
+  selectedIndustries?: string[];
+  onIndustriesChange?: (industries: string) => void;
   onAddCategory?: (category: string) => void;
   onRemoveCategory?: (category: string) => void;
   onAddTitle: (title: string) => void;
@@ -1654,6 +1657,8 @@ export function ScreenTargetRoles({
   suggestionLabel = "Suggested for you",
   prioritizedCategories = [],
   suggestedCategories = [],
+  selectedIndustries = "",
+  onIndustriesChange,
   onAddCategory,
   onRemoveCategory,
   onAddTitle,
@@ -1690,7 +1695,26 @@ export function ScreenTargetRoles({
           onDropdownOpenChange={setDropdownOpen}
         />
 
-        {(suggestedCategories.length > 0 || prioritizedCategories.length > 0 || onAddCategory) && onAddCategory && onRemoveCategory && (
+        {(prioritizedCategories.length > 0 || onAddCategory) && onAddCategory && onRemoveCategory && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: ONBOARDING_FIELD_BORDER }}>
+            <JobFunctionPicker
+              selected={prioritizedCategories}
+              onChange={(next) => {
+                const prevSet = new Set(prioritizedCategories.map((c) => c.toLowerCase()));
+                for (const cat of next) {
+                  if (!prevSet.has(cat.toLowerCase())) onAddCategory(cat);
+                }
+                for (const cat of prioritizedCategories) {
+                  if (!next.some((n) => n.toLowerCase() === cat.toLowerCase())) onRemoveCategory(cat);
+                }
+              }}
+              variant="onboarding"
+              fullWidth
+            />
+          </div>
+        )}
+
+        {onIndustriesChange && (
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: ONBOARDING_FIELD_BORDER }}>
             <p
               style={{
@@ -1704,21 +1728,12 @@ export function ScreenTargetRoles({
                 marginTop: 0,
               }}
             >
-              Job functions
+              Industries
             </p>
-            <JobFunctionPicker
-              selected={prioritizedCategories}
-              onChange={(next) => {
-                const prevSet = new Set(prioritizedCategories.map((c) => c.toLowerCase()));
-                for (const cat of next) {
-                  if (!prevSet.has(cat.toLowerCase())) onAddCategory(cat);
-                }
-                for (const cat of prioritizedCategories) {
-                  if (!next.some((n) => n.toLowerCase() === cat.toLowerCase())) onRemoveCategory(cat);
-                }
-              }}
-              suggested={suggestedCategories}
-              variant="onboarding"
+            <IndustrySearchField
+              title=""
+              value={selectedIndustries}
+              onChange={onIndustriesChange}
             />
           </div>
         )}

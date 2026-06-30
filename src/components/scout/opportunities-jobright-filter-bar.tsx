@@ -14,20 +14,21 @@ import {
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
 } from "@/lib/vector-matched-job";
-import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
+import { JOBRIGHT_EXPERIENCE_LEVELS, hirebaseLevelsFromExperienceLabelSet, toggleJobrightExperienceLabel } from "@/lib/search-preferences";
 import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
 import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
+import { JR } from "@/lib/opportunities-jobright-tokens";
 
 const ACTIVE_PILL: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
   padding: "6px 12px",
-  borderRadius: 999,
-  border: "1px solid rgba(45, 107, 74, 0.35)",
-  background: "rgba(45, 107, 74, 0.12)",
-  color: color.forest,
+  borderRadius: JR.pillRadius,
+  border: `1px solid ${JR.mintBorder}`,
+  background: JR.mintTintStrong,
+  color: JR.text,
   fontFamily: fontSans,
   fontSize: T.caption,
   fontWeight: 600,
@@ -37,10 +38,10 @@ const ACTIVE_PILL: React.CSSProperties = {
 
 const INACTIVE_PILL: React.CSSProperties = {
   ...ACTIVE_PILL,
-  border: border.line,
-  background: surface.card,
-  color: color.ink,
-  fontWeight: 500,
+  border: `1px solid ${JR.border}`,
+  background: JR.cardBg,
+  color: JR.text,
+  fontWeight: 400,
 };
 
 function jobTypeDisplay(type: string): string {
@@ -54,11 +55,7 @@ function workModelDisplay(type: string): string {
 }
 
 function experienceLabelsFromForm(form: RecommendedFilterForm): string[] {
-  const labels: string[] = [];
-  for (const { label, hirebase } of JOBRIGHT_EXPERIENCE_LEVELS) {
-    if (hirebase.some((hb) => form.experienceLevels.has(hb))) labels.push(label);
-  }
-  return labels;
+  return [...form.experienceLevelLabels];
 }
 
 function DropdownPill({
@@ -140,7 +137,7 @@ function PopoverFooter({
           fontFamily: fontSans,
           fontSize: T.caption,
           fontWeight: 700,
-          color: color.forest,
+          color: JR.mint,
           cursor: "pointer",
         }}
       >
@@ -151,16 +148,19 @@ function PopoverFooter({
 }
 
 function CheckboxRow({
+  id,
   label,
   checked,
   onToggle,
 }: {
+  id: string;
   label: string;
   checked: boolean;
   onToggle: () => void;
 }) {
   return (
     <label
+      htmlFor={id}
       style={{
         display: "flex",
         alignItems: "center",
@@ -169,9 +169,10 @@ function CheckboxRow({
         fontFamily: fontSans,
         fontSize: T.caption,
         cursor: "pointer",
+        userSelect: "none",
       }}
     >
-      <input type="checkbox" checked={checked} onChange={onToggle} />
+      <input id={id} type="checkbox" checked={checked} onChange={onToggle} />
       {label}
     </label>
   );
@@ -206,9 +207,10 @@ function RadioRow({
 
 export function OpportunitiesJobrightFilterBar({
   form,
+  appliedForm = form,
   setForm,
   toggleSet,
-  categorySuggestions,
+  categorySuggestions: _categorySuggestions,
   onQuickApply,
   onOpenAllFilters,
   activeFilterCount,
@@ -216,10 +218,13 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange,
   onSearchSubmit,
   searching,
+  searchDisabled,
   profileCountry,
   trailingActions,
 }: {
   form: RecommendedFilterForm;
+  /** Applied filters — drives pill labels and active styling (form is the edit draft). */
+  appliedForm?: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   categorySuggestions?: string[];
@@ -230,6 +235,8 @@ export function OpportunitiesJobrightFilterBar({
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: () => void;
   searching?: boolean;
+  /** When true, Search button is disabled (mandatory filters incomplete). */
+  searchDisabled?: boolean;
   /** Profile country — used to prioritize Canada in location quick filter. */
   profileCountry?: string;
   /** Refresh, sort, etc. — rendered on the same row as filter pills (Jobright layout). */
@@ -252,27 +259,27 @@ export function OpportunitiesJobrightFilterBar({
   };
 
   const labels = useMemo(() => {
-    const jobFns = jobFunctionPillItems(form);
-    const expLabels = experienceLabelsFromForm(form);
-    const types = [...form.jobTypes].map(jobTypeDisplay);
-    const remote = [...form.locationTypes].map(workModelDisplay);
-    const industries = form.industries.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
-    const dateLabel = form.datePostedWithinDays
-      ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date Posted"
+    const jobFns = jobFunctionPillItems(appliedForm);
+    const expLabels = experienceLabelsFromForm(appliedForm);
+    const types = [...appliedForm.jobTypes].map(jobTypeDisplay);
+    const remote = [...appliedForm.locationTypes].map(workModelDisplay);
+    const industries = appliedForm.industries.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    const dateLabel = appliedForm.datePostedWithinDays
+      ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === appliedForm.datePostedWithinDays)?.label ?? "Date Posted"
       : "Date Posted";
 
     let locationLabel = "Location";
-    if (form.locationAllInCountry && form.locationCountry.trim()) {
+    if (appliedForm.locationAllInCountry && appliedForm.locationCountry.trim()) {
       locationLabel =
-        form.locationCountry === "United States"
+        appliedForm.locationCountry === "United States"
           ? "Anywhere in the US"
-          : form.locationCountry === "Canada"
+          : appliedForm.locationCountry === "Canada"
             ? "Anywhere in Canada"
-            : `Anywhere in ${form.locationCountry}`;
-    } else if (form.locationCountry.trim()) {
-      locationLabel = form.locationCountry.trim();
-    } else if (form.locationCity.trim()) {
-      locationLabel = form.locationCity.trim();
+            : `Anywhere in ${appliedForm.locationCountry}`;
+    } else if (appliedForm.locationCountry.trim()) {
+      locationLabel = appliedForm.locationCountry.trim();
+    } else if (appliedForm.locationCity.trim()) {
+      locationLabel = appliedForm.locationCity.trim();
     }
 
     return {
@@ -284,19 +291,19 @@ export function OpportunitiesJobrightFilterBar({
       dateLabel,
       industryLabel: industries.length ? multiValuePillLabel(industries, "Industry") : "Industry",
     };
-  }, [form]);
+  }, [appliedForm]);
 
   const hasLocation =
-    Boolean(form.locationCountry.trim()) ||
-    Boolean(form.locationCity.trim()) ||
-    Boolean(form.locationRegion.trim()) ||
-    form.locationAllInCountry;
-  const hasJobFn = jobFunctionPillItems(form).length > 0;
-  const hasExp = form.experienceLevels.size > 0;
-  const hasTypes = form.jobTypes.size > 0;
-  const hasRemote = form.locationTypes.size > 0;
-  const hasIndustry = Boolean(form.industries.trim());
-  const hasDate = Boolean(form.datePostedWithinDays);
+    Boolean(appliedForm.locationCountry.trim()) ||
+    Boolean(appliedForm.locationCity.trim()) ||
+    Boolean(appliedForm.locationRegion.trim()) ||
+    appliedForm.locationAllInCountry;
+  const hasJobFn = jobFunctionPillItems(appliedForm).length > 0;
+  const hasExp = appliedForm.experienceLevelLabels.size > 0;
+  const hasTypes = appliedForm.jobTypes.size > 0;
+  const hasRemote = appliedForm.locationTypes.size > 0;
+  const hasIndustry = Boolean(appliedForm.industries.trim());
+  const hasDate = Boolean(appliedForm.datePostedWithinDays);
 
   return (
     <div
@@ -324,7 +331,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("location") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Country
             </p>
             {(preferCanada
@@ -429,7 +436,6 @@ export function OpportunitiesJobrightFilterBar({
                   customJobFunctions: custom,
                 }))
               }
-              suggested={categorySuggestions}
             />
           </PopoverPad>
           <PopoverFooter
@@ -445,32 +451,32 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("experience") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Experience Level
             </p>
-            {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label, hirebase }) => {
-              const active = hirebase.some((hb) => draft.experienceLevels.has(hb));
-              return (
-                <CheckboxRow
-                  key={label}
-                  label={label}
-                  checked={active}
-                  onToggle={() => {
-                    setDraft((d) => {
-                      const next = new Set(d.experienceLevels);
-                      for (const hb of hirebase) {
-                        if (active) next.delete(hb);
-                        else next.add(hb);
-                      }
-                      return { ...d, experienceLevels: next };
-                    });
-                  }}
-                />
-              );
-            })}
+            {JOBRIGHT_EXPERIENCE_LEVELS.map(({ id, label }) => (
+              <CheckboxRow
+                key={id}
+                id={`exp-level-${id}`}
+                label={label}
+                checked={draft.experienceLevelLabels.has(label)}
+                onToggle={() => {
+                  setDraft((d) => {
+                    const experienceLevelLabels = toggleJobrightExperienceLabel(d.experienceLevelLabels, label);
+                    return {
+                      ...d,
+                      experienceLevelLabels,
+                      experienceLevels: new Set(hirebaseLevelsFromExperienceLabelSet(experienceLevelLabels)),
+                    };
+                  });
+                }}
+              />
+            ))}
           </PopoverPad>
           <PopoverFooter
-            onReset={() => setDraft((d) => ({ ...d, experienceLevels: new Set() }))}
+            onReset={() =>
+              setDraft((d) => ({ ...d, experienceLevelLabels: new Set(), experienceLevels: new Set() }))
+            }
             onConfirm={confirmDraft}
           />
         </DropdownPill>
@@ -482,12 +488,13 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("jobtype") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Job Type
             </p>
             {HIREBASE_JOB_TYPES.map((t) => (
               <CheckboxRow
                 key={t}
+                id={`job-type-${t.replace(/\s+/g, "-").toLowerCase()}`}
                 label={jobTypeDisplay(t)}
                 checked={draft.jobTypes.has(t)}
                 onToggle={() =>
@@ -509,12 +516,13 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("workmodel") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Work Model
             </p>
             {HIREBASE_LOCATION_TYPES.map((t) => (
               <CheckboxRow
                 key={t}
+                id={`work-model-${t.replace(/\s+/g, "-").toLowerCase()}`}
                 label={workModelDisplay(t)}
                 checked={draft.locationTypes.has(t)}
                 onToggle={() =>
@@ -539,7 +547,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("date") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Date Posted
             </p>
             <RadioRow
@@ -569,7 +577,7 @@ export function OpportunitiesJobrightFilterBar({
           onOpenChange={(o) => (o ? openDraft("industry") : setOpenKey(null))}
         >
           <PopoverPad>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: JR.text, margin: "0 0 8px" }}>
               Industry
             </p>
             <input
@@ -585,14 +593,16 @@ export function OpportunitiesJobrightFilterBar({
           />
         </DropdownPill>
 
-        <div style={{ width: 1, height: 24, background: "rgba(17,17,17,0.14)", margin: "0 2px" }} aria-hidden />
+        <div style={{ width: 1, height: 24, background: JR.borderSubtle, margin: "0 2px" }} aria-hidden />
 
         <button
           type="button"
           onClick={onOpenAllFilters}
           style={{
-            ...(activeFilterCount > 0 ? ACTIVE_PILL : INACTIVE_PILL),
-            fontWeight: activeFilterCount > 0 ? 600 : 500,
+            ...INACTIVE_PILL,
+            background: JR.mint,
+            border: `1px solid ${JR.mint}`,
+            fontWeight: 700,
           }}
         >
           All Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
@@ -628,18 +638,18 @@ export function OpportunitiesJobrightFilterBar({
             <button
               type="button"
               onClick={onSearchSubmit}
-              disabled={searching}
+              disabled={searching || searchDisabled}
               style={{
-                padding: "7px 12px",
-                background: color.forest,
-                color: color.gold,
-                border: border.lineStrong,
-                borderRadius: 999,
+                padding: "7px 14px",
+                background: JR.mint,
+                color: JR.text,
+                border: "none",
+                borderRadius: JR.ctaRadius,
                 fontFamily: fontSans,
                 fontSize: T.label,
-                fontWeight: 600,
-                cursor: searching ? "not-allowed" : "pointer",
-                opacity: searching ? 0.65 : 1,
+                fontWeight: 700,
+                cursor: searching || searchDisabled ? "not-allowed" : "pointer",
+                opacity: searching || searchDisabled ? 0.65 : 1,
                 flexShrink: 0,
               }}
             >

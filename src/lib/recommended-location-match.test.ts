@@ -92,6 +92,10 @@ describe("jobMatchesLocationPreference", () => {
 
   it("blocks overseas in-person roles for US profiles", () => {
     expect(jobMatchesLocationPreference(cachedJob("Paris, France"), undefined, vaProfile)).toBe(false);
+    expect(jobMatchesLocationPreference(cachedJob("Kortrijk, West Flanders, Belgium"), undefined, vaProfile)).toBe(
+      false,
+    );
+    expect(jobMatchesLocationPreference(cachedJob("Malta"), undefined, vaProfile)).toBe(false);
   });
 
   it("blocks overseas-tagged remote roles for US profiles", () => {

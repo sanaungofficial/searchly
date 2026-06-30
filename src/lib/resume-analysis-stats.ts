@@ -4,28 +4,39 @@ import type { ResumeSectionId } from "@/lib/resume-parse";
 export interface ResumeAnalysisStats {
   issueCount: number;
   suggestionCount: number;
+  urgentCount: number;
+  criticalCount: number;
+  optionalCount: number;
 }
 
-export function computeAnalysisStats(report: FullAnalysisReport): ResumeAnalysisStats {
-  let issueCount = 0;
-  let suggestionCount = 0;
+export function computeFixCountsByPriority(report: FullAnalysisReport): Pick<ResumeAnalysisStats, "urgentCount" | "criticalCount" | "optionalCount"> {
+  let urgentCount = 0;
+  let criticalCount = 0;
+  let optionalCount = 0;
 
   for (const issue of report.issues) {
-    if (issue.priority === "Urgent" || issue.priority === "Critical") issueCount += 1;
-    else suggestionCount += 1;
+    if (issue.priority === "Urgent") urgentCount += 1;
+    else if (issue.priority === "Critical") criticalCount += 1;
+    else optionalCount += 1;
   }
 
   for (const group of report.highlights) {
     for (const item of group.items) {
-      if (item.severity === "Urgent" || item.severity === "Critical") {
-        issueCount += Math.max(1, item.issueCount);
-      } else {
-        suggestionCount += Math.max(1, item.issueCount);
-      }
+      const n = Math.max(1, item.issueCount);
+      if (item.severity === "Urgent") urgentCount += n;
+      else if (item.severity === "Critical") criticalCount += n;
+      else optionalCount += n;
     }
   }
 
-  return { issueCount, suggestionCount };
+  return { urgentCount, criticalCount, optionalCount };
+}
+
+export function computeAnalysisStats(report: FullAnalysisReport): ResumeAnalysisStats {
+  const { urgentCount, criticalCount, optionalCount } = computeFixCountsByPriority(report);
+  const issueCount = urgentCount + criticalCount;
+  const suggestionCount = optionalCount;
+  return { issueCount, suggestionCount, urgentCount, criticalCount, optionalCount };
 }
 
 const COMPLETENESS_FIX_COPY: Record<string, { issueDetected: string; whyItMatters: string; howToImprove: string }> = {

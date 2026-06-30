@@ -6,24 +6,32 @@ import {
 } from "./opportunities-hirebase-filters";
 
 describe("opportunities-hirebase-filters", () => {
-  it("drops custom job function categories from Hirebase params", () => {
+  it("taxonomy categories win over custom job functions and titles when set", () => {
     const loosened = loosenStackedHirebaseFilters({
       customJobFunctions: ["Growth Marketing"],
       jobCategories: ["Marketing Jobs"],
       jobTitles: ["PM"],
     });
-    expect(loosened.jobCategories).toBeUndefined();
-    expect(loosened.customJobFunctions).toEqual(["Growth Marketing"]);
-    expect(loosened.jobTitles).toEqual(["PM"]);
+    expect(loosened.jobCategories).toEqual(["Marketing Jobs"]);
+    expect(loosened.customJobFunctions).toBeUndefined();
+    expect(loosened.jobTitles).toBeUndefined();
   });
 
-  it("strips client-only work model from Hirebase payload", () => {
+  it("drops taxonomy categories when only custom job functions are set", () => {
+    const loosened = loosenStackedHirebaseFilters({
+      customJobFunctions: ["Growth Marketing"],
+    });
+    expect(loosened.jobCategories).toBeUndefined();
+    expect(loosened.customJobFunctions).toEqual(["Growth Marketing"]);
+  });
+
+  it("keeps location_types for Hirebase payload", () => {
     const sanitized = sanitizeFiltersForHirebase({
       locationTypes: ["Remote"],
       jobTypes: ["Full Time"],
       salaryFrom: 120000,
     });
-    expect(sanitized.locationTypes).toBeUndefined();
+    expect(sanitized.locationTypes).toEqual(["Remote"]);
     expect(sanitized.jobTypes).toEqual(["Full Time"]);
     expect(sanitized.salaryFrom).toBe(120000);
   });

@@ -47,13 +47,78 @@ function matchesLocationTypes(cached: CachedJob, locationTypes: string[]): boole
   });
 }
 
+function matchesCountryInLocationHaystack(jobHay: string, country: string): boolean {
+  const norm = country.trim().toLowerCase();
+  if (
+    norm === "us" ||
+    norm === "usa" ||
+    norm === "u.s." ||
+    norm === "u.s.a." ||
+    norm === "united states" ||
+    norm === "united states of america"
+  ) {
+    return (
+      jobHay.includes("united states") ||
+      jobHay.includes(" usa") ||
+      jobHay.includes(", us") ||
+      jobHay.endsWith(" us") ||
+      /\b(us|usa|u\.s\.)\b/.test(jobHay)
+    );
+  }
+  return jobHay.includes(norm);
+}
+
 function matchesLocations(cached: CachedJob, filters: VectorSearchFilters["locations"]): boolean {
   if (!filters?.length) return true;
   const loc = (cached.location ?? "").toLowerCase();
   return filters.some((entry) => {
+    const city = entry.city?.trim().toLowerCase();
+    const region = entry.region?.trim().toLowerCase();
+    const country = entry.country?.trim();
+    const countryOnly = Boolean(country) && !city && !region;
+
+    if (countryOnly && country) {
+      return matchesCountryInLocationHaystack(loc, country);
+    }
+
     const parts = [entry.city, entry.region, entry.country].filter(Boolean).map((p) => p!.toLowerCase());
     return parts.some((p) => loc.includes(p));
   });
+}
+
+function inferHirebaseExperienceLevels(cached: CachedJob): Set<string> {
+  const text = `${cached.seniority ?? ""} ${cached.experienceLevel ?? ""} ${cached.title ?? ""}`.toLowerCase();
+  const levels = new Set<string>();
+  if (/\b(intern|new grad|graduate|co-op|coop)\b/.test(text)) {
+    levels.add("Entry");
+    levels.add("Junior");
+  }
+  if (/\b(entry|associate|junior|jr\.?)\b/.test(text)) {
+    levels.add("Entry");
+    levels.add("Junior");
+  }
+  if (/\bmid[- ]?level\b|\bmid\b/.test(text)) levels.add("Mid");
+  if (/\b(senior|sr\.?)\b/.test(text) && !/\b(junior|associate|jr\.?)\b/.test(text)) levels.add("Senior");
+  if (/\b(lead|staff|principal)\b/.test(text)) levels.add("Senior");
+  if (/\b(director|executive|vp|vice president|c-level|chief)\b/.test(text)) levels.add("Executive");
+
+  for (const token of ["entry", "junior", "mid", "senior", "executive"]) {
+    if (text.includes(token)) levels.add(token.charAt(0).toUpperCase() + token.slice(1));
+  }
+  return levels;
+}
+
+function matchesExperienceLevels(cached: CachedJob, experienceLevels: string[]): boolean {
+  const allowed = new Set(experienceLevels.map((e) => e.trim().toLowerCase()).filter(Boolean));
+  if (!allowed.size) return true;
+
+  const inferred = inferHirebaseExperienceLevels(cached);
+  for (const level of inferred) {
+    if (allowed.has(level.toLowerCase())) return true;
+  }
+
+  const hay = `${cached.seniority ?? ""} ${cached.experienceLevel ?? ""}`.toLowerCase();
+  return experienceLevels.some((e) => hay.includes(e.toLowerCase()));
 }
 
 function matchesList(values: string[] | undefined, haystack: string): boolean {
@@ -68,6 +133,7 @@ export function jobMatchesListingFilters(
   cached: CachedJob,
   companyName: string,
   filters: VectorSearchFilters,
+  raw?: import("@/lib/hirebase").HirebaseJob,
 ): boolean {
   if (filters.companyName?.trim()) {
     const q = filters.companyName.trim().toLowerCase();
@@ -97,8 +163,7 @@ export function jobMatchesListingFilters(
   }
 
   if (filters.experienceLevels?.length) {
-    const level = `${cached.seniority ?? ""} ${cached.experienceLevel ?? ""}`.toLowerCase();
-    if (!filters.experienceLevels.some((e) => level.includes(e.toLowerCase()))) return false;
+    if (!matchesExperienceLevels(cached, filters.experienceLevels)) return false;
   }
 
   if (filters.visaSponsored === true && cached.visaSponsored !== true) return false;
@@ -138,13 +203,17 @@ export function jobMatchesListingFilters(
     if (!matchesList(filters.jobCategories, cat)) return false;
   }
 
+  if (filters.companyTypes?.length && raw?.company_data?.type) {
+    const ctype = raw.company_data.type.toLowerCase();
+    if (!filters.companyTypes.some((t) => ctype.includes(t.toLowerCase()))) return false;
+  }
+
   return true;
 }
 
-export function applyListingFiltersToSources<T extends { cached: CachedJob; companyName: string }>(
-  sources: T[],
-  filters: VectorSearchFilters | undefined,
-): T[] {
+export function applyListingFiltersToSources<
+  T extends { cached: CachedJob; companyName: string; raw?: import("@/lib/hirebase").HirebaseJob },
+>(sources: T[], filters: VectorSearchFilters | undefined): T[] {
   if (!filters) return sources;
   const hasFilter =
     filters.companyName ||
@@ -155,6 +224,7 @@ export function applyListingFiltersToSources<T extends { cached: CachedJob; comp
     filters.locationTypes?.length ||
     filters.jobTypes?.length ||
     filters.experienceLevels?.length ||
+    filters.companyTypes?.length ||
     filters.visaSponsored ||
     filters.datePostedFrom ||
     filters.datePostedWithinDays ||
@@ -164,5 +234,5 @@ export function applyListingFiltersToSources<T extends { cached: CachedJob; comp
 
   if (!hasFilter) return sources;
 
-  return sources.filter((s) => jobMatchesListingFilters(s.cached, s.companyName, filters));
+  return sources.filter((s) => jobMatchesListingFilters(s.cached, s.companyName, filters, s.raw));
 }

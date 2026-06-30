@@ -149,6 +149,17 @@ export function DashboardIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/* Resume — document */
+export function ResumeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" {...props}>
+      <path d="M4 1.5h4.5L12.5 5v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-11a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M8.5 1.5V5H12.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M5 7.5h5M5 9.5h5M5 11.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /* Eye — data sources / transparency */
 export function EyeIcon(props: SVGProps<SVGSVGElement>) {
   return (

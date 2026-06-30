@@ -2,7 +2,6 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 
 /** Filter dimensions applied client-side after Hirebase fetch — never sent to Hirebase API. */
 export const HIREBASE_CLIENT_ONLY_FILTER_KEYS = [
-  "locationTypes",
   "locationRadiusMiles",
 ] as const satisfies readonly (keyof VectorSearchFilters)[];
 
@@ -49,11 +48,10 @@ export function loosenStackedHirebaseFilters(filters: VectorSearchFilters): Vect
   const out = { ...filters };
   const customFns = out.customJobFunctions?.map((s) => s.trim()).filter(Boolean) ?? [];
 
-  if (customFns.length) {
-    delete out.jobCategories;
-  }
-
-  if (out.jobTitles?.length && out.jobCategories?.length) {
+  if (out.jobCategories?.length) {
+    delete out.customJobFunctions;
+    delete out.jobTitles;
+  } else if (customFns.length) {
     delete out.jobCategories;
   }
 

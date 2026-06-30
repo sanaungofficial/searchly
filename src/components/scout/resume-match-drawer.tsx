@@ -2,7 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Zap } from "lucide-react";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
+import { RT } from "@/lib/resume-tailor-tokens";
+import { TailoredResumePreview } from "./tailored-resume-preview";
+import { TailoredResumePreviewFrame } from "./tailored-resume-preview-frame";
+import { TailoredResumeEditorPanel } from "./tailored-resume-editor-panel";
+import { ResumeStylePanel } from "./resume-style-panel";
+import {
+  DEFAULT_RESUME_STYLE,
+  normalizeResumeStyle,
+  type ResumeStyleSettings,
+} from "@/lib/resume-style";
+import {
+  plainTextToResumeSections,
+  sectionsToPlainText,
+  type TailoredResumeSection,
+} from "@/lib/tailored-resume-sections";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { friendlyResumeError } from "@/lib/user-facing-copy";
@@ -23,8 +39,8 @@ import {
   MatchComparisonRow,
   MatchKeywordTag,
   ResumeSelectDropdown,
-  SmallScoreGauge,
   scoreColor,
+  MATCH_ROW_GRID_SPLIT,
   type MatchData,
   type ResumeAssetOption,
   type RowStatus,
@@ -53,16 +69,19 @@ interface ResumeMatchDrawerProps {
   jobId?: string;
   initialAssetId?: string | null;
   autoStart?: boolean;
+  /** External apply URL — Apply Now saves then opens this link. */
+  applyUrl?: string | null;
   onClose: () => void;
   onTailorResume: () => void;
 }
 
 type Step = 1 | 2 | 3;
+type RightPanelTab = "ai" | "editor" | "style";
 
 const STEPS = [
   { n: 1 as Step, label: "See Your Difference" },
   { n: 2 as Step, label: "Align Your Resume" },
-  { n: 3 as Step, label: "Review" },
+  { n: 3 as Step, label: "Review Your New Resume" },
 ];
 
 function fallbackNoticeFor(data: MatchData): string | null {
@@ -87,8 +106,8 @@ function Stepper({ step }: { step: Step }) {
                 width: 30,
                 height: 30,
                 borderRadius: "50%",
-                background: step > s.n ? "#1A3A2F" : step === s.n ? "#1A3A2F" : "rgba(0,0,0,0.07)",
-                color: step >= s.n ? "#E8D5A3" : "var(--scout-muted)",
+                background: step > s.n ? RT.stepComplete : step === s.n ? RT.stepActive : RT.stepInactive,
+                color: step >= s.n ? RT.green : RT.muted,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -104,7 +123,7 @@ function Stepper({ step }: { step: Step }) {
               style={{
                 fontSize: DT.caption,
                 fontWeight: step === s.n ? 600 : 500,
-                color: step === s.n ? color.ink : color.muted,
+                color: step === s.n ? RT.text : RT.muted,
                 whiteSpace: "nowrap",
                 fontFamily: fontSans,
                 textAlign: "center",
@@ -118,7 +137,7 @@ function Stepper({ step }: { step: Step }) {
               style={{
                 flex: 1,
                 height: 1,
-                background: step > s.n ? "#1A3A2F" : "rgba(0,0,0,0.1)",
+                background: step > s.n ? RT.green : RT.border,
                 margin: "0 10px",
                 marginBottom: 22,
                 flexShrink: 1,
@@ -131,67 +150,6 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
-function renderLineWithKeywords(line: string, keywords: string[]): React.ReactNode {
-  if (!keywords.length || !line.trim()) return line;
-  const escaped = keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
-  const parts = line.split(pattern);
-  return parts.map((part, i) => {
-    const isKw = keywords.some((k) => k.toLowerCase() === part.toLowerCase());
-    return isKw ? (
-      <mark
-        key={i}
-        style={{
-          background: "rgba(74,139,106,0.2)",
-          color: "#1A3A2F",
-          borderRadius: 2,
-          padding: "0 2px",
-          fontWeight: 600,
-        }}
-      >
-        {part}
-      </mark>
-    ) : (
-      <span key={i}>{part}</span>
-    );
-  });
-}
-
-function HighlightedResume({ text, keywords }: { text: string; keywords: string[] }) {
-  const lines = text.split("\n");
-  return (
-    <div>
-      {lines.map((line, i) => {
-        const trimmed = line.trim();
-        const isSectionHeader =
-          trimmed.length > 0 &&
-          trimmed.length < 50 &&
-          /^[A-Z][A-Z\s&/\-.]{3,}$/.test(trimmed);
-        const content = renderLineWithKeywords(line, keywords);
-        return (
-          <div
-            key={i}
-            style={{
-              fontFamily: fontSans,
-              fontSize: isSectionHeader ? 10 : 12,
-              fontWeight: isSectionHeader ? 700 : 400,
-              color: isSectionHeader ? "#52493F" : "#1A1A1A",
-              borderBottom: isSectionHeader ? "1px solid rgba(0,0,0,0.1)" : "none",
-              marginTop: isSectionHeader && i > 0 ? 14 : 0,
-              paddingBottom: isSectionHeader ? 4 : 0,
-              letterSpacing: isSectionHeader ? "0.8px" : "normal",
-              lineHeight: 1.65,
-              minHeight: !trimmed ? 6 : undefined,
-            }}
-          >
-            {content || " "}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function ResumeMatchDrawer({
   jobTitle,
   company,
@@ -199,6 +157,7 @@ export function ResumeMatchDrawer({
   jobId,
   initialAssetId,
   autoStart = true,
+  applyUrl,
   onClose,
   onTailorResume,
 }: ResumeMatchDrawerProps) {
@@ -228,12 +187,17 @@ export function ResumeMatchDrawer({
   const [downloadingExport, setDownloadingExport] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [editorSections, setEditorSections] = useState<TailoredResumeSection[]>([]);
+  const [rightTab, setRightTab] = useState<RightPanelTab>("ai");
+  const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
+  const [aiPrompt, setAiPrompt] = useState("");
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const masterResume = useMasterResumeStatus();
   const proUser = isPro || isAdmin;
   const autoStartedRef = useRef(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -301,6 +265,17 @@ export function ResumeMatchDrawer({
   }
 
   useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
+        setDownloadMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [downloadMenuOpen]);
+
+  useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
   }, []);
 
@@ -319,6 +294,10 @@ export function ResumeMatchDrawer({
   }
 
   function handleAlign() {
+    if (data) {
+      const unmatched = data.keywords.filter((k) => !k.matched).map((k) => k.text);
+      setSelectedMissingKw(unmatched);
+    }
     setStep(2);
   }
 
@@ -326,7 +305,9 @@ export function ResumeMatchDrawer({
     setStep(3);
     setAligning(true);
     setTailoredData(null);
+    setEditorSections([]);
     setGenerateError(null);
+    setRightTab("ai");
     try {
       const res = await fetch(withClientScope("/api/ai/tailor-resume"), {
         method: "POST",
@@ -364,6 +345,7 @@ export function ResumeMatchDrawer({
         return;
       }
       setTailoredData(json as TailoredData);
+      setEditorSections(plainTextToResumeSections((json as TailoredData).tailoredText));
       notifyCreditsChanged();
     } catch (err) {
       setGenerateError(formatApiErrorMessage(err, "Something went wrong — try again."));
@@ -394,12 +376,14 @@ export function ResumeMatchDrawer({
       const json = await res.json();
       if (json.error) setGenerateError(json.error);
       else if (json.tailoredText) {
-        setTailoredData({
+        const next: TailoredData = {
           ...tailoredData,
           tailoredText: json.tailoredText,
           tweaks: tailoredData.tweaks.filter((t) => t.id !== tweak.id),
           changes: [...tailoredData.changes, json.changeSummary ?? `Applied: ${tweak.label}`],
-        });
+        };
+        setTailoredData(next);
+        setEditorSections(plainTextToResumeSections(json.tailoredText));
         notifyCreditsChanged();
       }
     } catch {
@@ -411,6 +395,7 @@ export function ResumeMatchDrawer({
 
   async function exportResume(format: "pdf" | "docx") {
     if (!tailoredData) return;
+    const text = sectionsToPlainText(editorSections) || tailoredData.tailoredText;
     setDownloadingExport(true);
     setDownloadMenuOpen(false);
     try {
@@ -418,7 +403,7 @@ export function ResumeMatchDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: tailoredData.tailoredText,
+          text,
           format,
           filename: `${company}-${jobTitle}-tailored`,
         }),
@@ -437,11 +422,25 @@ export function ResumeMatchDrawer({
     }
   }
 
-  async function saveAndOpenEditor() {
-    if (!tailoredData) return;
+  async function applyAiPrompt() {
+    if (!tailoredData || !aiPrompt.trim() || applyingTweakId) return;
+    await applyTweak({ id: "custom", label: aiPrompt.trim() });
+    setAiPrompt("");
+  }
+
+  function syncSectionsToTailored(nextSections: TailoredResumeSection[]) {
+    setEditorSections(nextSections);
+    if (tailoredData) {
+      setTailoredData({ ...tailoredData, tailoredText: sectionsToPlainText(nextSections) });
+    }
+  }
+
+  async function saveTailoredResume(openApplyAfter = false) {
+    if (!tailoredData) return false;
+    const text = sectionsToPlainText(editorSections) || tailoredData.tailoredText;
     if (!jobId) {
       onTailorResume();
-      return;
+      return true;
     }
     setCommitting(true);
     setGenerateError(null);
@@ -450,23 +449,36 @@ export function ResumeMatchDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tailoredText: tailoredData.tailoredText,
+          tailoredText: text,
           sourceAssetId: activeResumeId,
           injectedKeywords: tailoredData.injectedKeywords,
+          changes: tailoredData.changes,
+          previousScore: data?.score,
+          newScore: tailoredData.newScore,
+          resumeStyle,
         }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setGenerateError((json as { error?: string }).error ?? "Couldn't save tailored resume — try again.");
-        return;
+        return false;
       }
       handleClose();
       onTailorResume();
+      if (openApplyAfter && applyUrl) {
+        window.open(applyUrl, "_blank", "noopener,noreferrer");
+      }
+      return true;
     } catch {
       setGenerateError("Couldn't save tailored resume — try again.");
+      return false;
     } finally {
       setCommitting(false);
     }
+  }
+
+  async function handleApplyNow() {
+    await saveTailoredResume(true);
   }
 
   function deriveJobTitleMatch(d: MatchData): boolean {
@@ -522,8 +534,8 @@ export function ResumeMatchDrawer({
           right: 0,
           top: 0,
           bottom: 0,
-          width: "min(960px, 85vw)",
-          background: "#FFFFFF",
+          width: "min(80vw, calc(100vw - 16px))",
+          background: RT.drawerBg,
           borderLeft: "var(--scout-border)",
           zIndex: DRAWER_NESTED_Z,
           display: "flex",
@@ -606,8 +618,20 @@ export function ResumeMatchDrawer({
           </button>
         </div>
 
-        {/* Stepper */}
-        <div style={{ borderBottom: "1px solid rgba(0,0,0,0.07)", flexShrink: 0 }}>
+        {/* Stepper + wizard title */}
+        <div style={{ borderBottom: `1px solid ${RT.border}`, flexShrink: 0, background: RT.panelBg }}>
+          <p
+            style={{
+              fontFamily: fontSans,
+              fontSize: 18,
+              fontWeight: 700,
+              color: RT.text,
+              margin: 0,
+              padding: "20px 32px 0",
+            }}
+          >
+            Generate Your Custom Resume
+          </p>
           <Stepper step={step} />
         </div>
 
@@ -615,8 +639,10 @@ export function ResumeMatchDrawer({
         <div
           style={{
             flex: 1,
-            overflowY: "auto",
-            padding: step === 3 && tailoredData ? "24px 28px" : "28px 32px",
+            overflow: step === 3 && tailoredData ? "hidden" : "auto",
+            padding: step === 3 && tailoredData ? 0 : "28px 32px",
+            display: step === 3 && tailoredData ? "flex" : "block",
+            flexDirection: "column",
           }}
         >
           <CreditsStatusBar />
@@ -865,7 +891,7 @@ export function ResumeMatchDrawer({
                         </div>
                         <div style={{ flexShrink: 0, marginLeft: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                           <ScoreExplainerPopover variant="job-match" align="right" />
-                          <BigScoreGauge score={data.score} />
+                          <BigScoreGauge score={data.score} tailor />
                         </div>
                       </div>
 
@@ -889,7 +915,7 @@ export function ResumeMatchDrawer({
                         <div
                           style={{
                             display: "grid",
-                            gridTemplateColumns: "148px 30px 1fr 1fr",
+                            gridTemplateColumns: MATCH_ROW_GRID_SPLIT,
                             gap: 12,
                             padding: "10px 16px",
                             background: "rgba(0,0,0,0.02)",
@@ -979,29 +1005,38 @@ export function ResumeMatchDrawer({
                         />
                         <MatchComparisonRow
                           label="Industry Experience"
+                          layout="full"
                           left={
-                            <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                               {(data.industryTags ?? data.industries.map((ind) => ({
                                 label: ind,
                                 matched: data.industryMatch,
                               }))).slice(0, 6).map((ind) => (
-                                <IndustryTag key={ind.label} label={ind.label} matched={ind.matched} />
+                                <IndustryTag key={ind.label} label={ind.label} matched={ind.matched} tailor />
                               ))}
-                            </span>
-                          }
-                          right={
-                            data.industryMatch
-                              ? "Relevant experience"
-                              : "Limited overlap"
+                              {!data.industryMatch && (
+                                <span
+                                  style={{
+                                    fontFamily: fontSans,
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: "#B88A30",
+                                  }}
+                                >
+                                  Limited overlap
+                                </span>
+                              )}
+                            </div>
                           }
                           status={data.industryMatch ? "ok" : "warn"}
                         />
                         <MatchComparisonRow
                           label={`Job Keywords (${matchedKwCount}/${totalKwCount})`}
+                          layout="full"
                           left={
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingTop: 2 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
                               {data.keywords.map((kw) => (
-                                <MatchKeywordTag key={kw.text} text={kw.text} matched={kw.matched} />
+                                <MatchKeywordTag key={kw.text} text={kw.text} matched={kw.matched} tailor />
                               ))}
                               {customKeywords.map((kw) => (
                                 <span
@@ -1110,34 +1145,33 @@ export function ResumeMatchDrawer({
                                   setNewKw("");
                                 }}
                               />
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  fontSize: 14,
+                                  color:
+                                    kwStatus === "ok"
+                                      ? "#3D7A5B"
+                                      : kwStatus === "warn"
+                                      ? "#B88A30"
+                                      : "#B84040",
+                                  marginLeft: 4,
+                                }}
+                              >
+                                {matchedKwCount}/{totalKwCount} matched
+                              </span>
                             </div>
-                          }
-                          right={
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                fontSize: 14,
-                                color:
-                                  kwStatus === "ok"
-                                    ? "#3D7A5B"
-                                    : kwStatus === "warn"
-                                    ? "#B88A30"
-                                    : "#B84040",
-                              }}
-                            >
-                              {matchedKwCount}/{totalKwCount} matched
-                            </span>
                           }
                           status={kwStatus}
                         />
                         <MatchComparisonRow
                           label="Summary"
+                          layout="full"
                           left={
                             <span style={{ color: "#52493F", fontStyle: "italic" }}>
                               {data.summaryNote}
                             </span>
                           }
-                          right=""
                           status={summaryStatus}
                         />
                       </div>
@@ -1548,18 +1582,20 @@ export function ResumeMatchDrawer({
                 );
               })()}
 
-              {/* Result state */}
-              {!aligning && tailoredData && (
-                <div style={{ display: "flex", gap: 20 }}>
-                  {/* Left: Resume preview */}
+              {/* Result — post-generate editor split view */}
+              {!aligning && tailoredData && editorSections.length > 0 && (
+                <div style={{ display: "flex", gap: 0, height: "100%", minHeight: 480, margin: "-24px -28px" }}>
+                  {/* Left: formatted resume preview */}
                   <div
                     style={{
-                      flex: "0 0 57%",
-                      background: "#FAFAF8",
-                      borderRadius: "var(--scout-radius)",
-                      border: "1px solid rgba(0,0,0,0.07)",
-                      padding: "20px 22px",
+                      flex: "0 0 58%",
+                      background: RT.previewBg,
+                      padding: "20px 24px",
+                      overflowY: "auto",
                       minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
                     }}
                   >
                     <div
@@ -1567,239 +1603,277 @@ export function ResumeMatchDrawer({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        marginBottom: 14,
-                        paddingBottom: 12,
-                        borderBottom: "1px solid rgba(0,0,0,0.07)",
+                        width: "100%",
+                        maxWidth: 640,
+                        marginBottom: 12,
                       }}
                     >
                       <span
                         style={{
                           fontFamily: fontSans,
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: 700,
                           color: "var(--scout-muted)",
                           textTransform: "uppercase",
                           letterSpacing: "0.8px",
                         }}
                       >
-                        Tailored Resume
+                        Review Your New Resume
                       </span>
                       {tailoredData.injectedKeywords.length > 0 && (
                         <span
                           style={{
                             fontFamily: fontSans,
-                            fontSize: 14,
-                            color: "#3D7A5B",
-                            background: "rgba(74,139,106,0.08)",
-                            padding: "2px 8px",
-                            borderRadius: "var(--scout-radius)",
-                            border: "1px solid rgba(74,139,106,0.15)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#15803D",
+                            background: "rgba(134,239,172,0.25)",
+                            padding: "3px 10px",
+                            borderRadius: 999,
                           }}
                         >
                           {tailoredData.injectedKeywords.length} keywords added
                         </span>
                       )}
                     </div>
-                    <HighlightedResume
-                      text={tailoredData.tailoredText}
-                      keywords={tailoredData.injectedKeywords}
-                    />
+                    <div style={{ width: "100%", maxWidth: 640 }}>
+                      <TailoredResumePreviewFrame
+                        fitToOnePage={resumeStyle.fitToOnePage}
+                        onToggleFit={() =>
+                          setResumeStyle((s) => normalizeResumeStyle({ ...s, fitToOnePage: !s.fitToOnePage }))
+                        }
+                      >
+                        <TailoredResumePreview
+                          sections={editorSections}
+                          highlightKeywords={tailoredData.injectedKeywords}
+                          resumeStyle={resumeStyle}
+                          compact={resumeStyle.fitToOnePage}
+                        />
+                      </TailoredResumePreviewFrame>
+                    </div>
                   </div>
 
-                  {/* Right: Score + changes + tweaks */}
+                  {/* Right: AI Rewrite / Editor / Style panel */}
                   <div
                     style={{
                       flex: 1,
                       display: "flex",
                       flexDirection: "column",
-                      gap: 16,
+                      borderLeft: "1px solid rgba(0,0,0,0.08)",
+                      background: "#FFFFFF",
                       minWidth: 0,
                     }}
                   >
-                    {/* Score jump */}
-                    <div
-                      style={{
-                        background: "var(--scout-inset)",
-                        borderRadius: "var(--scout-radius)",
-                        padding: "16px 18px",
-                        border: "1px solid rgba(0,0,0,0.06)",
-                      }}
-                    >
-                      <p
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: "var(--scout-muted)",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.8px",
-                          marginBottom: 12,
-                        }}
-                      >
-                        Match Score
-                      </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 14,
-                        }}
-                      >
-                        <SmallScoreGauge score={tailoredData.newScore} />
-                        <div>
-                          <p
-                            style={{
-                              fontFamily: fontSans,
-                              fontSize: 14,
-                              color: "#52493F",
-                              marginBottom: 2,
-                            }}
-                          >
-                            Score jumped from
-                          </p>
-                          <p
-                            style={{
-                              fontFamily: fontMono,
-                              fontSize: 20,
-                              fontWeight: 700,
-                              color: "#1A3A2F",
-                            }}
-                          >
-                            {data?.score?.toFixed(1) ?? "–"}{" "}
-                            <span style={{ color: "var(--scout-muted)", fontWeight: 400 }}>→</span>{" "}
-                            {tailoredData.newScore.toFixed(1)}
-                          </p>
-                        </div>
-                      </div>
+                    {/* Tab bar */}
+                    <div style={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }}>
+                      {(
+                        [
+                          { id: "ai" as const, label: "AI Rewrite" },
+                          { id: "editor" as const, label: "Editor" },
+                          { id: "style" as const, label: "Style" },
+                        ] as const
+                      ).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setRightTab(tab.id)}
+                          style={{
+                            flex: 1,
+                            padding: "12px 8px",
+                            background: "none",
+                            border: "none",
+                            borderBottom: rightTab === tab.id ? `2px solid ${RT.green}` : "2px solid transparent",
+                            fontFamily: fontSans,
+                            fontSize: 13,
+                            fontWeight: rightTab === tab.id ? 700 : 500,
+                            color: rightTab === tab.id ? "#1A1A1A" : "var(--scout-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
 
-                    {/* What changed */}
-                    <div>
-                      <p
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: "#1A1A1A",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.8px",
-                          marginBottom: 10,
-                        }}
-                      >
-                        See What&apos;s Changed
-                      </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 7,
-                        }}
-                      >
-                        {tailoredData.changes.map((change, i) => (
+                    <div style={{ flex: 1, overflowY: "auto", padding: rightTab === "style" ? 0 : "16px 18px" }}>
+                      {rightTab === "ai" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                           <div
-                            key={i}
                             style={{
-                              display: "flex",
-                              gap: 9,
-                              padding: "9px 12px",
-                              background: "rgba(74,139,106,0.055)",
-                              borderRadius: "var(--scout-radius)",
-                              border: "1px solid rgba(74,139,106,0.12)",
+                              background: RT.matchScoreBg,
+                              borderRadius: 12,
+                              padding: "20px 16px",
+                              border: `1px solid ${RT.matchScoreBorder}`,
+                              textAlign: "center",
                             }}
                           >
-                            <span
-                              style={{
-                                color: "#3D7A5B",
-                                fontSize: 14,
-                                flexShrink: 0,
-                                marginTop: 1,
-                              }}
-                            >
-                              •
-                            </span>
                             <p
                               style={{
                                 fontFamily: fontSans,
-                                fontSize: 14,
-                                color: "#1A1A1A",
-                                lineHeight: 1.5,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: RT.muted,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.9px",
+                                marginBottom: 10,
+                                marginTop: 0,
                               }}
                             >
-                              {change}
+                              Match Score
+                            </p>
+                            <BigScoreGauge score={tailoredData.newScore} tailor />
+                            <p
+                              style={{
+                                fontFamily: fontSans,
+                                fontSize: 13,
+                                color: RT.text,
+                                marginTop: 10,
+                                marginBottom: 0,
+                              }}
+                            >
+                              Score jumped from{" "}
+                              <strong style={{ fontFamily: fontMono }}>
+                                {data?.score?.toFixed(1) ?? "–"} → {tailoredData.newScore.toFixed(1)}
+                              </strong>
                             </p>
                           </div>
-                        ))}
-                      </div>
-                    </div>
 
-                    {/* Tweaks */}
-                    {tailoredData.tweaks && tailoredData.tweaks.length > 0 && (
-                      <div>
-                        <p
-                          style={{
-                            fontFamily: fontSans,
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: "var(--scout-muted)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.8px",
-                            marginBottom: 8,
-                          }}
-                        >
-                          Optional Tweaks
-                        </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                          }}
-                        >
-                          {tailoredData.tweaks.map((tweak) => (
-                            <button
-                              key={tweak.id}
-                              type="button"
-                              disabled={!!applyingTweakId}
-                              onClick={() => void applyTweak(tweak)}
+                          <div>
+                            <p
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                padding: "10px 14px",
-                                background: applyingTweakId === tweak.id ? "#F0EDE8" : "#FAFAF9",
-                                borderRadius: "var(--scout-radius)",
-                                border: "1px solid rgba(0,0,0,0.08)",
-                                cursor: applyingTweakId ? "wait" : "pointer",
-                                width: "100%",
-                                textAlign: "left",
+                                fontFamily: fontSans,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: "#1A1A1A",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px",
+                                marginBottom: 10,
                               }}
                             >
+                              See What&apos;s Changed
+                            </p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                              {tailoredData.changes.map((change, i) => (
+                                <div
+                                  key={i}
+                                  style={{
+                                    display: "flex",
+                                    gap: 9,
+                                    padding: "9px 12px",
+                                    background: "rgba(74,139,106,0.055)",
+                                    borderRadius: "var(--scout-radius)",
+                                    border: "1px solid rgba(74,139,106,0.12)",
+                                  }}
+                                >
+                                  <span style={{ color: "#3D7A5B", fontSize: 14, flexShrink: 0 }}>•</span>
+                                  <p style={{ fontFamily: fontSans, fontSize: 13, color: "#1A1A1A", lineHeight: 1.5, margin: 0 }}>
+                                    {change}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {tailoredData.tweaks.length > 0 && (
+                            <div>
                               <p
                                 style={{
                                   fontFamily: fontSans,
-                                  fontSize: 14,
-                                  color: "#52493F",
-                                  lineHeight: 1.4,
-                                  margin: 0,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "var(--scout-muted)",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.8px",
+                                  marginBottom: 8,
                                 }}
                               >
-                                {applyingTweakId === tweak.id ? "Applying…" : tweak.label}
+                                Quick tweaks
                               </p>
-                              <span
-                                style={{
-                                  color: "#1A3A2F",
-                                  fontSize: 16,
-                                  flexShrink: 0,
-                                  marginLeft: 8,
-                                }}
-                              >
-                                ›
-                              </span>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {tailoredData.tweaks.map((tweak) => (
+                                  <button
+                                    key={tweak.id}
+                                    type="button"
+                                    disabled={!!applyingTweakId}
+                                    onClick={() => void applyTweak(tweak)}
+                                    style={{
+                                      padding: "7px 12px",
+                                      background: "#FAFAF9",
+                                      border: "1px solid rgba(0,0,0,0.1)",
+                                      borderRadius: 999,
+                                      fontFamily: fontSans,
+                                      fontSize: 12,
+                                      color: "#52493F",
+                                      cursor: applyingTweakId ? "wait" : "pointer",
+                                      textAlign: "left",
+                                    }}
+                                  >
+                                    {applyingTweakId === tweak.id ? "Applying…" : `${tweak.label} →`}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ marginTop: "auto" }}>
+                            <textarea
+                              value={aiPrompt}
+                              onChange={(e) => setAiPrompt(e.target.value)}
+                              placeholder="Tell me how you'd like to tweak your resume…"
+                              rows={3}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                border: "1px solid rgba(0,0,0,0.12)",
+                                borderRadius: "var(--scout-radius)",
+                                fontFamily: fontSans,
+                                fontSize: 13,
+                                resize: "vertical",
+                                boxSizing: "border-box",
+                                marginBottom: 8,
+                              }}
+                            />
+                            <button
+                              type="button"
+                              disabled={!aiPrompt.trim() || !!applyingTweakId}
+                              onClick={() => void applyAiPrompt()}
+                              style={{
+                                width: "100%",
+                                padding: "11px",
+                                ...(aiPrompt.trim() && !applyingTweakId ? scoutPrimaryCtaStyle : {
+                                  background: "rgba(0,0,0,0.05)",
+                                  color: "var(--scout-muted)",
+                                  border: "none",
+                                }),
+                                borderRadius: "var(--scout-radius)",
+                                fontFamily: fontSans,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: aiPrompt.trim() && !applyingTweakId ? "pointer" : "not-allowed",
+                              }}
+                            >
+                              {applyingTweakId ? "Applying…" : "Edit With AI ✦"}
                             </button>
-                          ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {rightTab === "editor" && (
+                        <TailoredResumeEditorPanel
+                          sections={editorSections}
+                          onChange={syncSectionsToTailored}
+                        />
+                      )}
+
+                      {rightTab === "style" && (
+                        <ResumeStylePanel
+                          style={resumeStyle}
+                          onChange={(next) => setResumeStyle(normalizeResumeStyle(next))}
+                          compact
+                          useTailorTokens
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1812,9 +1886,9 @@ export function ResumeMatchDrawer({
           <div
             style={{
               padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
+              borderTop: `1px solid ${RT.border}`,
               flexShrink: 0,
-              background: "#FFFFFF",
+              background: RT.panelBg,
             }}
           >
             <button
@@ -1823,11 +1897,13 @@ export function ResumeMatchDrawer({
               style={{
                 width: "100%",
                 padding: "15px",
-                ...scoutPrimaryCtaStyle,
-                borderRadius: "var(--scout-radius)",
+                background: RT.green,
+                color: RT.text,
+                border: "none",
+                borderRadius: RT.ctaPrimaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: "pointer",
                 letterSpacing: "0.3px",
               }}
@@ -1841,9 +1917,9 @@ export function ResumeMatchDrawer({
           <div
             style={{
               padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
+              borderTop: `1px solid ${RT.border}`,
               flexShrink: 0,
-              background: "#FFFFFF",
+              background: RT.panelBg,
               display: "flex",
               gap: 10,
             }}
@@ -1854,9 +1930,9 @@ export function ResumeMatchDrawer({
               style={{
                 padding: "14px 20px",
                 background: "transparent",
-                color: "#52493F",
-                border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: "var(--scout-radius)",
+                color: RT.muted,
+                border: `1px solid ${RT.border}`,
+                borderRadius: RT.ctaSecondaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
@@ -1873,15 +1949,13 @@ export function ResumeMatchDrawer({
               style={{
                 flex: 1,
                 padding: "14px",
-                ...(selectedSections.size > 0 ? scoutPrimaryCtaStyle : {
-                  background: "rgba(0,0,0,0.05)",
-                  color: "var(--scout-muted)",
-                  border: "none",
-                }),
-                borderRadius: "var(--scout-radius)",
+                background: selectedSections.size > 0 ? RT.green : RT.stepInactive,
+                color: RT.text,
+                border: "none",
+                borderRadius: RT.ctaPrimaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
                 letterSpacing: "0.3px",
               }}
@@ -1891,16 +1965,17 @@ export function ResumeMatchDrawer({
           </div>
         )}
 
-        {step === 3 && !aligning && tailoredData && (
+        {step === 3 && !aligning && tailoredData && editorSections.length > 0 && (
           <div
             style={{
               position: "relative",
               padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
+              borderTop: `1px solid ${RT.border}`,
               flexShrink: 0,
-              background: "#FFFFFF",
+              background: RT.panelBg,
               display: "flex",
               gap: 10,
+              alignItems: "center",
             }}
           >
             <button
@@ -1910,9 +1985,9 @@ export function ResumeMatchDrawer({
               style={{
                 padding: "14px 20px",
                 background: "transparent",
-                color: "#52493F",
-                border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: "var(--scout-radius)",
+                color: RT.muted,
+                border: `1px solid ${RT.border}`,
+                borderRadius: RT.ctaSecondaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
@@ -1922,63 +1997,74 @@ export function ResumeMatchDrawer({
             >
               ← Back
             </button>
+            <div ref={downloadRef} style={{ position: "relative", flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setDownloadMenuOpen((v) => !v)}
+                disabled={downloadingExport || committing}
+                style={{
+                  padding: "14px 20px",
+                  background: "transparent",
+                  color: RT.text,
+                  border: `1px solid ${RT.border}`,
+                  borderRadius: RT.ctaSecondaryRadius,
+                  fontFamily: fontSans,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: downloadingExport ? "wait" : "pointer",
+                }}
+              >
+                {downloadingExport ? "Downloading…" : "Download Resume"}
+              </button>
+              {downloadMenuOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    bottom: "calc(100% + 6px)",
+                    background: RT.panelBg,
+                    border: `1px solid ${RT.border}`,
+                    borderRadius: RT.ctaSecondaryRadius,
+                    minWidth: 180,
+                    zIndex: 5,
+                    overflow: "hidden",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <button type="button" onClick={() => void exportResume("pdf")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer" }}>Download PDF</button>
+                  <button type="button" onClick={() => void exportResume("docx")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer", borderTop: `1px solid ${RT.border}` }}>Download Word</button>
+                </div>
+              )}
+            </div>
             <button
               type="button"
-              onClick={() => void saveAndOpenEditor()}
+              onClick={() => void handleApplyNow()}
               disabled={committing || downloadingExport}
               style={{
                 flex: 1,
-                padding: "14px",
-                ...(committing ? {
-                  background: "var(--scout-cta-muted)",
-                  color: "var(--scout-cta-foreground)",
-                  border: "var(--scout-border)",
-                } : scoutPrimaryCtaStyle),
-                borderRadius: "var(--scout-radius)",
+                padding: "14px 20px",
+                background: RT.applyBg,
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: RT.ctaPrimaryRadius,
                 fontFamily: fontSans,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: committing ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 letterSpacing: "0.3px",
               }}
             >
-              {committing ? "Saving…" : jobId ? "Save & open editor →" : "Save job to continue →"}
+              {committing ? "Saving…" : (
+                <>
+                  Apply Now
+                  <Zap size={16} fill={RT.applyIcon} color={RT.applyIcon} />
+                </>
+              )}
             </button>
-            <button
-              type="button"
-              onClick={() => setDownloadMenuOpen((v) => !v)}
-              disabled={downloadingExport || committing}
-              style={{
-                padding: "14px 20px",
-                background: "transparent",
-                color: "#52493F",
-                border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: "var(--scout-radius)",
-                fontFamily: fontSans,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: downloadingExport ? "wait" : "pointer",
-                flexShrink: 0,
-              }}
-            >
-              {downloadingExport ? "…" : "Download"}
-            </button>
-            {downloadMenuOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 32,
-                  bottom: 72,
-                  background: "#FFFFFF",
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  minWidth: 180,
-                  zIndex: 5,
-                }}
-              >
-                <button type="button" onClick={() => void exportResume("pdf")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer" }}>Download PDF</button>
-                <button type="button" onClick={() => void exportResume("docx")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer", borderTop: "1px solid rgba(0,0,0,0.08)" }}>Download Word</button>
-              </div>
-            )}
           </div>
         )}
       </div>

@@ -374,15 +374,15 @@ type JobCategoryPickerProps = {
 export function JobCategoryPicker({
   selected,
   onChange,
-  suggestions = [],
+  suggestions: _suggestions = [],
   addButtonLabel: _addButtonLabel = "+ Add category",
 }: JobCategoryPickerProps) {
   return (
     <JobFunctionPicker
       selected={selected}
       onChange={onChange}
-      suggested={suggestions}
       variant="profile"
+      fullWidth
     />
   );
 }

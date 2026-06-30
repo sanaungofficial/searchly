@@ -10,6 +10,7 @@ import {
   type VisaNeedId,
   type WorkArrangementId,
 } from "@/lib/onboarding-preferences";
+import { patchParsedDataSearchPreferences } from "@/lib/search-preferences";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -229,6 +230,7 @@ export default function OnboardingPage() {
   const [targetSalary, setTargetSalary] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
+  const [selectedIndustries, setSelectedIndustries] = useState("");
   const [resumeError, setResumeError] = useState(false);
   const [resumeAssetId, setResumeAssetId] = useState<string | null>(null);
   const [linkedinImportAvailable, setLinkedinImportAvailable] = useState<boolean | null>(null);
@@ -801,6 +803,25 @@ export default function OnboardingPage() {
       await saveMatchingPreferences(matchingState);
       await saveTargetRoles(selectedTitles);
       await savePrioritizedCategories(prioritizedCategories);
+      if (selectedIndustries.trim()) {
+        const profileRes = await fetch("/api/profile");
+        const profileJson = profileRes.ok ? await profileRes.json() : null;
+        const parsed =
+          profileJson?.parsedData && typeof profileJson.parsedData === "object"
+            ? (profileJson.parsedData as Record<string, unknown>)
+            : {};
+        const industryLabels = selectedIndustries
+          .split(/[,;|]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            parsedData: patchParsedDataSearchPreferences(parsed, { industries: industryLabels }),
+          }),
+        });
+      }
       if (profileOneLiner.trim()) await saveHeadline(profileOneLiner);
       if (liInput.trim()) await saveLinkedIn(liInput);
       setStepStatus("profile", "done");
@@ -1057,6 +1078,8 @@ export default function OnboardingPage() {
                   suggestionLabel="Suggested for you"
                   prioritizedCategories={prioritizedCategories}
                   suggestedCategories={suggestedPrioritizedCategories}
+                  selectedIndustries={selectedIndustries}
+                  onIndustriesChange={setSelectedIndustries}
                   onAddCategory={onAddPrioritizedCategory}
                   onRemoveCategory={onRemovePrioritizedCategory}
                   onAddTitle={onAddTargetRole}

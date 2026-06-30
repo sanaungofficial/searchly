@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   describeActiveFilters,
+  defaultLocationAllInCountry,
   explicitExperienceLevelsFromProfile,
   profileDerivedSearchFilters,
 } from "./recommended-filter-utils";
@@ -30,6 +31,7 @@ describe("profileDerivedSearchFilters", () => {
     });
     expect(filters.jobTypes).toBeUndefined();
     expect(filters.experienceLevels).toBeUndefined();
+    expect(filters.jobTitles).toBeUndefined();
   });
 
   it("pre-selects explicit onboarding/profile fields only", () => {
@@ -42,7 +44,7 @@ describe("profileDerivedSearchFilters", () => {
       experienceLevel: "Senior",
     });
 
-    expect(filters.jobTitles).toEqual(["Product Manager"]);
+    expect(filters.jobTitles).toBeUndefined();
     expect(filters.jobCategories).toEqual(["Operations Jobs"]);
     expect(filters.experienceLevels).toEqual(["Senior"]);
     expect(filters.jobTypes).toBeUndefined();
@@ -50,6 +52,8 @@ describe("profileDerivedSearchFilters", () => {
     expect(filters.visaSponsored).toBeUndefined();
     expect(filters.salaryFrom).toBeUndefined();
     expect(filters.locations?.[0]?.country).toBe("United States");
+    expect(filters.locations?.[0]?.city).toBeUndefined();
+    expect(filters.locations?.[0]?.region).toBeUndefined();
     expect(filters.locationRadiusMiles).toBeUndefined();
   });
 
@@ -61,10 +65,34 @@ describe("profileDerivedSearchFilters", () => {
   });
 
   it("describeActiveFilters omits unset dimensions", () => {
-    const filters = profileDerivedSearchFilters({ targetRoles: ["Engineer"] });
+    const filters = profileDerivedSearchFilters({ prioritizedCategories: ["Engineering Jobs"] });
     const labels = describeActiveFilters(filters);
     expect(labels.some((l) => l.startsWith("Type:"))).toBe(false);
     expect(labels.some((l) => l.startsWith("Level:"))).toBe(false);
-    expect(labels.some((l) => l.startsWith("Titles:"))).toBe(true);
+    expect(labels.some((l) => l.startsWith("Titles:"))).toBe(false);
+    expect(labels.some((l) => l.startsWith("Categories:"))).toBe(false);
+    expect(labels.some((l) => l.startsWith("Job function:"))).toBe(true);
+  });
+
+  it("country-wide location omits city and region when locationAllInCountry is set", () => {
+    const filters = profileDerivedSearchFilters({
+      profileLocation: "Baltimore, Maryland, United States",
+      searchPreferences: { locationAllInCountry: true },
+    });
+    expect(filters.locations).toEqual([{ country: "United States", city: undefined, region: undefined }]);
+  });
+
+  it("never pre-fills profile city into search location", () => {
+    const filters = profileDerivedSearchFilters({
+      profileLocation: "Baltimore, Maryland, United States",
+    });
+    expect(filters.locations?.[0]?.city).toBeUndefined();
+    expect(filters.locations?.[0]?.region).toBeUndefined();
+    expect(filters.locations?.[0]?.country).toBe("United States");
+  });
+
+  it("defaultLocationAllInCountry defaults true when country present", () => {
+    expect(defaultLocationAllInCountry(undefined, "United States")).toBe(true);
+    expect(defaultLocationAllInCountry({ locationAllInCountry: false }, "United States")).toBe(false);
   });
 });
