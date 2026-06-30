@@ -64,6 +64,7 @@ import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal"
 import { buildOpportunitiesFilterChips } from "@/lib/opportunities-filter-chips";
 import {
   dismissOpportunitiesPrefConfirm,
+  hasOpportunitiesSearchPrefs,
   OpportunitiesPrefConfirmModal,
   shouldShowOpportunitiesPrefConfirm,
 } from "./opportunities-pref-confirm-modal";
@@ -664,6 +665,7 @@ export function PipelineRecommendedSection({
     searchPreferences: {},
   });
   const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
+  const [profileMetaLoaded, setProfileMetaLoaded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("recommended");
 
   const initialFetchAttemptedRef = useRef(false);
@@ -672,6 +674,7 @@ export function PipelineRecommendedSection({
   const defaultFormRef = useRef<FilterForm | null>(null);
   const prefsConfirmedRef = useRef(false);
   const prefConfirmHandledRef = useRef(false);
+  const prefConfirmMigratedRef = useRef(false);
 
   const hydrateFromCache = useCallback((filtersKey: string) => {
     const cached = readRecommendedCache(filtersKey);
@@ -902,50 +905,94 @@ export function PipelineRecommendedSection({
         targetRoles?: string[];
         prioritizedCategories?: string[];
       } | null) => {
-        if (!data) return;
-        const fields = locationFieldsFromProfileString(
-          typeof data.parsedData?.location === "string" ? data.parsedData.location : null,
-        );
-        const priorities = Array.isArray(data.priorities) ? data.priorities : [];
-        setProfileBaseline({
-          location: fields.display,
-          priorities: [...priorities],
-        });
-        setProfileCountry(fields.country);
-        const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
-        const experienceLevel =
-          typeof data.parsedData?.experienceLevel === "string" ? data.parsedData.experienceLevel : null;
-        setProfileMeta({
-          userId: data.userId ?? actingUserId ?? null,
-          targetRoles: data.targetRoles ?? [],
-          prioritizedCategories: data.prioritizedCategories ?? [],
-          experienceLevel,
-          searchPreferences,
-        });
+        if (data) {
+          const fields = locationFieldsFromProfileString(
+            typeof data.parsedData?.location === "string" ? data.parsedData.location : null,
+          );
+          const priorities = Array.isArray(data.priorities) ? data.priorities : [];
+          setProfileBaseline({
+            location: fields.display,
+            priorities: [...priorities],
+          });
+          setProfileCountry(fields.country);
+          const searchPreferences = searchPreferencesFromParsedData(data.parsedData);
+          const experienceLevel =
+            typeof data.parsedData?.experienceLevel === "string" ? data.parsedData.experienceLevel : null;
+          setProfileMeta({
+            userId: data.userId ?? actingUserId ?? null,
+            targetRoles: data.targetRoles ?? [],
+            prioritizedCategories: data.prioritizedCategories ?? [],
+            experienceLevel,
+            searchPreferences,
+          });
+        }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setProfileMetaLoaded(true));
   }, [actingUserId, withClientScope]);
 
   useEffect(() => {
-    if (!hasLoadedOnce || !profileFormReady) return;
+    if (!hasLoadedOnce || !profileFormReady || !profileMetaLoaded) return;
     if (prefConfirmHandledRef.current) return;
     const onboardingJustFinished =
       typeof window !== "undefined" &&
       sessionStorage.getItem("kimchi:onboarding-just-finished") === "1";
-    if (
-      shouldShowOpportunitiesPrefConfirm({
-        userId: profileMeta.userId,
-        targetRoles: profileMeta.targetRoles,
-        prioritizedCategories: profileMeta.prioritizedCategories,
-        experienceLevel: profileMeta.experienceLevel,
-        searchPreferences: profileMeta.searchPreferences,
-        onboardingJustFinished,
-      })
-    ) {
+    const shouldShow = shouldShowOpportunitiesPrefConfirm({
+      userId: profileMeta.userId,
+      targetRoles: profileMeta.targetRoles,
+      prioritizedCategories: profileMeta.prioritizedCategories,
+      experienceLevel: profileMeta.experienceLevel,
+      searchPreferences: profileMeta.searchPreferences,
+      onboardingJustFinished,
+    });
+    if (shouldShow) {
       setPrefConfirmOpen(true);
       if (onboardingJustFinished) sessionStorage.removeItem("kimchi:onboarding-just-finished");
+    } else {
+      prefConfirmHandledRef.current = true;
+      setPrefConfirmOpen(false);
     }
-  }, [hasLoadedOnce, profileFormReady, profileMeta]);
+  }, [hasLoadedOnce, profileFormReady, profileMetaLoaded, profileMeta]);
+
+  // Existing users with complete prefs but no confirm timestamp — migrate silently once.
+  useEffect(() => {
+    if (!profileMetaLoaded || prefConfirmMigratedRef.current) return;
+    if (profileMeta.searchPreferences.opportunitiesPrefConfirmedAt) return;
+    if (!hasOpportunitiesSearchPrefs(profileMeta)) return;
+
+    prefConfirmMigratedRef.current = true;
+    prefsConfirmedRef.current = true;
+    setPrefConfirmOpen(false);
+
+    const confirmedAt = new Date().toISOString();
+    void (async () => {
+      try {
+        const profileRes = await fetch(withClientScope("/api/profile"));
+        const profile = (await profileRes.json().catch(() => ({}))) as {
+          parsedData?: Record<string, unknown> | null;
+        };
+        if (!profileRes.ok) return;
+        const parsedData = patchParsedDataSearchPreferences(profile.parsedData ?? {}, {
+          opportunitiesPrefConfirmedAt: confirmedAt,
+        });
+        const patchRes = await fetch(withClientScope("/api/profile"), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parsedData }),
+        });
+        if (!patchRes.ok) return;
+        setProfileMeta((prev) => ({
+          ...prev,
+          searchPreferences: {
+            ...prev.searchPreferences,
+            opportunitiesPrefConfirmedAt: confirmedAt,
+          },
+        }));
+      } catch {
+        /* non-blocking migration */
+      }
+    })();
+  }, [profileMetaLoaded, profileMeta, withClientScope]);
 
   useEffect(() => {
     fetch(withClientScope("/api/companies"))
@@ -976,8 +1023,10 @@ export function PipelineRecommendedSection({
     initialFetchAttemptedRef.current = false;
     setDefaultsLoaded(false);
     setProfileFormReady(false);
+    setProfileMetaLoaded(false);
     defaultFormRef.current = null;
     prefConfirmHandledRef.current = false;
+    prefConfirmMigratedRef.current = false;
     setPrefConfirmOpen(false);
     clearRecommendedCache();
     setJobs([]);

@@ -90,6 +90,28 @@ describe("shouldShowOpportunitiesPrefConfirm", () => {
     ).toBe(false);
   });
 
+  it("does not show for marketing profile with senior and lead experience labels", () => {
+    expect(
+      shouldShowOpportunitiesPrefConfirm({
+        ...base,
+        prioritizedCategories: ["Marketing Jobs"],
+        searchPreferences: { experienceLevelLabels: ["Senior Level", "Lead / Staff"] },
+      }),
+    ).toBe(false);
+  });
+
+  it("does not show with empty profile snapshot before load would have shown", () => {
+    expect(
+      shouldShowOpportunitiesPrefConfirm({
+        userId: null,
+        targetRoles: [],
+        prioritizedCategories: [],
+        searchPreferences: {},
+        skipStorage: true,
+      }),
+    ).toBe(true);
+  });
+
   it("shows when job functions or experience are missing", () => {
     expect(
       shouldShowOpportunitiesPrefConfirm({
