@@ -325,7 +325,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
     setApplying(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/clients/${clientUserId}/import/apply`, {
+      const res = await fetch(api(`/api/admin/clients/${clientUserId}/import/apply`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -336,7 +336,12 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
           importMeta: metaOverride ?? buildImportMeta(),
         }),
       });
-      const data = (await readResponseJson(res)) as ClientImportApplyResult & { error?: string; runId?: string };
+      const data = (await readResponseJson(res)) as ClientImportApplyResult & {
+        error?: string;
+        runId?: string;
+        historyWarning?: string;
+        code?: string;
+      };
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Apply failed"));
 
       resetState();
@@ -345,7 +350,7 @@ export function UnifiedImportModal({ open, onClose, clientUserId, onPatchProfile
       if (data.runId && onImportComplete) {
         onImportComplete(data.runId);
       } else {
-        onSuccess?.("Import complete.");
+        onSuccess?.(data.historyWarning ?? "Import complete.");
       }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Apply failed"));
