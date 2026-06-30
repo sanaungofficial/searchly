@@ -58,10 +58,10 @@ import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessLegend } from "./job-freshness-indicator";
 import {
-  RecommendedFiltersDrawer,
   type RecommendedFilterForm,
 } from "./pipeline-recommended-filters";
 import { OpportunitiesJobrightFilterBar } from "./opportunities-jobright-filter-bar";
+import { OpportunitiesAllFiltersModal } from "./opportunities-all-filters-modal";
 import {
   OpportunitiesPrefConfirmModal,
   shouldShowOpportunitiesPrefConfirm,
@@ -136,6 +136,8 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     visaSponsored: f.visaSponsored === true,
     relocationPriorities: [] as string[],
     ...emptyExtendedFilterFields(),
+    customJobFunctions: searchPrefs?.customJobFunctions ?? [],
+    locationAllInCountry: searchPrefs?.locationAllInCountry ?? false,
   };
   return searchPrefs ? applySearchPreferencesToFilterForm(base, searchPrefs) : base;
 }
@@ -193,7 +195,14 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
   const skillKeywords = splitInputListOrUndefined(form.skills);
   const baseKeywords = splitInputListOrUndefined(form.keywords) ?? [];
-  const mergedKeywords = skillKeywords?.length ? [...baseKeywords, ...skillKeywords] : baseKeywords.length ? baseKeywords : undefined;
+  const customFnKeywords = (form.customJobFunctions ?? []).map((s) => s.trim()).filter(Boolean);
+  const mergedKeywordList = [...baseKeywords, ...(skillKeywords ?? []), ...customFnKeywords];
+  const mergedKeywords = mergedKeywordList.length ? mergedKeywordList : undefined;
+
+  const hasLocation =
+    form.locationAllInCountry && form.locationCountry.trim()
+      ? true
+      : locationParts.length > 0;
 
   return {
     ...DEFAULT_VECTOR_SEARCH_FILTERS,
@@ -223,8 +232,12 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     salaryTo: form.openToAllSalary || !form.salaryTo.trim() ? undefined : Number(form.salaryTo),
     yearsFrom: form.openToAllExperience || !form.yearsFrom.trim() ? undefined : Number(form.yearsFrom),
     yearsTo: form.openToAllExperience || !form.yearsTo.trim() ? undefined : Number(form.yearsTo),
-    locations: locationParts.length
-      ? [{ city: form.locationCity.trim() || undefined, region: form.locationRegion.trim() || undefined, country: form.locationCountry.trim() || undefined }]
+    locations: hasLocation
+      ? [{
+          city: form.locationAllInCountry ? undefined : form.locationCity.trim() || undefined,
+          region: form.locationAllInCountry ? undefined : form.locationRegion.trim() || undefined,
+          country: form.locationCountry.trim() || undefined,
+        }]
       : undefined,
   };
 }
@@ -1114,7 +1127,6 @@ export function PipelineRecommendedSection({
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
           searching={loading || revalidating}
-          profileChipsOnly
         />
 
         <OpportunitiesPrefConfirmModal
@@ -1160,7 +1172,7 @@ export function PipelineRecommendedSection({
         </div>
 
 
-        <RecommendedFiltersDrawer
+        <OpportunitiesAllFiltersModal
           open={filtersDrawerOpen}
           onClose={() => setFiltersDrawerOpen(false)}
           form={form}
@@ -1169,14 +1181,9 @@ export function PipelineRecommendedSection({
           trackedCompanyNames={trackedCompanyNames}
           categorySuggestions={categorySuggestions}
           applying={loading || revalidating}
-          onApply={() => {
+          appliedFilters={appliedFilters}
+          onConfirm={() => {
             void applyFilters().then(() => setFiltersDrawerOpen(false));
-          }}
-          onReset={() => {
-            const reset = defaultFormRef.current
-              ? { ...defaultFormRef.current, semanticQuery: form.semanticQuery }
-              : defaultFeedForm();
-            setForm(reset);
           }}
         />
 
