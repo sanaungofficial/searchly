@@ -123,6 +123,7 @@ export function KimchiAssistant() {
             <ScoutDrawerBackdrop
               onClose={closePanel}
               variant={isMobile ? "default" : "transparent"}
+              interactive={visible}
               className="kimchi-drawer-backdrop"
               style={{
                 opacity: visible ? 1 : 0,
