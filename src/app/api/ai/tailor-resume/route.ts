@@ -218,9 +218,11 @@ Return ONLY a valid JSON object with no markdown, no explanation, no code fences
 }
 
 Rules:
-- changes: 2–4 bullet points, each starting with a past-tense verb (e.g. "Updated summary to emphasize...", "Added 3 missing skill keywords...", "Strengthened 2 experience bullets...")
+- changes: exactly 3 concise bullet lines (under 60 chars each), e.g. "Summary updated to better align with the role", "Added 3 missing skills", "Enhanced 3 work experience bullets"
 - newScore: float 0–10, starting from original and adjusted upward proportional to improvements made
 - tweaks: 2–3 additional optional improvements the candidate could still make (keep labels concise, under 55 chars)
+- tailoredText: use ALL CAPS section headers on their own line (PROFESSIONAL SUMMARY, AREAS OF EMPHASIS, PROFESSIONAL EXPERIENCE, EDUCATION & CERTIFICATIONS, CERTIFICATION)
+- Preserve name/contact block at top before first section header
 - injectedKeywords: list only keywords from the provided missing list that were actually added`;
 
   try {
