@@ -28,6 +28,8 @@ import { NextResponse } from "next/server";
 import { readClientUserIdFromRequest, resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
+export const maxDuration = 120;
+
 async function parseRecommendedFilters(request: Request): Promise<{
   filters: VectorSearchFilters;
   preferCache: boolean;

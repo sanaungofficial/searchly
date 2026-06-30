@@ -632,6 +632,7 @@ export function PipelineRecommendedSection({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: forceRefresh ? "no-store" : "default",
+          signal: AbortSignal.timeout(90_000),
           body: JSON.stringify({
             ...filters,
             preferCache: options?.preferCache ?? !forceRefresh,
@@ -673,43 +674,41 @@ export function PipelineRecommendedSection({
               preferCache: false,
               background: background || hasLoadedOnce,
             });
-            return;
-          }
-
-          setJobs(nextJobs);
-          setError(null);
-          setNotice(data.notice?.trim() || null);
-          const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
-          setActiveFilterLabels(describeActiveFilters(applied));
-          setSnapshotMeta({
-            fromSnapshot: data.fromSnapshot === true,
-            generatedAt: data.generatedAt ?? new Date().toISOString(),
-          });
-          writeRecommendedCache({
-            jobs: nextJobs,
-            filtersKey: cacheKey,
-            fetchedAt: Date.now(),
-            matchMode: data.matchMode,
-            error: null,
-          });
-          if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
-            markDefaultRecommendedFeedLoaded();
+          } else {
+            setJobs(nextJobs);
+            setError(null);
+            setNotice(data.notice?.trim() || null);
+            const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
+            setActiveFilterLabels(describeActiveFilters(applied));
+            setSnapshotMeta({
+              fromSnapshot: data.fromSnapshot === true,
+              generatedAt: data.generatedAt ?? new Date().toISOString(),
+            });
+            writeRecommendedCache({
+              jobs: nextJobs,
+              filtersKey: cacheKey,
+              fetchedAt: Date.now(),
+              matchMode: data.matchMode,
+              error: null,
+            });
+            if (cacheKey === defaultFeedCacheKey() && nextJobs.length > 0) {
+              markDefaultRecommendedFeedLoaded();
+            }
           }
         }
-        setHasLoadedOnce(true);
       } catch (err) {
         if (gen !== fetchGenRef.current) return;
         setError(formatApiErrorMessage(err, "Couldn't load recommended roles — hit Refresh."));
         if (!background) setJobs([]);
-        setHasLoadedOnce(true);
       } finally {
         if (gen === fetchGenRef.current) {
+          setHasLoadedOnce(true);
           setLoading(false);
           setRevalidating(false);
         }
       }
     },
-    [withClientScope],
+    [withClientScope, hasLoadedOnce],
   );
 
   useEffect(() => {
@@ -723,11 +722,17 @@ export function PipelineRecommendedSection({
           // Default feed API uses open filters — profile prefs drive matching server-side, not as Hirebase pre-filters.
           setAppliedForm(defaultFeedForm());
           setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
-          setProfileFormReady(true);
+        } else {
+          setAppliedForm(defaultFeedForm());
         }
+        setProfileFormReady(true);
         setDefaultsLoaded(true);
       })
-      .catch(() => setDefaultsLoaded(true));
+      .catch(() => {
+        setAppliedForm(defaultFeedForm());
+        setProfileFormReady(true);
+        setDefaultsLoaded(true);
+      });
 
     void fetch(withClientScope("/api/jobs/categories"))
       .then((res) => (res.ok ? res.json() : null))
@@ -794,8 +799,6 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     if (initialFetchAttemptedRef.current || !defaultsLoaded || !profileFormReady) return;
-    // Fetching before profile resolves actingUserId writes cache under scope "self", which remounts miss.
-    if (!isAdminReviewing && actingUserId == null) return;
 
     initialFetchAttemptedRef.current = true;
 
@@ -816,7 +819,19 @@ export function PipelineRecommendedSection({
     }
 
     void fetchRecommended(feedForm, { preferCache: true });
-  }, [fetchRecommended, defaultsLoaded, profileFormReady, isAdminReviewing, hydrateFromCache, actingUserId]);
+  }, [fetchRecommended, defaultsLoaded, profileFormReady, isAdminReviewing, hydrateFromCache]);
+
+  // Last-resort: never leave the initial loader spinning if bootstrap or fetch stalls.
+  useEffect(() => {
+    if (hasLoadedOnce) return;
+    const timer = window.setTimeout(() => {
+      setHasLoadedOnce(true);
+      setLoading(false);
+      setRevalidating(false);
+      setError((prev) => prev ?? "Loading is taking longer than expected — hit Refresh or check your profile.");
+    }, 90_000);
+    return () => window.clearTimeout(timer);
+  }, [hasLoadedOnce]);
 
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
     const location = profileLocationFromForm(filtersForm);
