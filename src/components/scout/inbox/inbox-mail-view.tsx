@@ -54,6 +54,8 @@ type Props = {
   status: InboxStatus;
   initialMessageId?: string | null;
   onInitialMessageConsumed?: () => void;
+  initialContactId?: string | null;
+  onInitialContactConsumed?: () => void;
   onNotice: (n: { type: "success" | "error"; text: string } | null) => void;
   compose: ComposeState;
   onComposeChange: (c: ComposeState) => void;
@@ -66,6 +68,8 @@ export function InboxMailView({
   status,
   initialMessageId,
   onInitialMessageConsumed,
+  initialContactId,
+  onInitialContactConsumed,
   onNotice,
   compose,
   onComposeChange,
@@ -209,6 +213,13 @@ export function InboxMailView({
     setFocusUnreadId(null);
     onInitialMessageConsumed?.();
   }, [initialMessageId, onInitialMessageConsumed, status.email]);
+
+  useEffect(() => {
+    if (!initialContactId) return;
+    setActiveTab("contacts");
+    setSelectedContactId(initialContactId);
+    onInitialContactConsumed?.();
+  }, [initialContactId, onInitialContactConsumed]);
 
   function toggleMessage(id: string) {
     setFocusUnreadId(null);
