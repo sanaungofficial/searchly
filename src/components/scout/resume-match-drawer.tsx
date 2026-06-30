@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, Trash2, Plus, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
 import { RT } from "@/lib/resume-tailor-tokens";
 import { TailoredResumePreview } from "./tailored-resume-preview";
+import { TailoredResumePreviewFrame } from "./tailored-resume-preview-frame";
+import { TailoredResumeEditorPanel } from "./tailored-resume-editor-panel";
 import { ResumeStylePanel } from "./resume-style-panel";
 import {
   DEFAULT_RESUME_STYLE,
@@ -188,8 +190,6 @@ export function ResumeMatchDrawer({
   const [editorSections, setEditorSections] = useState<TailoredResumeSection[]>([]);
   const [rightTab, setRightTab] = useState<RightPanelTab>("ai");
   const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [sectionDraft, setSectionDraft] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
@@ -433,15 +433,6 @@ export function ResumeMatchDrawer({
     if (tailoredData) {
       setTailoredData({ ...tailoredData, tailoredText: sectionsToPlainText(nextSections) });
     }
-  }
-
-  function updateEditorSection(id: string, content: string) {
-    syncSectionsToTailored(editorSections.map((s) => (s.id === id ? { ...s, content } : s)));
-  }
-
-  function deleteEditorSection(id: string) {
-    syncSectionsToTailored(editorSections.filter((s) => s.id !== id));
-    if (editingSectionId === id) setEditingSectionId(null);
   }
 
   async function saveTailoredResume(openApplyAfter = false) {
@@ -1646,11 +1637,19 @@ export function ResumeMatchDrawer({
                       )}
                     </div>
                     <div style={{ width: "100%", maxWidth: 640 }}>
-                      <TailoredResumePreview
-                        sections={editorSections}
-                        highlightKeywords={tailoredData.injectedKeywords}
-                        resumeStyle={resumeStyle}
-                      />
+                      <TailoredResumePreviewFrame
+                        fitToOnePage={resumeStyle.fitToOnePage}
+                        onToggleFit={() =>
+                          setResumeStyle((s) => normalizeResumeStyle({ ...s, fitToOnePage: !s.fitToOnePage }))
+                        }
+                      >
+                        <TailoredResumePreview
+                          sections={editorSections}
+                          highlightKeywords={tailoredData.injectedKeywords}
+                          resumeStyle={resumeStyle}
+                          compact={resumeStyle.fitToOnePage}
+                        />
+                      </TailoredResumePreviewFrame>
                     </div>
                   </div>
 
@@ -1701,22 +1700,23 @@ export function ResumeMatchDrawer({
                         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                           <div
                             style={{
-                              background: "var(--scout-inset)",
-                              borderRadius: "var(--scout-radius)",
-                              padding: "16px",
-                              border: "1px solid rgba(0,0,0,0.06)",
+                              background: RT.matchScoreBg,
+                              borderRadius: 12,
+                              padding: "20px 16px",
+                              border: `1px solid ${RT.matchScoreBorder}`,
                               textAlign: "center",
                             }}
                           >
                             <p
                               style={{
                                 fontFamily: fontSans,
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: 700,
-                                color: "var(--scout-muted)",
+                                color: RT.muted,
                                 textTransform: "uppercase",
-                                letterSpacing: "0.8px",
-                                marginBottom: 8,
+                                letterSpacing: "0.9px",
+                                marginBottom: 10,
+                                marginTop: 0,
                               }}
                             >
                               Match Score
@@ -1726,8 +1726,8 @@ export function ResumeMatchDrawer({
                               style={{
                                 fontFamily: fontSans,
                                 fontSize: 13,
-                                color: "#52493F",
-                                marginTop: 8,
+                                color: RT.text,
+                                marginTop: 10,
                                 marginBottom: 0,
                               }}
                             >
@@ -1859,118 +1859,10 @@ export function ResumeMatchDrawer({
                       )}
 
                       {rightTab === "editor" && (
-                        <div>
-                          <p
-                            style={{
-                              fontFamily: fontSans,
-                              fontSize: 12,
-                              color: "#52493F",
-                              background: "rgba(74,139,106,0.08)",
-                              padding: "10px 12px",
-                              borderRadius: "var(--scout-radius)",
-                              lineHeight: 1.5,
-                              marginBottom: 14,
-                            }}
-                          >
-                            Edits here apply only to this job&apos;s resume. Update your base resume in Profile for changes that carry across roles.
-                          </p>
-                          {editorSections.map((section) => (
-                            <div key={section.id} style={{ marginBottom: 8 }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  padding: "8px 0",
-                                  borderBottom: editingSectionId === section.id ? "1px solid rgba(0,0,0,0.08)" : "none",
-                                }}
-                              >
-                                <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>
-                                  {section.title}
-                                </span>
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (editingSectionId === section.id) {
-                                        setEditingSectionId(null);
-                                      } else {
-                                        setEditingSectionId(section.id);
-                                        setSectionDraft(section.content);
-                                      }
-                                    }}
-                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)" }}
-                                  >
-                                    <Pencil size={13} />
-                                  </button>
-                                  {section.type !== "header" && (
-                                    <button
-                                      type="button"
-                                      onClick={() => deleteEditorSection(section.id)}
-                                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)" }}
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              {editingSectionId === section.id && (
-                                <textarea
-                                  value={sectionDraft}
-                                  onChange={(e) => setSectionDraft(e.target.value)}
-                                  onBlur={() => {
-                                    updateEditorSection(section.id, sectionDraft);
-                                    setEditingSectionId(null);
-                                  }}
-                                  rows={5}
-                                  style={{
-                                    width: "100%",
-                                    padding: "8px 10px",
-                                    border: "1px solid rgba(0,0,0,0.12)",
-                                    borderRadius: "var(--scout-radius)",
-                                    fontFamily: fontSans,
-                                    fontSize: 13,
-                                    resize: "vertical",
-                                    boxSizing: "border-box",
-                                    marginTop: 4,
-                                  }}
-                                />
-                              )}
-                            </div>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newSec: TailoredResumeSection = {
-                                id: `s-${Date.now()}`,
-                                title: "New Section",
-                                type: "text",
-                                content: "",
-                              };
-                              syncSectionsToTailored([...editorSections, newSec]);
-                              setEditingSectionId(newSec.id);
-                              setSectionDraft("");
-                            }}
-                            style={{
-                              width: "100%",
-                              padding: "8px",
-                              marginTop: 8,
-                              background: "transparent",
-                              border: "1px dashed rgba(0,0,0,0.15)",
-                              borderRadius: "var(--scout-radius)",
-                              fontFamily: fontSans,
-                              fontSize: 13,
-                              color: "#52493F",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 6,
-                            }}
-                          >
-                            <Plus size={13} /> Add section
-                          </button>
-                        </div>
+                        <TailoredResumeEditorPanel
+                          sections={editorSections}
+                          onChange={syncSectionsToTailored}
+                        />
                       )}
 
                       {rightTab === "style" && (

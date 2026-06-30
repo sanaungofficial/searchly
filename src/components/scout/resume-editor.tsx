@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown } from "lucide-react";
+import { X, Download, RefreshCw, Loader2, Check, ChevronDown } from "lucide-react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ResumeStylePanel } from "./resume-style-panel";
 import { TailoredResumePreview } from "./tailored-resume-preview";
+import { TailoredResumePreviewFrame } from "./tailored-resume-preview-frame";
+import { TailoredResumeEditorPanel } from "./tailored-resume-editor-panel";
 import { fontSans } from "@/lib/typography";
 import { RT } from "@/lib/resume-tailor-tokens";
 import { formatRelativeTimeAgo } from "@/lib/format-relative-time";
@@ -45,8 +47,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [previewSections, setPreviewSections] = useState<ResumeSection[] | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<string>("");
   const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
   const [rightTab, setRightTab] = useState<"editor" | "style">("editor");
   const [injectedKeywords, setInjectedKeywords] = useState<string[]>([]);
@@ -116,32 +116,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   function updateResumeStyle(next: ResumeStyleSettings) {
     setResumeStyle(next);
     if (sections.length) save(sections, next);
-  }
-
-  function updateSection(id: string, content: string) {
-    const updated = sections.map((s) => s.id === id ? { ...s, content } : s);
-    setSections(updated);
-    save(updated);
-  }
-
-  function deleteSection(id: string) {
-    const updated = sections.filter((s) => s.id !== id);
-    setSections(updated);
-    save(updated);
-    if (editingId === id) setEditingId(null);
-  }
-
-  function addSection() {
-    const newSection: ResumeSection = {
-      id: `s-${Date.now()}`,
-      title: "New Section",
-      type: "text",
-      content: "",
-    };
-    const updated = [...sections, newSection];
-    setSections(updated);
-    setEditingId(newSection.id);
-    save(updated);
   }
 
   async function regenerate() {
@@ -291,21 +265,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             </span>
           )}
           <button
-            onClick={toggleFitToOnePage}
-            style={{
-              padding: "6px 14px",
-              background: style.fitToOnePage ? RT.applyBg : RT.drawerBg,
-              color: style.fitToOnePage ? RT.green : RT.muted,
-              border: `1px solid ${RT.border}`,
-              borderRadius: RT.ctaSecondaryRadius,
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            Fit to one page
-          </button>
-          <button
             onClick={editBaseResume}
             style={{
               padding: "6px 14px",
@@ -371,12 +330,17 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 </span>
               )}
               <div style={{ width: "100%", maxWidth: 640 }}>
-                <TailoredResumePreview
-                  sections={activeSections}
-                  highlightKeywords={injectedKeywords}
-                  resumeStyle={resumeStyle}
-                  compact={compactPreview}
-                />
+                <TailoredResumePreviewFrame
+                  fitToOnePage={style.fitToOnePage}
+                  onToggleFit={toggleFitToOnePage}
+                >
+                  <TailoredResumePreview
+                    sections={activeSections}
+                    highlightKeywords={injectedKeywords}
+                    resumeStyle={resumeStyle}
+                    compact={compactPreview}
+                  />
+                </TailoredResumePreviewFrame>
               </div>
             </>
           )}
@@ -444,107 +408,14 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
           <div style={{ flex: 1, overflowY: "auto", padding: rightTab === "style" ? 0 : "16px 18px" }}>
             {rightTab === "editor" && (
-              <>
-          <div style={{ padding: "0 0 14px", marginBottom: 8 }}>
-            <p style={{ fontSize: 12, color: "#52493F", background: "rgba(74,139,106,0.08)", padding: "10px 12px", borderRadius: "var(--scout-radius)", lineHeight: 1.5, margin: "0 0 10px" }}>
-              Edits here apply only to this job. Update your base resume in Profile for changes that carry across roles.
-            </p>
-            <button
-              type="button"
-              onClick={editBaseResume}
-              style={{ width: "100%", padding: "8px", background: "#FFFFFF", border: "1px solid #D8D0C5", borderRadius: "var(--scout-radius)", fontSize: 13, cursor: "pointer" }}
-            >
-              Edit base resume
-            </button>
-          </div>
-
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {activeSections.map((section) => (
-              <div key={section.id}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 20px",
-                    background: editingId === section.id ? "#F0EDE8" : "transparent",
-                    borderLeft: editingId === section.id ? "2px solid #1C3A2F" : "2px solid transparent",
-                  }}
-                >
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "#1A1A1A", flex: 1 }}>{section.title}</span>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                      onClick={() => {
-                        if (editingId === section.id) {
-                          setEditingId(null);
-                        } else {
-                          setEditingId(section.id);
-                          setEditDraft(section.content);
-                        }
-                      }}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)", display: "flex", alignItems: "center" }}
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={() => deleteSection(section.id)}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)", display: "flex", alignItems: "center" }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                {editingId === section.id && (
-                  <div style={{ padding: "8px 20px 14px" }}>
-                    <textarea
-                      value={editDraft}
-                      onChange={(e) => setEditDraft(e.target.value)}
-                      onBlur={() => updateSection(section.id, editDraft)}
-                      rows={6}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        border: "1px solid #D8D0C5",
-                        borderRadius: "var(--scout-radius)",
-                        fontSize: 14,
-                        fontFamily: fontSans,
-                        color: "#1A1A1A",
-                        resize: "vertical",
-                        background: "#FFFFFF",
-                        boxSizing: "border-box",
-                        outline: "none",
-                      }}
-                      placeholder={section.type === "bullets" ? "One bullet per line..." : "Section content..."}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ padding: "12px 20px", borderTop: "1px solid #E5DDD0" }}>
-            <button
-              onClick={addSection}
-              style={{
-                width: "100%",
-                padding: "8px 0",
-                background: "transparent",
-                border: "1px dashed #D8D0C5",
-                borderRadius: "var(--scout-radius)",
-                fontSize: 14,
-                color: "#6B6258",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              }}
-            >
-              <Plus size={13} /> Add
-            </button>
-          </div>
-            </>
+              <TailoredResumeEditorPanel
+                sections={activeSections}
+                onChange={(updated) => {
+                  setSections(updated);
+                  save(updated);
+                }}
+                onEditBaseResume={editBaseResume}
+              />
             )}
 
             {rightTab === "style" && (
