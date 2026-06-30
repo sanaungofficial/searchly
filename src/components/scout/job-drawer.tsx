@@ -657,6 +657,15 @@ function daysLabel(days: number): string {
   return `${days} days ago`;
 }
 
+function formatTailoredUpdatedAt(iso: string | null): string | null {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return null;
+  }
+}
+
 function SidebarToolCard({
   icon,
   title,
@@ -750,14 +759,41 @@ export function JobDrawer({
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
+  const [tailoredResume, setTailoredResume] = useState<{ hasTailored: boolean; updatedAt: string | null }>({
+    hasTailored: false,
+    updatedAt: null,
+  });
   const [qaModalOpen, setQaModalOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   useLayoutEffect(() => { setVisible(true); }, []);
 
+  const refreshTailoredResume = useCallback(() => {
+    if (!dbId) {
+      setTailoredResume({ hasTailored: false, updatedAt: null });
+      return;
+    }
+    fetch(withClientScope(`/api/resume/tailored/${dbId}`))
+      .then((r) => r.json())
+      .then((d: { hasTailored?: boolean; updatedAt?: string | null }) => {
+        setTailoredResume({
+          hasTailored: Boolean(d.hasTailored),
+          updatedAt: d.updatedAt ?? null,
+        });
+      })
+      .catch(() => setTailoredResume({ hasTailored: false, updatedAt: null }));
+  }, [dbId, withClientScope]);
+
   useEffect(() => {
-    if (tool === "resume") setMatchDrawerOpen(true);
+    refreshTailoredResume();
+  }, [refreshTailoredResume]);
+
+  useEffect(() => {
+    if (tool === "resume") {
+      if (tailoredResume.hasTailored) setResumeEditorOpen(true);
+      else setMatchDrawerOpen(true);
+    }
     if (tool === "cover") setCoverDrawerOpen(true);
-  }, [tool]);
+  }, [tool, tailoredResume.hasTailored]);
 
   const scrollToSection = useCallback((section: ScrollSection) => {
     setActiveSection(section);
@@ -1621,13 +1657,27 @@ export function JobDrawer({
                 subtitle="Strengths, gaps, and a clear fit read for this role."
                 onClick={() => setMatchDrawerOpen(true)}
               />
-              <SidebarToolCard
-                icon="📄"
-                title="Customize your resume"
-                subtitle="Tailor your resume so it speaks directly to this posting."
-                accent
-                onClick={() => setMatchDrawerOpen(true)}
-              />
+              {tailoredResume.hasTailored ? (
+                <SidebarToolCard
+                  icon="📄"
+                  title="View Custom Resume"
+                  subtitle={
+                    formatTailoredUpdatedAt(tailoredResume.updatedAt)
+                      ? `Updated ${formatTailoredUpdatedAt(tailoredResume.updatedAt)}`
+                      : "Your tailored resume for this role"
+                  }
+                  accent
+                  onClick={() => setResumeEditorOpen(true)}
+                />
+              ) : (
+                <SidebarToolCard
+                  icon="📄"
+                  title="Customize your resume"
+                  subtitle="Tailor your resume so it speaks directly to this posting."
+                  accent
+                  onClick={() => setMatchDrawerOpen(true)}
+                />
+              )}
               <SidebarToolCard
                 icon="✉️"
                 title="Build cover letter"
@@ -1655,10 +1705,10 @@ export function JobDrawer({
             ) : canRunMatch ? (
               <button
                 type="button"
-                onClick={() => setMatchDrawerOpen(true)}
+                onClick={() => (tailoredResume.hasTailored ? setResumeEditorOpen(true) : setMatchDrawerOpen(true))}
                 style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
               >
-                Customize your resume →
+                {tailoredResume.hasTailored ? "View Custom Resume →" : "Customize your resume →"}
               </button>
             ) : externalPostUrl ? (
               <a
@@ -1701,10 +1751,18 @@ export function JobDrawer({
       {dbId && (
         <ResumeEditor
           open={resumeEditorOpen}
-          onOpenChange={setResumeEditorOpen}
+          onOpenChange={(open) => {
+            setResumeEditorOpen(open);
+            if (!open) refreshTailoredResume();
+          }}
           jobId={dbId}
           jobTitle={card.role}
           company={card.company}
+          updatedAt={tailoredResume.updatedAt ?? undefined}
+          onRegenerateRequest={() => {
+            setResumeEditorOpen(false);
+            setMatchDrawerOpen(true);
+          }}
         />
       )}
 
@@ -1717,6 +1775,7 @@ export function JobDrawer({
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             setMatchDrawerOpen(false);
+            refreshTailoredResume();
             if (dbId) setResumeEditorOpen(true);
             else if (onAddToPipeline) void onAddToPipeline();
           }}

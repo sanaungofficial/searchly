@@ -22,6 +22,10 @@ export interface TailoredResumeMeta {
   sourceFingerprint: string;
   injectedKeywords?: string[];
   resumeStyle?: import("@/lib/resume-style").ResumeStyleSettings | null;
+  /** AI change summaries from tailor flow */
+  changes?: string[];
+  previousScore?: number;
+  newScore?: number;
 }
 
 function isSectionHeader(line: string): boolean {
@@ -114,6 +118,21 @@ export function plainTextToResumeSections(text: string): TailoredResumeSection[]
   }
 
   return sections;
+}
+
+/** Flatten editor sections back to plain text for export / AI routes. */
+export function sectionsToPlainText(sections: TailoredResumeSection[]): string {
+  const display = filterDisplaySections(sections);
+  const parts: string[] = [];
+  for (const s of display) {
+    if (s.type === "header") {
+      parts.push(s.content.trim());
+    } else {
+      const header = s.title.trim().toUpperCase();
+      parts.push(`${header}\n${s.content.trim()}`);
+    }
+  }
+  return parts.join("\n\n").trim();
 }
 
 export function filterDisplaySections(sections: unknown): TailoredResumeSection[] {
