@@ -128,12 +128,13 @@ export function profileDerivedSearchFilters(input: {
       ? hirebaseLevelsFromJobrightLabels(input.searchPreferences.experienceLevelLabels)
       : undefined);
 
+  const locationAllInCountry = input.searchPreferences?.locationAllInCountry === true;
   const locations =
     fields.city || fields.region || fields.country
       ? [
           {
-            city: fields.city || undefined,
-            region: fields.region || undefined,
+            city: locationAllInCountry ? undefined : fields.city || undefined,
+            region: locationAllInCountry ? undefined : fields.region || undefined,
             country: fields.country || undefined,
           },
         ]
