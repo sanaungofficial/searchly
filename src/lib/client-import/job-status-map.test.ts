@@ -13,17 +13,24 @@ describe("mapImportJobStage", () => {
     expect(mapImportJobStage({ statusRaw: "Phone Screen", approved: null, appliedAt: null })).toBe("SCREENING");
   });
 
+  it("maps Pending to APPLIED, not Saved", () => {
+    expect(mapImportJobStage({ statusRaw: "Pending", approved: null, appliedAt: null })).toBe("APPLIED");
+  });
+
+  it("does not treat generic pipeline wording as Saved", () => {
+    expect(mapImportJobStage({ statusRaw: "In Pipeline", approved: null, appliedAt: null })).toBe(null);
+  });
+
   it("defaults empty status to SAVED, not APPLIED", () => {
     expect(mapImportJobStage({ statusRaw: "", approved: null, appliedAt: null })).toBe("SAVED");
-    expect(mapImportJobStage({ statusRaw: "Pending", approved: null, appliedAt: null })).toBe("SAVED");
   });
 
   it("uses application date as APPLIED signal when status blank", () => {
     expect(mapImportJobStage({ statusRaw: "", approved: null, appliedAt: "2024-06-01" })).toBe("APPLIED");
   });
 
-  it("gates APPLIED when coach approval is No", () => {
-    expect(mapImportJobStage({ statusRaw: "Applied", approved: false, appliedAt: null })).toBe("SAVED");
+  it("keeps APPLIED when coach approval is No", () => {
+    expect(mapImportJobStage({ statusRaw: "Applied", approved: false, appliedAt: null })).toBe("APPLIED");
     expect(mapImportJobStage({ statusRaw: "Applied", approved: true, appliedAt: null })).toBe("APPLIED");
   });
 

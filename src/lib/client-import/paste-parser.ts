@@ -80,11 +80,12 @@ function parseJobsFromPaste(text: string, source: string, inferInterview: boolea
     const appliedAtRaw = cols.dateCol >= 0 ? (row[cols.dateCol] ?? "").trim() : "";
     const resumeRaw = cols.resumeCol >= 0 ? (row[cols.resumeCol] ?? "").trim() : "";
 
-    let stage = mapImportJobStage({
-      statusRaw,
-      approved: parseImportApproved(yesNoRaw),
-      appliedAt: appliedAtRaw || null,
-    });
+    let stage =
+      mapImportJobStage({
+        statusRaw,
+        approved: parseImportApproved(yesNoRaw),
+        appliedAt: appliedAtRaw || null,
+      }) ?? "SAVED";
     if (inferInterview) {
       for (let c = 0; c < headers.length; c++) {
         const h = normHeader(headers[c] ?? "");

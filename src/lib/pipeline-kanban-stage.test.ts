@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DB_TO_KANBAN, dbStageToKanban } from "./pipeline-kanban-stage";
+import { DB_TO_KANBAN, dbStageToKanban, resolveDbJobKanbanStage } from "./pipeline-kanban-stage";
 
 describe("pipeline kanban stage mapping", () => {
   it("maps only SAVED to the Saved tab (pre-application bucket)", () => {
@@ -15,5 +15,11 @@ describe("pipeline kanban stage mapping", () => {
 
   it("defaults unknown DB stages to saved", () => {
     expect(dbStageToKanban("UNKNOWN")).toBe("saved");
+  });
+
+  it("promotes SAVED rows with appliedAt to the Applied tab", () => {
+    expect(resolveDbJobKanbanStage("SAVED", null)).toBe("saved");
+    expect(resolveDbJobKanbanStage("SAVED", "2024-06-01")).toBe("applied");
+    expect(resolveDbJobKanbanStage("APPLIED", "2024-06-01")).toBe("applied");
   });
 });

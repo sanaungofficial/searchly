@@ -155,11 +155,12 @@ function parseJobTableFromSheet(
     const appliedAtRaw = cols.dateCol >= 0 ? getCellDisplay(sheet, r, cols.dateCol) : "";
     const resumeRaw = cols.resumeCol >= 0 ? getCellDisplay(sheet, r, cols.resumeCol) : "";
 
-    let stage = mapImportJobStage({
-      statusRaw,
-      approved: parseImportApproved(yesNoRaw),
-      appliedAt: appliedAtRaw || null,
-    });
+    let stage =
+      mapImportJobStage({
+        statusRaw,
+        approved: parseImportApproved(yesNoRaw),
+        appliedAt: appliedAtRaw || null,
+      }) ?? "SAVED";
     if (opts?.inferInterviewStage && /interview tracker/i.test(sheetName)) {
       const roundCols = [
         /phone screen/,

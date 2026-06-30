@@ -36,7 +36,7 @@ export function tryAutoMapImportStatusText(statusRaw: string): JobStage | null {
 export function mapImportJobStage(
   ctx: ImportJobStageContext,
   valueMapping?: ImportStatusValueMapping,
-): JobStage {
+): JobStage | null {
   return resolveImportJobStage(ctx, valueMapping);
 }
 
@@ -44,7 +44,7 @@ export function mapImportJobStage(
 export function resolveImportJobStage(
   ctx: ImportJobStageContext,
   valueMapping?: ImportStatusValueMapping,
-): JobStage {
+): JobStage | null {
   const trimmed = ctx.statusRaw.trim();
 
   if (trimmed) {
@@ -56,6 +56,8 @@ export function resolveImportJobStage(
 
     const fallback = valueMapping?.defaultUnmatchedStage;
     if (fallback) return applyApprovalGate(fallback, ctx.approved);
+
+    return null;
   }
 
   if (ctx.appliedAt?.trim()) return applyApprovalGate("APPLIED", ctx.approved);
@@ -65,7 +67,8 @@ export function resolveImportJobStage(
 }
 
 function applyApprovalGate(stage: JobStage, approved: boolean | null): JobStage {
-  if (approved === false && (stage === "APPLIED" || stage === "APPLYING")) return "SAVED";
+  // Coach "No" holds in-progress drafts at Saved; submitted applications keep their stage.
+  if (approved === false && stage === "APPLYING") return "SAVED";
   return stage;
 }
 
@@ -95,10 +98,11 @@ function mapStatusText(v: string): JobStage | null {
   if (/^closed$|role closed|position closed|posting closed|no longer (open|accepting|hiring)/.test(v)) {
     return "REJECTED";
   }
-  if (/saved|bookmark|watch|pipeline|interested|target|to apply|not yet|queued|prospect|research/.test(v)) {
+  if (/saved|bookmark|watch|interested|target|to apply|not yet|queued|prospect|research/.test(v)) {
     return "SAVED";
   }
-  if (/pending|waiting|hold|on hold|paused|inactive/.test(v)) return "SAVED";
+  if (/^pending$|waiting for|awaiting response|under review/.test(v)) return "APPLIED";
+  if (/on hold|paused|inactive/.test(v)) return "SAVED";
 
   return null;
 }
