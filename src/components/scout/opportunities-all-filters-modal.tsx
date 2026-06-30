@@ -17,19 +17,29 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 
 const DRAWER_WIDTH = "clamp(480px, 62vw, 900px)";
 
-function modalSummaryTitle(form: RecommendedFilterForm): string {
+function modalSummaryTitle(appliedForm: RecommendedFilterForm): string {
   const parts: string[] = [];
-  const jobFns = jobFunctionPillItems(form);
+  const jobFns = jobFunctionPillItems(appliedForm);
   if (jobFns.length) parts.push(jobFns.slice(0, 2).join(", "));
-  if (form.locationCountry.trim()) {
-    parts.push(form.locationAllInCountry ? "US" : form.locationCountry.trim());
+  if (appliedForm.locationAllInCountry && appliedForm.locationCountry.trim()) {
+    parts.push(
+      appliedForm.locationCountry === "United States"
+        ? "Anywhere in the US"
+        : appliedForm.locationCountry === "Canada"
+          ? "Anywhere in Canada"
+          : appliedForm.locationCountry.trim(),
+    );
+  } else if (appliedForm.locationCity.trim()) {
+    parts.push(appliedForm.locationCity.trim());
+  } else if (appliedForm.locationCountry.trim()) {
+    parts.push(appliedForm.locationCountry.trim());
   }
   if (!parts.length) return "All Filters";
   const extra = jobFns.length > 2 ? ` + ${jobFns.length - 2} roles` : "";
   return `${parts[0]}${extra}`;
 }
 
-function activeChipLabels(form: RecommendedFilterForm, filters: VectorSearchFilters): string[] {
+function activeChipLabels(filters: VectorSearchFilters): string[] {
   return describeActiveFilters(filters).map((label) => {
     const colon = label.indexOf(":");
     return colon >= 0 ? label.slice(colon + 1).trim() : label;
@@ -40,6 +50,7 @@ export function OpportunitiesAllFiltersModal({
   open,
   onClose,
   form,
+  appliedForm,
   setForm,
   toggleSet,
   trackedCompanyNames,
@@ -51,6 +62,8 @@ export function OpportunitiesAllFiltersModal({
   open: boolean;
   onClose: () => void;
   form: RecommendedFilterForm;
+  /** Applied filters — drives drawer title and header chips (form is the edit draft). */
+  appliedForm: RecommendedFilterForm;
   setForm: React.Dispatch<React.SetStateAction<RecommendedFilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   trackedCompanyNames: string[];
@@ -108,7 +121,7 @@ export function OpportunitiesAllFiltersModal({
     sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const chips = useMemo(() => activeChipLabels(form, appliedFilters), [form, appliedFilters]);
+  const chips = useMemo(() => activeChipLabels(appliedFilters), [appliedFilters]);
   const visibleChips = chips.slice(0, 6);
   const overflowCount = chips.length - visibleChips.length;
 
@@ -224,7 +237,7 @@ export function OpportunitiesAllFiltersModal({
               whiteSpace: "nowrap",
             }}
           >
-            {modalSummaryTitle(form)}
+            {modalSummaryTitle(appliedForm)}
           </p>
           <button
             type="button"

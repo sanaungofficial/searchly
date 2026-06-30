@@ -32,6 +32,23 @@ export const RECOMMENDED_FALLBACK_LADDER: FallbackRelaxStep[] = [
   "visa",
 ];
 
+/** Explicit user filter searches — keep geography and category longer; relax level/date/salary first. */
+export const EXPLICIT_FILTER_FALLBACK_LADDER: FallbackRelaxStep[] = [
+  "location_radius",
+  "location_types",
+  "date_posted",
+  "salary",
+  "years_of_experience",
+  "experience_levels",
+  "industries",
+  "subindustries",
+  "company_types",
+  "job_types",
+  "visa",
+  "job_categories",
+  "locations",
+];
+
 export function relaxFiltersOneStep(
   filters: VectorSearchFilters,
   step: FallbackRelaxStep,
@@ -88,8 +105,9 @@ export function relaxFiltersOneStep(
 export function nextRelaxedFilters(
   filters: VectorSearchFilters,
   completedSteps: FallbackRelaxStep[],
+  ladder: FallbackRelaxStep[] = RECOMMENDED_FALLBACK_LADDER,
 ): { filters: VectorSearchFilters; step: FallbackRelaxStep } | null {
-  for (const step of RECOMMENDED_FALLBACK_LADDER) {
+  for (const step of ladder) {
     if (completedSteps.includes(step)) continue;
     const relaxed = relaxFiltersOneStep(filters, step);
     if (JSON.stringify(relaxed) !== JSON.stringify(filters)) {

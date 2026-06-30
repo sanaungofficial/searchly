@@ -6,15 +6,23 @@ import {
 } from "./opportunities-hirebase-filters";
 
 describe("opportunities-hirebase-filters", () => {
-  it("drops custom job function categories from Hirebase params", () => {
+  it("taxonomy categories win over custom job functions and titles when set", () => {
     const loosened = loosenStackedHirebaseFilters({
       customJobFunctions: ["Growth Marketing"],
       jobCategories: ["Marketing Jobs"],
       jobTitles: ["PM"],
     });
+    expect(loosened.jobCategories).toEqual(["Marketing Jobs"]);
+    expect(loosened.customJobFunctions).toBeUndefined();
+    expect(loosened.jobTitles).toBeUndefined();
+  });
+
+  it("drops taxonomy categories when only custom job functions are set", () => {
+    const loosened = loosenStackedHirebaseFilters({
+      customJobFunctions: ["Growth Marketing"],
+    });
     expect(loosened.jobCategories).toBeUndefined();
     expect(loosened.customJobFunctions).toEqual(["Growth Marketing"]);
-    expect(loosened.jobTitles).toEqual(["PM"]);
   });
 
   it("keeps location_types for Hirebase payload", () => {

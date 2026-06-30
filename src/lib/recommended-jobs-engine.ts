@@ -10,11 +10,17 @@ import { enrichRecommendedSources } from "@/lib/jobs-search-response";
 import { sourcesToCacheEntries, upsertJobListingCache } from "@/lib/job-listing-cache";
 import {
   hasRestrictiveListingFilters,
+  hasHardRestrictiveListingFilters,
   hasSoftRestrictiveListingFilters,
   isDefaultRecommendedFilters,
   relaxRestrictiveFilters,
   relaxSoftListingFilters,
 } from "@/lib/profile-preference-filters";
+import {
+  nextRelaxedFilters,
+  EXPLICIT_FILTER_FALLBACK_LADDER,
+  type FallbackRelaxStep,
+} from "@/lib/opportunities-fallback-ladder";
 import {
   filterJobsByLocationPreference,
   filterSourcesByLocationPreference,
@@ -834,6 +840,40 @@ export async function generateRecommendedJobsForUser(
         "No roles matched salary or date filters — try loosening those, or clear location and experience filters.",
         true,
       );
+    } else if (!defaultFeed && hasHardRestrictiveListingFilters(mergedFilters)) {
+      const completedSteps: FallbackRelaxStep[] = [];
+      let candidate = mergedFilters;
+      while (true) {
+        const next = nextRelaxedFilters(candidate, completedSteps, EXPLICIT_FILTER_FALLBACK_LADDER);
+        if (!next) break;
+        completedSteps.push(next.step);
+        candidate = next.filters;
+        primary = await fetchPrimaryRecommendedSources({
+          userId: input.userId,
+          targetRoles,
+          roleTitlePreferences,
+          profile,
+          parsedData,
+          artifactId: artifact.artifactId,
+          filters: candidate,
+          semanticQuery,
+          maxJobs,
+          preferCache,
+          exclusions,
+        });
+        if (!primary.sources.length) continue;
+        sources = primary.sources;
+        matchMode = primary.matchMode;
+        companyCount = primary.companyCount;
+        trackedWithMatches = primary.trackedWithMatches;
+        resumeVSearch = primary.resumeVSearch;
+        notice = appendNotice(
+          primary.notice,
+          "Loosened one filter to find matches — refine filters to narrow results.",
+        );
+        effectiveFilters = candidate;
+        break;
+      }
     }
   }
 

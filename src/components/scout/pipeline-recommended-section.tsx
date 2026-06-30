@@ -24,6 +24,7 @@ import {
   describeActiveFilters,
   formatProfileLocation,
   locationFieldsFromProfileString,
+  defaultLocationAllInCountry,
   RECOMMENDED_SORT_OPTIONS,
   type RecommendedSortOption,
 } from "@/lib/recommended-filter-utils";
@@ -116,8 +117,10 @@ function splitInputListOrUndefined(value: string): string[] | undefined {
 }
 
 function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) {
-  const locationAllInCountry = searchPrefs?.locationAllInCountry === true;
   const loc = f.locations?.[0];
+  const locationAllInCountry =
+    searchPrefs?.locationAllInCountry === true ||
+    defaultLocationAllInCountry(searchPrefs, loc?.country);
   const base = {
     semanticQuery: f.semanticQuery ?? "",
     jobTitles: (f.jobTitles ?? []).join(", "),
@@ -146,7 +149,7 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     visaSponsored: f.visaSponsored === true,
     relocationPriorities: [] as string[],
     ...emptyExtendedFilterFields(),
-    customJobFunctions: searchPrefs?.customJobFunctions ?? [],
+    customJobFunctions: f.customJobFunctions ?? [],
     locationAllInCountry,
   };
   return searchPrefs ? applySearchPreferencesToFilterForm(base, searchPrefs) : base;
@@ -1233,6 +1236,7 @@ export function PipelineRecommendedSection({
           open={filtersDrawerOpen}
           onClose={() => setFiltersDrawerOpen(false)}
           form={form}
+          appliedForm={appliedForm}
           setForm={setForm}
           toggleSet={toggleSet}
           trackedCompanyNames={trackedCompanyNames}

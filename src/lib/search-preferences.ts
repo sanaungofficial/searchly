@@ -200,7 +200,6 @@ export function applySearchPreferencesToFilterForm<
     const levels = hirebaseLevelsFromJobrightLabels(prefs.experienceLevelLabels);
     if (levels.length) next.experienceLevels = new Set(levels);
   }
-  if (prefs.customJobFunctions?.length) next.customJobFunctions = [...prefs.customJobFunctions];
   if (prefs.locationAllInCountry) next.locationAllInCountry = true;
   return next;
 }
