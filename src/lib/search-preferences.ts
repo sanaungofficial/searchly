@@ -81,6 +81,17 @@ export function hirebaseLevelsFromJobrightLabels(labels: string[]): string[] {
   return [...out];
 }
 
+export function toggleJobrightExperienceLabel(labels: Set<string>, label: string): Set<string> {
+  const next = new Set(labels);
+  if (next.has(label)) next.delete(label);
+  else next.add(label);
+  return next;
+}
+
+export function hirebaseLevelsFromExperienceLabelSet(labels: Set<string>): string[] {
+  return hirebaseLevelsFromJobrightLabels([...labels]);
+}
+
 export function hirebaseCompanyTypesFromStages(stages: string[]): string[] {
   const out = new Set<string>();
   for (const stage of stages) {
@@ -166,6 +177,7 @@ export function applySearchPreferencesToFilterForm<
     openToAllSalary: boolean;
     openToAllExperience: boolean;
     experienceLevels: Set<string>;
+    experienceLevelLabels?: Set<string>;
     customJobFunctions?: string[];
     locationAllInCountry?: boolean;
   },
@@ -184,6 +196,7 @@ export function applySearchPreferencesToFilterForm<
   if (prefs.openToAllSalary) next.openToAllSalary = true;
   if (prefs.openToAllExperience) next.openToAllExperience = true;
   if (prefs.experienceLevelLabels?.length) {
+    next.experienceLevelLabels = new Set(prefs.experienceLevelLabels);
     const levels = hirebaseLevelsFromJobrightLabels(prefs.experienceLevelLabels);
     if (levels.length) next.experienceLevels = new Set(levels);
   }
@@ -207,6 +220,7 @@ export function searchPreferencesFromFilterForm(form: {
   openToAllSalary: boolean;
   openToAllExperience: boolean;
   experienceLevels: Set<string>;
+  experienceLevelLabels?: Set<string>;
   customJobFunctions?: string[];
   locationAllInCountry?: boolean;
 }): SearchPreferences {
@@ -221,9 +235,11 @@ export function searchPreferencesFromFilterForm(form: {
       (COMPANY_STAGE_OPTIONS as readonly string[]).includes(s),
   );
 
-  const experienceLevelLabels = JOBRIGHT_EXPERIENCE_LEVELS.filter(({ hirebase }) =>
-    hirebase.some((hb) => form.experienceLevels.has(hb)),
-  ).map(({ label }) => label);
+  const experienceLevelLabels = form.experienceLevelLabels?.size
+    ? [...form.experienceLevelLabels]
+    : JOBRIGHT_EXPERIENCE_LEVELS.filter(({ hirebase }) =>
+        hirebase.some((hb) => form.experienceLevels.has(hb)),
+      ).map(({ label }) => label);
 
   return {
     industries: industrySelections.length ? industrySelections : undefined,

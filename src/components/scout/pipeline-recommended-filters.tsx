@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  HIREBASE_EXPERIENCE_LEVELS,
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
 } from "@/lib/vector-matched-job";
@@ -17,7 +16,11 @@ import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
 import { JobFunctionDropdown } from "@/components/scout/job-function-dropdown";
 import { IndustrySearchField } from "@/components/scout/industry-search-field";
 import { ExcludedTitleSearchField } from "@/components/scout/excluded-title-search-field";
-import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
+import {
+  JOBRIGHT_EXPERIENCE_LEVELS,
+  hirebaseLevelsFromExperienceLabelSet,
+  toggleJobrightExperienceLabel,
+} from "@/lib/search-preferences";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
@@ -63,6 +66,7 @@ export type RecommendedFilterForm = {
   locationTypes: Set<string>;
   jobTypes: Set<string>;
   experienceLevels: Set<string>;
+  experienceLevelLabels: Set<string>;
   companySizeBuckets: Set<string>;
   companyStages: Set<string>;
   roleTypes: Set<string>;
@@ -228,13 +232,13 @@ function quickFilterLabel(form: RecommendedFilterForm) {
     ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date posted"
     : "Date posted";
 
-  const expLevels = [...form.experienceLevels];
+  const expLabels = [...form.experienceLevelLabels];
   const expLabel =
-    expLevels.length === 0
+    expLabels.length === 0
       ? "Experience level"
-      : expLevels.length <= 2
-        ? expLevels.join(", ")
-        : `${expLevels.length} levels`;
+      : expLabels.length <= 2
+        ? expLabels.join(", ")
+        : `${expLabels.length} levels`;
 
   const salaryOpt = SALARY_QUICK_OPTIONS.find((o) => o.value === form.salaryFrom);
   const salaryLabel = salaryOpt && salaryOpt.value ? salaryOpt.label : form.salaryFrom ? `$${Number(form.salaryFrom).toLocaleString()}+` : "Salary";
@@ -419,26 +423,23 @@ function BasicJobCriteriaFields({
       </FilterField>
       <FilterField label="Experience Level">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label, hirebase }) => {
-            const active = hirebase.some((hb) => form.experienceLevels.has(hb));
-            return (
-              <ChipToggle
-                key={label}
-                label={label}
-                active={active}
-                onClick={() => {
-                  setForm((f) => {
-                    const next = new Set(f.experienceLevels);
-                    for (const hb of hirebase) {
-                      if (active) next.delete(hb);
-                      else next.add(hb);
-                    }
-                    return { ...f, experienceLevels: next };
-                  });
-                }}
-              />
-            );
-          })}
+          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label }) => (
+            <ChipToggle
+              key={label}
+              label={label}
+              active={form.experienceLevelLabels.has(label)}
+              onClick={() => {
+                setForm((f) => {
+                  const experienceLevelLabels = toggleJobrightExperienceLabel(f.experienceLevelLabels, label);
+                  return {
+                    ...f,
+                    experienceLevelLabels,
+                    experienceLevels: new Set(hirebaseLevelsFromExperienceLabelSet(experienceLevelLabels)),
+                  };
+                });
+              }}
+            />
+          ))}
         </div>
       </FilterField>
       <FilterField label="Required Experience">
@@ -1144,20 +1145,22 @@ export function RecommendedQuickFiltersBar({
 
       <FilterPill
         label={labels.expLabel}
-        active={form.experienceLevels.size > 0}
+        active={form.experienceLevelLabels.size > 0}
         open={openKey === "experience"}
         onOpenChange={(o) => setOpenKey(o ? "experience" : null)}
       >
         <PopoverSection title="Experience level">
-          {HIREBASE_EXPERIENCE_LEVELS.map((level) => (
+          {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label }) => (
             <CheckboxOption
-              key={level}
-              label={level}
-              checked={form.experienceLevels.has(level)}
+              key={label}
+              label={label}
+              checked={form.experienceLevelLabels.has(label)}
               onToggle={() => {
+                const experienceLevelLabels = toggleJobrightExperienceLabel(form.experienceLevelLabels, label);
                 const next = {
                   ...form,
-                  experienceLevels: toggleSet(form.experienceLevels, level),
+                  experienceLevelLabels,
+                  experienceLevels: new Set(hirebaseLevelsFromExperienceLabelSet(experienceLevelLabels)),
                 };
                 setForm(next);
               }}

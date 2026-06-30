@@ -56,6 +56,7 @@ import {
   type RecommendedJobSource,
 } from "@/lib/recommended-jobs-fallback";
 import { fetchHirebaseRoleMatchingJobs } from "@/lib/hirebase";
+import { jobMatchesListingFilters } from "@/lib/job-listing-filters";
 import {
   buildActiveRoleSearchTitles,
   isExecutiveJobTitle,
@@ -356,6 +357,8 @@ async function supplementSparseRecommendedSources(input: {
   sources: RecommendedJobSource[];
   targetRoles: string[];
   semanticQuery: string;
+  locationInput?: LocationPreferenceInput;
+  applyLocationFilter?: boolean;
 }): Promise<{ sources: RecommendedJobSource[]; supplemented: boolean }> {
   if (!recommendedFeedNeedsSupplement(input.sources)) {
     return { sources: input.sources, supplemented: false };
@@ -372,9 +375,20 @@ async function supplementSparseRecommendedSources(input: {
     return { sources: input.sources, supplemented: false };
   }
 
+  let extraSources = broad.sources;
+  if (input.applyLocationFilter && input.locationInput) {
+    extraSources = filterSourcesByLocationPreference(extraSources, {
+      ...input.locationInput,
+      scopeOverride: "domestic",
+    });
+    if (!extraSources.length) {
+      return { sources: input.sources, supplemented: false };
+    }
+  }
+
   return {
     sources: dedupeRecommendedSources(
-      [...input.sources, ...broad.sources],
+      [...input.sources, ...extraSources],
       RECOMMENDED_FETCH_POOL,
     ),
     supplemented: true,
@@ -510,8 +524,8 @@ async function ensureMinimumRecommendedJobs(input: {
         ...locationInput,
         scopeOverride: "domestic",
       });
+      if (!extraSources.length) break;
     }
-    if (!extraSources.length) extraSources = broad.sources;
 
     const extra = await enrichAndRank(
       extraSources,
@@ -848,6 +862,8 @@ export async function generateRecommendedJobsForUser(
     sources,
     targetRoles,
     semanticQuery,
+    locationInput,
+    applyLocationFilter: defaultFeed || Boolean(mergedFilters.locations?.length),
   });
   if (sparseSupplement.supplemented) {
     sources = sparseSupplement.sources;
@@ -1000,6 +1016,10 @@ export async function generateRecommendedJobsForUser(
   }
 
   if (!jobs.length) return null;
+
+  if (hasRestrictiveListingFilters(effectiveFilters)) {
+    jobs = jobs.filter((job) => jobMatchesListingFilters(job, job.companyName, effectiveFilters));
+  }
 
   if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
     const beforeFill = jobs.length;

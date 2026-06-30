@@ -14,7 +14,7 @@ import {
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
 } from "@/lib/vector-matched-job";
-import { JOBRIGHT_EXPERIENCE_LEVELS } from "@/lib/search-preferences";
+import { JOBRIGHT_EXPERIENCE_LEVELS, hirebaseLevelsFromExperienceLabelSet, toggleJobrightExperienceLabel } from "@/lib/search-preferences";
 import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
 import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
@@ -54,11 +54,7 @@ function workModelDisplay(type: string): string {
 }
 
 function experienceLabelsFromForm(form: RecommendedFilterForm): string[] {
-  const labels: string[] = [];
-  for (const { label, hirebase } of JOBRIGHT_EXPERIENCE_LEVELS) {
-    if (hirebase.some((hb) => form.experienceLevels.has(hb))) labels.push(label);
-  }
-  return labels;
+  return [...form.experienceLevelLabels];
 }
 
 function DropdownPill({
@@ -151,16 +147,19 @@ function PopoverFooter({
 }
 
 function CheckboxRow({
+  id,
   label,
   checked,
   onToggle,
 }: {
+  id: string;
   label: string;
   checked: boolean;
   onToggle: () => void;
 }) {
   return (
     <label
+      htmlFor={id}
       style={{
         display: "flex",
         alignItems: "center",
@@ -169,9 +168,10 @@ function CheckboxRow({
         fontFamily: fontSans,
         fontSize: T.caption,
         cursor: "pointer",
+        userSelect: "none",
       }}
     >
-      <input type="checkbox" checked={checked} onChange={onToggle} />
+      <input id={id} type="checkbox" checked={checked} onChange={onToggle} />
       {label}
     </label>
   );
@@ -292,7 +292,7 @@ export function OpportunitiesJobrightFilterBar({
     Boolean(form.locationRegion.trim()) ||
     form.locationAllInCountry;
   const hasJobFn = jobFunctionPillItems(form).length > 0;
-  const hasExp = form.experienceLevels.size > 0;
+  const hasExp = form.experienceLevelLabels.size > 0;
   const hasTypes = form.jobTypes.size > 0;
   const hasRemote = form.locationTypes.size > 0;
   const hasIndustry = Boolean(form.industries.trim());
@@ -448,29 +448,29 @@ export function OpportunitiesJobrightFilterBar({
             <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px" }}>
               Experience Level
             </p>
-            {JOBRIGHT_EXPERIENCE_LEVELS.map(({ label, hirebase }) => {
-              const active = hirebase.some((hb) => draft.experienceLevels.has(hb));
-              return (
-                <CheckboxRow
-                  key={label}
-                  label={label}
-                  checked={active}
-                  onToggle={() => {
-                    setDraft((d) => {
-                      const next = new Set(d.experienceLevels);
-                      for (const hb of hirebase) {
-                        if (active) next.delete(hb);
-                        else next.add(hb);
-                      }
-                      return { ...d, experienceLevels: next };
-                    });
-                  }}
-                />
-              );
-            })}
+            {JOBRIGHT_EXPERIENCE_LEVELS.map(({ id, label }) => (
+              <CheckboxRow
+                key={id}
+                id={`exp-level-${id}`}
+                label={label}
+                checked={draft.experienceLevelLabels.has(label)}
+                onToggle={() => {
+                  setDraft((d) => {
+                    const experienceLevelLabels = toggleJobrightExperienceLabel(d.experienceLevelLabels, label);
+                    return {
+                      ...d,
+                      experienceLevelLabels,
+                      experienceLevels: new Set(hirebaseLevelsFromExperienceLabelSet(experienceLevelLabels)),
+                    };
+                  });
+                }}
+              />
+            ))}
           </PopoverPad>
           <PopoverFooter
-            onReset={() => setDraft((d) => ({ ...d, experienceLevels: new Set() }))}
+            onReset={() =>
+              setDraft((d) => ({ ...d, experienceLevelLabels: new Set(), experienceLevels: new Set() }))
+            }
             onConfirm={confirmDraft}
           />
         </DropdownPill>
@@ -488,6 +488,7 @@ export function OpportunitiesJobrightFilterBar({
             {HIREBASE_JOB_TYPES.map((t) => (
               <CheckboxRow
                 key={t}
+                id={`job-type-${t.replace(/\s+/g, "-").toLowerCase()}`}
                 label={jobTypeDisplay(t)}
                 checked={draft.jobTypes.has(t)}
                 onToggle={() =>
@@ -515,6 +516,7 @@ export function OpportunitiesJobrightFilterBar({
             {HIREBASE_LOCATION_TYPES.map((t) => (
               <CheckboxRow
                 key={t}
+                id={`work-model-${t.replace(/\s+/g, "-").toLowerCase()}`}
                 label={workModelDisplay(t)}
                 checked={draft.locationTypes.has(t)}
                 onToggle={() =>

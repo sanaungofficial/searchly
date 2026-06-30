@@ -43,6 +43,7 @@ import {
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import { compareRoleSearchRelevance } from "@/lib/job-match";
+import { filterRoleListings } from "@/lib/role-listings";
 import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
@@ -69,6 +70,7 @@ import {
   applySearchPreferencesToFilterForm,
   emptyExtendedFilterFields,
   hirebaseCompanyTypesFromStages,
+  hirebaseLevelsFromExperienceLabelSet,
   mergeSearchPreferencesIntoFilters,
   patchParsedDataSearchPreferences,
   searchPreferencesFromFilterForm,
@@ -136,6 +138,7 @@ function filtersToForm(f: VectorSearchFilters, searchPrefs?: SearchPreferences) 
     locationTypes: new Set(f.locationTypes ?? []),
     jobTypes: new Set(f.jobTypes ?? []),
     experienceLevels: new Set(f.experienceLevels ?? []),
+    experienceLevelLabels: new Set(searchPrefs?.experienceLevelLabels ?? []),
     companySizeBuckets: new Set(f.companySizeBuckets ?? []),
     visaSponsored: f.visaSponsored === true,
     relocationPriorities: [] as string[],
@@ -227,9 +230,11 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
     experienceLevels: form.openToAllExperience
       ? undefined
-      : form.experienceLevels.size
-        ? [...form.experienceLevels]
-        : undefined,
+      : form.experienceLevelLabels.size
+        ? hirebaseLevelsFromExperienceLabelSet(form.experienceLevelLabels)
+        : form.experienceLevels.size
+          ? [...form.experienceLevels]
+          : undefined,
     companySizeBuckets: undefined,
     companyTypes: form.companyStages.size
       ? hirebaseCompanyTypesFromStages([...form.companyStages])
@@ -781,9 +786,8 @@ export function PipelineRecommendedSection({
           const profileForm = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters }, searchPrefs);
           defaultFormRef.current = profileForm;
           setForm((prev) => ({ ...profileForm, semanticQuery: prev.semanticQuery || loadScopedSemanticQuery() }));
-          // Default feed API uses open filters — profile prefs drive matching server-side, not as Hirebase pre-filters.
-          setAppliedForm(defaultFeedForm());
-          setActiveFilterLabels(data.labels ?? describeActiveFilters(data.filters));
+          setAppliedForm({ ...profileForm, semanticQuery: "" });
+          setActiveFilterLabels(describeActiveFilters(formToFilters(profileForm, 1)));
         } else {
           setAppliedForm(defaultFeedForm());
         }
@@ -899,8 +903,8 @@ export function PipelineRecommendedSection({
 
     initialFetchAttemptedRef.current = true;
 
-    const feedForm = defaultFeedForm();
-    const defaultKey = defaultFeedCacheKey();
+    const feedForm = defaultFormRef.current ?? defaultFeedForm();
+    const defaultKey = filtersCacheKey(formToFilters(feedForm, 1));
 
     if (isAdminReviewing) {
       void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
@@ -1044,7 +1048,8 @@ export function PipelineRecommendedSection({
   }, [jobs, savedKeys]);
 
   const filteredListings = useMemo(() => {
-    const list = [...recommendedListings];
+    let list = [...recommendedListings];
+    list = filterRoleListings(list, appliedFilters, "all");
     if (hasActiveSearch) {
       const query = appliedForm.semanticQuery.trim();
       return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
@@ -1057,7 +1062,7 @@ export function PipelineRecommendedSection({
       });
     }
     return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery, sortOption]);
+  }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery, sortOption, appliedFilters]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
