@@ -52,6 +52,7 @@ interface ResumeMatchDrawerProps {
   jobId?: string;
   initialMatchData?: MatchData | null;
   initialAssetId?: string | null;
+  autoStart?: boolean;
   onClose: () => void;
   onTailorResume: () => void;
 }
@@ -59,9 +60,9 @@ interface ResumeMatchDrawerProps {
 type Step = 1 | 2 | 3;
 
 const STEPS = [
-  { n: 1 as Step, label: "See the gap" },
-  { n: 2 as Step, label: "Align your resume" },
-  { n: 3 as Step, label: "Review the draft" },
+  { n: 1 as Step, label: "See Your Difference" },
+  { n: 2 as Step, label: "Align Your Resume" },
+  { n: 3 as Step, label: "Review" },
 ];
 
 function Stepper({ step }: { step: Step }) {
@@ -187,6 +188,7 @@ export function ResumeMatchDrawer({
   jobId,
   initialMatchData,
   initialAssetId,
+  autoStart = true,
   onClose,
   onTailorResume,
 }: ResumeMatchDrawerProps) {
@@ -219,6 +221,7 @@ export function ResumeMatchDrawer({
   const { isPro, isAdmin } = useSubscription();
   const masterResume = useMasterResumeStatus();
   const proUser = isPro || isAdmin;
+  const autoStartedRef = useRef(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -287,6 +290,15 @@ export function ResumeMatchDrawer({
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
   }, []);
+
+  useEffect(() => {
+    if (!autoStart || initialMatchData || autoStartedRef.current) return;
+    if (masterResume.loading || !masterResume.hasMasterResume) return;
+    if (!activeResumeId) return;
+    autoStartedRef.current = true;
+    generate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when resume is ready
+  }, [autoStart, initialMatchData, masterResume.loading, masterResume.hasMasterResume, activeResumeId]);
 
   function handleClose() {
     setVisible(false);
@@ -614,30 +626,8 @@ export function ResumeMatchDrawer({
                 />
               ) : (
               <>
-              {loading && <KimchiProcessLoader preset="jobMatch" variant="centered" />}
-
-              {!loading && !data && !error && !hasRequestedAnalysis && (
-                <div style={{ paddingTop: 12, textAlign: "center" }}>
-                  <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginBottom: 16, lineHeight: 1.55 }}>
-                    Compare your resume to this role — keyword gaps, title fit, and a score.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => generate()}
-                    style={{
-                      padding: "12px 20px",
-                      background: color.forest,
-                      color: color.gold,
-                      border: "none",
-                      fontFamily: fontSans,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Analyze fit →
-                  </button>
-                </div>
+              {(loading || (hasRequestedAnalysis && !data && !error)) && (
+                <KimchiProcessLoader preset="jobMatch" variant="centered" />
               )}
 
               {error && (() => {
@@ -725,7 +715,7 @@ export function ResumeMatchDrawer({
                           cursor: manualDesc.trim() ? "pointer" : "not-allowed",
                         }}
                       >
-                        Analyze fit →
+                        Try again →
                       </button>
                     </div>
                   )}
@@ -782,7 +772,7 @@ export function ResumeMatchDrawer({
                             <span style={{ color: headlineScoreColor }}>
                               {data.scoreLabel}
                             </span>{" "}
-                            Match
+                            Match for This Job
                           </p>
                           {data.score < 6 && (
                             <div
@@ -961,8 +951,11 @@ export function ResumeMatchDrawer({
                           label="Industry Experience"
                           left={
                             <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                              {data.industries.slice(0, 6).map((ind) => (
-                                <IndustryTag key={ind} label={ind} matched={data.industryMatch} />
+                              {(data.industryTags ?? data.industries.map((ind) => ({
+                                label: ind,
+                                matched: data.industryMatch,
+                              }))).slice(0, 6).map((ind) => (
+                                <IndustryTag key={ind.label} label={ind.label} matched={ind.matched} />
                               ))}
                             </span>
                           }
@@ -1809,7 +1802,7 @@ export function ResumeMatchDrawer({
                 letterSpacing: "0.3px",
               }}
             >
-              Align My Resume for This Role →
+              Improve My Resume for This Job →
             </button>
           </div>
         )}
@@ -1863,7 +1856,7 @@ export function ResumeMatchDrawer({
                 letterSpacing: "0.3px",
               }}
             >
-              Generate tailored resume →
+              Generate My New Resume →
             </button>
           </div>
         )}
