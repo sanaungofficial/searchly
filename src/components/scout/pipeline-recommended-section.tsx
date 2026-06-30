@@ -665,6 +665,7 @@ export function PipelineRecommendedSection({
   const fetchGenRef = useRef(0);
   const defaultFormRef = useRef<FilterForm | null>(null);
   const prefsConfirmedRef = useRef(false);
+  const prefConfirmHandledRef = useRef(false);
 
   const hydrateFromCache = useCallback((filtersKey: string) => {
     const cached = readRecommendedCache(filtersKey);
@@ -857,6 +858,7 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     if (!hasLoadedOnce || !profileFormReady) return;
+    if (prefConfirmHandledRef.current) return;
     const onboardingJustFinished =
       typeof window !== "undefined" &&
       sessionStorage.getItem("kimchi:onboarding-just-finished") === "1";
@@ -904,6 +906,8 @@ export function PipelineRecommendedSection({
     setDefaultsLoaded(false);
     setProfileFormReady(false);
     defaultFormRef.current = null;
+    prefConfirmHandledRef.current = false;
+    setPrefConfirmOpen(false);
     clearRecommendedCache();
     setJobs([]);
     setHasLoadedOnce(false);
@@ -1202,20 +1206,25 @@ export function PipelineRecommendedSection({
             experienceLevelLabels: profileMeta.searchPreferences.experienceLevelLabels,
             roleMatchCount: profileMeta.targetRoles.length,
           }}
-          onClose={() => setPrefConfirmOpen(false)}
+          onClose={() => {
+            prefConfirmHandledRef.current = true;
+            setPrefConfirmOpen(false);
+          }}
           onConfirm={async ({ prioritizedCategories, searchPreferences }) => {
             const profileRes = await fetch(withClientScope("/api/profile"));
             const profile = (await profileRes.json().catch(() => ({}))) as {
               parsedData?: Record<string, unknown> | null;
             };
-            if (!profileRes.ok) return;
+            if (!profileRes.ok) throw new Error("Failed to load profile");
             const parsedData = patchParsedDataSearchPreferences(profile.parsedData ?? {}, searchPreferences);
-            await fetch(withClientScope("/api/profile"), {
+            const patchRes = await fetch(withClientScope("/api/profile"), {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ prioritizedCategories, parsedData }),
             });
+            if (!patchRes.ok) throw new Error("Failed to save preferences");
             const mergedPrefs = { ...profileMeta.searchPreferences, ...searchPreferences };
+            prefConfirmHandledRef.current = true;
             prefsConfirmedRef.current = true;
             setProfileMeta((prev) => ({
               ...prev,
