@@ -56,8 +56,8 @@ function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
     match: matchNetworkRolesPath,
   });
   links.push({
-    id: "inbox",
-    label: "Inbox",
+    id: "networking",
+    label: "Networking",
     path: INBOX_PATH,
     match: matchInboxPath,
   });
@@ -106,7 +106,11 @@ function NavDropdownMenuItem({
     <Link
       href={href}
       role="menuitem"
-      onClick={onClick}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onClick?.();
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -226,6 +230,7 @@ function UtilityPortalDropdown({
             onToggle();
             return;
           }
+          e.preventDefault();
           onNavigate?.(defaultPath);
         }}
         aria-expanded={dropdownOpen}
@@ -665,13 +670,15 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
   };
 
-  const navigateExpertPortal = (_path: string) => {
+  const navigateExpertPortal = (path: string) => {
     if (isStaffPortal && !isImpersonating) setStaffDashboardView("expert");
     setNavDropdownOpen(null);
+    router.push(resolveNavHref(path));
   };
 
-  const navigateAdminPortal = (_path: string) => {
+  const navigateAdminPortal = (path: string) => {
     setNavDropdownOpen(null);
+    router.push(resolveNavHref(path));
   };
 
   const clearNavDropdownCloseTimer = () => {
@@ -781,10 +788,21 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  const navigateMainFromDrawer = (_link: NavLink, _childPath?: string) => {
+  const navigateTo = (path: string) => {
     syncSeekerWorkspaceView();
     setNavDropdownOpen(null);
     closeMobileMenu();
+    router.push(resolveNavHref(path));
+  };
+
+  const onNavLinkClick = (path: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    navigateTo(path);
+  };
+
+  const navigateMainFromDrawer = (link: NavLink, childPath?: string) => {
+    navigateTo(childPath ?? link.path);
   };
 
   const navigateExpertFromDrawer = (path: string) => {
@@ -814,6 +832,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           position: "sticky",
           top: 0,
           zIndex: TOP_NAV_Z,
+          isolation: "isolate",
         }}
       >
         <div
@@ -917,6 +936,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           position: "sticky",
           top: 0,
           zIndex: TOP_NAV_Z,
+          isolation: "isolate",
         }}
       >
         <div
@@ -1018,8 +1038,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                           e.preventDefault();
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
                         } else {
-                          syncSeekerWorkspaceView();
-                          setNavDropdownOpen(null);
+                          onNavLinkClick(path)(e);
                         }
                       }}
                       aria-expanded={dropdownOpen}
@@ -1079,10 +1098,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                               label={childLabel}
                               active={childActive}
                               href={resolveNavHref(childPath)}
-                              onClick={() => {
-                                syncSeekerWorkspaceView();
-                                setNavDropdownOpen(null);
-                              }}
+                              onClick={() => navigateTo(childPath)}
                             />
                           );
                         })}
@@ -1097,7 +1113,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                   key={id}
                   href={resolveNavHref(path)}
                   className={`workspace-nav-link${active ? " is-active" : ""}`}
-                  onClick={() => syncSeekerWorkspaceView()}
+                  onClick={onNavLinkClick(path)}
                   style={{
                     background: "none",
                     border: "none",
@@ -1423,7 +1439,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         <>
           <div
             onClick={onToggleNotif}
-            style={{ position: "fixed", inset: 0, zIndex: 110 }}
+            style={{ position: "fixed", top: navHeight, left: 0, right: 0, bottom: 0, zIndex: 110 }}
             aria-hidden
           />
           <div

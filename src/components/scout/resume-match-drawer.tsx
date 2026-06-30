@@ -31,8 +31,10 @@ import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { scoutPrimaryCtaStyle } from "./scout-box";
 import { MasterResumeGate } from "./master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
-import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z, backdropBelowNav } from "@/lib/z-layers";
 import { isProductionEnv } from "@/lib/beta-features";
+import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 import {
   BigScoreGauge,
   IndustryTag,
@@ -193,11 +195,13 @@ export function ResumeMatchDrawer({
   const [aiPrompt, setAiPrompt] = useState("");
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
+  const isMobile = useIsMobile();
   const masterResume = useMasterResumeStatus();
   const proUser = isPro || isAdmin;
   const autoStartedRef = useRef(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
+  const navTop = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
 
   useEffect(() => {
     setMounted(true);
@@ -515,13 +519,13 @@ export function ResumeMatchDrawer({
     <>
       {/* Backdrop */}
       <div
-        onClick={handleClose}
+        onClick={visible ? handleClose : undefined}
         style={{
-          position: "fixed",
-          inset: 0,
+          ...backdropBelowNav(navTop),
           background: "rgba(0,0,0,0.4)",
           zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
+          pointerEvents: visible ? "auto" : "none",
           transition: "opacity 0.28s ease",
         }}
       />
@@ -532,7 +536,7 @@ export function ResumeMatchDrawer({
         style={{
           position: "fixed",
           right: 0,
-          top: 0,
+          top: navTop,
           bottom: 0,
           width: "min(80vw, calc(100vw - 16px))",
           background: RT.drawerBg,

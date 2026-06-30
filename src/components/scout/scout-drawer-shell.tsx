@@ -8,6 +8,8 @@ type BackdropProps = {
   zIndex?: number;
   /** default = standard drawer dim; nested = above parent drawer; transparent = invisible but clickable */
   variant?: "default" | "nested" | "transparent";
+  /** When false, clicks pass through (e.g. fade-out). Default true. */
+  interactive?: boolean;
   style?: CSSProperties;
   className?: string;
 };
@@ -17,6 +19,7 @@ export function ScoutDrawerBackdrop({
   onClose,
   zIndex,
   variant = "default",
+  interactive = true,
   style,
   className,
 }: BackdropProps) {
@@ -27,13 +30,13 @@ export function ScoutDrawerBackdrop({
       : variant === "nested"
         ? "rgba(0,0,0,0.4)"
         : "rgba(0,0,0,0.18)";
-  const { top, ...restStyle } = style ?? {};
+  const { top, pointerEvents, ...restStyle } = style ?? {};
 
   return (
     <div
       role="presentation"
       aria-hidden
-      onClick={onClose}
+      onClick={interactive ? onClose : undefined}
       className={className}
       style={{
         position: "fixed",
@@ -43,7 +46,8 @@ export function ScoutDrawerBackdrop({
         top: top ?? 0,
         background,
         zIndex: resolvedZ,
-        cursor: "pointer",
+        cursor: interactive ? "pointer" : "default",
+        pointerEvents: interactive ? pointerEvents ?? "auto" : "none",
         ...restStyle,
       }}
     />

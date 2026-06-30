@@ -11,7 +11,9 @@ import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { scoutPrimaryCtaStyle, ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutLabel } from "@/components/scout/scout-box";
 import { MasterResumeGate } from "@/components/scout/master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
-import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z, backdropBelowNav } from "@/lib/z-layers";
+import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 import { CoverLetterPreview } from "@/components/scout/cover-letter-preview";
 import {
   type CoverLetterContext,
@@ -82,6 +84,8 @@ async function streamInto(
 
 export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, resumeAssetId, onClose, onLetterSaved }: CoverLetterDrawerProps) {
   const { user, openPricing, withClientScope } = useWorkspace();
+  const isMobile = useIsMobile();
+  const navTop = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
   const masterResume = useMasterResumeStatus();
   const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
   const [phase, setPhase] = useState<DrawerPhase>(initialLetter?.trim() ? "letter" : "idle");
@@ -330,13 +334,13 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
     <>
       {/* Backdrop */}
       <div
-        onClick={handleClose}
+        onClick={visible ? handleClose : undefined}
         style={{
-          position: "fixed",
-          inset: 0,
+          ...backdropBelowNav(navTop),
           background: "rgba(0,0,0,0.4)",
           zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
+          pointerEvents: visible ? "auto" : "none",
           transition: "opacity 0.28s ease",
         }}
       />
@@ -347,7 +351,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
         style={{
           position: "fixed",
           right: 0,
-          top: 0,
+          top: navTop,
           bottom: 0,
           width: "min(960px, 85vw)",
           background: "#FFFFFF",
