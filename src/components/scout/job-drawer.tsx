@@ -17,13 +17,13 @@ import { ResumeEditor } from "./resume-editor";
 import { CompanyLogo } from "./company-logo";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
-import { CreditsStatusBar } from "./credits-display";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { JobDrawerNetworkAdminSection, JobDrawerRecruiterSection } from "./job-drawer-recruiter-section";
 import { isGenericNetworkCompanyLabel } from "@/lib/network-employer-labels";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
+import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { MasterResumeGate } from "./master-resume-gate";
@@ -487,7 +487,7 @@ function JobDrawerMatchSection({
             </ul>
           ) : (
             <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55, margin: 0 }}>
-              Matched to your profile based on role, skills, and experience. Analyze with AI below for a deeper breakdown.
+              Matched to your profile based on role, skills, and experience. Use &ldquo;See why in detail&rdquo; below for a deeper breakdown.
             </p>
           )}
           {(displayMatch.matchedSkills?.length || displayMatch.gapSkills?.length) ? (
@@ -523,7 +523,7 @@ function JobDrawerMatchSection({
             cursor: "pointer",
           }}
         >
-          Analyze with AI
+          See why in detail
         </button>
       )}
       {analyzeControls?.loading && !fromResume && (
@@ -707,58 +707,65 @@ function daysLabel(days: number): string {
   return `${days} days ago`;
 }
 
-function AiToolCard({
+function SidebarToolCard({
+  icon,
   title,
   subtitle,
-  buttonLabel,
-  highlighted,
-  creditCost,
   onClick,
+  accent,
 }: {
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
-  buttonLabel: string;
-  highlighted?: boolean;
-  creditCost?: number;
   onClick: () => void;
+  accent?: boolean;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       style={{
-        background: highlighted ? surface.inset : cardBg,
-        border: highlighted ? lineStrong : line,
+        width: "100%",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 14,
+        padding: "16px 18px",
+        marginBottom: 10,
+        background: accent ? "rgba(26,58,47,0.05)" : cardBg,
+        border: accent ? "1.5px solid rgba(26,58,47,0.2)" : line,
         borderRadius: "var(--scout-radius)",
-        padding: "18px 20px",
-        marginBottom: 12,
+        cursor: "pointer",
+        textAlign: "left",
+        boxShadow: "2px 2px 0 rgba(17,17,17,0.05)",
+        boxSizing: "border-box",
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-        <p style={displayTitleStyle(DT.title)}>{title}</p>
-        {creditCost ? (
-          <span style={{ fontFamily: sans, fontSize: 11, fontWeight: 600, color: "var(--scout-muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
-            {creditCost} credit{creditCost !== 1 ? "s" : ""}
-          </span>
-        ) : null}
-      </div>
-      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
-      <button
-        onClick={onClick}
+      <span
         style={{
-          width: "100%",
-          padding: "12px 16px",
-          background: color.cta,
-          color: color.ctaForeground,
-          border: lineStrong,
+          width: 40,
+          height: 40,
           borderRadius: "var(--scout-radius)",
-          fontFamily: sans,
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: "pointer",
+          background: accent ? "rgba(26,58,47,0.1)" : surface.inset,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          fontSize: 18,
+          lineHeight: 1,
         }}
       >
-        {buttonLabel}
-      </button>
-    </div>
+        {icon}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ ...displayTitleStyle(DT.title), display: "block", marginBottom: 4 }}>{title}</span>
+        <span style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", lineHeight: 1.45, display: "block" }}>
+          {subtitle}
+        </span>
+      </span>
+      <span style={{ color: color.muted, fontSize: 16, lineHeight: 1, flexShrink: 0, marginTop: 2 }} aria-hidden>
+        →
+      </span>
+    </button>
   );
 }
 
@@ -1018,17 +1025,33 @@ export function JobDrawer({
     isTrackableHirebaseCompany(hirebaseCompany);
   const backdropZ = DRAWER_BACKDROP_Z;
   const drawerZ = DRAWER_Z;
+  const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
+  const drawerInset = isMobile ? 0 : 8;
+  const drawerTop = navHeight + drawerInset;
+  const isSavedJob = Boolean(dbId);
+  const showQaBank = isSavedJob || !prospectMode || existingPipelineCardId != null;
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: backdropZ }} />
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          top: navHeight,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.18)",
+          zIndex: backdropZ,
+        }}
+      />
       <div
         className="bruddle"
         style={{
           position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
+          top: drawerTop,
+          right: isMobile ? 0 : drawerInset,
+          bottom: isMobile ? 0 : drawerInset,
           left: isMobile ? 0 : undefined,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
@@ -1171,6 +1194,111 @@ export function JobDrawer({
 
             {/* Main job content — match first, then posting, recruiter, company */}
             <div style={{ padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
+              {prospectMode && !isSavedJob && (
+                <div style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  {existingPipelineCardId != null ? (
+                    onOpenInPipeline && (
+                      <button
+                        type="button"
+                        onClick={onOpenInPipeline}
+                        style={{
+                          padding: "8px 16px",
+                          background: color.cta,
+                          color: color.ctaForeground,
+                          border: lineStrong,
+                          borderRadius: "var(--scout-radius)",
+                          fontFamily: sans,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Open saved job
+                      </button>
+                    )
+                  ) : (
+                    onAddToPipeline && (
+                      <button
+                        type="button"
+                        onClick={() => void onAddToPipeline()}
+                        disabled={addingToPipeline}
+                        style={{
+                          padding: "8px 16px",
+                          background: addingToPipeline ? "var(--scout-cta-muted)" : color.cta,
+                          color: color.ctaForeground,
+                          border: lineStrong,
+                          borderRadius: "var(--scout-radius)",
+                          fontFamily: sans,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: addingToPipeline ? "default" : "pointer",
+                        }}
+                      >
+                        {addingToPipeline ? "Saving…" : "Save this job"}
+                      </button>
+                    )
+                  )}
+                  {networkJob && clientApplyUrl && (
+                    <a
+                      href={clientApplyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        padding: "8px 16px",
+                        background: surface.card,
+                        border: line,
+                        borderRadius: "var(--scout-radius)",
+                        fontFamily: sans,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: color.forest,
+                        textDecoration: "none",
+                      }}
+                    >
+                      Apply now ↗
+                    </a>
+                  )}
+                  {showSendProfile && networkJobId && (
+                    <button
+                      type="button"
+                      onClick={() => setRequestModal("send-profile")}
+                      style={{
+                        padding: "8px 16px",
+                        background: surface.card,
+                        border: line,
+                        borderRadius: "var(--scout-radius)",
+                        fontFamily: sans,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: color.forest,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Send your profile
+                    </button>
+                  )}
+                  {showClientIntro && networkJobId && (
+                    <button
+                      type="button"
+                      onClick={() => setRequestModal("intro")}
+                      style={{
+                        padding: "8px 16px",
+                        background: surface.card,
+                        border: line,
+                        borderRadius: "var(--scout-radius)",
+                        fontFamily: sans,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: color.forest,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Request introduction
+                    </button>
+                  )}
+                </div>
+              )}
+
               {networkJob && <JobDrawerNetworkAdminSection networkJob={networkJob} />}
 
               {(meta?.vectorMatch?.matchScore ?? 0) > 0 || resumeMatchForJob || matchAnalyzeControls?.canAnalyze ? (
@@ -1272,6 +1400,123 @@ export function JobDrawer({
               )}
 
               <JobDrawerDetailsSection meta={meta} />
+
+              {!prospectMode && dbId && (
+                <div style={{ marginBottom: 22, padding: "16px 18px", background: cardBg, border: line, borderRadius: "var(--scout-radius)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                    <span style={{
+                      padding: "5px 12px",
+                      borderRadius: "var(--scout-radius)",
+                      background: `${STAGE_COLORS[card.stage]}18`,
+                      color: STAGE_COLORS[card.stage],
+                      fontFamily: sans,
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}>
+                      {STAGE_LABELS[card.stage]}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { if (window.confirm("Remove this job from your saved list?")) onDelete(); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#C4574A", fontFamily: sans, padding: 0 }}
+                    >
+                      Remove job
+                    </button>
+                  </div>
+                  <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Move to</p>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                    {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => moveCard(card.id, s)}
+                        style={{
+                          padding: "6px 10px",
+                          background: surface.inset,
+                          border: line,
+                          borderRadius: "var(--scout-radius)",
+                          fontFamily: sans,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: "#1A1A1A",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {STAGE_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Next action</p>
+                  <input
+                    value={nextStepValue}
+                    onChange={(e) => setNextStepValue(e.target.value)}
+                    onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+                    placeholder="e.g. Follow up with recruiter…"
+                    style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 8, boxSizing: "border-box" }}
+                  />
+                  <input
+                    type="date"
+                    value={nextStepDueValue}
+                    onChange={(e) => setNextStepDueValue(e.target.value)}
+                    onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+                    style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
+                  />
+                </div>
+              )}
+
+              {!prospectMode && dbId && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                    Notes
+                  </p>
+                  <textarea
+                    value={notesValue}
+                    onChange={(e) => setNotesValue(e.target.value)}
+                    onBlur={() => patchField({ userNotes: notesValue || null })}
+                    placeholder="Recruiter contacts, impressions…"
+                    rows={5}
+                    style={{
+                      width: "100%",
+                      fontFamily: sans,
+                      fontSize: 13,
+                      background: surface.inset,
+                      border: line,
+                      borderRadius: "var(--scout-radius)",
+                      padding: "12px 14px",
+                      resize: "vertical",
+                      outline: "none",
+                      lineHeight: 1.55,
+                      boxSizing: "border-box",
+                      minHeight: 100,
+                    }}
+                  />
+                </div>
+              )}
+
+              {showQaBank && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                    Application Q&A
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setQaModalOpen(true)}
+                    style={{
+                      padding: "10px 16px",
+                      background: surface.inset,
+                      border: line,
+                      borderRadius: "var(--scout-radius)",
+                      fontFamily: sans,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#1A1A1A",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Open Q&A bank
+                  </button>
+                </div>
+              )}
 
               {networkJob?.recruiterNotes && networkJob.internalView && (
                 <div style={{ marginBottom: 22 }}>
@@ -1409,7 +1654,7 @@ export function JobDrawer({
             </div>
           </div>
 
-          {/* Right — pipeline, notes, AI tools */}
+          {/* Right — AI tools only */}
           <div
             style={{
               width: isMobile ? "100%" : AI_SIDEBAR_WIDTH,
@@ -1422,185 +1667,16 @@ export function JobDrawer({
               overflowX: "hidden",
               display: "flex",
               flexDirection: "column",
-              gap: 24,
               boxSizing: "border-box",
             }}
           >
-            {/* Save job */}
-            <div>
-              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
-                Save this job
-              </p>
-              {prospectMode && !dbId ? (
-                <>
-                  {existingPipelineCardId != null ? (
-                    <>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: "var(--scout-radius)", marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: mint }}>✓</span>
-                        <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>Already saved</span>
-                      </div>
-                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
-                        Track your progress, add notes, and use AI tools for this role.
-                      </p>
-                      {onOpenInPipeline && (
-                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                          Open saved job →
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
-                        Save this job to track your progress, see how you match, and create a tailored resume or cover letter.
-                      </p>
-                      {onAddToPipeline && (
-                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "var(--scout-cta-muted)" : color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
-                          {addingToPipeline ? "Saving…" : "Save this job"}
-                        </button>
-                      )}
-                      {networkJob && clientApplyUrl && (
-                        <a href={clientApplyUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "11px 16px", marginBottom: 10, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
-                          Apply now ↗
-                        </a>
-                      )}
-                      {showSendProfile && networkJobId && (
-                        <button type="button" onClick={() => setRequestModal("send-profile")} style={{ width: "100%", padding: "11px 16px", marginBottom: 10, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, cursor: "pointer" }}>
-                          Send your profile
-                        </button>
-                      )}
-                      {showClientIntro && networkJobId && (
-                        <button type="button" onClick={() => setRequestModal("intro")} style={{ width: "100%", padding: "11px 16px", background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, cursor: "pointer" }}>
-                          Request introduction
-                        </button>
-                      )}
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-                <span style={{
-                  padding: "5px 12px",
-                  borderRadius: "var(--scout-radius)",
-                  background: `${STAGE_COLORS[card.stage]}18`,
-                  color: STAGE_COLORS[card.stage],
-                  fontFamily: sans,
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}>
-                  {STAGE_LABELS[card.stage]}
-                </span>
-                {dbId && (
-                  <button
-                    type="button"
-                    onClick={() => { if (window.confirm("Remove this job from your saved list?")) onDelete(); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#C4574A", fontFamily: sans, padding: 0 }}
-                  >
-                    Remove job
-                  </button>
-                )}
-              </div>
-              <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Move to</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-                {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => moveCard(card.id, s)}
-                    style={{
-                      padding: "6px 10px",
-                      background: surface.inset,
-                      border: line,
-                      borderRadius: "var(--scout-radius)",
-                      fontFamily: sans,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: "#1A1A1A",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {STAGE_LABELS[s]}
-                  </button>
-                ))}
-              </div>
-              <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Next action</p>
-              <input
-                value={nextStepValue}
-                onChange={(e) => setNextStepValue(e.target.value)}
-                onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                placeholder="e.g. Follow up with recruiter…"
-                style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 8, boxSizing: "border-box" }}
-              />
-              <input
-                type="date"
-                value={nextStepDueValue}
-                onChange={(e) => setNextStepDueValue(e.target.value)}
-                onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
-              />
-                </>
-              )}
-            </div>
-
-            {/* Notes */}
-            {(!prospectMode || dbId) && (
-            <div>
-              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
-                Notes
-              </p>
-              <textarea
-                value={notesValue}
-                onChange={(e) => setNotesValue(e.target.value)}
-                onBlur={() => patchField({ userNotes: notesValue || null })}
-                placeholder="Recruiter contacts, impressions…"
-                rows={5}
-                style={{
-                  width: "100%",
-                  fontFamily: sans,
-                  fontSize: 13,
-                  background: surface.inset,
-                  border: line,
-                  borderRadius: "var(--scout-radius)",
-                  padding: "12px 14px",
-                  resize: "vertical",
-                  outline: "none",
-                  lineHeight: 1.55,
-                  boxSizing: "border-box",
-                  minHeight: 100,
-                }}
-              />
-            </div>
-            )}
-
-            <div>
-              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
-                Application Q&A
-              </p>
-              <button
-                type="button"
-                onClick={() => setQaModalOpen(true)}
-                style={{
-                  width: "100%",
-                  padding: "11px 14px",
-                  background: surface.inset,
-                  border: line,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: sans,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#1A1A1A",
-                  cursor: "pointer",
-                }}
-              >
-                Open Q&A bank
-              </button>
-            </div>
-
-            {/* AI tools — desktop sidebar only; mobile uses sticky footer */}
             {!isMobile && (
             <div>
-              <p style={displayTitleStyle(15, { margin: "0 0 14px", lineHeight: 1.3 })}>
-                Boost your interview chances
+              <p style={displayTitleStyle(15, { margin: "0 0 6px", lineHeight: 1.3 })}>
+                AI tools
+              </p>
+              <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 16px", lineHeight: 1.45 }}>
+                Boost your chances for this role
               </p>
               {!masterResume.loading && !masterResume.hasMasterResume ? (
                 <ScoutBox padding={16}>
@@ -1615,52 +1691,23 @@ export function JobDrawer({
                 </ScoutBox>
               ) : (
               <>
-              <CreditsStatusBar />
-              <AiToolCard
-                creditCost={1}
+              <SidebarToolCard
+                icon="🎯"
                 title="Analyze how well you fit"
-                subtitle="Understand your strengths and gaps for this role."
-                buttonLabel="Analyze fit"
+                subtitle="Strengths, gaps, and a clear fit read for this role."
                 onClick={() => openFitChat(card)}
               />
-              <AiToolCard
-                highlighted
-                creditCost={1}
-                title="Improve resume match"
-                subtitle={
-                  displayFit > 0
-                    ? `You're at ${displayFit}% for this role — tailor your resume to strengthen your fit.`
-                    : "See your match score and tailor your resume for this role."
-                }
-                buttonLabel={displayFit > 0 ? `Optimize (${displayFit}%)` : "Optimize my resume"}
+              <SidebarToolCard
+                icon="📄"
+                title="Customize your resume"
+                subtitle="Tailor your resume so it speaks directly to this posting."
+                accent
                 onClick={() => setMatchDrawerOpen(true)}
               />
-              {dbId && (
-                <button
-                  type="button"
-                  onClick={() => setResumeEditorOpen(true)}
-                  style={{
-                    width: "100%",
-                    padding: "11px 14px",
-                    marginBottom: 12,
-                    background: surface.inset,
-                    border: line,
-                    borderRadius: "var(--scout-radius)",
-                    fontFamily: sans,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1A1A1A",
-                    cursor: "pointer",
-                  }}
-                >
-                  Open tailored resume editor
-                </button>
-              )}
-              <AiToolCard
-                creditCost={1}
+              <SidebarToolCard
+                icon="✉️"
                 title="Build cover letter"
-                subtitle="Make your application stand out with a tailored letter."
-                buttonLabel="Build cover letter"
+                subtitle="Draft a letter that matches your voice and this job."
                 onClick={() => setCoverDrawerOpen(true)}
               />
               </>
@@ -1672,13 +1719,22 @@ export function JobDrawer({
 
         {isMobile && (
           <div style={{ padding: "12px 16px max(12px, env(safe-area-inset-bottom))", borderTop: line, background: cardBg, flexShrink: 0 }}>
-            {canRunMatch ? (
+            {prospectMode && !isSavedJob && onAddToPipeline && existingPipelineCardId == null ? (
+              <button
+                type="button"
+                onClick={() => void onAddToPipeline()}
+                disabled={addingToPipeline}
+                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "var(--scout-cta-muted)" : color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 8 }}
+              >
+                {addingToPipeline ? "Saving…" : "Save this job"}
+              </button>
+            ) : canRunMatch ? (
               <button
                 type="button"
                 onClick={() => setMatchDrawerOpen(true)}
                 style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
               >
-                {displayFit <= 0 ? "See how you match →" : `Improve match (${displayFit}%) →`}
+                Customize your resume →
               </button>
             ) : externalPostUrl ? (
               <a
@@ -1689,23 +1745,14 @@ export function JobDrawer({
               >
                 {networkJob ? networkOpenLabel : "APPLY NOW"}
               </a>
-            ) : prospectMode && onAddToPipeline && existingPipelineCardId == null ? (
-              <button
-                type="button"
-                onClick={() => void onAddToPipeline()}
-                disabled={addingToPipeline}
-                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "var(--scout-cta-muted)" : color.cta, color: color.ctaForeground, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer" }}
-              >
-                {addingToPipeline ? "Saving…" : "Save this job"}
-              </button>
             ) : null}
             {mobileToolsOpen && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                <button type="button" onClick={() => openFitChat(card)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
+                  Analyze how well you fit
+                </button>
                 <button type="button" onClick={() => setCoverDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
                   Build cover letter
-                </button>
-                <button type="button" onClick={() => openFitChat(card)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
-                  Analyze fit
                 </button>
                 {externalPostUrl && (
                   <a href={externalPostUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
@@ -1714,7 +1761,7 @@ export function JobDrawer({
                 )}
               </div>
             )}
-            {(canRunMatch || dbId) && (
+            {(canRunMatch || isSavedJob || externalPostUrl) && (
               <button
                 type="button"
                 onClick={() => setMobileToolsOpen((v) => !v)}
