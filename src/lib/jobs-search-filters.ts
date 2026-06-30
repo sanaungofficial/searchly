@@ -3,10 +3,12 @@ import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 
 function splitCsv(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
-    return value.map((v) => String(v).trim()).filter(Boolean);
+    const items = value.map((v) => String(v).trim()).filter(Boolean);
+    return items.length ? items : undefined;
   }
   if (typeof value === "string" && value.trim()) {
-    return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    const items = value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+    return items.length ? items : undefined;
   }
   return undefined;
 }
