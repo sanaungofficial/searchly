@@ -10,7 +10,6 @@ import { enrichRecommendedSources } from "@/lib/jobs-search-response";
 import { sourcesToCacheEntries, upsertJobListingCache } from "@/lib/job-listing-cache";
 import {
   hasRestrictiveListingFilters,
-  hasHardRestrictiveListingFilters,
   hasSoftRestrictiveListingFilters,
   isDefaultRecommendedFilters,
   relaxRestrictiveFilters,
@@ -81,8 +80,11 @@ import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTo
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 
-/** Cap explicit-filter relax attempts so one search cannot run dozens of Hirebase round-trips. */
-const EXPLICIT_FILTER_FALLBACK_MAX_STEPS = 3;
+/** Cap explicit-filter relax attempts — balance min-15 fill vs route timeout. */
+const EXPLICIT_FILTER_FALLBACK_MAX_STEPS = 6;
+
+const EXPLICIT_FILTER_LADDER_NOTICE =
+  "Loosened filters to fill results — refine filters to narrow matches.";
 
 export type GenerateRecommendedInput = {
   userId: string;
@@ -569,6 +571,95 @@ async function ensureMinimumRecommendedJobs(input: {
   return jobs.slice(0, input.maxJobs);
 }
 
+type ExplicitFilterLadderContext = {
+  userId: string;
+  targetRoles: string[];
+  roleTitlePreferences: RoleTitlePreferences;
+  profile: Awaited<ReturnType<typeof loadUserContext>>["profile"];
+  parsedData: Awaited<ReturnType<typeof loadUserContext>>["parsedData"];
+  artifactId: string | null;
+  semanticQuery: string;
+  maxJobs: number;
+  preferCache: boolean;
+  exclusions: ListingExclusionPrefs;
+  skipPersonalizedVSearch: boolean;
+};
+
+/** Relax explicit user filters one step at a time until min display roles or max steps. */
+async function backfillExplicitFilterSources(
+  ctx: ExplicitFilterLadderContext,
+  sources: RecommendedJobSource[],
+  startFilters: VectorSearchFilters,
+  stats: Pick<PrimaryFetchResult, "matchMode" | "companyCount" | "trackedWithMatches" | "resumeVSearch" | "notice">,
+): Promise<{
+  sources: RecommendedJobSource[];
+  effectiveFilters: VectorSearchFilters;
+  matchMode: RecommendedMatchMode;
+  companyCount: number;
+  trackedWithMatches: number;
+  resumeVSearch: boolean;
+  notice?: string;
+  relaxed: boolean;
+}> {
+  let effectiveFilters = startFilters;
+  let matchMode = stats.matchMode;
+  let companyCount = stats.companyCount;
+  let trackedWithMatches = stats.trackedWithMatches;
+  let resumeVSearch = stats.resumeVSearch;
+  let notice = stats.notice;
+  let relaxed = false;
+
+  if (!recommendedFeedNeedsSupplement(sources)) {
+    return { sources, effectiveFilters, matchMode, companyCount, trackedWithMatches, resumeVSearch, notice, relaxed };
+  }
+
+  const completedSteps: FallbackRelaxStep[] = [];
+  let candidate = startFilters;
+
+  while (
+    completedSteps.length < EXPLICIT_FILTER_FALLBACK_MAX_STEPS &&
+    recommendedFeedNeedsSupplement(sources)
+  ) {
+    const next = nextRelaxedFilters(candidate, completedSteps, EXPLICIT_FILTER_FALLBACK_LADDER);
+    if (!next) break;
+    completedSteps.push(next.step);
+    candidate = next.filters;
+
+    const primary = await fetchPrimaryRecommendedSources({
+      userId: ctx.userId,
+      targetRoles: ctx.targetRoles,
+      roleTitlePreferences: ctx.roleTitlePreferences,
+      profile: ctx.profile,
+      parsedData: ctx.parsedData,
+      artifactId: ctx.artifactId,
+      filters: candidate,
+      semanticQuery: ctx.semanticQuery,
+      maxJobs: ctx.maxJobs,
+      preferCache: ctx.preferCache,
+      exclusions: ctx.exclusions,
+      skipPersonalizedVSearch: ctx.skipPersonalizedVSearch,
+    });
+    if (!primary.sources.length) continue;
+
+    const merged = dedupeRecommendedSources(
+      [...sources, ...primary.sources],
+      RECOMMENDED_FETCH_POOL,
+    );
+    if (merged.length <= sources.length) continue;
+
+    sources = merged;
+    effectiveFilters = candidate;
+    matchMode = primary.matchMode;
+    companyCount = Math.max(companyCount, primary.companyCount);
+    trackedWithMatches = Math.max(trackedWithMatches, primary.trackedWithMatches);
+    resumeVSearch = resumeVSearch || primary.resumeVSearch;
+    notice = appendNotice(notice ?? primary.notice, EXPLICIT_FILTER_LADDER_NOTICE);
+    relaxed = true;
+  }
+
+  return { sources, effectiveFilters, matchMode, companyCount, trackedWithMatches, resumeVSearch, notice, relaxed };
+}
+
 type PrimaryFetchResult = {
   sources: RecommendedJobSource[];
   matchMode: RecommendedMatchMode;
@@ -848,41 +939,6 @@ export async function generateRecommendedJobsForUser(
         "No roles matched salary or date filters — try loosening those, or clear location and experience filters.",
         true,
       );
-    } else if (!defaultFeed && hasHardRestrictiveListingFilters(mergedFilters)) {
-      const completedSteps: FallbackRelaxStep[] = [];
-      let candidate = mergedFilters;
-      while (completedSteps.length < EXPLICIT_FILTER_FALLBACK_MAX_STEPS) {
-        const next = nextRelaxedFilters(candidate, completedSteps, EXPLICIT_FILTER_FALLBACK_LADDER);
-        if (!next) break;
-        completedSteps.push(next.step);
-        candidate = next.filters;
-        primary = await fetchPrimaryRecommendedSources({
-          userId: input.userId,
-          targetRoles,
-          roleTitlePreferences,
-          profile,
-          parsedData,
-          artifactId: artifact.artifactId,
-          filters: candidate,
-          semanticQuery,
-          maxJobs,
-          preferCache,
-          exclusions,
-          skipPersonalizedVSearch,
-        });
-        if (!primary.sources.length) continue;
-        sources = primary.sources;
-        matchMode = primary.matchMode;
-        companyCount = primary.companyCount;
-        trackedWithMatches = primary.trackedWithMatches;
-        resumeVSearch = primary.resumeVSearch;
-        notice = appendNotice(
-          primary.notice,
-          "Loosened one filter to find matches — refine filters to narrow results.",
-        );
-        effectiveFilters = candidate;
-        break;
-      }
     }
   }
 
@@ -921,6 +977,36 @@ export async function generateRecommendedJobsForUser(
   }
 
   sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
+
+  if (!defaultFeed && recommendedFeedNeedsSupplement(sources)) {
+    const backfill = await backfillExplicitFilterSources(
+      {
+        userId: input.userId,
+        targetRoles,
+        roleTitlePreferences,
+        profile,
+        parsedData,
+        artifactId: artifact.artifactId,
+        semanticQuery,
+        maxJobs,
+        preferCache,
+        exclusions,
+        skipPersonalizedVSearch,
+      },
+      sources,
+      effectiveFilters,
+      { matchMode, companyCount, trackedWithMatches, resumeVSearch, notice },
+    );
+    if (backfill.relaxed) {
+      sources = backfill.sources;
+      matchMode = backfill.matchMode;
+      companyCount = backfill.companyCount;
+      trackedWithMatches = backfill.trackedWithMatches;
+      resumeVSearch = backfill.resumeVSearch;
+      notice = backfill.notice;
+      effectiveFilters = backfill.effectiveFilters;
+    }
+  }
 
   if (recommendedFeedNeedsSupplement(sources)) {
     if (defaultFeed && hasRestrictiveListingFilters(effectiveFilters)) {
@@ -1147,6 +1233,11 @@ export async function generateRecommendedJobsForUser(
         "Added more open roles to fill your feed — your best matches still appear first.",
       );
     }
+  } else if (!defaultFeed && jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
+    notice = appendNotice(
+      notice,
+      `Showing ${jobs.length} role${jobs.length === 1 ? "" : "s"} — loosen filters for more matches.`,
+    );
   }
 
   return {
