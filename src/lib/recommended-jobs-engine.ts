@@ -82,7 +82,7 @@ export async function generateRecommendedJobsForUser(
     exclusions: exclusionPrefsFromSearchPreferences(searchPreferences),
   });
 
-  if (!result?.jobs.length) return null;
+  if (!result) return null;
 
   return {
     jobs: result.jobs,

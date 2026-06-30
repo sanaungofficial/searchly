@@ -129,22 +129,20 @@ async function handleRecommended(request: Request) {
       maxJobs: RECOMMENDED_SNAPSHOT_MAX_JOBS,
     });
 
-    if (!result?.jobs.length) {
+    if (!result) {
       return NextResponse.json(
         {
           error: "Could not load roles right now — try Refresh in a moment.",
           needsProfile: targetRoles.length === 0,
           hint: "If this keeps happening, check target roles under Profile or broaden filters.",
-          matchMode: result?.matchMode,
-          effectiveFilters: result?.effectiveFilters,
           jobs: [],
           totalCount: 0,
         },
-        { status: 404 },
+        { status: 502 },
       );
     }
 
-    if (result) {
+    if (result.jobs.length) {
       try {
         await persistRecommendedSnapshot({
           userId: dbUser.id,
@@ -171,7 +169,11 @@ async function handleRecommended(request: Request) {
       effectiveFilters: result.effectiveFilters,
       artifactReEmbedded: result.artifactReEmbedded,
       resumeVSearch: result.resumeVSearch,
-      notice: result.notice,
+      notice:
+        result.notice ??
+        (result.jobs.length === 0
+          ? "No roles matched your profile filters right now — try Refresh or broaden filters under Profile."
+          : undefined),
       snapshotDate,
       generatedAt: new Date().toISOString(),
       fromSnapshot: false,

@@ -130,21 +130,11 @@ export type MandatorySearchValidation = {
 
 /** Mandatory fields before the Search button is enabled / API accepts a user search. */
 export function validateMandatorySearchFilters(
-  filters: VectorSearchFilters,
-  options?: { openToAllExperience?: boolean },
+  _filters: VectorSearchFilters,
+  _options?: { openToAllExperience?: boolean },
 ): MandatorySearchValidation {
-  const missing: string[] = [];
-  const hasJobFunction = Boolean(
-    filters.jobCategories?.length || filters.customJobFunctions?.length,
-  );
-  if (!hasJobFunction) missing.push("job function");
-  if (!filters.jobTypes?.length) missing.push("job type");
-  if (!filters.locationTypes?.length) missing.push("work model");
-  if (!filters.locations?.[0]?.country?.trim()) missing.push("location");
-  const hasExperience =
-    options?.openToAllExperience === true || Boolean(filters.experienceLevels?.length);
-  if (!hasExperience) missing.push("experience");
-  return { valid: missing.length === 0, missing };
+  // Temporarily disabled — allow search/refresh with partial profile filters.
+  return { valid: true, missing: [] };
 }
 
 /** Merge user-applied filter overrides onto profile defaults (user wins on set fields). */

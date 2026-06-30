@@ -28,6 +28,7 @@ import {
   buildFetchLaneMap,
   companyNameMatchesTracked,
   dedupeRecommendedSources,
+  fetchRecommendedBroadFallback,
   loadTrackedCompanyIndex,
   tagSourcesWithLane,
   type RecommendedJobSource,
@@ -341,24 +342,22 @@ export async function executeUnifiedJobsSearch(input: UnifiedSearchInput): Promi
   let notice: string | undefined;
   let matchMode: RecommendedMatchMode = sources[0]?.fetchLane === "profile_summary" ? "profile_summary" : "profile_roles";
 
-  if (input.mode === "recommended" && sources.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
-    const page2 = await fetchStructuredJobSources({
-      filters: effectiveFilters,
-      targetRoles: ctx.targetRoles,
+  let jobs = await enrichAndRankSources(sources, ctx, input.userId, maxJobs);
+
+  if (input.mode === "recommended" && !jobs.length) {
+    const broad = await fetchRecommendedBroadFallback({
+      profileTargetRoles: ctx.targetRoles,
       maxJobs: RECOMMENDED_FETCH_POOL,
-      page: 2,
+      diverse: true,
     });
-    const merged = dedupeRecommendedSources(
-      [...sources, ...(await applyPostFetchFilters(page2, effectiveFilters, exclusions, anchorLocation))],
-      RECOMMENDED_FETCH_POOL,
-    );
-    if (merged.length > sources.length) {
-      sources = merged;
-      notice = "Expanded results within your profile filters to fill your feed.";
+    if (broad.sources.length) {
+      sources = dedupeRecommendedSources(broad.sources, RECOMMENDED_FETCH_POOL);
+      jobs = await enrichAndRankSources(sources, ctx, input.userId, maxJobs);
+      matchMode = "broad";
+      notice =
+        "Showing recent open roles — refine profile filters or add target roles for tighter matches.";
     }
   }
-
-  let jobs = await enrichAndRankSources(sources, ctx, input.userId, maxJobs);
 
   if (input.mode === "search" && jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
     notice = `Showing ${jobs.length} role${jobs.length === 1 ? "" : "s"} — adjust filters for more matches.`;

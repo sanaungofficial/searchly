@@ -31,7 +31,6 @@ import {
 import { postedWithinDaysFormValue } from "@/lib/job-posted-filter";
 import type { KanbanCard } from "./workspace-data";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { useSubscription } from "@/hooks/useSubscription";
 import {
   filtersCacheKey,
   readRecommendedCache,
@@ -48,7 +47,6 @@ import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
-import { validateMandatorySearchFilters } from "@/lib/profile-search-constraints";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutInsetBox, ScoutLabel, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel } from "./score-explainer-popover";
@@ -623,9 +621,7 @@ export function PipelineRecommendedSection({
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
 }) {
-  const { withClientScope, isAdminReviewing, openPricing } = useWorkspace();
-  const { isPro, isAdmin } = useSubscription();
-  const hasProAccess = isPro || isAdmin;
+  const { withClientScope, isAdminReviewing } = useWorkspace();
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadScopedSemanticQuery(),
@@ -680,15 +676,6 @@ export function PipelineRecommendedSection({
   }, []);
 
   const hasActiveSearch = viewMode === "search";
-  const appliedFilters = useMemo(() => formToFilters(appliedForm, 1), [appliedForm]);
-
-  const searchFormValid = useMemo(
-    () =>
-      validateMandatorySearchFilters(appliedFilters, {
-        openToAllExperience: appliedForm.openToAllExperience,
-      }).valid,
-    [appliedFilters, appliedForm.openToAllExperience],
-  );
 
   const fetchRecommendedRef = useRef<
     ((options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => Promise<void>) | null
@@ -735,7 +722,6 @@ export function PipelineRecommendedSection({
           if (applied) {
             setActiveFilterLabels(describeActiveFilters(applied));
           }
-          if (msg) setFiltersDrawerOpen(true);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -1087,15 +1073,6 @@ export function PipelineRecommendedSection({
 
 
   const applyFilters = async (filtersForm = form) => {
-    const validation = validateMandatorySearchFilters(formToFilters(filtersForm, 1), {
-      openToAllExperience: filtersForm.openToAllExperience,
-    });
-    if (!validation.valid) {
-      setError(`Complete required filters before searching: ${validation.missing.join(", ")}.`);
-      setFiltersDrawerOpen(true);
-      return;
-    }
-
     await saveProfileFromForm(filtersForm, { markPrefsConfirmed: true });
     prefsConfirmedRef.current = true;
     setAppliedForm(filtersForm);
@@ -1117,10 +1094,6 @@ export function PipelineRecommendedSection({
   };
 
   const handleRefresh = () => {
-    if (!hasProAccess) {
-      openPricing();
-      return;
-    }
     clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
     if (viewMode === "search") {
       void fetchSearch(appliedForm, { background: false });
@@ -1227,7 +1200,6 @@ export function PipelineRecommendedSection({
           onSearchChange={(value) => setForm((f) => ({ ...f, semanticQuery: value }))}
           onSearchSubmit={() => void applyFilters()}
           searching={loading || revalidating}
-          searchDisabled={!searchFormValid}
           profileCountry={profileCountry}
           trailingActions={
             <>

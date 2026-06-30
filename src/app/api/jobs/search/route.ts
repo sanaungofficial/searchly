@@ -2,7 +2,6 @@ import { isHirebaseConfigured } from "@/lib/hirebase";
 import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import {
   exclusionPrefsFromSearchPreferences,
-  validateMandatorySearchFilters,
 } from "@/lib/profile-search-constraints";
 import { executeUnifiedJobsSearch } from "@/lib/unified-jobs-search";
 import { applyRoleTitlePreferencesToMatchedJobs } from "@/lib/recommended-jobs-ranking";
@@ -45,19 +44,6 @@ export async function POST(request: Request) {
       ? (parsedData as { searchPreferences?: unknown }).searchPreferences
       : undefined,
   );
-
-  const validation = validateMandatorySearchFilters(filters, {
-    openToAllExperience: searchPreferences.openToAllExperience,
-  });
-  if (!validation.valid) {
-    return NextResponse.json(
-      {
-        error: `Complete required filters before searching: ${validation.missing.join(", ")}.`,
-        missingFields: validation.missing,
-      },
-      { status: 400 },
-    );
-  }
 
   try {
     const result = await executeUnifiedJobsSearch({

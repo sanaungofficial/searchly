@@ -48,37 +48,8 @@ describe("profileSearchConstraints", () => {
 });
 
 describe("validateMandatorySearchFilters", () => {
-  it("requires job function, type, work model, location, and experience", () => {
-    const result = validateMandatorySearchFilters({});
-    expect(result.valid).toBe(false);
-    expect(result.missing).toContain("job function");
-    expect(result.missing).toContain("job type");
-    expect(result.missing).toContain("work model");
-    expect(result.missing).toContain("location");
-    expect(result.missing).toContain("experience");
-  });
-
-  it("passes when all mandatory fields are set", () => {
-    const result = validateMandatorySearchFilters({
-      jobCategories: ["Engineering Jobs"],
-      jobTypes: ["Full Time"],
-      locationTypes: ["Remote"],
-      locations: [{ country: "United States" }],
-      experienceLevels: ["Senior"],
-    });
-    expect(result.valid).toBe(true);
-  });
-
-  it("allows open-to-all experience", () => {
-    const result = validateMandatorySearchFilters(
-      {
-        jobCategories: ["Engineering Jobs"],
-        jobTypes: ["Full Time"],
-        locationTypes: ["Remote"],
-        locations: [{ country: "United States" }],
-      },
-      { openToAllExperience: true },
-    );
-    expect(result.valid).toBe(true);
+  it("temporarily allows all filter combinations", () => {
+    expect(validateMandatorySearchFilters({}).valid).toBe(true);
+    expect(validateMandatorySearchFilters({}).missing).toEqual([]);
   });
 });
