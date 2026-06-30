@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { JobFunctionPicker } from "@/components/scout/job-function-picker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 
@@ -374,151 +375,14 @@ export function JobCategoryPicker({
   selected,
   onChange,
   suggestions = [],
-  addButtonLabel = "+ Add category",
+  addButtonLabel: _addButtonLabel = "+ Add category",
 }: JobCategoryPickerProps) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open || categories.length) return;
-    setLoading(true);
-    void fetch("/api/jobs/categories")
-      .then((res) => res.json())
-      .then((data: { categories?: string[] }) => setCategories(data.categories ?? []))
-      .catch(() => setCategories(suggestions))
-      .finally(() => setLoading(false));
-  }, [open, categories.length, suggestions]);
-
-  const pool = [...new Set([...categories, ...suggestions])];
-  const filtered = pool.filter(
-    (cat) =>
-      !selected.some((s) => s.toLowerCase() === cat.toLowerCase()) &&
-      (!query.trim() || cat.toLowerCase().includes(query.trim().toLowerCase())),
-  );
-
-  const addCategory = (cat: string) => {
-    const normalized = cat.trim();
-    if (!normalized || selected.some((s) => s.toLowerCase() === normalized.toLowerCase())) return;
-    onChange([...selected, normalized]);
-    setQuery("");
-  };
-
   return (
-    <div>
-      {selected.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          {selected.map((cat) => (
-            <span
-              key={cat}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 10px",
-                border: border.line,
-                borderRadius: "var(--scout-radius)",
-                fontFamily: fontSans,
-                fontSize: T.label,
-                color: color.muted,
-                background: surface.inset,
-              }}
-            >
-              {cat}
-              <button
-                type="button"
-                onClick={() => onChange(selected.filter((c) => c !== cat))}
-                aria-label={`Remove ${cat}`}
-                style={{ border: "none", background: "transparent", cursor: "pointer", color: color.muted, padding: 0, lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          style={{
-            padding: "8px 14px",
-            background: "transparent",
-            color: color.forest,
-            border: "1px solid rgba(26,58,47,0.15)",
-            borderRadius: "var(--scout-radius)",
-            fontFamily: fontSans,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          {addButtonLabel}
-        </button>
-      ) : (
-        <div>
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter categories…"
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              padding: "10px 12px",
-              borderRadius: "var(--scout-radius)",
-              border: border.lineStrong,
-              fontFamily: fontSans,
-              fontSize: 13,
-              marginBottom: 8,
-              boxSizing: "border-box",
-            }}
-          />
-          {loading && (
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px" }}>
-              Loading categories…
-            </p>
-          )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {filtered.slice(0, 18).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => addCategory(cat)}
-                style={{
-                  padding: "5px 12px",
-                  background: "#FFFFFF",
-                  border: border.line,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: fontSans,
-                  fontSize: 13,
-                  cursor: "pointer",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setQuery("");
-              }}
-              style={{
-                padding: "5px 12px",
-                background: "transparent",
-                border: "none",
-                fontFamily: fontSans,
-                fontSize: 13,
-                color: color.muted,
-                cursor: "pointer",
-              }}
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <JobFunctionPicker
+      selected={selected}
+      onChange={onChange}
+      suggested={suggestions}
+      variant="profile"
+    />
   );
 }

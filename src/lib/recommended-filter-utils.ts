@@ -4,6 +4,10 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { HIREBASE_EXPERIENCE_LEVELS } from "@/lib/vector-matched-job";
 import { parseProfileLocationString, resolveProfileLocation, type ParsedProfileLocation } from "@/lib/profile-location";
 import { profilePreferencesToFilters } from "@/lib/profile-preference-filters";
+import {
+  hirebaseLevelsFromJobrightLabels,
+  type SearchPreferences,
+} from "@/lib/search-preferences";
 
 export const HIREBASE_FILTER_COUNTRIES = [
   "United States",
@@ -100,6 +104,7 @@ export function profileDerivedSearchFilters(input: {
   targetRoles?: string[];
   prioritizedRoles?: string[];
   prioritizedCategories?: string[];
+  searchPreferences?: SearchPreferences;
 }): VectorSearchFilters {
   const resolvedLocation = resolveProfileLocation({
     parsedLocation: input.profileLocation,
@@ -120,7 +125,11 @@ export function profileDerivedSearchFilters(input: {
     ...(input.targetRoles ?? []),
   ]);
   const jobCategories = uniqueTrimmed(input.prioritizedCategories ?? []);
-  const experienceLevels = explicitExperienceLevelsFromProfile(input.experienceLevel);
+  const experienceLevels =
+    explicitExperienceLevelsFromProfile(input.experienceLevel) ??
+    (input.searchPreferences?.experienceLevelLabels?.length
+      ? hirebaseLevelsFromJobrightLabels(input.searchPreferences.experienceLevelLabels)
+      : undefined);
 
   const locations =
     fields.city || fields.region || fields.country
@@ -139,7 +148,7 @@ export function profileDerivedSearchFilters(input: {
     ...prefs,
     jobTitles: roleTitles.length ? roleTitles : undefined,
     jobCategories: jobCategories.length ? jobCategories : undefined,
-    experienceLevels: experienceLevels.length ? experienceLevels : undefined,
+    experienceLevels: experienceLevels?.length ? experienceLevels : undefined,
     jobTypes,
     locations,
   };
