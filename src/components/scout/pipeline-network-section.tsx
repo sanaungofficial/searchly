@@ -403,21 +403,24 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     mountedRef.current = true;
 
     const cached = readNetworkJobsCache();
-    if (!cached) return;
+    if (cached) {
+      setJobs(cached.jobs);
+      setAppliedForm(cached.appliedForm);
+      setForm({ ...cached.appliedForm, search: loadScopedNetworkSearch() });
+      setTotal(cached.total);
+      setHasMore(cached.hasMore);
+      setPage(cached.page);
+      setNeedsProfile(Boolean(cached.needsProfile));
+      setProfileHint(cached.hint ?? null);
+      setProfileSuggestedLabels(cached.profileSuggestedLabels ?? []);
+      profileFormRef.current = cached.profileForm ?? null;
+      setHasLoadedOnce(true);
+      setLoading(false);
+      return;
+    }
 
-    setJobs(cached.jobs);
-    setAppliedForm(cached.appliedForm);
-    setForm({ ...cached.appliedForm, search: loadScopedNetworkSearch() });
-    setTotal(cached.total);
-    setHasMore(cached.hasMore);
-    setPage(cached.page);
-    setNeedsProfile(Boolean(cached.needsProfile));
-    setProfileHint(cached.hint ?? null);
-    setProfileSuggestedLabels(cached.profileSuggestedLabels ?? []);
-    profileFormRef.current = cached.profileForm ?? null;
-    setHasLoadedOnce(true);
-    setLoading(false);
-  }, [actingUserId]);
+    void loadJobs(createEmptyNetworkJobFilterForm());
+  }, [actingUserId, loadJobs]);
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);

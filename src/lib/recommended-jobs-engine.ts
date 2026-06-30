@@ -992,17 +992,27 @@ async function generateActiveRoleSearchForUser(
     roleTitlePreferences,
     profileSkills,
     nameMatchExcludeTerms,
+    profileLocation,
+    priorities,
+    relocationOpenness,
   } = await loadUserContext(input.userId);
 
   const searchRoles = buildActiveRoleSearchTitles(semanticQuery, requestFilters.jobTitles);
   if (!searchRoles.length) return null;
 
-  const mergedFilters = normalizePostedDateFilters({
+  const locationInput = locationInputFromContext({ profileLocation, priorities, relocationOpenness });
+  let mergedFilters = normalizePostedDateFilters({
     ...requestFilters,
     semanticQuery,
     limit: maxJobs,
     page: requestFilters.page ?? 1,
   });
+  if (!mergedFilters.locations?.length) {
+    const hirebaseLocations = profileLocationToHirebaseFilters(locationInput);
+    if (hirebaseLocations.length) {
+      mergedFilters = { ...mergedFilters, locations: hirebaseLocations };
+    }
+  }
 
   try {
     const result = await fetchHirebaseRoleMatchingJobs({

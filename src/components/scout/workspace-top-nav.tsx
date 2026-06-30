@@ -15,7 +15,7 @@ import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
-import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
+import { matchInboxPath, matchNetworkRolesPath, matchOpportunitiesNavPath, INBOX_PATH, NETWORK_ROLES_NAV } from "@/lib/workspace-urls";
 import { TOP_NAV_Z } from "@/lib/z-layers";
 import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
 
@@ -48,6 +48,12 @@ function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
     label: "Opportunities",
     path: "/opportunities",
     match: matchOpportunitiesNavPath,
+  });
+  links.push({
+    id: "network-roles",
+    label: NETWORK_ROLES_NAV.label,
+    path: NETWORK_ROLES_NAV.path,
+    match: matchNetworkRolesPath,
   });
   links.push({
     id: "inbox",
@@ -747,6 +753,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
       pathname === "/dashboard" ||
       pathname.startsWith("/dashboard/") ||
       pathname.startsWith("/opportunities") ||
+      matchNetworkRolesPath(pathname) ||
       matchInboxPath(pathname) ||
       pathname.startsWith("/coaching") ||
       pathname.startsWith("/profile")
