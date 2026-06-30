@@ -29,6 +29,9 @@ export async function GET(request: Request) {
     targetSalary: profile?.targetSalary,
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
+    targetRoles: profile?.targetRoles ?? [],
+    prioritizedRoles: profile?.prioritizedRoles ?? [],
+    prioritizedCategories: profile?.prioritizedCategories ?? [],
   });
 
   return NextResponse.json({
@@ -36,5 +39,7 @@ export async function GET(request: Request) {
     labels: describeActiveFilters(filters),
     profileLocation,
     priorities: profile?.priorities ?? [],
+    targetRoles: profile?.targetRoles ?? [],
+    prioritizedCategories: profile?.prioritizedCategories ?? [],
   });
 }
