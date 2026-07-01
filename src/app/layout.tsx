@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PartneroScript } from "@/components/partnero-script";
 import { ClickConnectorWidget } from "@/components/clickconnector-widget";
+import { ClickConnectorTourNavigation } from "@/components/clickconnector-tour-navigation";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -79,6 +80,7 @@ export default function RootLayout({
         {children}
         <PartneroScript />
         <ClickConnectorWidget />
+        <ClickConnectorTourNavigation />
         <Toaster />
       </body>
     </html>

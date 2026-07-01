@@ -7,6 +7,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { ReferEarnModal } from "./refer-earn-modal";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { color, fontSans, surface, type as T } from "@/lib/typography";
+import { startProductTour, markProductTourSeen } from "@/lib/clickconnector-tour";
 
 type SettingsTab = "profile" | "security" | "subscription";
 
@@ -201,6 +202,12 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
     ? new Date(currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null;
 
+  async function handleStartProductTour() {
+    onClose();
+    await startProductTour({ skipMarkSeen: true });
+    markProductTourSeen();
+  }
+
   async function handleAvatarUpload(file: File) {
     setUploading(true);
     setUploadError(null);
@@ -349,8 +356,36 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
             ))}
           </div>
 
-          {/* Bottom: sign out */}
+          {/* Bottom: help + sign out */}
           <div style={{ padding: "0 8px" }}>
+            <button
+              type="button"
+              onClick={() => void handleStartProductTour()}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "9px 10px",
+                borderRadius: "var(--scout-radius)",
+                border: "none",
+                background: "transparent",
+                color: "#52493F",
+                cursor: "pointer",
+                fontSize: 13,
+                textAlign: "left",
+                transition: "background 0.15s",
+                marginBottom: 4,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.07)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+              </svg>
+              Take a product tour
+            </button>
             <button
               onClick={onSignOut}
               style={{

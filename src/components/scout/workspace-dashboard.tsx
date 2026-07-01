@@ -6,7 +6,6 @@ import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { DashboardHomeTop } from "@/components/scout/dashboard-home-top";
 import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { surface } from "@/lib/typography";
-
 export function WorkspaceDashboard() {
   const isMobile = useIsMobile();
   const [showWelcome, setShowWelcome] = useState(false);

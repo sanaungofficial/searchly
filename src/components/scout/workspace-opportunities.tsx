@@ -47,6 +47,7 @@ import { readProspectJobCache, writeProspectJobCache } from "@/lib/prospect-jobs
 import { buildSkillGoal, normalizeSkillGoals } from "@/lib/upskill-programs";
 import { primaryTargetRole } from "@/lib/target-roles-unified";
 import { profileLearningPathUrl } from "@/lib/workspace-urls";
+import { ClickConnectorTourAutoStart } from "@/components/clickconnector-tour-auto-start";
 
 export type { DrawerTool };
 
@@ -661,6 +662,8 @@ export function WorkspaceOpportunities() {
           onAddGapToUpskill={(skill, role) => void addGapToUpskill(skill, role)}
         />
       )}
+
+      <ClickConnectorTourAutoStart />
     </div>
   );
 }
