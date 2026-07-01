@@ -2,10 +2,13 @@ import { type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { adminRosterClientWhere } from "@/lib/admin-client-roles";
 import { findSupabaseAuthUserIdByEmail, getSupabaseAdmin } from "@/lib/supabase-admin";
-import { resolveAppUrl } from "@/lib/site-host";
+import { APP_HOME_PATH, resolveAppUrl, type RequestOriginSource } from "@/lib/site-host";
 
-export function getAppAuthRedirectUrl(next = "/dashboard"): string {
-  const base = resolveAppUrl();
+export function getAppAuthRedirectUrl(
+  next = APP_HOME_PATH,
+  req?: RequestOriginSource,
+): string {
+  const base = resolveAppUrl(req);
   const path = next.startsWith("/") ? next : `/${next}`;
   return `${base}/auth/callback?next=${encodeURIComponent(path)}`;
 }

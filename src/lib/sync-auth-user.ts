@@ -4,6 +4,7 @@ import { sendWelcomeEmail } from "@/lib/email";
 import { attachReferrer } from "@/lib/referrals";
 import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { ensurePartneroCustomer, partneroEnabled } from "@/lib/partnero";
+import { sanitizeReturnPath } from "@/lib/auth-return-url";
 import { APP_HOME_PATH } from "@/lib/site-host";
 import {
   persistExternalImageToAvatarsBucket,
@@ -17,7 +18,8 @@ export function authRedirectForUser(
   onboardingCompletedAt: Date | null | undefined,
   next?: string | null,
 ) {
-  if (next && next !== "/") return next;
+  const safeNext = sanitizeReturnPath(next);
+  if (safeNext && safeNext !== "/") return safeNext;
   return onboardingCompletedAt ? APP_HOME_PATH : "/onboarding";
 }
 
@@ -26,7 +28,8 @@ export async function resolveAuthRedirectForUser(
   dbUser: { id: string; onboardingCompletedAt: Date | null },
   next?: string | null,
 ) {
-  if (next && next !== "/") return next;
+  const safeNext = sanitizeReturnPath(next);
+  if (safeNext && safeNext !== "/") return safeNext;
   if (dbUser.onboardingCompletedAt) return APP_HOME_PATH;
 
   const profile = await prisma.profile.findUnique({

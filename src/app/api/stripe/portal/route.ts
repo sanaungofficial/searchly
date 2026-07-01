@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { resolveAppUrl } from "@/lib/site-host";
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -27,7 +27,7 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account found" }, { status: 400 });
   }
 
-  const baseUrl = resolveAppUrl();
+  const baseUrl = resolveAppUrl({ headers: request.headers, url: request.url });
 
   const session = await stripe.billingPortal.sessions.create({
     customer: dbUser.stripeCustomerId,
