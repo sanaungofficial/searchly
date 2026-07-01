@@ -1,17 +1,23 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { DiscoveryScoreCluster } from "@/components/scout/discovery-score-ui";
 import { useDiscoveryScore } from "@/hooks/use-discovery-score";
 import { tierPeerCopy } from "@/lib/discovery-score";
+import { displayJobFunctionLabel } from "@/lib/job-function-groups";
+import type { GroupedJobFunctions } from "@/lib/job-function-groups";
 import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
+import { pipelineInputStyle } from "@/components/scout/pipeline-filters-ui";
 
 type ProfileInput = {
   name: string;
   headline: string | null;
   targetRoles: string[];
+  prioritizedCategories?: string[];
+  benchmarkCategoryOverride?: string | null;
   avatarUrl: string | null;
 };
 
@@ -19,6 +25,7 @@ type Props = {
   profile: ProfileInput;
   isMobile: boolean;
   withClientScope: (path: string) => string;
+  onBenchmarkCategorySave?: (category: string | null) => Promise<void>;
 };
 
 function Initials({ name }: { name: string }) {
@@ -105,14 +112,122 @@ function BenchmarkCard({
   );
 }
 
-export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope }: Props) {
+function BenchmarkJobFunctionPicker({
+  selectedCategory,
+  fallbackCategories,
+  withClientScope,
+  onSave,
+  disabled,
+}: {
+  selectedCategory: string | null;
+  fallbackCategories: string[];
+  withClientScope: (path: string) => string;
+  onSave?: (category: string | null) => Promise<void>;
+  disabled?: boolean;
+}) {
+  const [categories, setCategories] = useState<string[]>(fallbackCategories);
+  const [groups, setGroups] = useState<GroupedJobFunctions[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void fetch(withClientScope("/api/jobs/job-functions"))
+      .then((res) => (res.ok ? res.json() : { categories: [], groups: [] }))
+      .then((data: { categories?: string[]; groups?: GroupedJobFunctions[] }) => {
+        if (data.categories?.length) setCategories(data.categories);
+        if (data.groups?.length) setGroups(data.groups);
+      })
+      .catch(() => {});
+  }, [withClientScope]);
+
+  const options = useMemo(() => {
+    const merged = [...categories];
+    for (const cat of fallbackCategories) {
+      if (!merged.some((c) => c.toLowerCase() === cat.toLowerCase())) merged.push(cat);
+    }
+    return merged.sort((a, b) => a.localeCompare(b));
+  }, [categories, fallbackCategories]);
+
+  const selectedValue = selectedCategory ?? fallbackCategories[0] ?? "";
+
+  const handleChange = useCallback(
+    async (value: string) => {
+      if (!onSave) return;
+      setSaving(true);
+      try {
+        await onSave(value.trim() || null);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [onSave],
+  );
+
+  return (
+    <ScoutBox padding="14px 16px" style={{ marginTop: 12 }}>
+      <p
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.label,
+          fontWeight: 700,
+          color: color.forest,
+          margin: "0 0 6px",
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+        }}
+      >
+        Benchmark job function
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+        Discovery Score compares you to Sumble professionals in this job function. Pick the closest match to your target
+        role, then refresh.
+      </p>
+      <select
+        value={selectedValue}
+        disabled={disabled || saving || !onSave}
+        onChange={(e) => void handleChange(e.target.value)}
+        style={{ ...pipelineInputStyle, width: "100%", maxWidth: 420 }}
+      >
+        <option value="">Select a job function…</option>
+        {groups.length
+          ? groups.map((group) => (
+              <optgroup key={group.id} label={group.label}>
+                {group.categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {displayJobFunctionLabel(cat)}
+                  </option>
+                ))}
+              </optgroup>
+            ))
+          : options.map((cat) => (
+              <option key={cat} value={cat}>
+                {displayJobFunctionLabel(cat)}
+              </option>
+            ))}
+      </select>
+    </ScoutBox>
+  );
+}
+
+export function ProfileDiscoveryScorePanel({
+  profile,
+  isMobile,
+  withClientScope,
+  onBenchmarkCategorySave,
+}: Props) {
   const { result, loading, refreshing, refresh, error } = useDiscoveryScore({ withClientScope });
 
-  const primaryRole = profile.targetRoles[0] ?? profile.headline ?? "similar roles";
+  const targetRole = profile.targetRoles[0] ?? profile.headline ?? "similar roles";
+  const peerLabel =
+    result?.benchmarkPeerLabel ??
+    profile.benchmarkCategoryOverride?.replace(/ Jobs$/i, "") ??
+    profile.prioritizedCategories?.[0]?.replace(/ Jobs$/i, "") ??
+    targetRole;
   const score = result?.score ?? null;
   const tier = result?.tier ?? "building";
-  const peerCopy = tierPeerCopy(tier, primaryRole);
+  const peerCopy = tierPeerCopy(tier, peerLabel);
   const showLoader = loading || refreshing;
+  const selectedBenchmarkCategory =
+    profile.benchmarkCategoryOverride ?? profile.prioritizedCategories?.[0] ?? null;
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -195,12 +310,23 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope 
                 {new Date(result.refreshedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
               </p>
             )}
+            {result?.benchmarkJobFunction && !showLoader && (
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 6px" }}>
+                Benchmark cohort:{" "}
+                <strong style={{ color: color.ink }}>
+                  {result.benchmarkPeerLabel ?? result.benchmarkJobFunction}
+                </strong>
+                {result.benchmarkTargetRole && result.benchmarkTargetRole !== peerLabel
+                  ? ` (target role: ${result.benchmarkTargetRole})`
+                  : null}
+              </p>
+            )}
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
               {peerCopy}
             </p>
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, lineHeight: 1.6, margin: 0 }}>
               {result?.summary ??
-                "Refresh your score to see how you compare to professionals targeting similar roles."}
+                "Refresh your score to see how you compare to professionals in a matching job function."}
             </p>
             {error && (
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#b45309", margin: "8px 0 0" }}>
@@ -221,6 +347,14 @@ export function ProfileDiscoveryScorePanel({ profile, isMobile, withClientScope 
             </ScoutPrimaryBtn>
           )}
         </div>
+
+        <BenchmarkJobFunctionPicker
+          selectedCategory={selectedBenchmarkCategory}
+          fallbackCategories={profile.prioritizedCategories ?? []}
+          withClientScope={withClientScope}
+          onSave={onBenchmarkCategorySave}
+          disabled={showLoader}
+        />
       </ScoutBox>
 
       {result && !showLoader && (

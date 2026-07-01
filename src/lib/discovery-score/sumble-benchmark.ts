@@ -1,5 +1,6 @@
 import { DISCOVERY_COHORT_SIZE } from "./constants";
-import { buildSumblePeopleQuery } from "./query-build";
+import { resolveDiscoveryBenchmark } from "./benchmark-role";
+import { buildSumblePeopleQueryLadder } from "./query-build";
 import type { DiscoveryBenchmarkProfile, DiscoveryProfileContext } from "./types";
 import { isSumbleConfigured, sumblePost } from "@/lib/sumble/client";
 
@@ -35,6 +36,12 @@ type SumbleJobRow = {
 
 type SumbleJobsResponse = {
   jobs?: SumbleJobRow[];
+};
+
+export type SumbleBenchmarkFetchResult = {
+  people: DiscoveryBenchmarkProfile[];
+  queryUsed: string | null;
+  benchmark: ReturnType<typeof resolveDiscoveryBenchmark>;
 };
 
 function escapeQueryTerm(value: string): string {
@@ -133,20 +140,31 @@ async function fetchPeopleViaJobsFallback(
 export async function fetchBenchmarkPeopleFromSumble(
   ctx: DiscoveryProfileContext,
   cohortSize = DISCOVERY_COHORT_SIZE,
-): Promise<DiscoveryBenchmarkProfile[]> {
-  if (!isSumbleConfigured()) return [];
-
-  const query = buildSumblePeopleQuery(ctx);
-  let people: DiscoveryBenchmarkProfile[] = [];
-
-  if (query) {
-    people = await fetchPeopleViaFilterQuery(query, cohortSize);
+): Promise<SumbleBenchmarkFetchResult> {
+  const benchmark = resolveDiscoveryBenchmark(ctx);
+  if (!isSumbleConfigured()) {
+    return { people: [], queryUsed: null, benchmark };
   }
 
-  if (people.length < Math.min(3, cohortSize)) {
+  const minAcceptable = Math.min(3, cohortSize);
+  let people: DiscoveryBenchmarkProfile[] = [];
+  let queryUsed: string | null = null;
+
+  for (const step of buildSumblePeopleQueryLadder(ctx, benchmark)) {
+    const batch = await fetchPeopleViaFilterQuery(step.query, cohortSize);
+    people = dedupeBenchmarks([...people, ...batch]);
+    if (batch.length && !queryUsed) queryUsed = step.query;
+    if (people.length >= minAcceptable) break;
+  }
+
+  if (people.length < minAcceptable) {
     const fallback = await fetchPeopleViaJobsFallback(ctx, cohortSize);
     people = dedupeBenchmarks([...people, ...fallback]);
   }
 
-  return people.slice(0, cohortSize);
+  return {
+    people: people.slice(0, cohortSize),
+    queryUsed,
+    benchmark,
+  };
 }

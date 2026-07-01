@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import { isApifyConfigured } from "@/lib/apify-linkedin";
 import { isSumbleConfigured } from "@/lib/sumble/client";
+import { benchmarkPeerLabel, readDiscoveryBenchmarkCategoryOverride } from "./benchmark-role";
 import { computeDiscoveryScoreFromCohort, enrichBenchmarksWithApify } from "./compute";
+import { buildDiscoverySearchDebug } from "./query-build";
 import { readDiscoveryScoreCache, writeDiscoveryScoreCache } from "./persist";
 import { fetchBenchmarkPeopleFromSumble } from "./sumble-benchmark";
 import type { DiscoveryProfileContext, DiscoveryScoreApiResponse, DiscoveryScoreCachePayload } from "./types";
@@ -13,6 +15,8 @@ export function discoveryScoreFingerprint(ctx: DiscoveryProfileContext): string 
   const parts = [
     ...ctx.targetRoles,
     ...ctx.prioritizedRoles,
+    ...ctx.prioritizedCategories,
+    ctx.benchmarkCategoryOverride ?? "",
     ...(ctx.parsedData?.skills ?? []),
     ...(ctx.parsedData?.tools ?? []),
     ctx.headline ?? "",
@@ -31,6 +35,7 @@ export function buildDiscoveryProfileContext(profile: Profile, user: User): Disc
     targetRoles: profile.targetRoles ?? [],
     prioritizedRoles: profile.prioritizedRoles ?? [],
     prioritizedCategories: profile.prioritizedCategories ?? [],
+    benchmarkCategoryOverride: readDiscoveryBenchmarkCategoryOverride(profile.parsedData),
     location: parsed?.location ?? profile.targetMarket ?? null,
     linkedinUrl: profile.linkedinUrl,
     parsedData: parsed
@@ -99,21 +104,31 @@ export async function refreshDiscoveryScore(userId: string): Promise<DiscoverySc
   }
 
   const benchmarks = await fetchBenchmarkPeopleFromSumble(ctx);
-  if (!benchmarks.length) {
+  if (!benchmarks.people.length) {
+    const searchDebug = buildDiscoverySearchDebug(ctx, benchmarks.benchmark);
+    const peerLabel = benchmarkPeerLabel(benchmarks.benchmark);
+    const triedSummary = searchDebug.queriesTried.slice(0, 2).join("; ") || "no Sumble filters";
     return {
       cached: false,
       configured,
       result: null,
-      error: "Could not find benchmark profiles for your target roles. Add target roles and skills, then try again.",
+      searchDebug,
+      error: benchmarks.benchmark.sumbleJobFunction
+        ? `No benchmark profiles found for ${peerLabel} (${benchmarks.benchmark.sumbleJobFunction}). Try picking a job function from the list below, then refresh.`
+        : `Could not map "${benchmarks.benchmark.targetRoleLabel}" to a Sumble job function. Pick a job function category below (e.g. Arts, Education, Operations), then refresh. Searched: ${triedSummary}.`,
     };
   }
 
-  const enriched = await enrichBenchmarksWithApify(benchmarks, userId);
-  const computed = computeDiscoveryScoreFromCohort(ctx, enriched);
+  const enriched = await enrichBenchmarksWithApify(benchmarks.people, userId);
+  const computed = computeDiscoveryScoreFromCohort(ctx, enriched, benchmarks.benchmark, benchmarks.queryUsed);
   const payload: DiscoveryScoreCachePayload = {
     version: 1,
     fingerprint,
     refreshedAt: new Date().toISOString(),
+    benchmarkTargetRole: benchmarks.benchmark.targetRoleLabel,
+    benchmarkPeerLabel: benchmarkPeerLabel(benchmarks.benchmark),
+    benchmarkJobFunction: benchmarks.benchmark.sumbleJobFunction,
+    benchmarkQuery: benchmarks.queryUsed,
     ...computed,
   };
 

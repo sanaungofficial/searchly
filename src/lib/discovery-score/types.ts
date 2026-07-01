@@ -21,6 +21,14 @@ export type DiscoveryScoreCachePayload = {
   topImprovement: string;
   breakdown: DiscoveryScoreBreakdown;
   benchmarks: DiscoveryBenchmarkProfile[];
+  /** Primary target role from profile (may differ from mapped benchmark). */
+  benchmarkTargetRole?: string | null;
+  /** Hirebase category or inferred label used for peer cohort. */
+  benchmarkPeerLabel?: string | null;
+  /** Sumble job_function filter value, when mapped. */
+  benchmarkJobFunction?: string | null;
+  /** Sumble query that produced the cohort (for support / empty-state copy). */
+  benchmarkQuery?: string | null;
 };
 
 export type DiscoveryScoreApiResponse = {
@@ -28,6 +36,13 @@ export type DiscoveryScoreApiResponse = {
   configured: { sumble: boolean; apify: boolean };
   result: DiscoveryScoreCachePayload | null;
   error?: string | null;
+  /** Present on failed refresh — what we tried to search. */
+  searchDebug?: {
+    targetRole: string;
+    peerLabel: string;
+    jobFunction: string | null;
+    queriesTried: string[];
+  } | null;
 };
 
 export type DiscoveryProfileContext = {
@@ -38,6 +53,8 @@ export type DiscoveryProfileContext = {
   targetRoles: string[];
   prioritizedRoles: string[];
   prioritizedCategories: string[];
+  /** Parsed-data override — Hirebase job function category for benchmarks. */
+  benchmarkCategoryOverride?: string | null;
   location: string | null;
   linkedinUrl: string | null;
   parsedData: {

@@ -74,6 +74,7 @@ import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { ProfileDiscoveryScorePanel } from "./profile-discovery-score-panel";
+import { DISCOVERY_BENCHMARK_CATEGORY_KEY } from "@/lib/discovery-score/constants";
 import { CareerStrategyPanel } from "./career-strategy-panel";
 import { UserAssetsList } from "./user-assets-list";
 import { LibraryDocumentUploadModal } from "./library-document-upload-modal";
@@ -4058,10 +4059,36 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   name: profile.name,
                   headline: profile.headline,
                   targetRoles: profile.targetRoles,
+                  prioritizedCategories: profile.prioritizedCategories,
+                  benchmarkCategoryOverride:
+                    profile.parsedData && typeof profile.parsedData === "object"
+                      ? ((profile.parsedData as Record<string, unknown>)[DISCOVERY_BENCHMARK_CATEGORY_KEY] as
+                          | string
+                          | null
+                          | undefined) ?? null
+                      : null,
                   avatarUrl: clientId ? profile.avatarUrl : user?.avatarUrl ?? profile.avatarUrl,
                 }}
                 isMobile={isMobile}
                 withClientScope={withClientScope}
+                onBenchmarkCategorySave={async (category) => {
+                  const existingParsed = (profile.parsedData ?? {}) as Record<string, unknown>;
+                  const nextParsed = { ...existingParsed };
+                  if (category) nextParsed[DISCOVERY_BENCHMARK_CATEGORY_KEY] = category;
+                  else delete nextParsed[DISCOVERY_BENCHMARK_CATEGORY_KEY];
+                  await patchProfile({ parsedData: nextParsed });
+                  setProfile((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          parsedData: {
+                            ...(prev.parsedData ?? {}),
+                            ...nextParsed,
+                          },
+                        }
+                      : prev,
+                  );
+                }}
               />
             )}
             {page === "discoveryscore" && !profile && !loading && (
