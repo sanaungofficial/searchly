@@ -26,9 +26,13 @@ function applyBottomLeftPosition() {
   const style = document.createElement("style");
   style.id = styleId;
   style.textContent = `
-    .cc-widget-outer-container {
+    /* ClickConnector sets position:fixed on launcher/panel children, not the outer wrapper. */
+    .cc-widget-outer-container .cc-chat-bubble,
+    .cc-widget-outer-container .widget-frame-outer,
+    .cc-widget-outer-container .new-chat-bubble {
       right: auto !important;
       left: 16px !important;
+      bottom: 16px !important;
     }
   `;
   document.head.appendChild(style);
@@ -50,6 +54,8 @@ export function ClickConnectorWidget() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    applyBottomLeftPosition();
 
     let cancelled = false;
     let unsubscribeAuth: (() => void) | undefined;
@@ -108,8 +114,6 @@ export function ClickConnectorWidget() {
       const { ChatWidget } = await import("@clickconnector/widget-sdk");
       await ChatWidget.load(WIDGET_ID);
       if (cancelled) return;
-
-      applyBottomLeftPosition();
 
       await syncAuth(ChatWidget);
       if (cancelled) return;
