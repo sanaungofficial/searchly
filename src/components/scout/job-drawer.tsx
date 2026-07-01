@@ -65,6 +65,7 @@ interface JobDrawerProps {
   elevated?: boolean;
   /** Prospect/recommended drawer — fetching full Hirebase posting */
   detailLoading?: boolean;
+  onAddGapToUpskill?: (skill: string, role: string) => void;
 }
 
 type ScrollSection = "overview" | "recruiter" | "company";
@@ -424,9 +425,13 @@ function resolveJobFields(meta: JobMeta | null) {
 function JobDrawerMatchSection({
   meta,
   onCompareResume,
+  onAddGapToUpskill,
+  jobRole,
 }: {
   meta: JobMeta | null;
   onCompareResume?: () => void;
+  onAddGapToUpskill?: (skill: string, role: string) => void;
+  jobRole?: string;
 }) {
   const match = meta?.vectorMatch;
   if (!match || match.matchScore <= 0) return null;
@@ -456,7 +461,19 @@ function JobDrawerMatchSection({
             <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
           ))}
           {match.gapSkills?.map((skill) => (
-            <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+            onAddGapToUpskill ? (
+              <button
+                key={`g-${skill}`}
+                type="button"
+                onClick={() => onAddGapToUpskill(skill, jobRole ?? "General")}
+                style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A", border: "1px dashed rgba(107,90,42,0.35)", cursor: "pointer" }}
+                title="Add to Upskill"
+              >
+                Gap: {skill} · Add to Upskill
+              </button>
+            ) : (
+              <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+            )
           ))}
         </div>
       ) : null}
@@ -738,6 +755,8 @@ export function JobDrawer({
   existingPipelineCardId = null,
   onOpenInPipeline,
   detailLoading = false,
+  elevated = false,
+  onAddGapToUpskill,
 }: JobDrawerProps) {
   const { withClientScope } = useWorkspace();
   const masterResume = useMasterResumeStatus();
@@ -1264,6 +1283,8 @@ export function JobDrawer({
                 <JobDrawerMatchSection
                   meta={meta}
                   onCompareResume={canRunMatch ? () => setMatchDrawerOpen(true) : undefined}
+                  onAddGapToUpskill={onAddGapToUpskill}
+                  jobRole={card.role}
                 />
               ) : null}
 

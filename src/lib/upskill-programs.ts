@@ -1,6 +1,9 @@
 import { UPSKILL_CATEGORIES, type UpskillItem } from "@/components/scout/workspace-data";
+import type { MatchableKind } from "@/lib/skills-tools";
 
 export type UpskillProgramType = "course" | "certification" | "search";
+
+export type SkillGoalGapSource = "saved_job" | "corpus" | "archetype" | "manual";
 
 export interface UpskillProgram {
   id: string;
@@ -19,6 +22,15 @@ export interface SkillGoalRecord {
   role: string;
   addedAt: string;
   programs: UpskillProgram[];
+  gapSource?: SkillGoalGapSource;
+  kind?: MatchableKind;
+}
+
+export function skillGoalGapSourceLabel(source: SkillGoalGapSource | undefined): string | null {
+  if (source === "saved_job") return "From saved job";
+  if (source === "corpus") return "From job postings";
+  if (source === "archetype") return "From role analysis";
+  return null;
 }
 
 function normalizeToken(value: string): string {
@@ -130,12 +142,19 @@ export function findProgramsForSkill(skill: string, limit = 4): UpskillProgram[]
   return matches.slice(0, limit);
 }
 
-export function buildSkillGoal(skill: string, role: string): SkillGoalRecord {
+export function buildSkillGoal(
+  skill: string,
+  role: string,
+  gapSource?: SkillGoalGapSource,
+  kind?: MatchableKind,
+): SkillGoalRecord {
   return {
     skill,
     role,
     addedAt: new Date().toISOString(),
     programs: findProgramsForSkill(skill),
+    ...(gapSource ? { gapSource } : {}),
+    ...(kind ? { kind } : {}),
   };
 }
 
@@ -179,7 +198,22 @@ export function normalizeSkillGoals(raw: unknown): SkillGoalRecord[] {
     }
 
     if (!programs.length) programs = findProgramsForSkill(skill);
-    out.push({ skill, role, addedAt, programs });
+    const gapSource =
+      row.gapSource === "saved_job" ||
+      row.gapSource === "corpus" ||
+      row.gapSource === "archetype" ||
+      row.gapSource === "manual"
+        ? row.gapSource
+        : undefined;
+    const kind = row.kind === "skill" || row.kind === "technology" ? row.kind : undefined;
+    out.push({
+      skill,
+      role,
+      addedAt,
+      programs,
+      ...(gapSource ? { gapSource } : {}),
+      ...(kind ? { kind } : {}),
+    });
   }
   return out;
 }

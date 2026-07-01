@@ -456,13 +456,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         fetch(withClientScope("/api/profile")).then((res) => (res.ok ? res.json() : null)),
       ] as const);
 
-      const targetRoles = [
-        ...(Array.isArray(profileData?.prioritizedRoles) ? profileData.prioritizedRoles : []),
-        ...(Array.isArray(profileData?.targetRoles) ? profileData.targetRoles : []),
-      ]
-        .map((r) => r.trim())
-        .filter(Boolean)
-        .filter((role, index, all) => all.findIndex((r) => r.toLowerCase() === role.toLowerCase()) === index);
+      const targetRoles = Array.isArray(profileData?.targetRoles) ? profileData.targetRoles : [];
 
       let profileForm: NetworkJobFilterForm;
       if (defaultsData?.filters) {

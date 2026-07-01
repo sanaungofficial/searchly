@@ -33,6 +33,7 @@ import {
 import { stripKimchiFollowUpsMarker } from "@/lib/kimchi-assistant/chat-follow-ups";
 import { profileLearningPathUrl, pipelineJobUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
 import { buildSkillGoal, normalizeSkillGoals } from "@/lib/upskill-programs";
+import { classifyMatchableKind } from "@/lib/skills-tools";
 import { primaryTargetRole } from "@/lib/target-roles-unified";
 import { ProfileResumeEditor } from "@/components/scout/profile-resume-editor";
 import { CreditsInlineHint } from "@/components/scout/credits-display";
@@ -453,7 +454,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       const role = primaryTargetRole(profile?.targetRoles) ?? "General";
       const next = [
         ...existing.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase()),
-        buildSkillGoal(skill, role),
+        buildSkillGoal(skill, role, "manual", classifyMatchableKind(skill)),
       ];
       await fetch(withClientScope("/api/profile"), {
         method: "PATCH",

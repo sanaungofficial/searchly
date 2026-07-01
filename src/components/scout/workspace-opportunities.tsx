@@ -44,6 +44,9 @@ import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { readProspectJobCache, writeProspectJobCache } from "@/lib/prospect-jobs-cache";
+import { buildSkillGoal, normalizeSkillGoals } from "@/lib/upskill-programs";
+import { primaryTargetRole } from "@/lib/target-roles-unified";
+import { profileLearningPathUrl } from "@/lib/workspace-urls";
 
 export type { DrawerTool };
 
@@ -296,6 +299,28 @@ export function WorkspaceOpportunities() {
     setDrawerTool(tool);
     if (loc.jobId) router.replace(withClientReviewPath(pipelineJobUrl(loc.jobId, tool)));
   };
+
+  const addGapToUpskill = useCallback(
+    async (skill: string, role: string) => {
+      const profileRes = await fetch(withClientScope("/api/profile"));
+      const profile = profileRes.ok ? await profileRes.json() : null;
+      const existing = normalizeSkillGoals(profile?.skillGoals);
+      const targetRole = role.trim() || primaryTargetRole(profile?.targetRoles) || "General";
+      const next = [
+        ...existing.filter(
+          (g) => !(g.skill.toLowerCase() === skill.toLowerCase() && g.role === targetRole),
+        ),
+        buildSkillGoal(skill, targetRole, "saved_job"),
+      ];
+      await fetch(withClientScope("/api/profile"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillGoals: next }),
+      });
+      router.push(withClientReviewPath(profileLearningPathUrl(skill)));
+    },
+    [router, withClientReviewPath, withClientScope],
+  );
 
   const closeProspectDrawer = () => {
     pendingProspectNavRef.current = null;
@@ -580,6 +605,7 @@ export function WorkspaceOpportunities() {
             onCardUpdate={(fields) => setKanbanCards((prev) =>
               prev.map((c) => c.id === card.id ? { ...c, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`_${k}`, v ?? undefined])) } : c)
             )}
+            onAddGapToUpskill={(skill, role) => void addGapToUpskill(skill, role)}
           />
         );
       })()}
@@ -598,6 +624,7 @@ export function WorkspaceOpportunities() {
           addingToPipeline={addingProspect}
           existingPipelineCardId={existingProspectPipelineCard?.id ?? null}
           onOpenInPipeline={existingProspectPipelineCard ? openProspectInPipeline : undefined}
+          onAddGapToUpskill={(skill, role) => void addGapToUpskill(skill, role)}
         />
       )}
 
@@ -619,6 +646,7 @@ export function WorkspaceOpportunities() {
             if (ext._dbId) go(pipelineJobUrl(ext._dbId));
             else setDrawerCardId(existingNetworkPipelineCard.id);
           } : undefined}
+          onAddGapToUpskill={(skill, role) => void addGapToUpskill(skill, role)}
         />
       )}
     </div>

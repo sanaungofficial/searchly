@@ -3,7 +3,6 @@ import { resolveProfileLocation } from "@/lib/profile-location";
 
 export type MatchingTuningGapId =
   | "target_roles"
-  | "priority_role"
   | "location"
   | "work_mode"
   | "relocation"
@@ -22,7 +21,6 @@ export type MatchingTuningGap = {
 
 export type RecommendationTuningInput = {
   targetRoles?: string[];
-  prioritizedRoles?: string[];
   targetMarket?: string | null;
   parsedData?: { location?: string | null; workExperience?: unknown[] } | null;
   priorities?: string[];
@@ -36,7 +34,6 @@ export type RecommendationTuningInput = {
 
 const WEIGHTS: Record<MatchingTuningGapId, number> = {
   target_roles: 18,
-  priority_role: 8,
   location: 14,
   work_mode: 10,
   relocation: 6,
@@ -72,11 +69,6 @@ const GAP_CATALOG: Record<MatchingTuningGapId, Omit<MatchingTuningGap, "id">> = 
     label: "Target roles",
     actionLabel: "Add the roles you're going for",
     weight: WEIGHTS.target_roles,
-  },
-  priority_role: {
-    label: "Top priority role",
-    actionLabel: "Pick your top-priority role",
-    weight: WEIGHTS.priority_role,
   },
   location: {
     label: "Location",
@@ -127,7 +119,6 @@ export const MATCHING_TUNING_ITEM_ORDER: MatchingTuningGapId[] = [
   "work_mode",
   "salary",
   "primary_goal",
-  "priority_role",
   "timeline",
   "resume",
   "relocation",
@@ -153,8 +144,6 @@ export function recommendationTuningGaps(input: RecommendationTuningInput): Matc
 
   if (roles.length === 0) {
     gaps.push({ id: "target_roles", ...GAP_CATALOG.target_roles });
-  } else if (roles.length >= 2 && !(input.prioritizedRoles ?? []).some((r) => roles.includes(r))) {
-    gaps.push({ id: "priority_role", ...GAP_CATALOG.priority_role });
   }
 
   if (!hasLocation(input)) {
