@@ -13,7 +13,8 @@ import { InboxStatusPills } from "./inbox-status-pill";
 import { SenderAvatar } from "./sender-avatar";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import type { ContactCardData, ContactTimelineItem } from "./inbox-types";
-import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
+import { useWorkspaceStackTop } from "@/hooks/use-workspace-stack-top";
+import { DRAWER_BACKDROP_Z, DRAWER_Z, backdropBelowNav } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = "88vw";
 const SIDEBAR_WIDTH = 320;
@@ -209,6 +210,7 @@ export function InboxContactDrawer({
   mailConnected = true,
 }: Props) {
   const isMobile = useIsMobile();
+  const stackTop = useWorkspaceStackTop();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [card, setCard] = useState<ContactCardData | null>(null);
@@ -468,11 +470,14 @@ export function InboxContactDrawer({
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div
+        onClick={close}
+        style={{ ...backdropBelowNav(stackTop), background: "rgba(0,0,0,0.22)", zIndex: DRAWER_BACKDROP_Z }}
+      />
       <div
         style={{
           position: "fixed",
-          top: isMobile ? 0 : 10,
+          top: isMobile ? stackTop : stackTop + 10,
           right: isMobile ? 0 : 10,
           bottom: isMobile ? 0 : 10,
           left: isMobile ? 0 : undefined,

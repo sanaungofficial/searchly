@@ -2,7 +2,7 @@
  * Workspace stacking order (low → high):
  * backdrop (220) → top nav (225) → drawer panel (230) → nested backdrop/drawer (235/236).
  * Nav must stay above backdrops so link clicks are never swallowed by transparent overlays.
- * Backdrops should use `backdropBelowNav(topPx)` — never `inset: 0` at z ≥ TOP_NAV_Z.
+ * Backdrops should use `backdropBelowNav(topPx)` or ScoutDrawerBackdrop (defaults to --workspace-stack-top).
  */
 export const DRAWER_BACKDROP_Z = 220;
 export const TOP_NAV_Z = 225;
