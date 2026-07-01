@@ -1,6 +1,10 @@
 import type { InboxContactSource, JobStage, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isInboxContactStatus } from "@/lib/inbox-crm/contact-status";
+import {
+  dbStatusesForCanonical,
+  isInboxContactStatus,
+  normalizeContactStatus,
+} from "@/lib/inbox-crm/contact-status";
 
 export type ContactSortField =
   | "name"
@@ -67,10 +71,17 @@ function buildFilterWhere(filters: ContactListFilter[]): Prisma.InboxContactWher
   for (const f of filters) {
     if (f.category === "contact") {
       if (f.field === "status" && f.operator === "eq" && typeof f.value === "string") {
-        clauses.push({ status: f.value });
+        if (isInboxContactStatus(f.value)) {
+          clauses.push({ status: { in: dbStatusesForCanonical(f.value) } });
+        } else {
+          clauses.push({ status: f.value });
+        }
       }
       if (f.field === "status" && f.operator === "in" && Array.isArray(f.value)) {
-        clauses.push({ status: { in: f.value } });
+        const expanded = f.value.flatMap((v) =>
+          typeof v === "string" && isInboxContactStatus(v) ? dbStatusesForCanonical(v) : v,
+        );
+        clauses.push({ status: { in: expanded } });
       }
       if (f.field === "source" && f.operator === "eq" && typeof f.value === "string") {
         clauses.push({ source: f.value as InboxContactSource });
@@ -234,7 +245,7 @@ export async function listInboxContacts(params: ListContactsParams) {
     notes: c.notes,
     contacted: c.contacted,
     source: c.source,
-    status: c.status,
+    status: normalizeContactStatus(c.status),
     statusUpdatedAt: c.statusUpdatedAt?.toISOString() ?? null,
     lastActivityAt: c.lastActivityAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),

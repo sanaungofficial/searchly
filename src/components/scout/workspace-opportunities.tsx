@@ -703,11 +703,19 @@ export function WorkspaceOpportunities() {
             onCardUpdate={(fields) => setKanbanCards((prev) =>
               prev.map((c) => {
                 if (c.id !== card.id) return c;
-                const next = { ...c } as KanbanCard & { _pipelineTags?: string[]; _meta?: JobMeta };
+                const next = { ...c } as KanbanCard & { _pipelineTags?: string[]; _meta?: JobMeta; _appliedAt?: string };
                 for (const [k, v] of Object.entries(fields)) {
                   if (k === "pipelineTags" && Array.isArray(v)) {
                     next._pipelineTags = v;
                     next._meta = { ...(next._meta ?? {}), pipelineTags: v };
+                    continue;
+                  }
+                  if (k === "jobMeta" && v && typeof v === "object") {
+                    next._meta = { ...(next._meta ?? {}), ...(v as JobMeta) };
+                    continue;
+                  }
+                  if (k === "appliedAt") {
+                    next._appliedAt = typeof v === "string" ? v : undefined;
                     continue;
                   }
                   (next as Record<string, unknown>)[`_${k}`] = v ?? undefined;

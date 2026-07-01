@@ -4,6 +4,7 @@ export type PipelineColumnId =
   | "role"
   | "company"
   | "stage"
+  | "interviewRound"
   | "tags"
   | "location"
   | "saved"
@@ -20,13 +21,14 @@ export const PIPELINE_COLUMNS: PipelineColumnDef[] = [
   { id: "role", label: "Role", defaultVisible: true, minWidth: 200 },
   { id: "company", label: "Company", defaultVisible: true, minWidth: 140 },
   { id: "stage", label: "Stage", defaultVisible: true, minWidth: 140 },
+  { id: "interviewRound", label: "Interview round", defaultVisible: true, minWidth: 130 },
   { id: "tags", label: "Tags", defaultVisible: true, minWidth: 160 },
   { id: "location", label: "Location", defaultVisible: false, minWidth: 120 },
   { id: "saved", label: "Saved", defaultVisible: true, minWidth: 90 },
   { id: "fit", label: "Match", defaultVisible: false, minWidth: 80 },
 ];
 
-export const PIPELINE_COLUMNS_STORAGE_KEY = "kimchi_pipeline_columns_v1";
+export const PIPELINE_COLUMNS_STORAGE_KEY = "kimchi_pipeline_columns_v2";
 
 export const DEFAULT_PIPELINE_VISIBLE_COLUMNS: PipelineColumnId[] = PIPELINE_COLUMNS.filter(
   (c) => c.defaultVisible,
