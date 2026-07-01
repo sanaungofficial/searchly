@@ -12,8 +12,8 @@ import {
   DEPRIORITIZED_CATEGORY_SUGGESTIONS,
   DEPRIORITIZED_ROLE_SUGGESTIONS,
   PRIORITIZED_CATEGORY_SUGGESTIONS,
-  PRIORITIZED_ROLE_SUGGESTIONS,
 } from "@/lib/role-title-preferences";
+import { migrateLegacyRoleFields } from "@/lib/target-roles-unified";
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
 import { SearchPreferencesExperienceEditor } from "./search-preferences-profile-section";
 import {
@@ -397,7 +397,7 @@ const SKILL_GOALS_KEY = "kimchi_skill_goals";
 async function migrateLegacyProfileData(
   userProfile: UserProfile,
   patchProfileFn: (patch: Record<string, unknown>) => Promise<void>,
-): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[] }> {
+): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[]; targetRoles?: string[] }> {
   const patch: Record<string, unknown> = {};
   let skillGoals = userProfile.skillGoals ?? [];
   let roleAnalyses = normalizeRoleAnalysesMap(userProfile.roleAnalyses);
@@ -456,7 +456,18 @@ async function migrateLegacyProfileData(
     await patchProfileFn(patch);
   }
 
-  return { roleAnalyses, skillGoals };
+  const roleMigration = migrateLegacyRoleFields({
+    targetRoles: userProfile.targetRoles,
+    prioritizedRoles: userProfile.prioritizedRoles,
+  });
+  if (roleMigration.migrated) {
+    await patchProfileFn({
+      targetRoles: roleMigration.targetRoles,
+      prioritizedRoles: roleMigration.prioritizedRoles,
+    });
+  }
+
+  return { roleAnalyses, skillGoals, targetRoles: roleMigration.targetRoles };
 }
 
 type SkillGoal = SkillGoalRecord;
@@ -1065,9 +1076,6 @@ function DreamRoleTab({
   dreamList,
   setDreamList,
   onSave,
-  prioritizedList,
-  setPrioritizedList,
-  onPrioritizedSave,
   prioritizedCategories,
   setPrioritizedCategories,
   onPrioritizedCategoriesSave,
@@ -1097,9 +1105,6 @@ function DreamRoleTab({
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
-  prioritizedList: string[];
-  setPrioritizedList: (l: string[]) => void;
-  onPrioritizedSave: (list: string[]) => void;
   prioritizedCategories: string[];
   setPrioritizedCategories: (l: string[]) => void;
   onPrioritizedCategoriesSave: (list: string[]) => void;
@@ -1278,6 +1283,15 @@ function DreamRoleTab({
     if (expandedRole === title) setExpandedRole(null);
   };
 
+  const moveRole = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= dreamList.length) return;
+    const next = [...dreamList];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    setDreamList(next);
+    onSave(next);
+  };
+
   const toggleExpand = async (role: string) => {
     if (expandedRole === role) { setExpandedRole(null); return; }
     setExpandedRole(role);
@@ -1343,18 +1357,13 @@ function DreamRoleTab({
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Feed ranking</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Target roles unlock fit analysis. Prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
+          Order matters — your top role gets the strongest feed boost. Deprioritized patterns sort lower; nothing is hidden.
         </p>
         <RoleListBulkPaste
         dreamList={dreamList}
         onTargetChange={(next) => {
           setDreamList(next);
           onSave(next);
-        }}
-        prioritizedList={prioritizedList}
-        onPrioritizedChange={(next) => {
-          setPrioritizedList(next);
-          onPrioritizedSave(next);
         }}
         deprioritizedList={deprioritizedList}
         onDeprioritizedChange={(next) => {
@@ -1378,7 +1387,7 @@ function DreamRoleTab({
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Target roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles you want at the top of Recommended and In-network. Add as many as you need; pick a resume per role for fit analysis.
+          Roles you want at the top of Recommended and In-network. List order sets feed priority — drag with arrows to reorder.
         </p>
         {!showSearch ? (
           <button
@@ -1425,7 +1434,7 @@ function DreamRoleTab({
         )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {dreamList.map((role) => {
+        {dreamList.map((role, roleIndex) => {
           const isOpen = expandedRole === role;
           const result = analysis[role];
           const loaded = getLoaded(role);
@@ -1466,6 +1475,22 @@ function DreamRoleTab({
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); moveRole(roleIndex, -1); }}
+                      disabled={roleIndex === 0}
+                      aria-label={`Move ${role} up`}
+                      style={{ background: "none", border: "none", cursor: roleIndex === 0 ? "default" : "pointer", color: roleIndex === 0 ? "#E0E0E0" : color.muted, fontSize: 12, lineHeight: 1, padding: "2px 4px" }}
+                    >↑</button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); moveRole(roleIndex, 1); }}
+                      disabled={roleIndex === dreamList.length - 1}
+                      aria-label={`Move ${role} down`}
+                      style={{ background: "none", border: "none", cursor: roleIndex === dreamList.length - 1 ? "default" : "pointer", color: roleIndex === dreamList.length - 1 ? "#E0E0E0" : color.muted, fontSize: 12, lineHeight: 1, padding: "2px 4px" }}
+                    >↓</button>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeRole(role); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
@@ -1700,22 +1725,11 @@ function DreamRoleTab({
       </ScoutBox>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
-        <ScoutLabel>Prioritized roles</ScoutLabel>
+        <ScoutLabel>Feed filters</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles and add similar titles to cast a wider net.
+          Narrow which jobs rank higher by job function and experience level.
         </p>
-        <RoleTitlePicker
-          selected={prioritizedList}
-          onChange={(next) => {
-            setPrioritizedList(next);
-            onPrioritizedSave(next);
-          }}
-          placeholder="e.g. Commercial Product Lead, GTM Operations…"
-          addButtonLabel="+ Add prioritized role"
-          quickSuggestions={PRIORITIZED_ROLE_SUGGESTIONS}
-          enableRelatedExpand
-        />
-        <div style={{ marginTop: 20 }}>
+        <div>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Job functions
           </p>
@@ -1906,10 +1920,6 @@ function LearningTab({
     setProgress({ ...progress, [String(id)]: status });
   };
 
-  const doneCount = Object.values(progress).filter((v) => v === "completed").length;
-  const customDone = customItems.filter((i) => i.status === "completed").length;
-  const total = UPSKILL_CATEGORIES.reduce((a, c) => a + c.items.length, 0);
-
   const handleGraduate = async (skill: string) => {
     setGraduating(skill);
     await onGraduate(skill);
@@ -1969,6 +1979,10 @@ function LearningTab({
       ),
     ),
   );
+
+  const doneCount = programItems.filter((item) => progress[String(item.id)] === "completed").length;
+  const customDone = customItems.filter((i) => i.status === "completed").length;
+  const total = programItems.length + customItems.length;
 
   const renderSkillRow = (g: SkillGoal) => {
     const isHighlighted = highlightSkill?.toLowerCase() === g.skill.toLowerCase();
@@ -3012,7 +3026,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
-  const [prioritizedList, setPrioritizedList] = useState<string[]>([]);
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [deprioritizedList, setDeprioritizedList] = useState<string[]>([]);
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
@@ -3081,7 +3094,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         const userProfile = data as UserProfile;
         setProfile(userProfile);
         setDreamList(userProfile.targetRoles || []);
-        setPrioritizedList(userProfile.prioritizedRoles || []);
         setPrioritizedCategories(userProfile.prioritizedCategories || []);
         setDeprioritizedList(userProfile.deprioritizedRoles || []);
         setDeprioritizedCategories(userProfile.deprioritizedCategories || []);
@@ -3102,6 +3114,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
           const migrated = await migrateLegacyProfileData(userProfile, patchProfile);
           setRoleAnalyses(migrated.roleAnalyses);
           setSkillGoals(migrated.skillGoals);
+          if (migrated.targetRoles?.length) {
+            setDreamList(migrated.targetRoles);
+          }
         }
       })
       .catch(() => {})
@@ -3477,7 +3492,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     }
   };
 
-  const targetRolesForResumes = dedupeRoles([...dreamList, ...prioritizedList]);
+  const targetRolesForResumes = dedupeRoles(dreamList);
 
   const handleResumeUpload = async (file: File) => {
     setResumeUploading(true);
@@ -3844,9 +3859,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 dreamList={dreamList}
                 setDreamList={setDreamList}
                 onSave={(list) => patchProfile({ targetRoles: list })}
-                prioritizedList={prioritizedList}
-                setPrioritizedList={setPrioritizedList}
-                onPrioritizedSave={(list) => patchProfile({ prioritizedRoles: list })}
                 prioritizedCategories={prioritizedCategories}
                 setPrioritizedCategories={setPrioritizedCategories}
                 onPrioritizedCategoriesSave={(list) => patchProfile({ prioritizedCategories: list })}

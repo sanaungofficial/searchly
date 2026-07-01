@@ -4,6 +4,7 @@ import {
   scrapeLinkedInProfile,
 } from "@/lib/apify-linkedin";
 import { tierFromScore } from "@/lib/discovery-score";
+import { unifiedTargetRoles } from "@/lib/target-roles-unified";
 import { benchmarkPeerLabel, type DiscoveryBenchmarkResolution } from "./benchmark-role";
 import type {
   DiscoveryBenchmarkProfile,
@@ -234,8 +235,12 @@ export function computeDiscoveryScoreFromCohort(
   const breakdown = buildBreakdown(user, cohortAvg);
   const score = breakdown.resumeStrength + breakdown.positioningClarity + breakdown.marketReadiness + breakdown.competitiveSignals;
   const { strengths, gaps } = skillInsights(ctx, cohort);
+  const orderedRoles = unifiedTargetRoles({
+    targetRoles: ctx.targetRoles,
+    prioritizedRoles: ctx.prioritizedRoles,
+  });
   const resolution = benchmark ?? {
-    targetRoleLabel: ctx.prioritizedRoles[0] ?? ctx.targetRoles[0] ?? "similar roles",
+    targetRoleLabel: orderedRoles[0] ?? "similar roles",
     hirebaseCategory: ctx.prioritizedCategories[0] ?? null,
     sumbleJobFunction: null,
     sumbleJobLevel: null,
