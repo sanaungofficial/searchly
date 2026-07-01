@@ -3,6 +3,7 @@ import { Playfair_Display, Cormorant_Garamond, Fraunces, Source_Sans_3, DM_Mono,
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PartneroScript } from "@/components/partnero-script";
+import { ClickConnectorWidget } from "@/components/clickconnector-widget";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -77,6 +78,7 @@ export default function RootLayout({
       >
         {children}
         <PartneroScript />
+        <ClickConnectorWidget />
         <Toaster />
       </body>
     </html>
