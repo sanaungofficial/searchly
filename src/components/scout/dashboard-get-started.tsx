@@ -4,160 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { type KanbanCard } from "@/components/scout/workspace-data";
-import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { SectionHeadingWithHelp } from "@/components/scout/section-help-tip";
+import { SearchMetricsSections } from "@/components/scout/search-metrics-sections";
 import {
   readOnboardingFinishPayload,
   type OnboardingFinishPayload,
 } from "@/lib/onboarding-finish";
-import { bruddleHeadingStyle, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
-
-const STAT_LABEL: React.CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: T.label,
-  fontWeight: 600,
-  color: color.muted,
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  marginBottom: 10,
-};
-
-function stageMeta(stage: KanbanCard["stage"]) {
-  const stageLabel =
-    stage === "saved"
-      ? "Saved"
-      : stage === "applied"
-        ? "Applied"
-        : stage === "interview"
-          ? "Interviewing"
-          : stage === "offer"
-            ? "Offer"
-            : stage;
-  const stageColor =
-    stage === "offer"
-      ? "#1A3A2F"
-      : stage === "interview"
-        ? "#2D6B4A"
-        : stage === "applied"
-          ? "#5A8A6E"
-          : "#8B9E8B";
-  return { stageLabel, stageColor };
-}
-
-function formatDaysAgo(days: number) {
-  if (days === 0) return "today";
-  if (days === 1) return "1d ago";
-  return `${days}d ago`;
-}
-
-function ActivityFeedItem({
-  card,
-  isMobile,
-  onNavigate,
-}: {
-  card: KanbanCard;
-  isMobile: boolean;
-  onNavigate: () => void;
-}) {
-  const { stageLabel, stageColor } = stageMeta(card.stage);
-  const timeLabel = formatDaysAgo(card.days);
-
-  const stageBadge: React.CSSProperties = {
-    fontFamily: fontMono,
-    fontSize: T.label,
-    color: stageColor,
-    background: surface.inset,
-    padding: "4px 10px",
-    border: "var(--scout-border)",
-    borderRadius: "var(--scout-radius)",
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  };
-
-  if (isMobile) {
-    return (
-      <button
-        type="button"
-        onClick={onNavigate}
-        style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          padding: "14px 16px",
-          background: surface.card,
-          border: "var(--scout-border)",
-          borderRadius: "var(--scout-radius)",
-          boxShadow: "var(--scout-shadow-card)",
-          cursor: "pointer",
-          WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              flexShrink: 0,
-              background: stageColor,
-              marginTop: 6,
-            }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.ink, fontWeight: 600, margin: 0, lineHeight: 1.3 }}>
-              {card.company}
-            </p>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
-              {card.role}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingLeft: 18 }}>
-          <span style={stageBadge}>{stageLabel}</span>
-          <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{timeLabel}</span>
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onNavigate}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        width: "100%",
-        padding: "14px 18px",
-        background: surface.card,
-        border: "var(--scout-border)",
-        borderRadius: "var(--scout-radius)",
-        boxShadow: "var(--scout-shadow-card)",
-        cursor: "pointer",
-        textAlign: "left",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      <div style={{ width: 8, height: 8, flexShrink: 0, borderRadius: "50%", background: stageColor }} />
-      <span style={{ fontFamily: fontSans, fontSize: T.body, color: color.ink, fontWeight: 500, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {card.company}
-      </span>
-      <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight }}>·</span>
-      <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
-        {card.role}
-      </span>
-      <span style={{ ...stageBadge, flexShrink: 0, padding: "3px 10px" }}>{stageLabel}</span>
-      <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>{timeLabel}</span>
-    </button>
-  );
-}
-
-function convRate(from: number, to: number) {
-  if (from === 0) return null;
-  return Math.round((to / from) * 100);
-}
+import type { SearchMetrics } from "@/lib/search-metrics";
+import { bruddleHeadingStyle, color, fontSans, type as T } from "@/lib/typography";
 
 type Props = {
   isMobile: boolean;
@@ -165,37 +20,30 @@ type Props = {
 
 export function DashboardGetStarted({ isMobile }: Props) {
   const router = useRouter();
-  const { kanbanCards, withClientReviewPath } = useWorkspace();
+  const { kanbanCards, withClientReviewPath, withClientScope } = useWorkspace();
   const [finishPayload, setFinishPayload] = useState<OnboardingFinishPayload | null>(null);
+  const [metrics, setMetrics] = useState<SearchMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
 
   useEffect(() => {
     setFinishPayload(readOnboardingFinishPayload());
   }, []);
 
-  const pipeline = useMemo(
-    () => ({
-      saved: kanbanCards.filter((c) => c.stage === "saved").length,
-      applied: kanbanCards.filter((c) => c.stage === "applied").length,
-      interview: kanbanCards.filter((c) => c.stage === "interview").length,
-      offer: kanbanCards.filter((c) => c.stage === "offer").length,
-    }),
-    [kanbanCards],
-  );
+  useEffect(() => {
+    setMetricsLoading(true);
+    fetch(withClientScope("/api/user/search-metrics"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.jobs && data?.relationships) setMetrics(data as SearchMetrics);
+      })
+      .catch(() => {})
+      .finally(() => setMetricsLoading(false));
+  }, [withClientScope]);
 
-  const total = pipeline.saved + pipeline.applied + pipeline.interview + pipeline.offer;
-  const recentActivity = kanbanCards
-    .filter((c) => c.days <= 7 && c.stage !== "closed")
-    .sort((a, b) => a.days - b.days);
-
-  const funnelStages: { key: keyof typeof pipeline; label: string }[] = [
-    { key: "saved", label: "Saved" },
-    { key: "applied", label: "Applied" },
-    { key: "interview", label: "Interviewing" },
-    { key: "offer", label: "Offer" },
-  ];
-
-  const statValueSize = isMobile ? 36 : T.stat;
-  const statCardPad = isMobile ? "16px 18px" : "20px 24px";
+  const pipelineTotal = useMemo(() => {
+    if (metrics?.jobs) return metrics.jobs.activePipeline;
+    return kanbanCards.filter((c) => c.stage !== "closed").length;
+  }, [metrics, kanbanCards]);
 
   const finishJobLabel =
     finishPayload?.jobTitle &&
@@ -211,11 +59,11 @@ export function DashboardGetStarted({ isMobile }: Props) {
       }}
     >
       <SectionHeadingWithHelp
-        title={total === 0 ? "Get started" : "Your job search"}
+        title={pipelineTotal === 0 ? "Get started" : "Search progress"}
         help={
-          total === 0
+          pipelineTotal === 0
             ? "New here? These are the fastest ways to get moving — browse jobs, save one you're interested in, or upload your resume so we can actually help you tailor things."
-            : "A snapshot of roles you're tracking — saved, applied, interviewing, and offers. Tap any row to open your full list."
+            : "Job pipeline and networking lead counts — tap through to update roles or reach out to contacts."
         }
         titleStyle={{ fontSize: T.label, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, fontWeight: 600 }}
       />
@@ -270,7 +118,7 @@ export function DashboardGetStarted({ isMobile }: Props) {
         </ScoutBox>
       )}
 
-      {total === 0 ? (
+      {pipelineTotal === 0 && !metricsLoading ? (
         <div
           style={{
             display: "grid",
@@ -324,70 +172,13 @@ export function DashboardGetStarted({ isMobile }: Props) {
           ))}
         </div>
       ) : (
-        <>
-          <ScoutBox stack padding={statCardPad} style={{ marginTop: 12, marginBottom: 20 }}>
-            <p style={STAT_LABEL}>Roles you're tracking</p>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
-              <span style={displayTitleStyle(isMobile ? 40 : 48, { lineHeight: 1 })}>{total}</span>
-              <span style={displayTitleStyle(20, { color: color.muted, lineHeight: 1.1 })}>active</span>
-            </div>
-          </ScoutBox>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-              gap: isMobile ? 10 : 12,
-              marginBottom: 20,
-            }}
-          >
-            {funnelStages.map((stage, idx) => {
-              const count = pipeline[stage.key];
-              const prevCount = idx === 0 ? null : pipeline[funnelStages[idx - 1]!.key];
-              const rate = prevCount !== null ? convRate(prevCount, count) : null;
-              return (
-                <ScoutBox key={stage.key} padding={statCardPad}>
-                  <p style={STAT_LABEL}>{stage.label}</p>
-                  <p
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: statValueSize,
-                      fontWeight: 600,
-                      color: color.ink,
-                      lineHeight: 1,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {count}
-                  </p>
-                  {rate !== null && (
-                    <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 4 }}>
-                      {rate}% from previous
-                    </p>
-                  )}
-                </ScoutBox>
-              );
-            })}
-          </div>
-
-          {recentActivity.length > 0 && (
-            <div>
-              <div style={{ marginTop: 4, marginBottom: 10 }}>
-                <ScoutLabel>Last 7 days</ScoutLabel>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 8 : 6 }}>
-                {recentActivity.slice(0, 6).map((card) => (
-                  <ActivityFeedItem
-                    key={card.id}
-                    card={card}
-                    isMobile={isMobile}
-                    onNavigate={() => router.push(withClientReviewPath("/opportunities"))}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        <SearchMetricsSections
+          metrics={metrics}
+          loading={metricsLoading}
+          isMobile={isMobile}
+          opportunitiesPath={withClientReviewPath("/opportunities")}
+          networkingPath={withClientReviewPath("/networking")}
+        />
       )}
     </div>
   );

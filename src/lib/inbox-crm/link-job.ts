@@ -1,5 +1,6 @@
 import type { InboxActivity } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { normalizeContactStatus } from "@/lib/inbox-crm/contact-status";
 
 export async function linkActivityToJob(params: {
   userId: string;
@@ -141,7 +142,7 @@ export async function loadContactCard(userId: string, contactId: string, options
       notes: contact.notes,
       contacted: contact.contacted,
       source: contact.source,
-      status: contact.status,
+      status: normalizeContactStatus(contact.status),
       statusUpdatedAt: contact.statusUpdatedAt?.toISOString() ?? null,
       lastActivityAt: contact.lastActivityAt?.toISOString() ?? null,
       createdAt: contact.createdAt.toISOString(),

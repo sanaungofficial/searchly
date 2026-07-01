@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobMeta } from "@/lib/job-meta";
+import { interviewRoundLabel } from "@/lib/interview-round";
 import { companyLogoFromJobData } from "@/lib/cached-job";
 import type { PipelineTagSummary } from "@/lib/pipeline-tags";
 import { normalizePipelineTags } from "@/lib/pipeline-tags";
@@ -233,6 +234,16 @@ export function PipelineOpportunitiesTable({
         return <CellText value={row.company} />;
       case "stage":
         return <PipelineStageBadge stage={row.stage} />;
+      case "interviewRound":
+        return (
+          <CellText
+            value={
+              row.stage === "interview" || row.stage === "offer"
+                ? interviewRoundLabel(ext._meta?.interviewRound) ?? null
+                : null
+            }
+          />
+        );
       case "tags":
         if (!tags.length) return <CellText value={null} />;
         return (

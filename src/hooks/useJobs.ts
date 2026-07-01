@@ -53,7 +53,8 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     _fitAnalysis: job.fitAnalysis ?? undefined,
     _meta,
     _pipelineTags: parsePipelineTagsFromMeta(_meta),
-  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta; _pipelineTags?: string[] };
+    _appliedAt: job.appliedAt ?? undefined,
+  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta; _pipelineTags?: string[]; _appliedAt?: string };
 }
 
 export function useJobs(fallback: KanbanCard[], reloadKey?: string, adminReviewClientId?: string | null) {
