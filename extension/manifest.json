@@ -5,6 +5,7 @@
   "description": "Save jobs to your Kimchi pipeline from Greenhouse, Lever, Ashby, LinkedIn, and career pages.",
   "permissions": ["storage", "activeTab", "cookies", "scripting"],
   "host_permissions": [
+    "https://kimchi.so/*",
     "https://app.kimchi.so/*",
     "https://kimchi-git-dev-second-ladder.vercel.app/*",
     "https://boards.greenhouse.io/*",

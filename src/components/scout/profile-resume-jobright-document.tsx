@@ -15,6 +15,8 @@ import {
 import { JR } from "./profile-resume-editor-panels";
 import { MatchTag } from "./profile-resume-match-panel";
 import { SectionIssueBadge } from "./resume-dashboard-pills";
+import { TailoredResumePreviewFrame } from "./tailored-resume-preview-frame";
+import { RP } from "@/lib/resume-page-tokens";
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {
   summary: "Professional Summary",
@@ -109,13 +111,15 @@ function SkillPill({ label, onRemove }: { label: string; onRemove: () => void })
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        background: "#F3F4F6",
-        borderRadius: "var(--scout-radius)",
-        fontSize: 10,
+        gap: 6,
+        padding: "6px 10px 6px 6px",
+        background: "#FFFFFF",
+        border: `1px solid ${RP.border}`,
+        borderRadius: 999,
+        fontSize: 11,
         marginRight: 6,
         marginBottom: 6,
+        color: RP.text,
       }}
     >
       <GripVertical size={10} color={JR.muted} />
@@ -143,6 +147,7 @@ export function JobrightResumeDocument({
   hideInlineScore,
   resumeStyle: resumeStyleProp,
   dashboardPills,
+  usePreviewFrame,
 }: {
   data: ParsedResumeData;
   onChange: (next: ParsedResumeData) => void;
@@ -159,6 +164,7 @@ export function JobrightResumeDocument({
   hideInlineScore?: boolean;
   resumeStyle?: ResumeStyleSettings;
   dashboardPills?: React.ReactNode;
+  usePreviewFrame?: boolean;
 }) {
   const sectionOrder = data.sectionOrder?.length ? data.sectionOrder : DEFAULT_SECTION_ORDER;
   const skillGroups = data.skillGroups.length
@@ -199,15 +205,14 @@ export function JobrightResumeDocument({
     return `${start}${start && end ? " – " : ""}${end}`;
   }
 
-  return (
+  const innerDoc = (
     <div
       style={{
         background: JR.panel,
         width: "100%",
-        maxWidth: 820,
         padding: compact ? "24px 32px 36px" : "32px 48px 48px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)",
-        borderRadius: "var(--scout-radius)",
+        boxShadow: usePreviewFrame ? "0 2px 8px rgba(0,0,0,0.06)" : "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)",
+        borderRadius: usePreviewFrame ? 4 : "var(--scout-radius)",
         fontSize: style.fontSizeBody,
         lineHeight: compact ? 1.45 : 1.55,
         color: JR.text,
@@ -438,6 +443,18 @@ export function JobrightResumeDocument({
 
         return null;
       })}
+    </div>
+  );
+
+  return (
+    <div style={{ width: "100%", maxWidth: 820 }}>
+      {usePreviewFrame ? (
+        <TailoredResumePreviewFrame fitToOnePage={style.fitToOnePage} showFitButton={false}>
+          {innerDoc}
+        </TailoredResumePreviewFrame>
+      ) : (
+        innerDoc
+      )}
     </div>
   );
 }

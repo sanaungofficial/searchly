@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
-import { X, Download, Loader2, Check, RefreshCw, Share2, ChevronDown } from "lucide-react";
+import { X, Download, Loader2, Check, RefreshCw, Share2, ChevronDown, ArrowLeft, Pencil } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   emptyParsedResumeData,
@@ -12,7 +12,7 @@ import {
   type ParsedResumeData,
   type ResumeSectionId,
 } from "@/lib/resume-parse";
-import { computeAnalysisStats, countSectionIssues } from "@/lib/resume-analysis-stats";
+import { computeAnalysisStats, countSectionIssues, computeFixCountsByPriority } from "@/lib/resume-analysis-stats";
 import { DEFAULT_RESUME_STYLE, normalizeResumeStyle, type ResumeStyleSettings } from "@/lib/resume-style";
 import { ResumeDashboardPills } from "./resume-dashboard-pills";
 import { ResumeStylePanel } from "./resume-style-panel";
@@ -33,6 +33,8 @@ import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
+import { RP } from "@/lib/resume-page-tokens";
+
 import {
   computeExperienceEntryMatches,
   computeSectionMatches,
@@ -47,6 +49,8 @@ interface ProfileResumeEditorProps {
   initialJobDescription?: string | null;
   autoRunMatch?: boolean;
   onboardingJobLabel?: string | null;
+  /** Full-page route layout (Jobright /resume/edit) vs slide-over drawer. */
+  layout?: "overlay" | "page";
 }
 
 interface AssetResponse {
@@ -103,7 +107,9 @@ export function ProfileResumeEditor({
   initialJobDescription,
   autoRunMatch = false,
   onboardingJobLabel,
+  layout = "overlay",
 }: ProfileResumeEditorProps) {
+  const isPageLayout = layout === "page";
   const isMobile = useIsMobile();
   const { withClientScope } = useWorkspace();
   const [loading, setLoading] = useState(false);
@@ -575,18 +581,21 @@ export function ProfileResumeEditor({
     }
   }
 
-  return (
-    <div className="resume-print-outer" style={{ position: "fixed", inset: 0, zIndex: 1000, fontFamily: "var(--font-ui), sans-serif" }}>
-      <div className="resume-print-backdrop" onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,0.35)", opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }} />
-      <div className="resume-print-target" style={{ position: "absolute", top: isMobile ? 0 : 8, right: isMobile ? 0 : 8, bottom: isMobile ? 0 : 8, left: isMobile ? 0 : undefined, width: isMobile ? "100vw" : "min(94vw, calc(100vw - 16px))", background: JR.bg, borderRadius: isMobile ? 0 : 0, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: isMobile ? "none" : "0 12px 48px rgba(0,0,0,0.18)", transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))", transition: "transform 0.25s ease" }}>
-        <div className="resume-print-hide" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "0 12px" : "0 20px", height: 52, borderBottom: `1px solid ${JR.border}`, background: JR.panel, flexShrink: 0, gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: JR.muted, display: "flex" }}><X size={18} /></button>
-            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: JR.muted }}>RESUME</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 10px", background: JR.bg, borderRadius: "var(--scout-radius)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{assetName}</span>
-            {isPrimary && <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: "var(--scout-radius)" }}>Primary</span>}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+  const fixCounts = computeFixCountsByPriority(fullReport);
+
+  const headerBar = (
+    <div className="resume-print-hide" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "0 12px" : "0 20px", height: isPageLayout ? 56 : 52, borderBottom: `1px solid ${JR.border}`, background: JR.panel, flexShrink: 0, gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: JR.muted, display: "flex" }}>
+          {isPageLayout ? <ArrowLeft size={18} /> : <X size={18} />}
+        </button>
+        <span style={{ fontSize: isPageLayout ? 22 : 12, fontWeight: 800, letterSpacing: isPageLayout ? 1.5 : 1, color: JR.text, textTransform: "uppercase" }}>Resume</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 12px", background: RP.mintTint, borderRadius: 999, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220, border: `1px solid ${RP.mintBorder}` }}>{assetName}</span>
+        {isPrimary && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", background: RP.primaryBadgeBg, color: JR.text, borderRadius: 6 }}>★ Primary</span>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        {!isPageLayout && (
+          <>
             <JobrightScorePill
               score={headerScore}
               scoreMax={headerScoreMax}
@@ -596,24 +605,120 @@ export function ProfileResumeEditor({
               onViewReport={() => (showJobMatchScore ? setRightTab("match") : setReportOpen(true))}
             />
             <ScoreExplainerPopover variant={showJobMatchScore ? "job-match" : "resume-quality"} />
-            {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
-            {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
-            <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
+          </>
+        )}
+        {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
+        {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
+        {isPageLayout && (
+          <button type="button" onClick={() => setRightTab("style")} style={{ padding: "8px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: RP.ctaSecondaryRadius, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <Pencil size={14} /> Edit Resume Info
+          </button>
+        )}
+        {!isPageLayout && (
+          <>
+            <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: RP.ctaSecondaryRadius, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
             {shareMsg && <span style={{ fontSize: 12, color: JR.green }}>{shareMsg}</span>}
-            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, cursor: "pointer" }}>Preview</button>
-            <div ref={downloadRef} style={{ position: "relative" }}>
-              <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />} Download <ChevronDown size={12} />
-              </button>
-              {downloadMenuOpen && (
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: JR.panel, border: `1px solid ${JR.border}`, minWidth: 160, zIndex: 10 }}>
-                  <button type="button" onClick={() => void downloadFile("pdf")} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 12, cursor: "pointer" }}>Download PDF</button>
-                  <button type="button" onClick={() => void downloadFile("docx")} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 12, cursor: "pointer", borderTop: `1px solid ${JR.border}` }}>Download Word</button>
-                </div>
-              )}
+            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: RP.ctaSecondaryRadius, fontSize: 12, cursor: "pointer" }}>Preview</button>
+          </>
+        )}
+        <div ref={downloadRef} style={{ position: "relative" }}>
+          <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} style={{ padding: "8px 16px", background: isPageLayout ? JR.panel : JR.panel, border: `1px solid ${JR.border}`, borderRadius: isPageLayout ? RP.ctaSecondaryRadius : RP.ctaSecondaryRadius, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />} {isPageLayout ? "Export" : "Download"} {!isPageLayout && <ChevronDown size={12} />}
+          </button>
+          {downloadMenuOpen && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: JR.panel, border: `1px solid ${JR.border}`, minWidth: 160, zIndex: 10, borderRadius: 8, overflow: "hidden" }}>
+              <button type="button" onClick={() => void downloadFile("pdf")} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 12, cursor: "pointer" }}>Download PDF</button>
+              <button type="button" onClick={() => void downloadFile("docx")} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 12, cursor: "pointer", borderTop: `1px solid ${JR.border}` }}>Download Word</button>
             </div>
-          </div>
+          )}
         </div>
+      </div>
+    </div>
+  );
+
+  const documentContent = loading || reparsing ? (
+    <KimchiProcessLoader
+      preset="resumeUpload"
+      title={reparsing ? "Parsing resume structure…" : "Loading your resume…"}
+      variant="centered"
+    />
+  ) : (
+    <JobrightResumeDocument
+      data={parsedData}
+      onChange={queueSave}
+      onFixSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "all" })}
+      onImpactSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "impact" })}
+      onOpenAiAnalysis={() => setReportOpen(true)}
+      score={displayScore}
+      grade={grade}
+      gradeLabel={gradeLabel}
+      onViewReport={() => setReportOpen(true)}
+      sectionMatches={sectionMatches}
+      entryMatches={entryMatches}
+      sectionIssueCount={sectionIssueCount}
+      hideInlineScore={!isPageLayout}
+      resumeStyle={resumeStyle}
+      usePreviewFrame={isPageLayout}
+      dashboardPills={
+        <ResumeDashboardPills
+          urgentCount={fixCounts.urgentCount}
+          criticalCount={fixCounts.criticalCount}
+          optionalCount={fixCounts.optionalCount}
+          issueCount={analysisStats.issueCount}
+          suggestionCount={analysisStats.suggestionCount}
+          qualityScore={displayScore}
+          jobMatchScore={matchResult?.score ?? null}
+          hasJobDescription={hasJobDescription}
+          onIssuesClick={() => setReportOpen(true)}
+          onSuggestionsClick={() => setReportOpen(true)}
+          onScoreClick={() => (showJobMatchScore ? setRightTab("match") : setReportOpen(true))}
+          onReAnalyze={() => assetId && void loadAnalysis(assetId, true)}
+          reAnalyzing={analysisLoading}
+          analysisCachedAt={analysis?._cachedAt}
+        />
+      }
+    />
+  );
+
+  return (
+    <div
+      className="resume-print-outer"
+      style={{
+        position: isPageLayout ? "relative" : "fixed",
+        inset: isPageLayout ? undefined : 0,
+        zIndex: isPageLayout ? 0 : 1000,
+        fontFamily: "var(--font-ui), sans-serif",
+        minHeight: isPageLayout ? "100vh" : undefined,
+        background: JR.bg,
+        display: isPageLayout ? "flex" : undefined,
+        flexDirection: isPageLayout ? "column" : undefined,
+      }}
+    >
+      {!isPageLayout && (
+        <div className="resume-print-backdrop" onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,0.35)", opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }} />
+      )}
+      <div
+        className="resume-print-target"
+        style={{
+          position: isPageLayout ? "relative" : "absolute",
+          top: isPageLayout ? undefined : isMobile ? 0 : 8,
+          right: isPageLayout ? undefined : isMobile ? 0 : 8,
+          bottom: isPageLayout ? undefined : isMobile ? 0 : 8,
+          left: isPageLayout ? undefined : isMobile ? 0 : undefined,
+          width: isPageLayout ? "100%" : isMobile ? "100vw" : "min(94vw, calc(100vw - 16px))",
+          flex: isPageLayout ? 1 : undefined,
+          background: JR.bg,
+          borderRadius: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow: isPageLayout ? "none" : isMobile ? "none" : "0 12px 48px rgba(0,0,0,0.18)",
+          transform: isPageLayout ? undefined : visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
+          transition: isPageLayout ? undefined : "transform 0.25s ease",
+          minHeight: isPageLayout ? "100vh" : undefined,
+        }}
+      >
+        {headerBar}
         {onboardingJobLabel && (
           <div className="resume-print-hide" style={{ padding: "10px 16px", background: "rgba(26,58,47,0.06)", borderBottom: `1px solid ${JR.border}` }}>
             <p style={{ fontSize: 13, color: JR.text, margin: 0, lineHeight: 1.5 }}>
@@ -629,45 +734,8 @@ export function ProfileResumeEditor({
           </div>
         )}
         <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
-          <div className="resume-print-center" style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px 12px" : "24px 32px", display: "flex", flexDirection: "column", alignItems: "center", background: JR.bg }}>
-            {loading || reparsing ? (
-              <KimchiProcessLoader
-                preset="resumeUpload"
-                title={reparsing ? "Parsing resume structure…" : "Loading your resume…"}
-                variant="centered"
-              />
-            ) : (
-              <JobrightResumeDocument
-                data={parsedData}
-                onChange={queueSave}
-                onFixSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "all" })}
-                onImpactSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "impact" })}
-                onOpenAiAnalysis={() => setReportOpen(true)}
-                score={displayScore}
-                grade={grade}
-                gradeLabel={gradeLabel}
-                onViewReport={() => setReportOpen(true)}
-                sectionMatches={sectionMatches}
-                entryMatches={entryMatches}
-                sectionIssueCount={sectionIssueCount}
-                hideInlineScore
-                resumeStyle={resumeStyle}
-                dashboardPills={
-                  <ResumeDashboardPills
-                    issueCount={analysisStats.issueCount}
-                    suggestionCount={analysisStats.suggestionCount}
-                    qualityScore={displayScore}
-                    jobMatchScore={matchResult?.score ?? null}
-                    hasJobDescription={hasJobDescription}
-                    onIssuesClick={() => setReportOpen(true)}
-                    onSuggestionsClick={() => setReportOpen(true)}
-                    onScoreClick={() => (showJobMatchScore ? setRightTab("match") : setReportOpen(true))}
-                    onReAnalyze={() => assetId && void loadAnalysis(assetId, true)}
-                    reAnalyzing={analysisLoading}
-                  />
-                }
-              />
-            )}
+          <div className="resume-print-center" style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px 12px" : "24px 32px", display: "flex", flexDirection: "column", alignItems: "center", background: isPageLayout ? RP.previewBg : JR.bg }}>
+            {documentContent}
           </div>
           {!isMobile && (
             <div style={{ width: 300, flexShrink: 0, borderLeft: `1px solid ${JR.border}`, background: JR.panel, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -706,7 +774,7 @@ export function ProfileResumeEditor({
                     fullHeight
                   />
                 ) : (
-                  <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} />
+                  <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} useTailorTokens={isPageLayout} />
                 )}
               </div>
             </div>

@@ -74,7 +74,7 @@ async function refreshAndBroadcastAuth(force = true): Promise<void> {
 
 chrome.cookies.onChanged.addListener((change) => {
   const domain = change.cookie.domain.replace(/^\./, "");
-  if (domain === "app.kimchi.so" || domain.endsWith("vercel.app")) {
+  if (domain === "kimchi.so" || domain === "app.kimchi.so" || domain.endsWith("vercel.app")) {
     void refreshAndBroadcastAuth(true);
   }
 });

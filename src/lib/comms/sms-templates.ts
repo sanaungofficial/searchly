@@ -1,6 +1,8 @@
 import type { SendSmsInput } from "@/lib/comms/send-sms";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "https://app.kimchi.so";
+import { resolveAppUrl } from "@/lib/site-host";
+
+const APP_URL = resolveAppUrl();
 
 export function liveRegistrationSms(input: {
   to: string;

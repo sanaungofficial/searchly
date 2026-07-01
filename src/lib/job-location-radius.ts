@@ -50,7 +50,7 @@ export async function geocodePlace(query: string): Promise<{ lat: number; lon: n
       limit: "1",
     })}`;
     const res = await fetch(url, {
-      headers: { "User-Agent": "Kimchi/1.0 (https://app.kimchi.so)" },
+      headers: { "User-Agent": "Kimchi/1.0 (https://kimchi.so)" },
       signal: AbortSignal.timeout(4000),
       next: { revalidate: 86400 },
     });

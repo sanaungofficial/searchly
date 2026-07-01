@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import type { BillingInterval } from "@/lib/plan-config";
 import { resolveStripePriceId } from "@/lib/plan-config";
+import { resolveAppUrl } from "@/lib/site-host";
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const baseUrl = resolveAppUrl();
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,

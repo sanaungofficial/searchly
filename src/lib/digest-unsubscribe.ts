@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { resolveAppUrl } from "@/lib/site-host";
 
 function digestSecret(): string {
   return (
@@ -36,7 +37,7 @@ export function verifyDigestUnsubscribeToken(token: string): string | null {
 }
 
 export function digestUnsubscribeUrl(userId: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const base = resolveAppUrl();
   const token = signDigestUnsubscribeToken(userId);
   return `${base}/api/email/digest-unsubscribe?token=${encodeURIComponent(token)}`;
 }

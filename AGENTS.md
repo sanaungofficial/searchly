@@ -25,7 +25,7 @@ Keep environments and branches separated so work does not collide or break produ
 
 | Branch | URL | Purpose |
 |--------|-----|---------|
-| `main` | `https://app.kimchi.so` | Production |
+| `main` | `https://kimchi.so` | Production |
 | `dev` | `https://kimchi-git-dev-second-ladder.vercel.app` | Staging — **test all non-AI work here** |
 | `feat/*` | *(no deploy)* | Isolated agent work — GitHub only until PR merges to `dev` |
 
@@ -43,11 +43,11 @@ Keep environments and branches separated so work does not collide or break produ
 | `APIFY_LINKEDIN_ACTOR_ID` | optional | optional — default `anchor/linkedin-profile-enrichment` (Apify id `AgfKk0sQQxkpQJ1Dt`; slug or id both work with Apify v2; requires one-time Apify Console approval) |
 | `APIFY_LINKEDIN_TIMEOUT_SEC` | optional | optional — sync run timeout (default 120s) |
 | `APIFY_USD_PER_LINKEDIN_RUN` | optional | optional — admin usage cost estimate (default 0.006; anchor actor is ~$6/1k profiles) |
-| `NEXT_PUBLIC_APP_URL` | dev URL | `https://app.kimchi.so` |
+| `NEXT_PUBLIC_APP_URL` | dev URL | `https://kimchi.so` |
 
 ### Passcode (production only)
 
-Code gates **only when `VERCEL_ENV=production`** (i.e. `app.kimchi.so`).
+Code gates **only when `VERCEL_ENV=production`** (i.e. `kimchi.so`).
 
 - **Dev staging:** no passcode — go straight to the app
 - **Production:** visit `/passcode`, enter `3992` (POSTs to `/api/passcode`)
@@ -173,5 +173,8 @@ src/app/
 
 ## Supabase
 
-- Add **both** prod and dev URLs to Auth → Redirect URLs (`/auth/callback`)
+- Add **both** prod and dev URLs to Auth → Redirect URLs (`/auth/callback`):
+  - `https://kimchi.so/auth/callback` (production)
+  - `https://app.kimchi.so/auth/callback` (legacy — keep during transition)
+  - `https://kimchi-git-dev-second-ladder.vercel.app/auth/callback` (staging)
 - Dev and prod often share one database — accounts and uploads appear in both
