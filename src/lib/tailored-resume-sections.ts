@@ -17,6 +17,11 @@ export interface TailoredResumeSection {
   content: string;
 }
 
+export interface ResumeDocument {
+  personalInfo: string;
+  sections: TailoredResumeSection[];
+}
+
 export interface TailoredSkillGroup {
   id: string;
   label: string;
@@ -24,6 +29,19 @@ export interface TailoredSkillGroup {
 }
 
 const SKILLS_SECTION_RE = /skill|emphasis|competenc|core competency|qualification/i;
+
+const SECTION_ALIASES: Array<{ pattern: RegExp; title: string; type: ResumeSectionType }> = [
+  { pattern: /^professional\s+summary$/i, title: "Professional Summary", type: "text" },
+  { pattern: /^summary$/i, title: "Professional Summary", type: "text" },
+  { pattern: /^areas?\s+of\s+emphasis$/i, title: "Areas of Emphasis", type: "bullets" },
+  { pattern: /^(core\s+)?skills(\s+(&|and)\s+tools?)?$/i, title: "Areas of Emphasis", type: "bullets" },
+  { pattern: /^professional\s+experience$/i, title: "Professional Experience", type: "bullets" },
+  { pattern: /^work\s+experience$/i, title: "Professional Experience", type: "bullets" },
+  { pattern: /^experience$/i, title: "Professional Experience", type: "bullets" },
+  { pattern: /^education(\s+(&|and)\s+certifications?)?$/i, title: "Education & Certifications", type: "bullets" },
+  { pattern: /^education$/i, title: "Education & Certifications", type: "bullets" },
+  { pattern: /^certifications?$/i, title: "Certification", type: "bullets" },
+];
 
 export function isSkillsEmphasisSection(section: TailoredResumeSection): boolean {
   return SKILLS_SECTION_RE.test(section.title);
@@ -42,6 +60,16 @@ export function parseSkillsSectionContent(content: string): TailoredSkillGroup[]
 
   for (const raw of lines) {
     const line = raw.replace(/^[-•*–]\s+/, "");
+    const colonSplit = line.match(/^([^:]+):\s*(.+)$/);
+    if (colonSplit) {
+      if (current?.skills.length) groups.push(current);
+      current = {
+        id: `sg_${groups.length}`,
+        label: colonSplit[1]!.trim(),
+        skills: colonSplit[2]!.split(/[,;|·]/).map((s) => s.trim()).filter(Boolean),
+      };
+      continue;
+    }
     const looksLikeGroupLabel =
       line.length <= 52 &&
       !/^[-•*]/.test(raw) &&
@@ -87,96 +115,87 @@ export interface TailoredResumeMeta {
   newScore?: number;
 }
 
-function isSectionHeader(line: string): boolean {
+function normalizeHeaderLine(line: string): string {
+  return line.trim().replace(/^#{1,3}\s+/, "").replace(/[:.]+$/, "").trim();
+}
+
+function looksLikeContactLine(line: string): boolean {
   const t = line.trim();
-  if (t.length < 3 || t.length > 48) return false;
-  if (/^[-•*]\s/.test(t)) return false;
-  if (/^[A-Z0-9\s&/.\-]+$/.test(t) && /[A-Z]/.test(t)) return true;
-  return /^(professional summary|summary|experience|work experience|skills|education|certifications|projects|technical skills)$/i.test(t);
+  return !!(t.includes("|") || /^[\w.+-]+@/.test(t) || /linkedin\.com/i.test(t) || /^\(?\d{3}\)?[\s.-]?\d{3}/.test(t));
+}
+
+function looksLikeJobLine(line: string): boolean {
+  const t = line.trim();
+  return /\d{4}\s*[–—-]/.test(t) || /^[-•*–]\s/.test(t);
 }
 
 function titleFromHeader(line: string): string {
-  const t = line.trim();
-  return t
-    .split(/\s+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
+  return normalizeHeaderLine(line).split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
-/** Convert plain-text tailored resume into editor sections. */
-export function plainTextToResumeSections(text: string): TailoredResumeSection[] {
-  const trimmed = text.trim();
-  if (!trimmed) return [];
+function matchSectionHeader(line: string): { title: string; type: ResumeSectionType } | null {
+  const t = normalizeHeaderLine(line);
+  if (!t || t.length > 56 || looksLikeContactLine(t) || looksLikeJobLine(t)) return null;
+  for (const alias of SECTION_ALIASES) {
+    if (alias.pattern.test(t)) return { title: alias.title, type: alias.type };
+  }
+  if (/^[A-Z0-9][A-Z0-9\s&/.\-'()]+$/.test(t) && t.length <= 48 && t.split(/\s+/).length <= 6) {
+    const titled = titleFromHeader(t);
+    for (const alias of SECTION_ALIASES) {
+      if (alias.pattern.test(titled)) return { title: alias.title, type: alias.type };
+    }
+    return { title: titled, type: /experience|skills|education|certification|emphasis/i.test(titled) ? "bullets" : "text" };
+  }
+  return null;
+}
 
-  const lines = trimmed.split(/\r?\n/);
+export function plainTextToResumeSections(text: string): TailoredResumeSection[] {
+  return parseResumeDocument(text).sections;
+}
+
+export function parseResumeDocument(text: string): ResumeDocument {
+  const trimmed = text.trim();
+  if (!trimmed) return { personalInfo: "", sections: [] };
+  const rawLines = trimmed.split(/\r?\n/);
   const sections: TailoredResumeSection[] = [];
   let i = 0;
-
   const headerLines: string[] = [];
-  while (i < lines.length) {
-    const line = lines[i];
-    const t = line.trim();
-    if (!t) {
-      i++;
-      if (headerLines.length) break;
-      continue;
-    }
-    if (isSectionHeader(t) && headerLines.length > 0) break;
+
+  while (i < rawLines.length) {
+    const t = (rawLines[i] ?? "").trim();
+    if (!t) { i++; if (headerLines.length) break; continue; }
+    if (matchSectionHeader(t)) break;
     headerLines.push(t);
     i++;
   }
 
   if (headerLines.length) {
-    sections.push({
-      id: "header",
-      title: "Personal Info",
-      type: "header",
-      content: headerLines.join("\n"),
-    });
+    sections.push({ id: "header", title: "Personal Info", type: "header", content: headerLines.join("\n") });
   }
 
-  while (i < lines.length) {
-    while (i < lines.length && !lines[i].trim()) i++;
-    if (i >= lines.length) break;
-
-    const header = lines[i].trim();
-    if (!isSectionHeader(header)) {
-      const orphan = lines.slice(i).map((l) => l.trim()).filter(Boolean);
-      sections.push({
-        id: `s-${sections.length}`,
-        title: sections.length ? "Additional" : "Resume",
-        type: "text",
-        content: orphan.join("\n"),
-      });
+  while (i < rawLines.length) {
+    while (i < rawLines.length && !rawLines[i]?.trim()) i++;
+    if (i >= rawLines.length) break;
+    const matched = matchSectionHeader((rawLines[i] ?? "").trim());
+    if (!matched) {
+      const orphan = rawLines.slice(i).map((l) => l.trim()).filter(Boolean).join("\n");
+      if (orphan) sections.push({ id: `s-${sections.length}`, title: "Additional", type: "text", content: orphan });
       break;
     }
-
     i++;
-    const title = titleFromHeader(header);
     const contentLines: string[] = [];
-    while (i < lines.length) {
-      const t = lines[i].trim();
-      if (isSectionHeader(t)) break;
-      if (t) contentLines.push(t.replace(/^[-•*]\s+/, ""));
+    while (i < rawLines.length) {
+      const peek = (rawLines[i] ?? "").trim();
+      if (!peek) { i++; if (contentLines.length) break; continue; }
+      if (matchSectionHeader(peek)) break;
+      contentLines.push(peek.replace(/^[-•*–]\s+/, ""));
       i++;
     }
-
-    const bulletish =
-      /experience|skills|projects|achievements|certifications/i.test(header) ||
-      contentLines.length >= 2;
-    sections.push({
-      id: `s-${sections.length}`,
-      title,
-      type: bulletish ? "bullets" : "text",
-      content: contentLines.join("\n"),
-    });
+    sections.push({ id: `s-${sections.length}`, title: matched.title, type: matched.type, content: contentLines.join("\n") });
   }
 
-  if (!sections.length) {
-    sections.push({ id: "body", title: "Resume", type: "text", content: trimmed });
-  }
-
-  return sections;
+  if (!sections.length) sections.push({ id: "body", title: "Resume", type: "text", content: trimmed });
+  return { personalInfo: headerLines.join("\n"), sections };
 }
 
 /** Flatten editor sections back to plain text for export / AI routes. */

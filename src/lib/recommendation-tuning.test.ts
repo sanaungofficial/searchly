@@ -5,7 +5,6 @@ describe("recommendationTuningPct", () => {
   it("returns 100 when all matching signals present", () => {
     const pct = recommendationTuningPct({
       targetRoles: ["Product Manager"],
-      prioritizedRoles: ["Product Manager"],
       targetMarket: "Austin, TX",
       priorities: ["Remote-first"],
       relocationOpenness: "Prefer to stay in my current area",
@@ -16,6 +15,6 @@ describe("recommendationTuningPct", () => {
       resumeUrl: "https://example.com/r.pdf",
     });
     expect(pct).toBe(100);
-    expect(recommendationTuningGaps({ targetRoles: ["PM", "Director"], prioritizedRoles: [] })).toHaveLength(1);
+    expect(recommendationTuningGaps({ targetRoles: ["PM", "Director"] })).toHaveLength(0);
   });
 });

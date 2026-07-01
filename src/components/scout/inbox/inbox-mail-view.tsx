@@ -3,11 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutSecondaryBtn, scoutFieldStyle } from "../scout-box";
-import { color, fontSans, radius, surface, type as T } from "@/lib/typography";
+import { color, fontSans, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
-import { InboxLeadsPanel } from "./inbox-leads-panel";
-import { InboxContactDrawer } from "./inbox-contact-drawer";
 import { InboxExpandedMessage } from "./inbox-expanded-message";
 import { InboxMeetingsPanel } from "./inbox-meetings-panel";
 import { InboxMessageRow } from "./inbox-message-row";
@@ -54,8 +52,6 @@ type Props = {
   status: InboxStatus;
   initialMessageId?: string | null;
   onInitialMessageConsumed?: () => void;
-  initialContactId?: string | null;
-  onInitialContactConsumed?: () => void;
   onNotice: (n: { type: "success" | "error"; text: string } | null) => void;
   compose: ComposeState;
   onComposeChange: (c: ComposeState) => void;
@@ -68,8 +64,6 @@ export function InboxMailView({
   status,
   initialMessageId,
   onInitialMessageConsumed,
-  initialContactId,
-  onInitialContactConsumed,
   onNotice,
   compose,
   onComposeChange,
@@ -79,7 +73,7 @@ export function InboxMailView({
   const isMobile = useIsMobile();
   const { withClientScope } = useWorkspace();
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [activeTab, setActiveTab] = useState<InboxTab | string>("contacts");
+  const [activeTab, setActiveTab] = useState<InboxTab | string>("primary");
   const [messages, setMessages] = useState<MessageSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -96,7 +90,6 @@ export function InboxMailView({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
   const [focusUnreadId, setFocusUnreadId] = useState<string | null>(null);
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const connected = Boolean(status.connected);
 
   const inboxFolder = useMemo(() => pickInboxFolder(folders), [folders]);
@@ -104,7 +97,6 @@ export function InboxMailView({
   const extraFolders = useMemo(() => extraTabFolders(folders), [folders]);
 
   const selectedFolderId = useMemo(() => {
-    if (activeTab === "contacts") return null;
     if (activeTab === "primary") return inboxFolder?.id ?? null;
     if (activeTab === "sent") return sentFolder?.id ?? null;
     return activeTab;
@@ -162,7 +154,7 @@ export function InboxMailView({
   }, [connected, loadFolders, onNotice, mailRefreshKey]);
 
   useEffect(() => {
-    if (!connected || !foldersReady || activeTab === "contacts") return;
+    if (!connected || !foldersReady) return;
     setListLoading(true);
     setExpandedId(null);
     setDetail(null);
@@ -213,13 +205,6 @@ export function InboxMailView({
     setFocusUnreadId(null);
     onInitialMessageConsumed?.();
   }, [initialMessageId, onInitialMessageConsumed, status.email]);
-
-  useEffect(() => {
-    if (!initialContactId) return;
-    setActiveTab("contacts");
-    setSelectedContactId(initialContactId);
-    onInitialContactConsumed?.();
-  }, [initialContactId, onInitialContactConsumed]);
 
   function toggleMessage(id: string) {
     setFocusUnreadId(null);
@@ -377,14 +362,13 @@ export function InboxMailView({
     });
   }
 
-  const showMeetingsPanel = !isMobile && !meetingsCollapsed && activeTab !== "contacts";
+  const showMeetingsPanel = !isMobile && !meetingsCollapsed && activeTab === "primary";
 
   return (
     <>
       <InboxTopTabs
         active={activeTab}
         primaryCount={activeTab === "primary" ? primaryUnread : undefined}
-        mailConnected={connected}
         onSelect={(tab) => {
           setActiveTab(tab);
           setExpandedId(null);
@@ -392,53 +376,36 @@ export function InboxMailView({
         extraFolders={extraFolders.map((f) => ({ id: f.id, name: f.name }))}
       />
 
-      {activeTab !== "contacts" && (
-        <div
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 16px",
+          borderBottom: "var(--scout-border)",
+          background: surface.card,
+        }}
+      >
+        <input
+          type="search"
+          placeholder="Search mail…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "8px 16px",
-            borderBottom: "var(--scout-border)",
-            background: surface.card,
+            flex: 1,
+            minWidth: 0,
+            ...scoutFieldStyle,
+            padding: "8px 12px",
           }}
-        >
-          <input
-            type="search"
-            placeholder="Search mail…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              ...scoutFieldStyle,
-              padding: "8px 12px",
-            }}
-          />
-          {!isMobile && activeTab === "primary" && (
-            <ScoutSecondaryBtn onClick={() => setMeetingsCollapsed((v) => !v)} style={{ whiteSpace: "nowrap", fontSize: T.bodySm }}>
-              {meetingsCollapsed ? "Meetings" : "Hide meetings"}
-            </ScoutSecondaryBtn>
-          )}
-        </div>
-      )}
+        />
+        {!isMobile && activeTab === "primary" && (
+          <ScoutSecondaryBtn onClick={() => setMeetingsCollapsed((v) => !v)} style={{ whiteSpace: "nowrap", fontSize: T.bodySm }}>
+            {meetingsCollapsed ? "Meetings" : "Hide meetings"}
+          </ScoutSecondaryBtn>
+        )}
+      </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {activeTab === "contacts" ? (
-          <InboxLeadsPanel
-            scopePath={withClientScope}
-            mailConnected={connected}
-            onComposeTo={(email) =>
-              onComposeChange({
-                open: true,
-                to: email,
-                subject: "",
-                body: "",
-              })
-            }
-            onSelectContact={(id) => setSelectedContactId(id)}
-          />
-        ) : (
           <section
             style={{
               flex: 1,
@@ -505,7 +472,6 @@ export function InboxMailView({
               </div>
             )}
           </section>
-        )}
 
         {showMeetingsPanel ? (
           <InboxMeetingsPanel refreshKey={mailRefreshKey} onToggleCollapse={() => setMeetingsCollapsed(true)} />
@@ -514,92 +480,6 @@ export function InboxMailView({
         ) : null}
       </div>
 
-      {selectedContactId && (
-        <InboxContactDrawer
-          contactId={selectedContactId}
-          scopePath={withClientScope}
-          mailConnected={connected}
-          onClose={() => setSelectedContactId(null)}
-          onOpenMessage={(messageId) => {
-            setActiveTab("primary");
-            setExpandedId(messageId);
-            setLastOpenedId(messageId);
-            writeLastOpenedMessageId(messageId, status.email);
-          }}
-          onComposeTo={(email) => {
-            setActiveTab("primary");
-            onComposeChange({
-              open: true,
-              to: email,
-              subject: "",
-              body: "",
-            });
-          }}
-          onNotice={onNotice}
-        />
-      )}
-
-      {compose.open && (
-        <>
-          <div
-            onClick={() => onComposeChange({ ...compose, open: false })}
-            style={{ position: "fixed", inset: 0, background: "rgba(26,24,20,0.45)", zIndex: 1000 }}
-          />
-          <div
-            className="bruddle"
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "min(560px, 94vw)",
-              maxHeight: "90vh",
-              overflow: "auto",
-              background: surface.card,
-              border: "var(--scout-border)",
-              borderRadius: radius.px,
-              zIndex: 1001,
-              boxShadow: "4px 4px 0 #161616",
-            }}
-          >
-            <div style={{ padding: "16px 20px", borderBottom: "var(--scout-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink }}>New message</p>
-              <button type="button" onClick={() => onComposeChange({ ...compose, open: false })} style={{ border: "none", background: "none", cursor: "pointer", color: color.mutedLight, fontSize: 20 }}>
-                ✕
-              </button>
-            </div>
-            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-              <label style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-                To
-                <input
-                  type="email"
-                  value={compose.to}
-                  onChange={(e) => onComposeChange({ ...compose, to: e.target.value })}
-                  style={{ ...scoutFieldStyle, display: "block", marginTop: 4 }}
-                />
-              </label>
-              <label style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-                Subject
-                <input
-                  type="text"
-                  value={compose.subject}
-                  onChange={(e) => onComposeChange({ ...compose, subject: e.target.value })}
-                  style={{ ...scoutFieldStyle, display: "block", marginTop: 4 }}
-                />
-              </label>
-              <label style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-                Message
-                <textarea
-                  value={compose.body}
-                  onChange={(e) => onComposeChange({ ...compose, body: e.target.value })}
-                  rows={12}
-                  style={{ ...scoutFieldStyle, display: "block", marginTop: 4, resize: "vertical" }}
-                />
-              </label>
-            </div>
-          </div>
-        </>
-      )}
     </>
   );
 }

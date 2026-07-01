@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect, useLayoutEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { INITIAL_KANBAN_CARDS, NOTIFICATIONS } from "@/components/scout/workspace-data";
@@ -8,6 +8,7 @@ import { useJobs } from "@/hooks/useJobs";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import { ImpersonationBanner, type ImpersonationState } from "@/components/admin/impersonation-banner";
 import { AdminClientReviewBanner } from "@/components/admin/admin-client-review-banner";
+import { syncWorkspaceBannerOffset } from "@/lib/workspace-layout";
 import { isStaffPortalRole } from "@/lib/staff-portal";
 import {
   getActingUserScope,
@@ -278,6 +279,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const isAdminReviewing = Boolean(adminReviewClientId) && !impersonation.active;
+  const bannerStackRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = bannerStackRef.current;
+    const sync = () => syncWorkspaceBannerOffset(el?.offsetHeight ?? 0);
+    sync();
+    if (!el) return;
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [impersonation.active, isAdminReviewing, adminReviewClientId]);
+
   const showSeekerDashboard =
     !isStaffPortal || impersonation.active || isAdminReviewing || staffDashboardView === "seeker";
   const showExpertDashboard =
@@ -505,14 +518,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           overflow: "hidden",
         }}
       >
-        <ImpersonationBanner state={impersonation} />
-        {isAdminReviewing && adminReviewClientId && (
-          <AdminClientReviewBanner
-            clientId={adminReviewClientId}
-            name={adminReviewClient?.name}
-            email={adminReviewClient?.email}
-          />
-        )}
+        <div ref={bannerStackRef}>
+          <ImpersonationBanner state={impersonation} />
+          {isAdminReviewing && adminReviewClientId && (
+            <AdminClientReviewBanner
+              clientId={adminReviewClientId}
+              name={adminReviewClient?.name}
+              email={adminReviewClient?.email}
+            />
+          )}
+        </div>
         {children}
       </div>
     </WorkspaceContext.Provider>

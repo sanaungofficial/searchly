@@ -53,7 +53,6 @@ type ProfileData = {
   employmentStatus: string | null;
   dashboardGoals: DashboardGoal[];
   targetRoles: string[];
-  prioritizedRoles: string[];
   prioritizedCategories: string[];
   deprioritizedCategories: string[];
   targetMarket: string | null;
@@ -94,7 +93,6 @@ function matchingPrefFromProfile(p: ProfileData): MatchingPrefProfile {
   const priorities = p.priorities ?? [];
   return {
     targetRoles: p.targetRoles ?? [],
-    prioritizedRoles: p.prioritizedRoles ?? [],
     targetMarket: p.targetMarket ?? "",
     fullyRemote: priorities.some((x) => x.toLowerCase().includes("remote-first")) && !p.targetMarket?.trim(),
     workArrangement: inferWorkArrangement(priorities),
@@ -109,7 +107,6 @@ function matchingPrefFromProfile(p: ProfileData): MatchingPrefProfile {
 function tuningInputFromProfile(p: ProfileData): RecommendationTuningInput {
   return {
     targetRoles: p.targetRoles,
-    prioritizedRoles: p.prioritizedRoles,
     targetMarket: p.targetMarket,
     parsedData: p.parsedData,
     priorities: p.priorities,
@@ -164,7 +161,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
           employmentStatus: data.employmentStatus ?? null,
           dashboardGoals: data.dashboardGoals ?? [],
           targetRoles: data.targetRoles ?? [],
-          prioritizedRoles: data.prioritizedRoles ?? [],
           prioritizedCategories: data.prioritizedCategories ?? [],
           deprioritizedCategories: data.deprioritizedCategories ?? [],
           targetMarket: data.targetMarket ?? null,
@@ -210,7 +206,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
     () => (profile ? matchingPrefFromProfile(profile) : matchingPrefFromProfile({
       name: "", avatarUrl: null, headline: null, summary: null, jobTimeline: null,
       careerMotivation: null, employmentStatus: null, dashboardGoals: [], targetRoles: [],
-      prioritizedRoles: [], prioritizedCategories: [], deprioritizedCategories: [],
+      prioritizedCategories: [], deprioritizedCategories: [],
       targetMarket: null, priorities: [], relocationOpenness: null,
       workAuthorization: null, targetSalary: null, resumeUrl: null, linkedinUrl: null,
       parsedData: null, email: null, hasStrategy: false,
@@ -356,7 +352,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const actionItemsMinHeight = isMobile ? undefined : 440;
   const pillBtnStyle: React.CSSProperties = {
-    borderRadius: 999,
     padding: "8px 18px",
     minHeight: 36,
     fontSize: T.btnSm,
@@ -590,26 +585,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
   );
 
   // ── Discovery Score ───────────────────────────────────────────────────────
-  const discoveryScoreCard = profile && !loading && tuningInput && (
-    <DiscoveryScoreCard
-      input={{
-        name: profile.name,
-        headline: profile.headline,
-        targetRoles: profile.targetRoles,
-        resumeUrl: profile.resumeUrl,
-        linkedinUrl: profile.linkedinUrl,
-        experience: (profile.parsedData?.workExperience as unknown[] | null) ?? null,
-        skills: (profile.parsedData?.skills as string[] | null) ?? null,
-        targetSalary: profile.targetSalary,
-        location: profile.parsedData?.location ?? profile.targetMarket ?? null,
-        employmentStatus: profile.employmentStatus,
-        summary: profile.summary,
-      }}
-      avatarUrl={profile.avatarUrl}
-      isMobile={isMobile}
-      withClientScope={withClientScope}
-      onSubscribe={openPricing}
-    />
+  const discoveryScoreCard = profile && !loading && (
+    <DiscoveryScoreCard isMobile={isMobile} withClientScope={withClientScope} />
   );
 
   // ── Goals card ────────────────────────────────────────────────────────────

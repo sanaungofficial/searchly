@@ -52,7 +52,7 @@ function FilterPill({
           type="button"
           style={{
             display: "inline-flex", alignItems: "center", gap: 4,
-            padding: "6px 12px", borderRadius: 999,
+            padding: "6px 12px", borderRadius: "var(--scout-radius)",
             border: active ? "var(--scout-border)" : "var(--scout-border)",
             background: active ? surface.inset : surface.card,
             color: active ? color.forest : color.ink,
@@ -257,7 +257,7 @@ export function CoachQuickFiltersBar({
         <button
           type="button" onClick={() => onInternalChange(!filters.internal)}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 999,
+            display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: "var(--scout-radius)",
             border: filters.internal ? "var(--scout-border)" : "var(--scout-border)",
             background: filters.internal ? surface.inset : surface.card,
             color: filters.internal ? color.forest : color.ink,
@@ -274,7 +274,7 @@ export function CoachQuickFiltersBar({
       <button
         type="button" onClick={onOpenAllFilters}
         style={{
-          display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999,
+          display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: "var(--scout-radius)",
           border: activeCount > 0 ? "var(--scout-border)" : "var(--scout-border)",
           background: activeCount > 0 ? surface.inset : surface.card,
           color: activeCount > 0 ? color.forest : color.ink,
@@ -372,7 +372,7 @@ export function CoachFiltersDrawer({
           <button type="button" onClick={() => { onClear(); onClose(); }} style={{ border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, cursor: "pointer", textDecoration: "underline" }}>
             Reset
           </button>
-          <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "var(--scout-border)", borderRadius: 999, background: color.cta, color: color.ctaForeground, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: "pointer" }}>
+          <button type="button" className={BRUDDLE_BTN_CLASS} onClick={onClose} style={{ padding: "10px 20px", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", background: color.cta, color: color.ctaForeground, boxShadow: "var(--scout-shadow-bruddle)", fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: "pointer" }}>
             Show results
           </button>
         </div>

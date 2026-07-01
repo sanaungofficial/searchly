@@ -12,8 +12,8 @@ import {
   DEPRIORITIZED_CATEGORY_SUGGESTIONS,
   DEPRIORITIZED_ROLE_SUGGESTIONS,
   PRIORITIZED_CATEGORY_SUGGESTIONS,
-  PRIORITIZED_ROLE_SUGGESTIONS,
 } from "@/lib/role-title-preferences";
+import { migrateLegacyRoleFields } from "@/lib/target-roles-unified";
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
 import { SearchPreferencesExperienceEditor } from "./search-preferences-profile-section";
 import {
@@ -32,10 +32,8 @@ import { withClientUserId } from "@/lib/workspace-urls";
 import type { CachedJob } from "@/lib/cached-job";
 import { writeProspectJobCache } from "@/lib/prospect-jobs-cache";
 import { WorkspaceCompanies } from "./workspace-companies";
-import {
-  AVAILABLE_ROLES,
-  UPSKILL_CATEGORIES,
-} from "./workspace-data";
+import { AVAILABLE_ROLES } from "./workspace-data";
+import { UpskillLearningTab } from "./upskill-learning-tab";
 import {
   defaultResumeAssetId,
   getRoleResumeAssetId,
@@ -44,13 +42,27 @@ import {
 } from "@/lib/target-role-settings";
 import {
   buildSkillGoal,
-  findProgramsForSkill,
   normalizeSkillGoals,
+  skillGoalGapSourceLabel,
+  type SkillGoalGapSource,
   type SkillGoalRecord,
-  type UpskillProgram,
   type UpskillProgressMap,
 } from "@/lib/upskill-programs";
-import { allMatchableSkills, reconcileSkillsToolsFields } from "@/lib/skills-tools";
+import {
+  corpusGapSourceLabel,
+  corpusGapsForRole,
+  readRoleCorpusGaps,
+  type RoleCorpusGapsCache,
+} from "@/lib/job-corpus-gaps";
+import {
+  addMatchableToBuckets,
+  allMatchableSkills,
+  classifyMatchableKind,
+  reconcileSkillsToolsFields,
+  SKILLS_GROUP_LABEL,
+  TOOLS_GROUP_LABEL,
+  type MatchableKind,
+} from "@/lib/skills-tools";
 import { profileHasResumeMaterial } from "@/lib/master-resume-shared";
 import {
   buildResumeFingerprint,
@@ -74,6 +86,7 @@ import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { ProfileDiscoveryScorePanel } from "./profile-discovery-score-panel";
+import { DISCOVERY_BENCHMARK_CATEGORY_KEY } from "@/lib/discovery-score/constants";
 import { CareerStrategyPanel } from "./career-strategy-panel";
 import { UserAssetsList } from "./user-assets-list";
 import { LibraryDocumentUploadModal } from "./library-document-upload-modal";
@@ -215,109 +228,56 @@ function resumeAnalysisBadge(asset: UserAssetRow): { label: string; bg: string; 
   return { label: "Analysis Complete", bg: "#F0FFF8", border: "#A8DFC0", color: "#1A7A4A" };
 }
 
-function UpskillNextStepCard({
+function UpskillQueuedBanner({
   skill,
   role,
-  skills,
-  variant = "prompt",
   onGoToUpskill,
   onDismiss,
   isMobile,
 }: {
-  skill?: string;
+  skill: string;
   role?: string;
-  skills?: string[];
-  variant?: "prompt" | "next-steps";
   onGoToUpskill: (skill: string) => void;
   onDismiss?: () => void;
   isMobile?: boolean;
 }) {
-  const skillList = skills?.length ? skills : skill ? [skill] : [];
-  const primarySkill = skill ?? skillList[0] ?? "";
-  const title =
-    variant === "prompt"
-      ? "Skill queued for Upskill"
-      : "Close these gaps with learning";
-  const body =
-    variant === "prompt" ? (
-      <>
-        We added <strong style={{ color: color.ink }}>{skill}</strong> to your Upskill queue
+  return (
+    <ScoutBox
+      padding={isMobile ? "10px 12px" : "12px 14px"}
+      style={{
+        marginBottom: 14,
+        background: "rgba(26,58,47,0.04)",
+        borderColor: color.forest,
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        alignItems: isMobile ? "stretch" : "center",
+        justifyContent: "space-between",
+        gap: 10,
+      }}
+    >
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: 0, lineHeight: 1.5 }}>
+        <strong>{skill}</strong> queued in Upskill
         {role ? (
           <>
             {" "}
-            for <strong style={{ color: color.ink }}>{role}</strong>
-          </>
-        ) : null}
-        . Pick a course when you&apos;re ready — no deadline.
-      </>
-    ) : (
-      <>
-        Upskill matches courses to your role gaps. Pick a skill to see paths
-        {role ? (
-          <>
-            {" "}
-            for <strong style={{ color: color.ink }}>{role}</strong>
+            for <strong>{role}</strong>
           </>
         ) : null}
         .
-      </>
-    );
-
-  return (
-    <ScoutBox
-      padding={isMobile ? "14px 16px" : "16px 18px"}
-      style={{
-        marginBottom: variant === "next-steps" ? 14 : 0,
-        background: "rgba(26,58,47,0.04)",
-        borderColor: color.forest,
-      }}
-    >
-      <p style={{ fontFamily: fontDisplay, fontSize: T.bodySm, fontWeight: 600, fontStyle: "italic", color: color.forest, margin: "0 0 8px", lineHeight: 1.35 }}>
-        {title}
       </p>
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 12px", lineHeight: 1.6 }}>
-        {body}
-      </p>
-      {variant === "next-steps" && skillList.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-          {skillList.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onGoToUpskill(s)}
-              style={{
-                padding: "6px 12px",
-                background: surface.card,
-                border: "var(--scout-border)",
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                color: color.forest,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              {s}
-              <span style={{ color: color.muted }}>→ Learn</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
         <ScoutPrimaryBtn
-          onClick={() => primarySkill && onGoToUpskill(primarySkill)}
-          disabled={!primarySkill}
-          style={{ minHeight: 44, width: isMobile ? "100%" : undefined, justifyContent: "center" }}
+          onClick={() => onGoToUpskill(skill)}
+          style={{ minHeight: 36, fontSize: T.caption, padding: "6px 12px" }}
         >
-          {variant === "prompt" ? "Explore learning paths" : "Go to Upskill"}
+          Go to Upskill
         </ScoutPrimaryBtn>
         {onDismiss && (
           <ScoutSecondaryBtn
             onClick={onDismiss}
-            style={{ minHeight: 44, width: isMobile ? "100%" : undefined, justifyContent: "center" }}
+            style={{ minHeight: 36, fontSize: T.caption, padding: "6px 12px" }}
           >
-            {variant === "prompt" ? "Stay on Target Roles" : "Maybe later"}
+            Dismiss
           </ScoutSecondaryBtn>
         )}
       </div>
@@ -334,6 +294,7 @@ interface ReadbackData {
 
 interface UserProfile {
   userId?: string;
+  adminReview?: { clientId: string; name?: string | null; email?: string | null };
   name: string;
   email: string | null;
   avatarUrl?: string | null;
@@ -396,7 +357,7 @@ const SKILL_GOALS_KEY = "kimchi_skill_goals";
 async function migrateLegacyProfileData(
   userProfile: UserProfile,
   patchProfileFn: (patch: Record<string, unknown>) => Promise<void>,
-): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[] }> {
+): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[]; targetRoles?: string[] }> {
   const patch: Record<string, unknown> = {};
   let skillGoals = userProfile.skillGoals ?? [];
   let roleAnalyses = normalizeRoleAnalysesMap(userProfile.roleAnalyses);
@@ -455,7 +416,18 @@ async function migrateLegacyProfileData(
     await patchProfileFn(patch);
   }
 
-  return { roleAnalyses, skillGoals };
+  const roleMigration = migrateLegacyRoleFields({
+    targetRoles: userProfile.targetRoles,
+    prioritizedRoles: userProfile.prioritizedRoles,
+  });
+  if (roleMigration.migrated) {
+    await patchProfileFn({
+      targetRoles: roleMigration.targetRoles,
+      prioritizedRoles: roleMigration.prioritizedRoles,
+    });
+  }
+
+  return { roleAnalyses, skillGoals, targetRoles: roleMigration.targetRoles };
 }
 
 type SkillGoal = SkillGoalRecord;
@@ -1064,9 +1036,6 @@ function DreamRoleTab({
   dreamList,
   setDreamList,
   onSave,
-  prioritizedList,
-  setPrioritizedList,
-  onPrioritizedSave,
   prioritizedCategories,
   setPrioritizedCategories,
   onPrioritizedCategoriesSave,
@@ -1082,6 +1051,9 @@ function DreamRoleTab({
   userSkills,
   skillGoals,
   roleAnalyses,
+  roleCorpusGaps,
+  corpusGapsRefreshing,
+  onRefreshCorpusGaps,
   targetRoleSettings,
   onTargetRoleSettingsChange,
   onRoleAnalysisUpdate,
@@ -1096,9 +1068,6 @@ function DreamRoleTab({
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
-  prioritizedList: string[];
-  setPrioritizedList: (l: string[]) => void;
-  onPrioritizedSave: (list: string[]) => void;
   prioritizedCategories: string[];
   setPrioritizedCategories: (l: string[]) => void;
   onPrioritizedCategoriesSave: (list: string[]) => void;
@@ -1114,12 +1083,19 @@ function DreamRoleTab({
   userSkills: string[];
   skillGoals: SkillGoal[];
   roleAnalyses: RoleAnalysesMap;
+  roleCorpusGaps: RoleCorpusGapsCache | null;
+  corpusGapsRefreshing: boolean;
+  onRefreshCorpusGaps: () => void;
   targetRoleSettings: TargetRoleSettingsMap;
   onTargetRoleSettingsChange: (role: string, resumeAssetId: string | null) => void;
   onRoleAnalysisUpdate: (role: string, analysis: StoredRoleAnalysis) => void;
   onClearRoleAnalysis: (role: string) => void;
-  onAddToPortfolio: (skill: string) => void;
-  onObtainSkill: (skill: string, role: string) => void;
+  onAddToPortfolio: (skill: string, kind?: MatchableKind) => void;
+  onObtainSkill: (
+    skill: string,
+    role: string,
+    opts?: { gapSource?: SkillGoalGapSource; kind?: MatchableKind },
+  ) => void;
   onGoToUpskill: (skill: string) => void;
   onClearUpskillPrompt?: () => void;
   onInitRoleSettings: (role: string) => void;
@@ -1131,7 +1107,7 @@ function DreamRoleTab({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
-  const [obtainNudge, setObtainNudge] = useState<{ role: string; skill: string } | null>(null);
+  const [queuedBanner, setQueuedBanner] = useState<{ role: string; skill: string } | null>(null);
   const analyzingRef = useRef(new Set<string>());
   const isMobile = useIsMobile();
   const hasResume = resumeAssets.length > 0;
@@ -1277,6 +1253,15 @@ function DreamRoleTab({
     if (expandedRole === title) setExpandedRole(null);
   };
 
+  const moveRole = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= dreamList.length) return;
+    const next = [...dreamList];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    setDreamList(next);
+    onSave(next);
+  };
+
   const toggleExpand = async (role: string) => {
     if (expandedRole === role) { setExpandedRole(null); return; }
     setExpandedRole(role);
@@ -1329,6 +1314,17 @@ function DreamRoleTab({
   const isInLearning = (skill: string) =>
     skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase());
 
+  const queuedSkillsForRole = (role: string) =>
+    skillGoals
+      .filter((g) => g.role === role && !hasSkill(g.skill))
+      .map((g) => g.skill);
+
+  useEffect(() => {
+    if (!queuedBanner) return;
+    const timer = window.setTimeout(() => setQueuedBanner(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [queuedBanner]);
+
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <ScoutLabel>Role ranking</ScoutLabel>
@@ -1340,20 +1336,44 @@ function DreamRoleTab({
       </p>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
-        <ScoutLabel>Feed ranking</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Target roles unlock fit analysis. Prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
-        </p>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <ScoutLabel>Feed ranking</ScoutLabel>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.7 }}>
+              Order matters — your top role gets the strongest feed boost. Deprioritized patterns sort lower; nothing is hidden.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onRefreshCorpusGaps}
+            disabled={corpusGapsRefreshing || !dreamList.length}
+            style={{
+              padding: "8px 14px",
+              background: corpusGapsRefreshing ? "rgba(0,0,0,0.04)" : "transparent",
+              color: color.forest,
+              border: "1px solid rgba(26,58,47,0.25)",
+              borderRadius: "var(--scout-radius)",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              cursor: corpusGapsRefreshing || !dreamList.length ? "default" : "pointer",
+              opacity: !dreamList.length ? 0.5 : 1,
+              flexShrink: 0,
+            }}
+          >
+            {corpusGapsRefreshing ? "Refreshing gaps…" : "Refresh gaps"}
+          </button>
+        </div>
+        {roleCorpusGaps?.refreshedAt && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "10px 0 0", lineHeight: 1.5 }}>
+            Market skill gaps last refreshed {formatLastRefreshed(roleCorpusGaps.refreshedAt)} — from Hirebase postings and saved jobs.
+          </p>
+        )}
+        <div style={{ marginTop: 16 }}>
         <RoleListBulkPaste
         dreamList={dreamList}
         onTargetChange={(next) => {
           setDreamList(next);
           onSave(next);
-        }}
-        prioritizedList={prioritizedList}
-        onPrioritizedChange={(next) => {
-          setPrioritizedList(next);
-          onPrioritizedSave(next);
         }}
         deprioritizedList={deprioritizedList}
         onDeprioritizedChange={(next) => {
@@ -1372,12 +1392,13 @@ function DreamRoleTab({
         }}
         onInitRoleSettings={onInitRoleSettings}
       />
+        </div>
       </ScoutBox>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Target roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles you want at the top of Recommended and In-network. Add as many as you need; pick a resume per role for fit analysis.
+          Roles you want at the top of Recommended and In-network. List order sets feed priority — drag with arrows to reorder.
         </p>
         {!showSearch ? (
           <button
@@ -1424,7 +1445,7 @@ function DreamRoleTab({
         )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {dreamList.map((role) => {
+        {dreamList.map((role, roleIndex) => {
           const isOpen = expandedRole === role;
           const result = analysis[role];
           const loaded = getLoaded(role);
@@ -1465,6 +1486,22 @@ function DreamRoleTab({
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); moveRole(roleIndex, -1); }}
+                      disabled={roleIndex === 0}
+                      aria-label={`Move ${role} up`}
+                      style={{ background: "none", border: "none", cursor: roleIndex === 0 ? "default" : "pointer", color: roleIndex === 0 ? "#E0E0E0" : color.muted, fontSize: 12, lineHeight: 1, padding: "2px 4px" }}
+                    >↑</button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); moveRole(roleIndex, 1); }}
+                      disabled={roleIndex === dreamList.length - 1}
+                      aria-label={`Move ${role} down`}
+                      style={{ background: "none", border: "none", cursor: roleIndex === dreamList.length - 1 ? "default" : "pointer", color: roleIndex === dreamList.length - 1 ? "#E0E0E0" : color.muted, fontSize: 12, lineHeight: 1, padding: "2px 4px" }}
+                    >↓</button>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeRole(role); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
@@ -1529,9 +1566,100 @@ function DreamRoleTab({
                         const gapWhy = new Map(
                           (loaded.gaps ?? []).map((g) => [g.skill.toLowerCase(), g.why]),
                         );
+                        const marketGaps = corpusGapsForRole(roleCorpusGaps, role).filter(
+                          (g) => !hasSkill(g.skill) && !isInLearning(g.skill),
+                        );
+                        const useMarketGaps = marketGaps.length > 0;
                         const haveSkills = loaded.requiredSkills.filter((s) => hasSkill(s));
-                        const learningSkills = loaded.requiredSkills.filter((s) => !hasSkill(s) && isInLearning(s));
-                        const missingSkills = loaded.requiredSkills.filter((s) => !hasSkill(s) && !isInLearning(s));
+                        const queuedSkills = queuedSkillsForRole(role);
+                        const missingRows = useMarketGaps
+                          ? marketGaps.map((g) => ({
+                              skill: g.skill,
+                              kind: g.kind,
+                              sources: g.sources,
+                            }))
+                          : loaded.requiredSkills
+                              .filter((s) => !hasSkill(s) && !isInLearning(s))
+                              .map((skill) => ({
+                                skill,
+                                kind: classifyMatchableKind(skill),
+                                why: gapWhy.get(skill.toLowerCase()),
+                              }));
+                        const missingGroups = [
+                          { label: SKILLS_GROUP_LABEL, rows: missingRows.filter((row) => row.kind === "skill") },
+                          { label: TOOLS_GROUP_LABEL, rows: missingRows.filter((row) => row.kind === "technology") },
+                        ].filter((group) => group.rows.length > 0);
+                        const renderGapRow = (row: (typeof missingRows)[number]) => {
+                          const skill = row.skill;
+                          return (
+                            <div key={skill} style={{ position: "relative" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSkillMenu((prev) =>
+                                    prev?.role === role && prev.skill === skill ? null : { role, skill },
+                                  );
+                                }}
+                                style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
+                              >
+                                {skill}
+                                {"sources" in row && row.sources?.map((source) => (
+                                  <span key={source} style={{ fontSize: 10, color: color.muted, background: "rgba(0,0,0,0.04)", padding: "2px 6px", borderRadius: 999 }}>
+                                    {corpusGapSourceLabel(source)}
+                                  </span>
+                                ))}
+                                <span style={{ fontSize: 10, color: color.muted }}>▼</span>
+                              </button>
+                              {"why" in row && row.why && (
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B0A898", margin: "4px 0 0 4px", lineHeight: 1.45 }}>{row.why}</p>
+                              )}
+                              {skillMenu?.role === role && skillMenu.skill === skill && (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    border: "var(--scout-border)",
+                                    background: surface.card,
+                                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                    minWidth: 220,
+                                    zIndex: 2,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onAddToPortfolio(skill, row.kind);
+                                      setSkillMenu(null);
+                                    }}
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "var(--scout-border)", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                  >
+                                    I already have this {row.kind === "technology" ? "tool" : "skill"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const sources = "sources" in row ? row.sources : undefined;
+                                      const gapSource: SkillGoalGapSource | undefined = sources?.includes("saved_job")
+                                        ? "saved_job"
+                                        : sources?.includes("corpus")
+                                          ? "corpus"
+                                          : useMarketGaps
+                                            ? "corpus"
+                                            : "archetype";
+                                      onObtainSkill(skill, role, { gapSource, kind: row.kind });
+                                      setQueuedBanner({ skill, role });
+                                      setSkillMenu(null);
+                                    }}
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, fontWeight: 600, cursor: "pointer" }}
+                                  >
+                                    Add to Upskill
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        };
                         return (
                           <div style={{ marginBottom: 20 }}>
                             {haveSkills.length > 0 && (
@@ -1546,80 +1674,38 @@ function DreamRoleTab({
                                 </div>
                               </div>
                             )}
-                            {missingSkills.length > 0 && (
+                            {missingGroups.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you&apos;re missing</p>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                  {missingSkills.map((skill) => (
-                                    <div key={skill} style={{ position: "relative" }}>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSkillMenu((prev) =>
-                                            prev?.role === role && prev.skill === skill ? null : { role, skill },
-                                          );
-                                        }}
-                                        style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
-                                      >
-                                        {skill}
-                                        <span style={{ fontSize: 10, color: color.muted }}>▼</span>
-                                      </button>
-                                      {gapWhy.get(skill.toLowerCase()) && (
-                                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B0A898", margin: "4px 0 0 4px", lineHeight: 1.45 }}>{gapWhy.get(skill.toLowerCase())}</p>
-                                      )}
-                                      {skillMenu?.role === role && skillMenu.skill === skill && (
-                                        <div
-                                          style={{
-                                            marginTop: 6,
-                                            border: "var(--scout-border)",
-                                            background: surface.card,
-                                            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                                            minWidth: 220,
-                                            zIndex: 2,
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              onAddToPortfolio(skill);
-                                              setSkillMenu(null);
-                                            }}
-                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "var(--scout-border)", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
-                                          >
-                                            Add to my skills
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              onObtainSkill(skill, role);
-                                              setObtainNudge({ skill, role });
-                                              setSkillMenu(null);
-                                            }}
-                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
-                                          >
-                                            Obtain this skill
-                                          </button>
-                                        </div>
-                                      )}
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>
+                                  {useMarketGaps ? "Market gaps" : "What you\u2019re missing"}
+                                </p>
+                                {missingGroups.map((group) => (
+                                  <div key={group.label} style={{ marginBottom: 12 }}>
+                                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: color.muted, margin: "0 0 8px" }}>{group.label}</p>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                      {group.rows.map((row) => renderGapRow(row))}
                                     </div>
-                                  ))}
-                                </div>
+                                  </div>
+                                ))}
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                                  <span>Add to skills if you already have it, or obtain it to track learning in Upskill.</span>
+                                  <span>Mark skills you already have, or add gaps to Upskill to learn them.</span>
                                   <ScoreExplainerPopover variant="upskill-recommendations" />
                                 </p>
                               </div>
                             )}
-                            {learningSkills.length > 0 && (
+                            {queuedSkills.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Working on</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Queued in Upskill</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {learningSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  {queuedSkills.map((skill) => (
+                                    <button
+                                      key={skill}
+                                      type="button"
+                                      onClick={() => onGoToUpskill(skill)}
+                                      style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer" }}
+                                    >
                                       <span style={{ fontSize: 14 }}>→</span> {skill}
-                                    </span>
+                                    </button>
                                   ))}
                                 </div>
                               </div>
@@ -1629,56 +1715,51 @@ function DreamRoleTab({
                                 {loaded._cachedAt
                                   ? `Last refreshed ${formatLastRefreshed(loaded._cachedAt)}. Scores are saved per resume — switch resumes to compare, or refresh for a new analysis.`
                                   : "Scores are saved per resume. Refresh when you want an updated analysis."}
-                                {loaded._stale ? " Your profile changed since this score — refresh when ready." : ""}
                               </p>
-                              <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
-                                ↻ Refresh
+                              <button
+                                onClick={() => handleRefresh(role)}
+                                style={{
+                                  padding: "5px 12px",
+                                  background: loaded._stale ? "rgba(196,168,106,0.1)" : "#FFFFFF",
+                                  border: loaded._stale ? "1px solid rgba(196,168,106,0.45)" : "1px solid #E5DDD0",
+                                  borderRadius: "var(--scout-radius)",
+                                  fontFamily: "var(--font-ui)",
+                                  fontSize: 14,
+                                  color: loaded._stale ? "#7A6020" : "#52493F",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  whiteSpace: "nowrap",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                ↻ {loaded._stale ? "Refresh score" : "Refresh"}
                               </button>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {obtainNudge?.role === role && (
-                        <div style={{ marginBottom: 20 }}>
-                          <UpskillNextStepCard
-                            skill={obtainNudge.skill}
-                            role={obtainNudge.role}
-                            onGoToUpskill={(s) => {
-                              onGoToUpskill(s);
-                              setObtainNudge(null);
-                              onClearUpskillPrompt?.();
-                            }}
-                            onDismiss={() => {
-                              setObtainNudge(null);
-                              onClearUpskillPrompt?.();
-                            }}
-                            isMobile={isMobile}
-                          />
-                        </div>
+                      {queuedBanner?.role === role && (
+                        <UpskillQueuedBanner
+                          skill={queuedBanner.skill}
+                          role={queuedBanner.role}
+                          onGoToUpskill={(s) => {
+                            onGoToUpskill(s);
+                            setQueuedBanner(null);
+                            onClearUpskillPrompt?.();
+                          }}
+                          onDismiss={() => {
+                            setQueuedBanner(null);
+                            onClearUpskillPrompt?.();
+                          }}
+                          isMobile={isMobile}
+                        />
                       )}
 
                       <div>
                         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
-                        {(() => {
-                          const required = loaded.requiredSkills ?? [];
-                          const gapSkills = required.filter((s) => !hasSkill(s));
-                          const queuedSkills = skillGoals
-                            .filter((g) => g.role === role)
-                            .map((g) => g.skill)
-                            .filter((s) => !gapSkills.some((g) => g.toLowerCase() === s.toLowerCase()));
-                          const upskillSkills = [...gapSkills, ...queuedSkills];
-                          if (upskillSkills.length === 0) return null;
-                          return (
-                            <UpskillNextStepCard
-                              variant="next-steps"
-                              role={role}
-                              skills={upskillSkills}
-                              onGoToUpskill={onGoToUpskill}
-                              isMobile={isMobile}
-                            />
-                          );
-                        })()}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {loaded.nextSteps.map((step, i) => (
                             <div key={i} style={{ display: "flex", gap: 8 }}>
@@ -1699,22 +1780,11 @@ function DreamRoleTab({
       </ScoutBox>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
-        <ScoutLabel>Prioritized roles</ScoutLabel>
+        <ScoutLabel>Feed filters</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles and add similar titles to cast a wider net.
+          Narrow which jobs rank higher by job function and experience level.
         </p>
-        <RoleTitlePicker
-          selected={prioritizedList}
-          onChange={(next) => {
-            setPrioritizedList(next);
-            onPrioritizedSave(next);
-          }}
-          placeholder="e.g. Commercial Product Lead, GTM Operations…"
-          addButtonLabel="+ Add prioritized role"
-          quickSuggestions={PRIORITIZED_ROLE_SUGGESTIONS}
-          enableRelatedExpand
-        />
-        <div style={{ marginTop: 20 }}>
+        <div>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Job functions
           </p>
@@ -1774,519 +1844,6 @@ function DreamRoleTab({
   );
 }
 
-// ─── Tab: Upskilling ──────────────────────────────────────────────────────────
-
-const CUSTOM_LEARNING_KEY = "kimchi_custom_learning";
-
-function UpskillSectionLabel({ children, variant }: { children: React.ReactNode; variant: "upskill-recommendations" | "upskill-progress" }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <ScoutLabel>{children}</ScoutLabel>
-      <ScoreExplainerPopover variant={variant} />
-    </span>
-  );
-}
-
-function ProgramLinks({ programs }: { programs: UpskillProgram[] }) {
-  if (!programs.length) {
-    return (
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55 }}>
-        We&apos;re building a curated list for this skill — check back soon.
-      </p>
-    );
-  }
-  return (
-    <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-      {programs.map((program) => (
-        <a
-          key={program.id}
-          href={program.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            padding: "12px 14px",
-            border: "var(--scout-border)",
-            background: surface.card,
-            textDecoration: "none",
-            transition: "background 0.15s",
-          }}
-        >
-          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
-            {program.name}
-          </span>
-          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
-            {[program.platform, program.duration, program.credential, program.type === "certification" ? "Certification" : null]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-        </a>
-      ))}
-    </div>
-  );
-}
-
-function groupSkillGoalsByRole(goals: SkillGoal[], roleOrder: string[]): { role: string; goals: SkillGoal[] }[] {
-  const map = new Map<string, SkillGoal[]>();
-  for (const goal of goals) {
-    const role = goal.role.trim() || "General";
-    const list = map.get(role) ?? [];
-    list.push(goal);
-    map.set(role, list);
-  }
-  const orderedRoles = [
-    ...roleOrder.filter((role) => map.has(role)),
-    ...[...map.keys()].filter((role) => !roleOrder.includes(role)).sort((a, b) => a.localeCompare(b)),
-  ];
-  return orderedRoles.map((role) => ({ role, goals: map.get(role)! }));
-}
-
-function LearningTab({
-  progress,
-  setProgress,
-  skillGoals,
-  dreamList,
-  onGraduate,
-  onAddSkill,
-  onDismissSkill,
-  highlightSkill,
-}: {
-  progress: UpskillProgressMap;
-  setProgress: (p: UpskillProgressMap) => void;
-  skillGoals: SkillGoal[];
-  dreamList: string[];
-  onGraduate: (skill: string) => Promise<void>;
-  onAddSkill: (skill: string, role: string) => void;
-  onDismissSkill: (skill: string, role: string) => void;
-  highlightSkill?: string | null;
-}) {
-  const [graduating, setGraduating] = useState<string | null>(null);
-  const skillGoalRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const courseRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [customItems, setCustomItems] = useState<CustomLearningItem[]>(() => {
-    try { return JSON.parse(localStorage.getItem(CUSTOM_LEARNING_KEY) || "[]"); } catch { return []; }
-  });
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showAddSkillForm, setShowAddSkillForm] = useState(false);
-  const [newSkillName, setNewSkillName] = useState("");
-  const [newSkillRole, setNewSkillRole] = useState("");
-  const [customSkillRole, setCustomSkillRole] = useState("");
-  const [newName, setNewName] = useState("");
-  const [newUrl, setNewUrl] = useState("");
-  const [newPlatform, setNewPlatform] = useState("");
-  const [newDuration, setNewDuration] = useState("");
-  const isMobile = useIsMobile();
-
-  const skillGroups = groupSkillGoalsByRole(skillGoals, dreamList);
-  const resolvedAddRole = newSkillRole === "__custom__"
-    ? customSkillRole.trim()
-    : newSkillRole.trim() || dreamList[0] || "General";
-
-  useEffect(() => {
-    if (!highlightSkill) return;
-    const key = highlightSkill.toLowerCase();
-    const goalEl = skillGoalRefs.current[key];
-    if (goalEl) {
-      goalEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    for (const item of UPSKILL_CATEGORIES.flatMap((c) => c.items)) {
-      if (item.closesGap?.some((s) => s.toLowerCase() === key)) {
-        courseRefs.current[String(item.id)]?.scrollIntoView({ behavior: "smooth", block: "center" });
-        break;
-      }
-    }
-  }, [highlightSkill]);
-
-  const getProgress = (id: number) => progress[String(id)] ?? "none";
-  const setCourseProgress = (id: number, status: "none" | "inprogress" | "completed") => {
-    setProgress({ ...progress, [String(id)]: status });
-  };
-
-  const doneCount = Object.values(progress).filter((v) => v === "completed").length;
-  const customDone = customItems.filter((i) => i.status === "completed").length;
-  const total = UPSKILL_CATEGORIES.reduce((a, c) => a + c.items.length, 0);
-
-  const handleGraduate = async (skill: string) => {
-    setGraduating(skill);
-    await onGraduate(skill);
-    setGraduating(null);
-  };
-
-  const addSkillToObtain = () => {
-    const skill = newSkillName.trim();
-    const role = resolvedAddRole || "General";
-    if (!skill) return;
-    onAddSkill(skill, role);
-    setNewSkillName("");
-    setNewSkillRole(dreamList[0] ?? "");
-    setCustomSkillRole("");
-    setShowAddSkillForm(false);
-  };
-
-  const saveCustomItems = (items: CustomLearningItem[]) => {
-    setCustomItems(items);
-    try { localStorage.setItem(CUSTOM_LEARNING_KEY, JSON.stringify(items)); } catch {}
-  };
-
-  const addCustomItem = () => {
-    if (!newName.trim()) return;
-    const item: CustomLearningItem = {
-      id: `cl_${Date.now()}`,
-      name: newName.trim(),
-      url: newUrl.trim() || undefined,
-      platform: newPlatform.trim() || undefined,
-      duration: newDuration.trim() || undefined,
-      status: "none",
-      addedAt: new Date().toISOString(),
-    };
-    saveCustomItems([...customItems, item]);
-    setNewName(""); setNewUrl(""); setNewPlatform(""); setNewDuration("");
-    setShowAddForm(false);
-  };
-
-  const updateCustomStatus = (id: string) => {
-    saveCustomItems(customItems.map((i) =>
-      i.id === id ? { ...i, status: i.status === "none" ? "inprogress" : i.status === "inprogress" ? "completed" : "inprogress" } : i
-    ));
-  };
-
-  const removeCustomItem = (id: string) => saveCustomItems(customItems.filter((i) => i.id !== id));
-
-  const obtainSkills = skillGoals.map((g) => g.skill.toLowerCase());
-  const programItems = UPSKILL_CATEGORIES.flatMap((cat) =>
-    cat.items.filter((item) =>
-      item.closesGap?.some((gap) =>
-        obtainSkills.some(
-          (s) =>
-            s === gap.toLowerCase() ||
-            gap.toLowerCase().includes(s) ||
-            s.includes(gap.toLowerCase()),
-        ),
-      ),
-    ),
-  );
-
-  const renderSkillRow = (g: SkillGoal) => {
-    const isHighlighted = highlightSkill?.toLowerCase() === g.skill.toLowerCase();
-    return (
-      <ScoutBox
-        key={`${g.skill}-${g.role}`}
-        padding="12px 14px"
-        style={{
-          borderColor: isHighlighted ? color.forest : "rgba(196,168,106,0.35)",
-          boxShadow: isHighlighted ? "0 0 0 1px rgba(26,58,47,0.25)" : undefined,
-        }}
-      >
-        <div
-          ref={(el) => { skillGoalRefs.current[g.skill.toLowerCase()] = el; }}
-          style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
-        >
-          <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{g.skill}</p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <ScoutPrimaryBtn
-              onClick={() => handleGraduate(g.skill)}
-              disabled={graduating === g.skill}
-              style={{ minHeight: 44, width: isMobile ? "100%" : undefined, opacity: graduating === g.skill ? 0.6 : 1, flexShrink: 0 }}
-            >
-              {graduating === g.skill ? "Saving…" : "Mark acquired"}
-            </ScoutPrimaryBtn>
-            <button
-              type="button"
-              onClick={() => onDismissSkill(g.skill, g.role)}
-              aria-label={`Remove ${g.skill}`}
-              style={{ background: "none", border: "none", color: color.muted, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "8px 10px", minHeight: 44 }}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      </ScoutBox>
-    );
-  };
-
-  return (
-    <div style={{ width: "100%", paddingBottom: 40 }}>
-      <ScoutBox flat padding={isMobile ? "18px 16px" : "22px 24px"} style={{ marginBottom: 28, background: surface.page }}>
-        <ScoutDisplayTitle size={isMobile ? 26 : 32} style={{ marginBottom: 8 }}>
-          Learn &amp; grow
-        </ScoutDisplayTitle>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6, maxWidth: 560 }}>
-          Skills to work on, courses to explore, and progress in one place. Add skills from Target Roles or pick them here.
-        </p>
-      </ScoutBox>
-
-      {/* Skills to obtain — grouped by target role */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-          <div>
-            <UpskillSectionLabel variant="upskill-recommendations">Skills to obtain</UpskillSectionLabel>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", lineHeight: 1.5 }}>
-              Grouped by target role. Add your own here, or queue from Target Roles.
-            </p>
-          </div>
-          {!showAddSkillForm && (
-            <ScoutSecondaryBtn onClick={() => {
-              setShowAddSkillForm(true);
-              setNewSkillRole(dreamList[0] ?? "__custom__");
-            }}>
-              + Add skill
-            </ScoutSecondaryBtn>
-          )}
-        </div>
-
-        {showAddSkillForm && (
-          <ScoutBox padding={16} style={{ marginBottom: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginBottom: 4 }}>Skill *</label>
-                <input
-                  value={newSkillName}
-                  onChange={(e) => setNewSkillName(e.target.value)}
-                  placeholder="e.g. Market analysis"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginBottom: 4 }}>For role</label>
-                <select
-                  value={newSkillRole || dreamList[0] || "__custom__"}
-                  onChange={(e) => setNewSkillRole(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card }}
-                >
-                  {dreamList.map((role) => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                  <option value="__custom__">Other role…</option>
-                  {!dreamList.length && <option value="General">General</option>}
-                </select>
-              </div>
-              {newSkillRole === "__custom__" && (
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <input
-                    value={customSkillRole}
-                    onChange={(e) => setCustomSkillRole(e.target.value)}
-                    placeholder="Role name"
-                    style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "var(--scout-border)", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
-                  />
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <ScoutPrimaryBtn
-                onClick={addSkillToObtain}
-                disabled={!newSkillName.trim() || (newSkillRole === "__custom__" && !customSkillRole.trim())}
-                style={{ opacity: newSkillName.trim() ? 1 : 0.5 }}
-              >
-                Add
-              </ScoutPrimaryBtn>
-              <ScoutSecondaryBtn onClick={() => {
-                setShowAddSkillForm(false);
-                setNewSkillName("");
-                setCustomSkillRole("");
-              }}>
-                Cancel
-              </ScoutSecondaryBtn>
-            </div>
-          </ScoutBox>
-        )}
-
-        {skillGoals.length === 0 ? (
-          <ScoutBox padding={16}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6 }}>
-              No skills queued. Add one above, or on Target Roles hit &ldquo;Obtain this skill&rdquo; on a gap.
-            </p>
-          </ScoutBox>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 10 }}>
-            {skillGroups.map(({ role, goals }) => (
-              <div key={role}>
-                <ScoutDisplayTitle size={16} style={{ marginBottom: 10 }}>
-                  For {role}
-                </ScoutDisplayTitle>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {goals.map(renderSkillRow)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <ScoutBox flat padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: "var(--scout-border)" }}>
-        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
-          <div>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(232,213,163,0.75)" }}>Your learning progress</span>
-              <ScoreExplainerPopover variant="upskill-progress" light />
-            </span>
-            <p style={displayTitleStyle(22, { color: color.gold, margin: "6px 0 0" })}>{doneCount + customDone} of {total + customItems.length} complete</p>
-          </div>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: `conic-gradient(#E8D5A3 ${((doneCount + customDone) / (total + customItems.length || 1)) * 360}deg, rgba(232,213,163,0.15) 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 50, height: 50, borderRadius: "50%", background: "#1A3A2F", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 500, color: "#E8D5A3" }}>{Math.round(((doneCount + customDone) / (total + customItems.length || 1)) * 100)}%</span>
-          </div>
-        </div>
-        </div>
-      </ScoutBox>
-
-      {/* Section C — Programs for skills to obtain */}
-      <div style={{ marginBottom: 32 }}>
-        <UpskillSectionLabel variant="upskill-recommendations">Recommended programs</UpskillSectionLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.6 }}>
-          Courses and certifications matched to skills you&apos;re trying to obtain.
-        </p>
-        {skillGoals.length === 0 ? (
-          <ScoutBox padding={16}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-              Programs appear here once you add skills to obtain.
-            </p>
-          </ScoutBox>
-        ) : (
-          <>
-            {skillGroups.map(({ role, goals }) => (
-              <div key={`programs-${role}`} style={{ marginBottom: 24 }}>
-                <ScoutDisplayTitle size={16} style={{ marginBottom: 12 }}>For {role}</ScoutDisplayTitle>
-                {goals.map((g) => (
-                  <div key={`programs-${g.skill}-${g.role}`} style={{ marginBottom: 16 }}>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>{g.skill}</p>
-                    <ProgramLinks programs={g.programs.length ? g.programs : findProgramsForSkill(g.skill)} />
-                  </div>
-                ))}
-              </div>
-            ))}
-            {programItems.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <ScoutDisplayTitle size={16} style={{ marginBottom: 8 }}>Kimchi picks</ScoutDisplayTitle>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {programItems.map((item) => {
-                    const prog = getProgress(item.id);
-                    const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
-                    const isHighlighted = highlightSkill
-                      ? item.closesGap?.some((s) => s.toLowerCase() === highlightSkill.toLowerCase())
-                      : false;
-                    return (
-                      <ScoutBox
-                        key={item.id}
-                        padding="14px 16px"
-                        style={isHighlighted ? { borderColor: color.forest, boxShadow: "0 0 0 1px rgba(26,58,47,0.2)" } : undefined}
-                      >
-                        <div
-                          ref={(el) => { courseRefs.current[String(item.id)] = el; }}
-                          style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
-                        >
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{item.name}</p>
-                            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>{item.platform} · {item.duration} · {statusLabel}</p>
-                          </div>
-                          {prog === "completed" ? (
-                            <ScoutSecondaryBtn onClick={() => setCourseProgress(item.id, "inprogress")} style={{ minHeight: 44, width: isMobile ? "100%" : undefined, color: color.forest }}>
-                              Review →
-                            </ScoutSecondaryBtn>
-                          ) : (
-                            <ScoutPrimaryBtn onClick={() => setCourseProgress(item.id, prog === "none" ? "inprogress" : "completed")} style={{ minHeight: 44, width: isMobile ? "100%" : undefined }}>
-                              {prog === "inprogress" ? "Complete →" : "Start →"}
-                            </ScoutPrimaryBtn>
-                          )}
-                        </div>
-                      </ScoutBox>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* My Learning */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <ScoutLabel>My learning</ScoutLabel>
-          {!showAddForm && (
-            <ScoutSecondaryBtn onClick={() => setShowAddForm(true)}>+ Add your own</ScoutSecondaryBtn>
-          )}
-        </div>
-
-        {showAddForm && (
-          <ScoutBox padding={16} style={{ marginBottom: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Course / Certification name *</label>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Google Project Management Certificate"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Platform</label>
-                <input value={newPlatform} onChange={(e) => setNewPlatform(e.target.value)} placeholder="e.g. Coursera, Udemy, LinkedIn"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Duration</label>
-                <input value={newDuration} onChange={(e) => setNewDuration(e.target.value)} placeholder="e.g. 6 weeks"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>URL (optional)</label>
-                <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://…"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <ScoutPrimaryBtn onClick={addCustomItem} disabled={!newName.trim()} style={{ opacity: newName.trim() ? 1 : 0.5 }}>Add</ScoutPrimaryBtn>
-              <ScoutSecondaryBtn onClick={() => { setShowAddForm(false); setNewName(""); setNewUrl(""); setNewPlatform(""); setNewDuration(""); }}>Cancel</ScoutSecondaryBtn>
-            </div>
-          </ScoutBox>
-        )}
-
-        {customItems.length === 0 && !showAddForm ? (
-          <div style={{ padding: "24px 0", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C0B8B0" }}>No custom items yet. Add courses, certs, or tools you&apos;re tracking on your own.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {customItems.map((item) => {
-              const statusLabel = item.status === "completed" ? "Completed ✓" : item.status === "inprogress" ? "In progress" : "Not started";
-              const statusColor = item.status === "completed" ? "#1A3A2F" : item.status === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
-              return (
-                <div key={item.id} style={{ background: "#FFFFFF", borderRadius: "var(--scout-radius)", padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "var(--scout-radius)", background: "#E8E2D8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)" }}>{(item.platform || item.name).charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      {item.url ? (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none" }}>{item.name}</a>
-                      ) : (
-                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
-                      )}
-                    </div>
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 3 }}>
-                      {[item.platform, item.duration].filter(Boolean).join(" · ")}
-                    </p>
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: statusColor }}>{statusLabel}</p>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: isMobile ? "wrap" : undefined }}>
-                    <button onClick={() => updateCustomStatus(item.id)}
-                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(26,58,47,0.08)" : "#1A3A2F", color: item.status === "completed" ? "#1A3A2F" : "#E8D5A3", border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-                      {item.status === "completed" ? "Review →" : item.status === "inprogress" ? "Complete →" : "Start →"}
-                    </button>
-                    <button onClick={() => removeCustomItem(item.id)} style={{ background: "none", border: "none", color: "#C0B8B0", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>×</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Tab: Resume Assets ───────────────────────────────────────────────────────
 
@@ -2992,7 +2549,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating, isAdmin } = useWorkspace();
+  const { adminReviewClientId, withClientScope, withClientReviewPath, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating, isAdmin } = useWorkspace();
   const profileLoc = parseProfileLocation(pathname);
   const urlClientId = searchParams.get("clientUserId")?.trim() || undefined;
   const [profileReviewClientId, setProfileReviewClientId] = useState<string | undefined>();
@@ -3000,18 +2557,25 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     ? undefined
     : (adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? urlClientId ?? profileReviewClientId ?? undefined);
   const profileScopeKey = isImpersonating ? "impersonate" : (clientId ?? "self");
-  const canAccessImport = Boolean(clientId) && isAdmin && !isImpersonating;
   const preferencesSection = profileLoc.preferencesSection;
   const profileBase = profileBasePath(clientId, { sessionScoped: isAdminReviewing });
   const api = withClientScope;
   const page = profileLoc.page;
+  const pushProfilePath = (path: string) => {
+    router.push(withClientReviewPath(path));
+  };
   const setPage = (tab: PageTab) => {
-    router.push(profileTabPath(profileBase, tab));
+    pushProfilePath(profileTabPath(profileBase, tab));
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const importClientUserId =
+    clientId ?? profile?.adminReview?.clientId ?? profileReviewClientId ?? undefined;
+  const canAccessImport =
+    !isImpersonating &&
+    Boolean(importClientUserId) &&
+    (isAdmin || Boolean(profile?.adminReview) || Boolean(profileReviewClientId));
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
-  const [prioritizedList, setPrioritizedList] = useState<string[]>([]);
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [deprioritizedList, setDeprioritizedList] = useState<string[]>([]);
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
@@ -3019,6 +2583,8 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [roleAnalyses, setRoleAnalyses] = useState<RoleAnalysesMap>({});
   const [upskillProgress, setUpskillProgress] = useState<UpskillProgressMap>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
+  const [roleCorpusGaps, setRoleCorpusGaps] = useState<RoleCorpusGapsCache | null>(null);
+  const [corpusGapsRefreshing, setCorpusGapsRefreshing] = useState(false);
   const [targetRoleSettings, setTargetRoleSettings] = useState<TargetRoleSettingsMap>({});
   const [upskillPrompt, setUpskillPrompt] = useState<{ skill: string; role: string } | null>(null);
   const legacyMigratedRef = useRef(false);
@@ -3080,7 +2646,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         const userProfile = data as UserProfile;
         setProfile(userProfile);
         setDreamList(userProfile.targetRoles || []);
-        setPrioritizedList(userProfile.prioritizedRoles || []);
         setPrioritizedCategories(userProfile.prioritizedCategories || []);
         setDeprioritizedList(userProfile.deprioritizedRoles || []);
         setDeprioritizedCategories(userProfile.deprioritizedCategories || []);
@@ -3089,6 +2654,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         );
         setRoleAnalyses(normalizeRoleAnalysesMap(userProfile.roleAnalyses));
         setSkillGoals(normalizeSkillGoals(userProfile.skillGoals));
+        setRoleCorpusGaps(readRoleCorpusGaps(userProfile.parsedData));
         setUpskillProgress(userProfile.upskillProgress ?? {});
         setTargetRoleSettings(normalizeTargetRoleSettings(userProfile.targetRoleSettings));
 
@@ -3101,6 +2667,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
           const migrated = await migrateLegacyProfileData(userProfile, patchProfile);
           setRoleAnalyses(migrated.roleAnalyses);
           setSkillGoals(migrated.skillGoals);
+          if (migrated.targetRoles?.length) {
+            setDreamList(migrated.targetRoles);
+          }
         }
       })
       .catch(() => {})
@@ -3223,13 +2792,18 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     });
   };
 
-  const addSkillToPortfolio = async (skill: string) => {
+  const addSkillToPortfolio = async (skill: string, kind?: MatchableKind) => {
     const currentSkills = profile?.parsedData?.skills || [];
     const currentTools = profile?.parsedData?.tools || [];
-    if (allMatchableSkills({ skills: currentSkills, tools: currentTools }).some((s) => s.toLowerCase() === skill.toLowerCase())) {
+    const buckets = addMatchableToBuckets({ skills: currentSkills, tools: currentTools }, skill, kind);
+    if (
+      allMatchableSkills({ skills: currentSkills, tools: currentTools }).some(
+        (s) => s.toLowerCase() === skill.toLowerCase(),
+      )
+    ) {
       return;
     }
-    await handleSkillsToolsSave([...currentSkills, skill], currentTools);
+    await handleSkillsToolsSave(buckets.skills, buckets.tools);
   };
 
   const hasSkillGoal = (skill: string, role: string) =>
@@ -3237,14 +2811,43 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
       (g) => g.skill.toLowerCase() === skill.toLowerCase() && g.role === role,
     );
 
-  const obtainSkill = (skill: string, role: string) => {
+  const obtainSkill = (
+    skill: string,
+    role: string,
+    opts?: { gapSource?: SkillGoalGapSource; kind?: MatchableKind },
+  ) => {
+    const kind = opts?.kind ?? classifyMatchableKind(skill);
     if (!hasSkillGoal(skill, role)) {
-      const next = [...skillGoals, buildSkillGoal(skill, role)];
+      const next = [...skillGoals, buildSkillGoal(skill, role, opts?.gapSource ?? "manual", kind)];
       setSkillGoals(next);
       void patchProfile({ skillGoals: next });
     }
     setUpskillPrompt({ skill, role });
   };
+
+  const refreshCorpusGaps = useCallback(async () => {
+    setCorpusGapsRefreshing(true);
+    try {
+      const res = await fetch(api("/api/profile/role-corpus-gaps"), { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.roleCorpusGaps) {
+        setRoleCorpusGaps(data.roleCorpusGaps as RoleCorpusGapsCache);
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                parsedData: {
+                  ...(prev.parsedData && typeof prev.parsedData === "object" ? prev.parsedData : {}),
+                  roleCorpusGaps: data.roleCorpusGaps,
+                },
+              }
+            : prev,
+        );
+      }
+    } finally {
+      setCorpusGapsRefreshing(false);
+    }
+  }, [api]);
 
   const goToUpskill = (skill: string) => {
     setUpskillPrompt(null);
@@ -3262,9 +2865,14 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     router.push(pipelineProspectUrl(prospectId));
   }, [router]);
 
-  const addSkillGoal = (skill: string, role: string) => {
+  const addSkillGoal = (
+    skill: string,
+    role: string,
+    gapSource?: SkillGoalGapSource,
+    kind?: MatchableKind,
+  ) => {
     if (hasSkillGoal(skill, role)) return;
-    const next = [...skillGoals, buildSkillGoal(skill, role)];
+    const next = [...skillGoals, buildSkillGoal(skill, role, gapSource ?? "manual", kind ?? classifyMatchableKind(skill))];
     setSkillGoals(next);
     void patchProfile({ skillGoals: next });
   };
@@ -3373,8 +2981,15 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const graduateSkill = async (skill: string) => {
     const currentSkills = profile?.parsedData?.skills || [];
     const currentTools = profile?.parsedData?.tools || [];
-    if (!allMatchableSkills({ skills: currentSkills, tools: currentTools }).some((s) => s.toLowerCase() === skill.toLowerCase())) {
-      await handleSkillsToolsSave([...currentSkills, skill], currentTools);
+    const goalKind = skillGoals.find((g) => g.skill.toLowerCase() === skill.toLowerCase())?.kind;
+    const kind = goalKind ?? classifyMatchableKind(skill);
+    if (
+      !allMatchableSkills({ skills: currentSkills, tools: currentTools }).some(
+        (s) => s.toLowerCase() === skill.toLowerCase(),
+      )
+    ) {
+      const buckets = addMatchableToBuckets({ skills: currentSkills, tools: currentTools }, skill, kind);
+      await handleSkillsToolsSave(buckets.skills, buckets.tools);
     }
     setSkillGoals((prev) => {
       const next = prev.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase());
@@ -3476,7 +3091,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     }
   };
 
-  const targetRolesForResumes = dedupeRoles([...dreamList, ...prioritizedList]);
+  const targetRolesForResumes = dedupeRoles(dreamList);
 
   const handleResumeUpload = async (file: File) => {
     setResumeUploading(true);
@@ -3666,7 +3281,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (
           <div style={{ marginBottom: 16 }}>
-            <UpskillNextStepCard
+            <UpskillQueuedBanner
               skill={upskillPrompt.skill}
               role={upskillPrompt.role}
               onGoToUpskill={goToUpskill}
@@ -3843,9 +3458,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 dreamList={dreamList}
                 setDreamList={setDreamList}
                 onSave={(list) => patchProfile({ targetRoles: list })}
-                prioritizedList={prioritizedList}
-                setPrioritizedList={setPrioritizedList}
-                onPrioritizedSave={(list) => patchProfile({ prioritizedRoles: list })}
                 prioritizedCategories={prioritizedCategories}
                 setPrioritizedCategories={setPrioritizedCategories}
                 onPrioritizedCategoriesSave={(list) => patchProfile({ prioritizedCategories: list })}
@@ -3871,6 +3483,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 userSkills={matchableSkills}
                 skillGoals={skillGoals}
                 roleAnalyses={roleAnalyses}
+                roleCorpusGaps={roleCorpusGaps}
+                corpusGapsRefreshing={corpusGapsRefreshing}
+                onRefreshCorpusGaps={() => void refreshCorpusGaps()}
                 targetRoleSettings={targetRoleSettings}
                 onTargetRoleSettingsChange={handleTargetRoleSettingsChange}
                 onRoleAnalysisUpdate={handleRoleAnalysisUpdate}
@@ -3949,7 +3564,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                           key={id}
                           type="button"
                           onClick={() =>
-                            router.push(
+                            pushProfilePath(
                               profileTabPath(profileBase, "preferences", {
                                 preferencesSection: id === "import" ? "import" : undefined,
                               }),
@@ -3974,9 +3589,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   </div>
                 )}
 
-                {preferencesSection === "import" && canAccessImport && clientId ? (
+                {preferencesSection === "import" && canAccessImport && importClientUserId ? (
                   <ProfileImportPanel
-                    clientUserId={clientId}
+                    clientUserId={importClientUserId}
                     isMobile={isMobile}
                     onPatchProfile={async (patch) => {
                       await patchProfile(patch);
@@ -4011,7 +3626,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
             )}
 
             {page === "learning" && (
-              <LearningTab
+              <UpskillLearningTab
                 progress={upskillProgress}
                 setProgress={persistUpskillProgress}
                 skillGoals={skillGoals}
@@ -4020,6 +3635,10 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 onAddSkill={addSkillGoal}
                 onDismissSkill={dismissSkillGoal}
                 highlightSkill={highlightSkill}
+                roleCorpusGaps={roleCorpusGaps}
+                corpusGapsRefreshing={corpusGapsRefreshing}
+                onRefreshCorpusGaps={() => void refreshCorpusGaps()}
+                onGoToTargetRoles={() => setPage("dreamrole")}
               />
             )}
 
@@ -4058,24 +3677,36 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   name: profile.name,
                   headline: profile.headline,
                   targetRoles: profile.targetRoles,
-                  resumeUrl: profile.resumeUrl,
-                  linkedinUrl: profile.linkedinUrl,
-                  experience: (profile.parsedData?.workExperience as unknown[] | null) ?? null,
-                  skills: (profile.parsedData?.skills as string[] | null) ?? null,
-                  targetSalary: profile.targetSalary,
-                  location: profile.parsedData?.location ?? profile.targetMarket ?? null,
-                  employmentStatus: profile.employmentStatus,
-                  summary: profile.summary,
-                  jobTimeline: profile.jobTimeline,
-                  linkedInAnalysisScore: profile.linkedInAnalysisScore ?? null,
+                  prioritizedCategories: profile.prioritizedCategories,
+                  benchmarkCategoryOverride:
+                    profile.parsedData && typeof profile.parsedData === "object"
+                      ? ((profile.parsedData as Record<string, unknown>)[DISCOVERY_BENCHMARK_CATEGORY_KEY] as
+                          | string
+                          | null
+                          | undefined) ?? null
+                      : null,
                   avatarUrl: clientId ? profile.avatarUrl : user?.avatarUrl ?? profile.avatarUrl,
-                  email: profile.email,
-                  parsedData: profile.parsedData,
-                  priorities: profile.priorities,
                 }}
                 isMobile={isMobile}
                 withClientScope={withClientScope}
-                onSubscribe={openPricing}
+                onBenchmarkCategorySave={async (category) => {
+                  const existingParsed = (profile.parsedData ?? {}) as Record<string, unknown>;
+                  const nextParsed = { ...existingParsed };
+                  if (category) nextParsed[DISCOVERY_BENCHMARK_CATEGORY_KEY] = category;
+                  else delete nextParsed[DISCOVERY_BENCHMARK_CATEGORY_KEY];
+                  await patchProfile({ parsedData: nextParsed });
+                  setProfile((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          parsedData: {
+                            ...(prev.parsedData ?? {}),
+                            ...nextParsed,
+                          },
+                        }
+                      : prev,
+                  );
+                }}
               />
             )}
             {page === "discoveryscore" && !profile && !loading && (

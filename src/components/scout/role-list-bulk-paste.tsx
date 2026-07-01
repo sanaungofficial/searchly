@@ -8,14 +8,12 @@ import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scou
 
 type BulkListKind =
   | "target"
-  | "prioritized"
   | "deprioritized"
   | "prioritized-categories"
   | "deprioritized-categories";
 
 const LIST_OPTIONS: { value: BulkListKind; label: string }[] = [
   { value: "target", label: "Target roles" },
-  { value: "prioritized", label: "Prioritized roles" },
   { value: "deprioritized", label: "Deprioritized roles" },
   { value: "prioritized-categories", label: "Prioritized categories" },
   { value: "deprioritized-categories", label: "Deprioritized categories" },
@@ -24,8 +22,6 @@ const LIST_OPTIONS: { value: BulkListKind; label: string }[] = [
 type RoleListBulkPasteProps = {
   dreamList: string[];
   onTargetChange: (next: string[]) => void;
-  prioritizedList: string[];
-  onPrioritizedChange: (next: string[]) => void;
   deprioritizedList: string[];
   onDeprioritizedChange: (next: string[]) => void;
   prioritizedCategories: string[];
@@ -38,8 +34,6 @@ type RoleListBulkPasteProps = {
 export function RoleListBulkPaste({
   dreamList,
   onTargetChange,
-  prioritizedList,
-  onPrioritizedChange,
   deprioritizedList,
   onDeprioritizedChange,
   prioritizedCategories,
@@ -63,8 +57,6 @@ export function RoleListBulkPaste({
     switch (listKind) {
       case "target":
         return dreamList;
-      case "prioritized":
-        return prioritizedList;
       case "deprioritized":
         return deprioritizedList;
       case "prioritized-categories":
@@ -78,9 +70,6 @@ export function RoleListBulkPaste({
     switch (listKind) {
       case "target":
         onTargetChange(next);
-        break;
-      case "prioritized":
-        onPrioritizedChange(next);
         break;
       case "deprioritized":
         onDeprioritizedChange(next);

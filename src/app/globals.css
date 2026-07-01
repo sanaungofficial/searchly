@@ -162,6 +162,21 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+:root {
+  /* Workspace fixed top nav — synced from workspace-context + workspace-top-nav */
+  --workspace-top-offset: 0px;
+  --workspace-nav-height: 64px;
+  --workspace-stack-top: 64px;
+  --top-nav-z: 225;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --workspace-nav-height: 56px;
+    --workspace-stack-top: 56px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -506,6 +521,53 @@
   --type-caption: 14px;
   --type-label: 12px;
   --scout-border: 1.5px solid var(--bruddle-ink);
+  --scout-shadow-bruddle-hover: 5px 5px 0 var(--bruddle-ink);
   font-family: var(--font-ui);
   font-size: var(--type-body);
+}
+
+/* Bruddle interactive hover — subtle landing-page lift (not too much pop) */
+.bruddle .bruddle-hover-lift,
+.bruddle .bruddle-btn-hover {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.bruddle .bruddle-hover-lift:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--bruddle-ink);
+}
+
+.bruddle .bruddle-btn-hover:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--scout-shadow-bruddle-hover);
+}
+
+.bruddle .bruddle-btn-hover:active:not(:disabled) {
+  transform: translate(0, 0);
+  box-shadow: var(--scout-shadow-bruddle);
+}
+
+.bruddle .bruddle-card-hover {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.bruddle .bruddle-card-hover:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--bruddle-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bruddle .bruddle-hover-lift,
+  .bruddle .bruddle-hover-lift:hover,
+  .bruddle .bruddle-btn-hover,
+  .bruddle .bruddle-btn-hover:hover,
+  .bruddle .bruddle-card-hover,
+  .bruddle .bruddle-card-hover:hover {
+    transition: none !important;
+    transform: none !important;
+  }
 }

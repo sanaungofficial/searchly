@@ -1,6 +1,9 @@
-import { UPSKILL_CATEGORIES, type UpskillItem } from "@/components/scout/workspace-data";
+import { UPSKILL_CATALOG, type UpskillCatalogEntry } from "@/lib/upskill-catalog";
+import type { MatchableKind } from "@/lib/skills-tools";
 
 export type UpskillProgramType = "course" | "certification" | "search";
+
+export type SkillGoalGapSource = "saved_job" | "corpus" | "archetype" | "manual";
 
 export interface UpskillProgram {
   id: string;
@@ -11,6 +14,7 @@ export interface UpskillProgram {
   credential?: string;
   type: UpskillProgramType;
   source: "catalog" | "search";
+  kimchiPick?: boolean;
   why?: string;
 }
 
@@ -19,6 +23,15 @@ export interface SkillGoalRecord {
   role: string;
   addedAt: string;
   programs: UpskillProgram[];
+  gapSource?: SkillGoalGapSource;
+  kind?: MatchableKind;
+}
+
+export function skillGoalGapSourceLabel(source: SkillGoalGapSource | undefined): string | null {
+  if (source === "saved_job") return "From saved job";
+  if (source === "corpus") return "From job postings";
+  if (source === "archetype") return "From role analysis";
+  return null;
 }
 
 function normalizeToken(value: string): string {
@@ -29,7 +42,7 @@ function tokens(value: string): string[] {
   return normalizeToken(value).split(/[\s/&,+-]+/).filter(Boolean);
 }
 
-function skillMatchesLabel(skill: string, label: string): boolean {
+export function skillMatchesLabel(skill: string, label: string): boolean {
   const a = normalizeToken(skill);
   const b = normalizeToken(label);
   if (!a || !b) return false;
@@ -40,33 +53,25 @@ function skillMatchesLabel(skill: string, label: string): boolean {
   return aTokens.some((t) => bTokens.includes(t) && t.length >= 3);
 }
 
-function programTypeFromCredential(credential: string): UpskillProgramType {
+function programTypeFromCredential(credential: string | undefined): UpskillProgramType {
+  if (!credential) return "course";
   const lower = credential.toLowerCase();
   if (lower.includes("cert") || lower.includes("badge")) return "certification";
   return "course";
 }
 
-function catalogItemToProgram(item: UpskillItem, skill: string): UpskillProgram {
-  const query = encodeURIComponent(skill);
-  const platformUrls: Record<string, string> = {
-    Coursera: `https://www.coursera.org/search?query=${query}`,
-    "LinkedIn Learning": `https://www.linkedin.com/learning/search?keywords=${query}`,
-    Google: `https://grow.google/certificates/`,
-    Reforge: `https://www.reforge.com/`,
-    "Wall Street Prep": `https://www.wallstreetprep.com/`,
-    Udemy: `https://www.udemy.com/courses/search/?q=${query}`,
-  };
-
+function catalogEntryToProgram(entry: UpskillCatalogEntry): UpskillProgram {
   return {
-    id: `catalog_${item.id}`,
-    name: item.name,
-    platform: item.platform,
-    url: platformUrls[item.platform] ?? `https://www.google.com/search?q=${query}+${encodeURIComponent(item.platform)}+course`,
-    duration: item.duration,
-    credential: item.credential,
-    type: programTypeFromCredential(item.credential),
+    id: entry.legacyNumericId != null ? `catalog_${entry.legacyNumericId}` : `catalog_${entry.id}`,
+    name: entry.title,
+    platform: entry.provider,
+    url: entry.url,
+    duration: entry.duration,
+    credential: entry.credential,
+    type: programTypeFromCredential(entry.credential),
     source: "catalog",
-    why: item.why,
+    kimchiPick: entry.kimchiPick,
+    why: entry.why,
   };
 }
 
@@ -80,6 +85,7 @@ function searchProgramsForSkill(skill: string): UpskillProgram[] {
       url: `https://www.coursera.org/search?query=${query}`,
       type: "search",
       source: "search",
+      kimchiPick: false,
     },
     {
       id: `search_linkedin_${normalizeToken(skill).replace(/\s+/g, "_")}`,
@@ -88,6 +94,7 @@ function searchProgramsForSkill(skill: string): UpskillProgram[] {
       url: `https://www.linkedin.com/learning/search?keywords=${query}`,
       type: "search",
       source: "search",
+      kimchiPick: false,
     },
     {
       id: `search_certs_${normalizeToken(skill).replace(/\s+/g, "_")}`,
@@ -96,6 +103,7 @@ function searchProgramsForSkill(skill: string): UpskillProgram[] {
       url: `https://www.google.com/search?q=${query}+professional+certification+training`,
       type: "certification",
       source: "search",
+      kimchiPick: false,
     },
   ];
 }
@@ -104,18 +112,16 @@ export function findProgramsForSkill(skill: string, limit = 4): UpskillProgram[]
   const matches: UpskillProgram[] = [];
   const seen = new Set<string>();
 
-  for (const category of UPSKILL_CATEGORIES) {
-    for (const item of category.items) {
-      const gapHit = item.closesGap?.some((gap) => skillMatchesLabel(skill, gap));
-      const nameHit = skillMatchesLabel(skill, item.name);
-      const whyHit = skillMatchesLabel(skill, item.why);
-      if (!gapHit && !nameHit && !whyHit) continue;
+  for (const entry of UPSKILL_CATALOG) {
+    const gapHit = entry.closesGap.some((gap) => skillMatchesLabel(skill, gap));
+    const titleHit = skillMatchesLabel(skill, entry.title);
+    const whyHit = entry.why ? skillMatchesLabel(skill, entry.why) : false;
+    if (!gapHit && !titleHit && !whyHit) continue;
 
-      const program = catalogItemToProgram(item, skill);
-      if (seen.has(program.id)) continue;
-      seen.add(program.id);
-      matches.push(program);
-    }
+    const program = catalogEntryToProgram(entry);
+    if (seen.has(program.id)) continue;
+    seen.add(program.id);
+    matches.push(program);
   }
 
   if (matches.length < limit) {
@@ -130,12 +136,19 @@ export function findProgramsForSkill(skill: string, limit = 4): UpskillProgram[]
   return matches.slice(0, limit);
 }
 
-export function buildSkillGoal(skill: string, role: string): SkillGoalRecord {
+export function buildSkillGoal(
+  skill: string,
+  role: string,
+  gapSource?: SkillGoalGapSource,
+  kind?: MatchableKind,
+): SkillGoalRecord {
   return {
     skill,
     role,
     addedAt: new Date().toISOString(),
     programs: findProgramsForSkill(skill),
+    ...(gapSource ? { gapSource } : {}),
+    ...(kind ? { kind } : {}),
   };
 }
 
@@ -172,6 +185,7 @@ export function normalizeSkillGoals(raw: unknown): SkillGoalRecord[] {
               ? prog.type
               : "course") as UpskillProgramType,
             source: (prog.source === "catalog" || prog.source === "search" ? prog.source : "search") as "catalog" | "search",
+            kimchiPick: prog.kimchiPick === true || prog.source === "catalog",
             why: typeof prog.why === "string" ? prog.why : undefined,
           };
         })
@@ -179,7 +193,22 @@ export function normalizeSkillGoals(raw: unknown): SkillGoalRecord[] {
     }
 
     if (!programs.length) programs = findProgramsForSkill(skill);
-    out.push({ skill, role, addedAt, programs });
+    const gapSource =
+      row.gapSource === "saved_job" ||
+      row.gapSource === "corpus" ||
+      row.gapSource === "archetype" ||
+      row.gapSource === "manual"
+        ? row.gapSource
+        : undefined;
+    const kind = row.kind === "skill" || row.kind === "technology" ? row.kind : undefined;
+    out.push({
+      skill,
+      role,
+      addedAt,
+      programs,
+      ...(gapSource ? { gapSource } : {}),
+      ...(kind ? { kind } : {}),
+    });
   }
   return out;
 }

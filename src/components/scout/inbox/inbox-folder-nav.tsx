@@ -77,7 +77,7 @@ export function InboxFolderNav({ folders, selectedId, onSelect }: Props) {
                     fontWeight: 700,
                     color: color.forest,
                     background: "rgba(42,107,74,0.12)",
-                    borderRadius: 999,
+                    borderRadius: "var(--scout-radius)",
                     padding: "1px 6px",
                     flexShrink: 0,
                   }}

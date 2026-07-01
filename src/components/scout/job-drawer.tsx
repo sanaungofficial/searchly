@@ -46,6 +46,16 @@ import {
 import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 import { JobInsiderConnectionSection } from "./job-insider-connection-section";
 import { ApplicationQaModal } from "./application-qa-bank";
+import { PipelineJobTagsEditor } from "./pipeline-job-tags";
+import { parsePipelineTagsFromMeta } from "@/lib/pipeline-tags";
+import { INTERVIEW_ROUNDS } from "@/lib/interview-round";
+
+function toDateInputValue(value: string | null | undefined): string {
+  if (!value?.trim()) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value.slice(0, 10);
+  return d.toISOString().slice(0, 10);
+}
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -54,7 +64,7 @@ interface JobDrawerProps {
   onClose: () => void;
   moveCard: (id: number, stage: KanbanStage) => void;
   onDelete: () => void;
-  onCardUpdate: (fields: Record<string, string | null>) => void;
+  onCardUpdate: (fields: Record<string, unknown>) => void;
   tool?: DrawerTool;
   onToolChange?: (t: DrawerTool) => void;
   prospectMode?: boolean;
@@ -65,6 +75,7 @@ interface JobDrawerProps {
   elevated?: boolean;
   /** Prospect/recommended drawer — fetching full Hirebase posting */
   detailLoading?: boolean;
+  onAddGapToUpskill?: (skill: string, role: string) => void;
 }
 
 type ScrollSection = "overview" | "recruiter" | "company";
@@ -424,9 +435,13 @@ function resolveJobFields(meta: JobMeta | null) {
 function JobDrawerMatchSection({
   meta,
   onCompareResume,
+  onAddGapToUpskill,
+  jobRole,
 }: {
   meta: JobMeta | null;
   onCompareResume?: () => void;
+  onAddGapToUpskill?: (skill: string, role: string) => void;
+  jobRole?: string;
 }) {
   const match = meta?.vectorMatch;
   if (!match || match.matchScore <= 0) return null;
@@ -456,7 +471,19 @@ function JobDrawerMatchSection({
             <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
           ))}
           {match.gapSkills?.map((skill) => (
-            <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+            onAddGapToUpskill ? (
+              <button
+                key={`g-${skill}`}
+                type="button"
+                onClick={() => onAddGapToUpskill(skill, jobRole ?? "General")}
+                style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A", border: "1px dashed rgba(107,90,42,0.35)", cursor: "pointer" }}
+                title="Add to Upskill"
+              >
+                Gap: {skill} · Add to Upskill
+              </button>
+            ) : (
+              <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+            )
           ))}
         </div>
       ) : null}
@@ -738,16 +765,40 @@ export function JobDrawer({
   existingPipelineCardId = null,
   onOpenInPipeline,
   detailLoading = false,
+  elevated = false,
+  onAddGapToUpskill,
 }: JobDrawerProps) {
   const { withClientScope } = useWorkspace();
   const masterResume = useMasterResumeStatus();
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [requestModal, setRequestModal] = useState<NetworkJobRequestModalKind | null>(null);
-  const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
-  const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
-  const cardExt = card as KanbanCard & { _meta?: JobMeta; _coverLetter?: string; _fitAnalysis?: string };
-  const meta = cardExt._meta ?? null;
+  const extCard = card as KanbanCard & {
+    _dbId?: string;
+    _url?: string;
+    _userNotes?: string;
+    _companyLinkedinUrl?: string;
+    _pipelineTags?: string[];
+    _meta?: JobMeta;
+    _coverLetter?: string;
+    _fitAnalysis?: string;
+    _appliedAt?: string;
+  };
+  const dbId = extCard._dbId ?? null;
+  const cardUrl = extCard._url ?? null;
+  const meta = extCard._meta ?? null;
+  const [urlValue, setUrlValue] = useState(extCard._url ?? "");
+  const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
+  const [pipelineTags, setPipelineTags] = useState<string[]>(
+    extCard._pipelineTags ?? parsePipelineTagsFromMeta(meta),
+  );
+  const [descValue, setDescValue] = useState(meta?.description ?? "");
+  const [nextStepValue, setNextStepValue] = useState(meta?.nextStep ?? "");
+  const [nextStepDueValue, setNextStepDueValue] = useState(meta?.nextStepDue ?? "");
+  const [appliedAtValue, setAppliedAtValue] = useState(toDateInputValue(extCard._appliedAt));
+  const [interviewRoundValue, setInterviewRoundValue] = useState(meta?.interviewRound ?? "");
+  const [interviewDateValue, setInterviewDateValue] = useState(toDateInputValue(meta?.interviewDate));
+  const [offerDateValue, setOfferDateValue] = useState(toDateInputValue(meta?.offerDate));
   const [activeSection, setActiveSection] = useState<ScrollSection>("overview");
   const scrollRef = useRef<HTMLDivElement>(null);
   const companySectionRef = useRef<HTMLDivElement>(null);
@@ -811,6 +862,14 @@ export function JobDrawer({
   }, [card.id, meta?.description]);
 
   useEffect(() => {
+    setPipelineTags(extCard._pipelineTags ?? parsePipelineTagsFromMeta(meta));
+    setAppliedAtValue(toDateInputValue(extCard._appliedAt));
+    setInterviewRoundValue(meta?.interviewRound ?? "");
+    setInterviewDateValue(toDateInputValue(meta?.interviewDate));
+    setOfferDateValue(toDateInputValue(meta?.offerDate));
+  }, [card.id, extCard._pipelineTags, extCard._appliedAt, meta]);
+
+  useEffect(() => {
     setActiveSection("overview");
     setMobileToolsOpen(false);
     scrollRef.current?.scrollTo({ top: 0 });
@@ -857,21 +916,30 @@ export function JobDrawer({
     };
   }, [card.id]);
 
-  const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
-  const [urlValue, setUrlValue] = useState(extCard._url ?? "");
-  const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
-  const [descValue, setDescValue] = useState(meta?.description ?? "");
-  const [nextStepValue, setNextStepValue] = useState(meta?.nextStep ?? "");
-  const [nextStepDueValue, setNextStepDueValue] = useState(meta?.nextStepDue ?? "");
-
   function patchNextStep(nextStep: string, nextStepDue: string) {
     if (!dbId) return;
-    const updatedMeta = { ...(meta ?? {}), nextStep: nextStep || null, nextStepDue: nextStepDue || null };
+    patchJobMeta({ nextStep: nextStep || null, nextStepDue: nextStepDue || null });
+  }
+
+  function patchJobMeta(patch: Partial<JobMeta>) {
+    if (!dbId) return;
     fetch(withClientScope(`/api/jobs/${dbId}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),
+      body: JSON.stringify({ jobMeta: patch }),
     });
+    onCardUpdate({ jobMeta: patch });
+  }
+
+  function patchAppliedAt(value: string) {
+    if (!dbId) return;
+    const iso = value ? new Date(`${value}T12:00:00.000Z`).toISOString() : null;
+    fetch(withClientScope(`/api/jobs/${dbId}`), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appliedAt: iso }),
+    });
+    onCardUpdate({ appliedAt: iso ?? undefined });
   }
 
   const companyLinkedinUrl = extCard._companyLinkedinUrl ||
@@ -885,6 +953,11 @@ export function JobDrawer({
       body: JSON.stringify(fields),
     });
     onCardUpdate(fields);
+  }
+
+  function patchPipelineTags(tags: string[]) {
+    setPipelineTags(tags);
+    onCardUpdate({ pipelineTags: tags });
   }
 
   function patchDescription(value: string) {
@@ -1264,6 +1337,8 @@ export function JobDrawer({
                 <JobDrawerMatchSection
                   meta={meta}
                   onCompareResume={canRunMatch ? () => setMatchDrawerOpen(true) : undefined}
+                  onAddGapToUpskill={onAddGapToUpskill}
+                  jobRole={card.role}
                 />
               ) : null}
 
@@ -1402,6 +1477,57 @@ export function JobDrawer({
                       </button>
                     ))}
                   </div>
+                  <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Applied date</p>
+                  <input
+                    type="date"
+                    value={appliedAtValue}
+                    onChange={(e) => setAppliedAtValue(e.target.value)}
+                    onBlur={() => patchAppliedAt(appliedAtValue)}
+                    style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 14, boxSizing: "border-box" }}
+                  />
+                  {(card.stage === "interview" || card.stage === "offer") && (
+                    <>
+                      <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Interview round</p>
+                      <select
+                        value={interviewRoundValue}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setInterviewRoundValue(v);
+                          patchJobMeta({ interviewRound: v || null });
+                        }}
+                        style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 14, boxSizing: "border-box" }}
+                      >
+                        <option value="">Select round…</option>
+                        {INTERVIEW_ROUNDS.map((r) => (
+                          <option key={r.id} value={r.id}>{r.label}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  {card.stage === "interview" && (
+                    <>
+                      <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Interview date</p>
+                      <input
+                        type="date"
+                        value={interviewDateValue}
+                        onChange={(e) => setInterviewDateValue(e.target.value)}
+                        onBlur={() => patchJobMeta({ interviewDate: interviewDateValue || null })}
+                        style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 14, boxSizing: "border-box" }}
+                      />
+                    </>
+                  )}
+                  {card.stage === "offer" && (
+                    <>
+                      <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Offer date</p>
+                      <input
+                        type="date"
+                        value={offerDateValue}
+                        onChange={(e) => setOfferDateValue(e.target.value)}
+                        onBlur={() => patchJobMeta({ offerDate: offerDateValue || null })}
+                        style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 14, boxSizing: "border-box" }}
+                      />
+                    </>
+                  )}
                   <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Next action</p>
                   <input
                     value={nextStepValue}
@@ -1416,6 +1542,21 @@ export function JobDrawer({
                     onChange={(e) => setNextStepDueValue(e.target.value)}
                     onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                     style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
+                  />
+                </div>
+              )}
+
+              {!prospectMode && dbId && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                    Tags
+                  </p>
+                  <PipelineJobTagsEditor
+                    jobId={dbId}
+                    tags={pipelineTags}
+                    scopePath={withClientScope}
+                    onTagsChange={patchPipelineTags}
+                    manageLibrary
                   />
                 </div>
               )}
@@ -1785,7 +1926,7 @@ export function JobDrawer({
           company={card.company}
           description={jobDescription}
           jobId={dbId ?? undefined}
-          initialLetter={cardExt._coverLetter ?? null}
+          initialLetter={extCard._coverLetter ?? null}
           onClose={() => setCoverDrawerOpen(false)}
           onLetterSaved={(letter) => onCardUpdate({ coverLetter: letter })}
         />

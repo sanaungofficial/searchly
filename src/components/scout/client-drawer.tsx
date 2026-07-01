@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
+import { ClientDetailsSection } from "@/components/admin/client-details-section";
 import { ClientAuthAccountSection } from "@/components/admin/client-auth-account-section";
 import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
 import { CoachClientSessionNotesPanel } from "@/components/scout/coach-client-session-notes-panel";
+import { SearchMetricsSections } from "@/components/scout/search-metrics-sections";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { SearchMetrics } from "@/lib/search-metrics";
+import { withClientUserId } from "@/lib/workspace-urls";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
@@ -39,10 +43,6 @@ function formatDate(s: string) {
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function activeStage(stage: JobStage) {
-  return !["REJECTED", "WITHDRAWN", "SAVED"].includes(stage);
-}
-
 export function ClientDetailBody({
   client,
   onViewAsClient,
@@ -60,9 +60,20 @@ export function ClientDetailBody({
   onClientUpdated?: (client: AdminClient) => void;
   showAuthAccountTools?: boolean;
 }) {
-  const activeJobs = client.jobs.filter((j) => activeStage(j.stage));
-  const appliedJobs = client.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
-  const displayName = client.name ?? client.email.split("@")[0];
+  const isMobile = useIsMobile();
+  const [metrics, setMetrics] = useState<SearchMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+
+  useEffect(() => {
+    setMetricsLoading(true);
+    fetch(withClientUserId("/api/user/search-metrics", client.id))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.jobs && data?.relationships) setMetrics(data as SearchMetrics);
+      })
+      .catch(() => {})
+      .finally(() => setMetricsLoading(false));
+  }, [client.id]);
 
   return (
     <>
@@ -142,21 +153,16 @@ export function ClientDetailBody({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
-        {[
-          { label: "Total jobs", value: client._count.jobs },
-          { label: "Active pipeline", value: activeJobs.length },
-          { label: "Applied / in process", value: appliedJobs.length },
-          { label: "Tailored resumes", value: client._count.tailoredResumes },
-        ].map(({ label, value }) => (
-          <ScoutBox key={label} padding="14px 18px">
-            <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 6, marginTop: 0 }}>
-              {label}
-            </p>
-            <p style={{ ...displayTitleStyle(24), margin: 0 }}>{value}</p>
-          </ScoutBox>
-        ))}
-      </div>
+      <ScoutBox padding={isMobile ? "16px 18px" : "20px 24px"} style={{ marginBottom: 28 }}>
+        <SearchMetricsSections
+          metrics={metrics}
+          loading={metricsLoading}
+          isMobile={isMobile}
+          opportunitiesPath={withClientUserId("/opportunities", client.id)}
+          networkingPath={withClientUserId("/networking", client.id)}
+          compact
+        />
+      </ScoutBox>
 
       {client.profile && (client.profile.targetRoles.length > 0 || client.profile.targetSalary) && (
         <ScoutBox padding="16px 20px" style={{ marginBottom: 20 }}>
@@ -188,6 +194,10 @@ export function ClientDetailBody({
             )}
           </div>
         </ScoutBox>
+      )}
+
+      {onClientUpdated && (
+        <ClientDetailsSection client={client} onUpdated={onClientUpdated} />
       )}
 
       {showAuthAccountTools && onClientUpdated && (

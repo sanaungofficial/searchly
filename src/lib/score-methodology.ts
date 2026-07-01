@@ -194,7 +194,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     bullets: [
       {
         title: "Where gaps come from",
-        body: "Role-gap analysis on Target Roles compares your resume and declared skills to each role. Choose Obtain this skill on a gap to queue it here.",
+        body: "Role-gap analysis on Target Roles compares your resume and declared skills to each role. Choose Add to Upskill on a gap to queue it here.",
       },
       {
         title: "Catalog matching",

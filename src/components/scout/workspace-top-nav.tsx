@@ -15,9 +15,11 @@ import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
-import { matchInboxPath, matchNetworkRolesPath, matchOpportunitiesNavPath, INBOX_PATH, NETWORK_ROLES_NAV } from "@/lib/workspace-urls";
+import { matchNetworkingPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
+import { syncWorkspaceNavHeight } from "@/lib/workspace-layout";
 import { TOP_NAV_Z } from "@/lib/z-layers";
 import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
+import { markProductTourSeen, startProductTour } from "@/lib/clickconnector-tour";
 
 export const TOP_NAV_HEIGHT = 64;
 export const TOP_NAV_HEIGHT_MOBILE = 56;
@@ -50,16 +52,10 @@ function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
     match: matchOpportunitiesNavPath,
   });
   links.push({
-    id: "network-roles",
-    label: NETWORK_ROLES_NAV.label,
-    path: NETWORK_ROLES_NAV.path,
-    match: matchNetworkRolesPath,
-  });
-  links.push({
-    id: "inbox",
-    label: "Inbox",
+    id: "networking",
+    label: "Networking",
     path: INBOX_PATH,
-    match: matchInboxPath,
+    match: matchNetworkingPath,
   });
   if (canAccessBetaFeature("coaching", isAdmin)) {
     links.push({
@@ -106,7 +102,11 @@ function NavDropdownMenuItem({
     <Link
       href={href}
       role="menuitem"
-      onClick={onClick}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onClick?.();
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -139,7 +139,7 @@ function ExpertModeChip({ isMobile }: { isMobile: boolean }) {
         display: "inline-flex",
         alignItems: "center",
         padding: isMobile ? "4px 8px" : "5px 10px",
-        borderRadius: 999,
+        borderRadius: "var(--scout-radius)",
         background: "rgba(26,58,47,0.08)",
         border: "1px solid rgba(26,58,47,0.14)",
         fontFamily: fontSans,
@@ -226,6 +226,7 @@ function UtilityPortalDropdown({
             onToggle();
             return;
           }
+          e.preventDefault();
           onNavigate?.(defaultPath);
         }}
         aria-expanded={dropdownOpen}
@@ -391,6 +392,66 @@ function MobileDrawerSectionLabel({ label }: { label: string }) {
   );
 }
 
+function AccountDropdownMenuItem({
+  label,
+  onClick,
+  icon,
+}: {
+  label: string;
+  onClick: () => void;
+  icon?: ReactNode;
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        width: "100%",
+        textAlign: "left",
+        padding: "10px 12px",
+        border: "none",
+        borderRadius: "var(--scout-radius)",
+        background: hover ? "rgba(26,58,47,0.07)" : "transparent",
+        color: hover ? color.forest : color.stone,
+        fontFamily: fontSans,
+        fontSize: T.bodySm,
+        fontWeight: hover ? 600 : 500,
+        cursor: "pointer",
+        transition: "background 0.12s ease, color 0.12s ease",
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function ProductTourIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
 function MobileTopNavDrawer({
   open,
   onClose,
@@ -405,6 +466,8 @@ function MobileTopNavDrawer({
   showAdminSection,
   adminNavItems,
   onNavigateAdmin,
+  onOpenSettings,
+  onStartProductTour,
 }: {
   open: boolean;
   onClose: () => void;
@@ -419,6 +482,8 @@ function MobileTopNavDrawer({
   showAdminSection: boolean;
   adminNavItems: NavChild[];
   onNavigateAdmin: (path: string) => void;
+  onOpenSettings: () => void;
+  onStartProductTour: () => void;
 }) {
   if (!open) return null;
 
@@ -430,7 +495,7 @@ function MobileTopNavDrawer({
         onClick={onClose}
         style={{
           position: "fixed",
-          top: TOP_NAV_HEIGHT_MOBILE,
+          top: "var(--workspace-stack-top, 56px)",
           left: 0,
           right: 0,
           bottom: 0,
@@ -448,7 +513,7 @@ function MobileTopNavDrawer({
         aria-label="Main navigation"
         style={{
           position: "fixed",
-          top: TOP_NAV_HEIGHT_MOBILE,
+          top: "var(--workspace-stack-top, 56px)",
           left: 0,
           bottom: 0,
           width: "min(300px, calc(100vw - 48px))",
@@ -572,6 +637,28 @@ function MobileTopNavDrawer({
             ))}
           </>
         )}
+
+        <MobileDrawerSectionLabel label="Help" />
+        <MobileDrawerLink
+          label="Take a product tour"
+          active={false}
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            onClose();
+            onStartProductTour();
+          }}
+        />
+        <MobileDrawerLink
+          label="Account settings"
+          active={false}
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            onClose();
+            onOpenSettings();
+          }}
+        />
       </aside>
       <style>{`
         @keyframes workspaceNavSlideIn {
@@ -600,6 +687,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   const navRef = useRef<HTMLElement>(null);
   const navDropdownCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobileHook = useIsMobile();
@@ -665,13 +753,15 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
   };
 
-  const navigateExpertPortal = (_path: string) => {
+  const navigateExpertPortal = (path: string) => {
     if (isStaffPortal && !isImpersonating) setStaffDashboardView("expert");
     setNavDropdownOpen(null);
+    router.push(resolveNavHref(path));
   };
 
-  const navigateAdminPortal = (_path: string) => {
+  const navigateAdminPortal = (path: string) => {
     setNavDropdownOpen(null);
+    router.push(resolveNavHref(path));
   };
 
   const clearNavDropdownCloseTimer = () => {
@@ -691,6 +781,17 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     navDropdownCloseTimer.current = setTimeout(() => setNavDropdownOpen(null), 120);
   };
 
+  async function handleStartProductTour() {
+    setAccountMenuOpen(false);
+    await startProductTour({ skipMarkSeen: true });
+    markProductTourSeen();
+  }
+
+  function openAccountSettings() {
+    setAccountMenuOpen(false);
+    setSettingsOpen(true);
+  }
+
   useEffect(() => {
     if (!authChecked || isAdminReviewing || showGuestWorkspaceNav) return;
     fetch(withClientScope("/api/profile"))
@@ -705,6 +806,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   useEffect(() => {
     setNavDropdownOpen(null);
+    setAccountMenuOpen(false);
     setMobileMenuOpen(false);
   }, [pathname]);
 
@@ -744,6 +846,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   useEffect(() => () => clearNavDropdownCloseTimer(), []);
 
   useEffect(() => {
+    syncWorkspaceNavHeight(navHeight);
+  }, [navHeight]);
+
+  useEffect(() => {
     if (!isStaffPortal || isImpersonating || isAdminReviewing) return;
     if (isExpertPortalPath(pathname)) {
       setStaffDashboardView("expert");
@@ -753,8 +859,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
       pathname === "/dashboard" ||
       pathname.startsWith("/dashboard/") ||
       pathname.startsWith("/opportunities") ||
-      matchNetworkRolesPath(pathname) ||
-      matchInboxPath(pathname) ||
+      matchNetworkingPath(pathname) ||
       pathname.startsWith("/coaching") ||
       pathname.startsWith("/profile")
     ) {
@@ -781,10 +886,21 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  const navigateMainFromDrawer = (_link: NavLink, _childPath?: string) => {
+  const navigateTo = (path: string) => {
     syncSeekerWorkspaceView();
     setNavDropdownOpen(null);
     closeMobileMenu();
+    router.push(resolveNavHref(path));
+  };
+
+  const onNavLinkClick = (path: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    navigateTo(path);
+  };
+
+  const navigateMainFromDrawer = (link: NavLink, childPath?: string) => {
+    navigateTo(childPath ?? link.path);
   };
 
   const navigateExpertFromDrawer = (path: string) => {
@@ -804,6 +920,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     const homeHref = pathname.startsWith("/coaching") ? "/coaching" : "/";
 
     return (
+      <>
       <header
         style={{
           height: navHeight,
@@ -811,9 +928,12 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           background: surface.page,
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
-          position: "sticky",
-          top: 0,
+          position: "fixed",
+          top: "var(--workspace-top-offset, 0px)",
+          left: 0,
+          right: 0,
           zIndex: TOP_NAV_Z,
+          isolation: "isolate",
         }}
       >
         <div
@@ -901,6 +1021,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           </div>
         </div>
       </header>
+      <div aria-hidden style={{ height: navHeight, flexShrink: 0 }} />
+      </>
     );
   }
 
@@ -914,9 +1036,12 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           background: surface.card,
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
-          position: "sticky",
-          top: 0,
+          position: "fixed",
+          top: "var(--workspace-top-offset, 0px)",
+          left: 0,
+          right: 0,
           zIndex: TOP_NAV_Z,
+          isolation: "isolate",
         }}
       >
         <div
@@ -1018,8 +1143,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                           e.preventDefault();
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
                         } else {
-                          syncSeekerWorkspaceView();
-                          setNavDropdownOpen(null);
+                          onNavLinkClick(path)(e);
                         }
                       }}
                       aria-expanded={dropdownOpen}
@@ -1079,10 +1203,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                               label={childLabel}
                               active={childActive}
                               href={resolveNavHref(childPath)}
-                              onClick={() => {
-                                syncSeekerWorkspaceView();
-                                setNavDropdownOpen(null);
-                              }}
+                              onClick={() => navigateTo(childPath)}
                             />
                           );
                         })}
@@ -1097,7 +1218,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                   key={id}
                   href={resolveNavHref(path)}
                   className={`workspace-nav-link${active ? " is-active" : ""}`}
-                  onClick={() => syncSeekerWorkspaceView()}
+                  onClick={onNavLinkClick(path)}
                   style={{
                     background: "none",
                     border: "none",
@@ -1251,20 +1372,24 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               )}
             </button>
 
+            <div style={{ position: "relative", flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Account settings"
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              aria-label="Account menu"
+              aria-expanded={accountMenuOpen}
+              aria-haspopup="menu"
               style={{
                 position: "relative",
                 width: 36,
                 height: 36,
                 padding: 0,
                 border: "var(--scout-border)",
+                borderColor: accountMenuOpen ? "rgba(17,17,17,0.22)" : "rgba(17,17,17,0.12)",
                 borderRadius: "50%",
                 cursor: "pointer",
                 overflow: "hidden",
-                background: "rgba(26,58,47,0.06)",
+                background: accountMenuOpen ? "rgba(26,58,47,0.06)" : "rgba(26,58,47,0.06)",
                 flexShrink: 0,
               }}
             >
@@ -1306,11 +1431,51 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
                 />
               )}
             </button>
+
+            {accountMenuOpen && (
+              <>
+                <div
+                  onClick={() => setAccountMenuOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 115 }}
+                  aria-hidden
+                />
+                <div
+                  role="menu"
+                  aria-label="Account menu"
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    minWidth: 220,
+                    padding: 4,
+                    background: surface.card,
+                    border: "var(--scout-border)",
+                    borderRadius: "var(--scout-radius)",
+                    boxShadow: "var(--scout-shadow-card-strong)",
+                    zIndex: 130,
+                    animation: "fadeIn 0.15s ease both",
+                  }}
+                >
+                  <AccountDropdownMenuItem
+                    label="Take a product tour"
+                    icon={<ProductTourIcon />}
+                    onClick={() => void handleStartProductTour()}
+                  />
+                  <AccountDropdownMenuItem
+                    label="Account settings"
+                    icon={<SettingsIcon />}
+                    onClick={openAccountSettings}
+                  />
+                </div>
+              </>
+            )}
+            </div>
               </>
             )}
           </div>
         </div>
       </header>
+      <div aria-hidden style={{ height: navHeight, flexShrink: 0 }} />
 
       <MobileTopNavDrawer
         open={mobileMenuOpen}
@@ -1326,6 +1491,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         showAdminSection={showAdminSection}
         adminNavItems={adminNavItems}
         onNavigateAdmin={navigateAdminFromDrawer}
+        onOpenSettings={openAccountSettings}
+        onStartProductTour={() => void handleStartProductTour()}
       />
 
       <style>{`
@@ -1423,13 +1590,13 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         <>
           <div
             onClick={onToggleNotif}
-            style={{ position: "fixed", inset: 0, zIndex: 110 }}
+            style={{ position: "fixed", top: "var(--workspace-stack-top)", left: 0, right: 0, bottom: 0, zIndex: 110 }}
             aria-hidden
           />
           <div
             style={{
               position: "fixed",
-              top: navHeight + 8,
+              top: `calc(var(--workspace-stack-top, ${navHeight}px) + 8px)`,
               right: horizontalPad,
               width: isMobile ? "min(320px, calc(100vw - 32px))" : 320,
               background: surface.card,

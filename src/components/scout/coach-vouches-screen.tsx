@@ -231,7 +231,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                       style={{
                         padding: "8px 14px",
                         border: "1.5px solid rgba(26,58,47,0.2)",
-                        borderRadius: 999,
+                        borderRadius: "var(--scout-radius)",
                         fontFamily: "var(--font-ui)",
                         fontSize: 13,
                         color: "#1A1A1A",

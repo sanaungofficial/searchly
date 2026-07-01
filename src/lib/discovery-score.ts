@@ -58,12 +58,28 @@ export function discoveryBreakdownRows(breakdown: DiscoveryScoreBreakdown) {
   }));
 }
 
+export type DiscoveryBenchmarkProfile = {
+  name: string;
+  title: string | null;
+  company: string | null;
+  linkedinUrl: string;
+  thumbnailUrl: string | null;
+};
+
 export type DiscoveryScoreResult = {
   score: number;
+  percentile: number;
   breakdown: DiscoveryScoreBreakdown;
   tier: "low" | "building" | "strong" | "top";
   summary: string;
   topImprovement: string;
+  strengths: string[];
+  gaps: string[];
+  benchmarks: DiscoveryBenchmarkProfile[];
+  refreshedAt: string | null;
+  benchmarkTargetRole?: string | null;
+  benchmarkPeerLabel?: string | null;
+  benchmarkJobFunction?: string | null;
 };
 
 export type DiscoveryScoreInput = {
@@ -152,10 +168,15 @@ export function parseDiscoveryResponse(text: string): DiscoveryScoreResult | nul
 
     return {
       score,
+      percentile: score,
       breakdown,
       tier: tierFromScore(score),
       summary: parsed.summary ?? "",
       topImprovement: parsed.topImprovement ?? "",
+      strengths: [],
+      gaps: [],
+      benchmarks: [],
+      refreshedAt: null,
     };
   } catch {
     return null;

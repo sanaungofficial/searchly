@@ -1,6 +1,18 @@
 import type { CSSProperties, ReactNode } from "react";
 import { border, color, radius, shadow, surface, displayTitleStyle, type as T } from "@/lib/typography";
 
+/** CSS class — apply inside `.bruddle` for subtle offset-shadow hover on CTAs */
+export const BRUDDLE_BTN_CLASS = "bruddle-btn-hover";
+/** CSS class — apply inside `.bruddle` for pill/chip hover lift */
+export const BRUDDLE_HOVER_LIFT_CLASS = "bruddle-hover-lift";
+/** CSS class — apply inside `.bruddle` for clickable card hover */
+export const BRUDDLE_CARD_HOVER_CLASS = "bruddle-card-hover";
+
+function mergeClassNames(...parts: Array<string | undefined>): string | undefined {
+  const merged = parts.filter(Boolean).join(" ");
+  return merged || undefined;
+}
+
 type ScoutBoxProps = {
   children: ReactNode;
   bg?: string;
@@ -31,7 +43,7 @@ export function ScoutBox({
 }: ScoutBoxProps) {
   return (
     <div
-      className={className}
+      className={mergeClassNames(onClick ? BRUDDLE_CARD_HOVER_CLASS : undefined, className)}
       role={role}
       tabIndex={tabIndex}
       onClick={onClick}
@@ -192,6 +204,7 @@ export function ScoutPrimaryBtn({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      className={BRUDDLE_BTN_CLASS}
       style={{
         ...btnBase,
         padding: "8px 16px",
@@ -225,12 +238,14 @@ export function ScoutGoldBtn({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      className={BRUDDLE_BTN_CLASS}
       style={{
         ...btnBase,
         padding: "8px 16px",
         background: disabled ? "rgba(196,168,106,0.35)" : color.gold,
         color: color.forest,
-        border: `1px solid ${color.forest}`,
+        border: "var(--scout-border)",
+        boxShadow: "var(--scout-shadow-bruddle)",
         fontWeight: 700,
         opacity: disabled ? 0.7 : 1,
         ...style,
@@ -261,6 +276,7 @@ export function ScoutSecondaryBtn({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      className={active ? undefined : BRUDDLE_BTN_CLASS}
       style={{
         ...btnBase,
         padding: "8px 16px",

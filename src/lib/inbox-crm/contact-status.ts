@@ -1,5 +1,12 @@
+/** Canonical lead statuses (stored on write; legacy values mapped on read). */
 export type InboxContactStatus =
   | "new"
+  | "in_conversation"
+  | "meeting_scheduled"
+  | "archived";
+
+/** Legacy DB values — mapped to canonical statuses in the read layer. */
+export type LegacyInboxContactStatus =
   | "outreach"
   | "replied"
   | "meeting"
@@ -18,20 +25,70 @@ export type ContactStatusMeta = {
 
 export const INBOX_CONTACT_STATUSES: ContactStatusMeta[] = [
   { id: "new", label: "New", emoji: "🆕", dot: "#8B5CF6", bg: "rgba(139,92,246,0.12)", color: "#5B21B6" },
-  { id: "outreach", label: "Outreach sent", emoji: "📤", dot: "#3B82F6", bg: "rgba(59,130,246,0.12)", color: "#1D4ED8" },
-  { id: "replied", label: "Replied", emoji: "💬", dot: "#22C55E", bg: "rgba(34,197,94,0.12)", color: "#15803D" },
-  { id: "meeting", label: "Meeting scheduled", emoji: "📅", dot: "#EAB308", bg: "rgba(234,179,8,0.14)", color: "#A16207" },
-  { id: "active", label: "Active", emoji: "🤝", dot: "#14B8A6", bg: "rgba(20,184,166,0.12)", color: "#0F766E" },
-  { id: "not_interested", label: "Not interested", emoji: "🚫", dot: "#9CA3AF", bg: "rgba(156,163,175,0.18)", color: "#4B5563" },
-  { id: "on_hold", label: "On hold", emoji: "⏸", dot: "#F97316", bg: "rgba(249,115,22,0.12)", color: "#C2410C" },
+  {
+    id: "in_conversation",
+    label: "In conversation",
+    emoji: "💬",
+    dot: "#3B82F6",
+    bg: "rgba(59,130,246,0.12)",
+    color: "#1D4ED8",
+  },
+  {
+    id: "meeting_scheduled",
+    label: "Meeting scheduled",
+    emoji: "📅",
+    dot: "#EAB308",
+    bg: "rgba(234,179,8,0.14)",
+    color: "#A16207",
+  },
+  {
+    id: "archived",
+    label: "Archived",
+    emoji: "📦",
+    dot: "#9CA3AF",
+    bg: "rgba(156,163,175,0.18)",
+    color: "#4B5563",
+  },
 ];
 
 export const DEFAULT_CONTACT_STATUS: InboxContactStatus = "new";
+
+const LEGACY_TO_CANONICAL: Record<string, InboxContactStatus> = {
+  new: "new",
+  outreach: "in_conversation",
+  replied: "in_conversation",
+  active: "in_conversation",
+  meeting: "meeting_scheduled",
+  not_interested: "archived",
+  on_hold: "archived",
+  in_conversation: "in_conversation",
+  meeting_scheduled: "meeting_scheduled",
+  archived: "archived",
+};
+
+const CANONICAL_TO_LEGACY: Record<InboxContactStatus, string[]> = {
+  new: ["new"],
+  in_conversation: ["in_conversation", "outreach", "replied", "active"],
+  meeting_scheduled: ["meeting_scheduled", "meeting"],
+  archived: ["archived", "not_interested", "on_hold"],
+};
+
+/** Map any stored status (legacy or canonical) to a canonical status for display and counts. */
+export function normalizeContactStatus(value: string | null | undefined): InboxContactStatus {
+  if (!value?.trim()) return DEFAULT_CONTACT_STATUS;
+  return LEGACY_TO_CANONICAL[value.trim()] ?? DEFAULT_CONTACT_STATUS;
+}
+
+/** DB status values that belong to a canonical status (for filters). */
+export function dbStatusesForCanonical(status: InboxContactStatus): string[] {
+  return CANONICAL_TO_LEGACY[status] ?? [status];
+}
 
 export function isInboxContactStatus(value: unknown): value is InboxContactStatus {
   return INBOX_CONTACT_STATUSES.some((s) => s.id === value);
 }
 
 export function contactStatusMeta(status: string | null | undefined): ContactStatusMeta {
-  return INBOX_CONTACT_STATUSES.find((s) => s.id === status) ?? INBOX_CONTACT_STATUSES[0];
+  const canonical = normalizeContactStatus(status);
+  return INBOX_CONTACT_STATUSES.find((s) => s.id === canonical) ?? INBOX_CONTACT_STATUSES[0];
 }

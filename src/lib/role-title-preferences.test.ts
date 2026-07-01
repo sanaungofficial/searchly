@@ -40,18 +40,27 @@ describe("jobTitleMatchesRolePattern", () => {
 });
 
 describe("prioritized roles and categories", () => {
-  it("prioritized role boost beats target role boost", () => {
+  it("top ordered target role gets strongest boost", () => {
     const { boost, prioritizedMatch, preferredMatch } = adjustMatchScoreForRoleTitlePreferences(
       "Commercial Product Lead",
       {
-        targetRoles: ["Commercial Product Lead"],
-        prioritizedRoles: ["Commercial Product Lead"],
+        targetRoles: ["Commercial Product Lead", "Director of Strategy"],
       },
     );
     expect(boost).toBe(PRIORITIZED_ROLE_TITLE_BOOST);
     expect(prioritizedMatch).toBe("Commercial Product Lead");
     expect(preferredMatch).toBe("Commercial Product Lead");
     expect(PRIORITIZED_ROLE_TITLE_BOOST).toBeGreaterThan(TARGET_ROLE_TITLE_BOOST);
+  });
+
+  it("lower-priority target roles get a smaller boost", () => {
+    const top = adjustMatchScoreForRoleTitlePreferences("Director of Strategy", {
+      targetRoles: ["Commercial Product Lead", "Director of Strategy"],
+    });
+    const only = adjustMatchScoreForRoleTitlePreferences("Director of Strategy", {
+      targetRoles: ["Director of Strategy"],
+    });
+    expect(top.boost).toBeLessThan(only.boost);
   });
 
   it("matches hirebase category buckets", () => {

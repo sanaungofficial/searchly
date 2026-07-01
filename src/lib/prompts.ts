@@ -248,7 +248,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Target Company AI Blurbs",
     description: "One-sentence fit explanations for heuristic company picks (user-initiated refresh only).",
     category: "Profile",
-    variables: ["targetRoles", "prioritizedRoles", "skills", "tools", "companiesJson", "profileSummary"],
+    variables: ["targetRoles", "skills", "tools", "companiesJson", "profileSummary"],
   },
   LINKEDIN_DRAFT: {
     label: "LinkedIn Profile Draft",
@@ -1144,7 +1144,6 @@ PROFILE SUMMARY:
 {{profileSummary}}
 
 Target roles: {{targetRoles}}
-Top priority roles: {{prioritizedRoles}}
 Skills: {{skills}}
 Tools: {{tools}}
 

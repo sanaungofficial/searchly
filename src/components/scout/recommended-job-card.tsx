@@ -11,6 +11,7 @@ import { CompanyLogo } from "./company-logo";
 import { MatchScoreColumn } from "@/components/scout/match-why-score-ui";
 import { JR } from "@/lib/opportunities-jobright-tokens";
 import { fontSans, type as T } from "@/lib/typography";
+import { BRUDDLE_BTN_CLASS, scoutPrimaryCtaStyle } from "./scout-box";
 
 function IconPin() {
   return (
@@ -300,7 +301,7 @@ export function RecommendedJobCard({
                 padding: 0,
                 background: "transparent",
                 border: `1px solid ${JR.border}`,
-                borderRadius: 999,
+                borderRadius: "var(--scout-radius)",
                 cursor: isSaving ? "not-allowed" : "pointer",
                 opacity: isSaving ? 0.5 : 1,
                 color: JR.text,
@@ -327,13 +328,11 @@ export function RecommendedJobCard({
           </div>
           <button
             type="button"
+            className={BRUDDLE_BTN_CLASS}
             onClick={handleOpen}
             style={{
               padding: "6px 16px",
-              background: JR.mint,
-              color: JR.text,
-              border: "none",
-              borderRadius: JR.ctaRadius,
+              ...scoutPrimaryCtaStyle,
               fontFamily: fontSans,
               fontSize: JR.bodySize,
               fontWeight: 700,

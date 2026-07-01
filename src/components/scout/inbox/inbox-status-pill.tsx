@@ -20,7 +20,7 @@ function Pill({ label, tone }: { label: string; tone: Tone }) {
         display: "inline-flex",
         alignItems: "center",
         padding: "2px 8px",
-        borderRadius: 999,
+        borderRadius: "var(--scout-radius)",
         fontSize: 10,
         fontWeight: 700,
         letterSpacing: "0.04em",
@@ -81,7 +81,7 @@ export function InboxStatusDropdown({
       onChange={(e) => onChange(e.target.value ? (e.target.value as InboxUserTag) : null)}
       style={{
         padding: "6px 10px",
-        borderRadius: 999,
+        borderRadius: "var(--scout-radius)",
         border: "1px solid rgba(0,0,0,0.1)",
         background: "#fff",
         fontFamily: "var(--font-ui)",

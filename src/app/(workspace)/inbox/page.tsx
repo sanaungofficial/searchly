@@ -1,5 +1,5 @@
-import { InboxPageClient } from "./inbox-page-client";
+import { redirect } from "next/navigation";
 
-export default function InboxPage() {
-  return <InboxPageClient />;
+export default function LegacyInboxPage() {
+  redirect("/networking");
 }

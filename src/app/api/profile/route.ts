@@ -12,6 +12,8 @@ import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
 import { isApifyConfigured } from "@/lib/apify-linkedin";
+import { mergeParsedDataPreservingDiscoveryCache } from "@/lib/discovery-score/persist";
+import { migrateLegacyRoleFields } from "@/lib/target-roles-unified";
 
 export async function GET(request: Request) {
   try {
@@ -41,6 +43,11 @@ export async function GET(request: Request) {
         ? (analysisRaw as { score: number }).score
         : null;
 
+    const roleFields = migrateLegacyRoleFields({
+      targetRoles: profile?.targetRoles,
+      prioritizedRoles: profile?.prioritizedRoles,
+    });
+
     return NextResponse.json({
       userId: dbUser.id,
       name: dbUser.name || authUser.email.split("@")[0] || "You",
@@ -50,8 +57,8 @@ export async function GET(request: Request) {
       linkedinUrl: profile?.linkedinUrl || null,
       headline: profile?.headline || null,
       summary: profile?.summary || null,
-      targetRoles: profile?.targetRoles || [],
-      prioritizedRoles: profile?.prioritizedRoles || [],
+      targetRoles: roleFields.targetRoles,
+      prioritizedRoles: roleFields.prioritizedRoles,
       prioritizedCategories: profile?.prioritizedCategories || [],
       deprioritizedRoles: profile?.deprioritizedRoles || [],
       deprioritizedCategories: profile?.deprioritizedCategories || [],
@@ -120,12 +127,32 @@ export async function PATCH(request: Request) {
   if (headline !== undefined) profileUpdate.headline = headline;
   if (summary !== undefined) profileUpdate.summary = summary;
   if (linkedinUrl !== undefined) profileUpdate.linkedinUrl = linkedinUrl;
-  if (targetRoles !== undefined) profileUpdate.targetRoles = targetRoles;
-  if (prioritizedRoles !== undefined) profileUpdate.prioritizedRoles = prioritizedRoles;
+
+  if (targetRoles !== undefined || prioritizedRoles !== undefined) {
+    const existing = await prisma.profile.findUnique({
+      where: { userId: dbUser.id },
+      select: { targetRoles: true, prioritizedRoles: true },
+    });
+    const merged = migrateLegacyRoleFields({
+      targetRoles: targetRoles !== undefined ? targetRoles : existing?.targetRoles,
+      prioritizedRoles: prioritizedRoles !== undefined ? prioritizedRoles : existing?.prioritizedRoles,
+    });
+    profileUpdate.targetRoles = merged.targetRoles;
+    profileUpdate.prioritizedRoles = merged.prioritizedRoles;
+  }
   if (prioritizedCategories !== undefined) profileUpdate.prioritizedCategories = prioritizedCategories;
   if (deprioritizedRoles !== undefined) profileUpdate.deprioritizedRoles = deprioritizedRoles;
   if (deprioritizedCategories !== undefined) profileUpdate.deprioritizedCategories = deprioritizedCategories;
-  if (parsedData !== undefined) profileUpdate.parsedData = parsedData;
+  if (parsedData !== undefined) {
+    const existingProfile = await prisma.profile.findUnique({
+      where: { userId: dbUser.id },
+      select: { parsedData: true },
+    });
+    profileUpdate.parsedData = mergeParsedDataPreservingDiscoveryCache(
+      parsedData,
+      existingProfile?.parsedData,
+    );
+  }
   if (employmentStatus !== undefined) profileUpdate.employmentStatus = employmentStatus;
   if (currentSalary !== undefined) profileUpdate.currentSalary = currentSalary;
   if (targetSalary !== undefined) profileUpdate.targetSalary = targetSalary;
@@ -151,6 +178,7 @@ export async function PATCH(request: Request) {
   }
 
   const roleRankingChanged =
+    targetRoles !== undefined ||
     prioritizedRoles !== undefined ||
     prioritizedCategories !== undefined ||
     deprioritizedRoles !== undefined ||

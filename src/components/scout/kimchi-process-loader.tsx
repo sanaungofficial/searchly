@@ -87,6 +87,12 @@ export const KIMCHI_LOADER_PRESETS = {
     hint: "Full documents often take 1–2 minutes. The progress bar may pause near the end — still working.",
     durationSec: 110,
   },
+  discoveryScore: {
+    emoji: "🎯",
+    title: "Benchmarking your profile…",
+    hint: "Finding peers with similar roles and comparing your positioning. Usually takes 15–45 seconds.",
+    durationSec: 35,
+  },
 } as const;
 
 export type KimchiLoaderPreset = keyof typeof KIMCHI_LOADER_PRESETS;

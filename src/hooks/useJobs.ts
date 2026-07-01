@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import type { JobMeta } from "@/lib/job-meta";
+import { parsePipelineTagsFromMeta } from "@/lib/pipeline-tags";
 import { KANBAN_TO_DB, resolveDbJobKanbanStage } from "@/lib/pipeline-kanban-stage";
 import { withClientUserId } from "@/lib/workspace-urls";
 
@@ -21,6 +22,7 @@ interface DbJob {
   fitAnalysis: string | null;
   appliedAt: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {
@@ -51,7 +53,10 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     _coverLetter: job.coverLetter ?? undefined,
     _fitAnalysis: job.fitAnalysis ?? undefined,
     _meta,
-  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta };
+    _pipelineTags: parsePipelineTagsFromMeta(_meta),
+    _appliedAt: job.appliedAt ?? undefined,
+    _updatedAt: job.updatedAt,
+  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta; _pipelineTags?: string[]; _appliedAt?: string; _updatedAt?: string };
 }
 
 export function useJobs(fallback: KanbanCard[], reloadKey?: string, adminReviewClientId?: string | null) {

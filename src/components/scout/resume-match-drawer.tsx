@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Zap } from "lucide-react";
+import { ArrowUpRight, Sparkles, Zap } from "lucide-react";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
 import { RT } from "@/lib/resume-tailor-tokens";
 import { TailoredResumePreview } from "./tailored-resume-preview";
@@ -28,11 +28,13 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
-import { scoutPrimaryCtaStyle } from "./scout-box";
+import { scoutPrimaryCtaStyle, BRUDDLE_BTN_CLASS } from "./scout-box";
 import { MasterResumeGate } from "./master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
-import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z, backdropBelowNav } from "@/lib/z-layers";
 import { isProductionEnv } from "@/lib/beta-features";
+import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 import {
   BigScoreGauge,
   IndustryTag,
@@ -93,6 +95,10 @@ function fallbackNoticeFor(data: MatchData): string | null {
     return "AI analysis unavailable — showing a keyword-based estimate.";
   }
   return null;
+}
+
+function displayChanges(changes: string[]): string[] {
+  return changes.slice(0, 3).map((c) => (c.length > 80 ? `${c.slice(0, 77)}…` : c));
 }
 
 function Stepper({ step }: { step: Step }) {
@@ -193,11 +199,13 @@ export function ResumeMatchDrawer({
   const [aiPrompt, setAiPrompt] = useState("");
   const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
+  const isMobile = useIsMobile();
   const masterResume = useMasterResumeStatus();
   const proUser = isPro || isAdmin;
   const autoStartedRef = useRef(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
+  const navTop = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
 
   useEffect(() => {
     setMounted(true);
@@ -346,6 +354,9 @@ export function ResumeMatchDrawer({
       }
       setTailoredData(json as TailoredData);
       setEditorSections(plainTextToResumeSections((json as TailoredData).tailoredText));
+      if (resumeStyle.autoFitAfterCustom) {
+        setResumeStyle((s) => normalizeResumeStyle({ ...s, fitToOnePage: true }));
+      }
       notifyCreditsChanged();
     } catch (err) {
       setGenerateError(formatApiErrorMessage(err, "Something went wrong — try again."));
@@ -515,13 +526,13 @@ export function ResumeMatchDrawer({
     <>
       {/* Backdrop */}
       <div
-        onClick={handleClose}
+        onClick={visible ? handleClose : undefined}
         style={{
-          position: "fixed",
-          inset: 0,
+          ...backdropBelowNav(navTop),
           background: "rgba(0,0,0,0.4)",
           zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
+          pointerEvents: visible ? "auto" : "none",
           transition: "opacity 0.28s ease",
         }}
       />
@@ -532,7 +543,7 @@ export function ResumeMatchDrawer({
         style={{
           position: "fixed",
           right: 0,
-          top: 0,
+          top: navTop,
           bottom: 0,
           width: "min(80vw, calc(100vw - 16px))",
           background: RT.drawerBg,
@@ -618,21 +629,21 @@ export function ResumeMatchDrawer({
           </button>
         </div>
 
-        {/* Stepper + wizard title */}
+        {/* Stepper — collapsed on step 3 post-generate so tabs stay visible */}
         <div style={{ borderBottom: `1px solid ${RT.border}`, flexShrink: 0, background: RT.panelBg }}>
-          <p
-            style={{
-              fontFamily: fontSans,
-              fontSize: 18,
-              fontWeight: 700,
-              color: RT.text,
-              margin: 0,
-              padding: "20px 32px 0",
-            }}
-          >
-            Generate Your Custom Resume
-          </p>
-          <Stepper step={step} />
+          {step === 3 && tailoredData ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 24px", minHeight: 44 }}>
+              <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: RT.text, margin: 0 }}>{jobTitle}</p>
+              <span style={{ fontFamily: fontSans, fontSize: 12, color: RT.muted }}>{company}</span>
+            </div>
+          ) : (
+            <>
+              <p style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 700, color: RT.text, margin: 0, padding: "20px 32px 0" }}>
+                Generate Your Custom Resume
+              </p>
+              <Stepper step={step} />
+            </>
+          )}
         </div>
 
         {/* Body */}
@@ -1629,7 +1640,7 @@ export function ResumeMatchDrawer({
                             color: "#15803D",
                             background: "rgba(134,239,172,0.25)",
                             padding: "3px 10px",
-                            borderRadius: 999,
+                            borderRadius: "var(--scout-radius)",
                           }}
                         >
                           {tailoredData.injectedKeywords.length} keywords added
@@ -1697,161 +1708,44 @@ export function ResumeMatchDrawer({
 
                     <div style={{ flex: 1, overflowY: "auto", padding: rightTab === "style" ? 0 : "16px 18px" }}>
                       {rightTab === "ai" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                          <div
-                            style={{
-                              background: RT.matchScoreBg,
-                              borderRadius: 12,
-                              padding: "20px 16px",
-                              border: `1px solid ${RT.matchScoreBorder}`,
-                              textAlign: "center",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontFamily: fontSans,
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: RT.muted,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.9px",
-                                marginBottom: 10,
-                                marginTop: 0,
-                              }}
-                            >
-                              Match Score
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#FFFFFF", borderRadius: 12, padding: "14px 16px", border: `1px solid ${RT.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+                            <Sparkles size={18} color={RT.green} style={{ flexShrink: 0 }} />
+                            <p style={{ fontFamily: fontSans, fontSize: 13, color: RT.text, margin: 0, lineHeight: 1.45, flex: 1 }}>
+                              Great! Your score jumped from <strong style={{ fontFamily: fontMono }}>{data?.score?.toFixed(1) ?? "–"}</strong> to{" "}
+                              <strong style={{ fontFamily: fontMono, color: RT.green }}>{tailoredData.newScore.toFixed(1)}</strong>
                             </p>
-                            <BigScoreGauge score={tailoredData.newScore} tailor />
-                            <p
-                              style={{
-                                fontFamily: fontSans,
-                                fontSize: 13,
-                                color: RT.text,
-                                marginTop: 10,
-                                marginBottom: 0,
-                              }}
-                            >
-                              Score jumped from{" "}
-                              <strong style={{ fontFamily: fontMono }}>
-                                {data?.score?.toFixed(1) ?? "–"} → {tailoredData.newScore.toFixed(1)}
-                              </strong>
-                            </p>
+                            <div style={{ flexShrink: 0, transform: "scale(0.85)", transformOrigin: "center right" }}>
+                              <BigScoreGauge score={tailoredData.newScore} tailor />
+                            </div>
                           </div>
-
                           <div>
-                            <p
-                              style={{
-                                fontFamily: fontSans,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color: "#1A1A1A",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.8px",
-                                marginBottom: 10,
-                              }}
-                            >
-                              See What&apos;s Changed
-                            </p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                              {tailoredData.changes.map((change, i) => (
-                                <div
-                                  key={i}
-                                  style={{
-                                    display: "flex",
-                                    gap: 9,
-                                    padding: "9px 12px",
-                                    background: "rgba(74,139,106,0.055)",
-                                    borderRadius: "var(--scout-radius)",
-                                    border: "1px solid rgba(74,139,106,0.12)",
-                                  }}
-                                >
-                                  <span style={{ color: "#3D7A5B", fontSize: 14, flexShrink: 0 }}>•</span>
-                                  <p style={{ fontFamily: fontSans, fontSize: 13, color: "#1A1A1A", lineHeight: 1.5, margin: 0 }}>
-                                    {change}
-                                  </p>
-                                </div>
+                            <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 700, color: RT.text, margin: "0 0 8px" }}>See What&apos;s Changed</p>
+                            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+                              {displayChanges(tailoredData.changes).map((change, i) => (
+                                <li key={i} style={{ fontFamily: fontSans, fontSize: 13, color: RT.text, lineHeight: 1.45, paddingLeft: 14, position: "relative" }}>
+                                  <span style={{ position: "absolute", left: 0, color: RT.muted }}>•</span>
+                                  {change}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          {tailoredData.tweaks.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              {tailoredData.tweaks.slice(0, 3).map((tweak) => (
+                                <button key={tweak.id} type="button" disabled={!!applyingTweakId} onClick={() => void applyTweak(tweak)}
+                                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: "#FFFFFF", border: `1px solid ${RT.border}`, borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 12, color: RT.text, cursor: applyingTweakId ? "wait" : "pointer", textAlign: "left" }}>
+                                  <span>{applyingTweakId === tweak.id ? "Applying…" : tweak.label}</span>
+                                  <ArrowUpRight size={14} color={RT.muted} />
+                                </button>
                               ))}
                             </div>
-                          </div>
-
-                          {tailoredData.tweaks.length > 0 && (
-                            <div>
-                              <p
-                                style={{
-                                  fontFamily: fontSans,
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  color: "var(--scout-muted)",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.8px",
-                                  marginBottom: 8,
-                                }}
-                              >
-                                Quick tweaks
-                              </p>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                {tailoredData.tweaks.map((tweak) => (
-                                  <button
-                                    key={tweak.id}
-                                    type="button"
-                                    disabled={!!applyingTweakId}
-                                    onClick={() => void applyTweak(tweak)}
-                                    style={{
-                                      padding: "7px 12px",
-                                      background: "#FAFAF9",
-                                      border: "1px solid rgba(0,0,0,0.1)",
-                                      borderRadius: 999,
-                                      fontFamily: fontSans,
-                                      fontSize: 12,
-                                      color: "#52493F",
-                                      cursor: applyingTweakId ? "wait" : "pointer",
-                                      textAlign: "left",
-                                    }}
-                                  >
-                                    {applyingTweakId === tweak.id ? "Applying…" : `${tweak.label} →`}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
                           )}
-
-                          <div style={{ marginTop: "auto" }}>
-                            <textarea
-                              value={aiPrompt}
-                              onChange={(e) => setAiPrompt(e.target.value)}
-                              placeholder="Tell me how you'd like to tweak your resume…"
-                              rows={3}
-                              style={{
-                                width: "100%",
-                                padding: "10px 12px",
-                                border: "1px solid rgba(0,0,0,0.12)",
-                                borderRadius: "var(--scout-radius)",
-                                fontFamily: fontSans,
-                                fontSize: 13,
-                                resize: "vertical",
-                                boxSizing: "border-box",
-                                marginBottom: 8,
-                              }}
-                            />
-                            <button
-                              type="button"
-                              disabled={!aiPrompt.trim() || !!applyingTweakId}
-                              onClick={() => void applyAiPrompt()}
-                              style={{
-                                width: "100%",
-                                padding: "11px",
-                                ...(aiPrompt.trim() && !applyingTweakId ? scoutPrimaryCtaStyle : {
-                                  background: "rgba(0,0,0,0.05)",
-                                  color: "var(--scout-muted)",
-                                  border: "none",
-                                }),
-                                borderRadius: "var(--scout-radius)",
-                                fontFamily: fontSans,
-                                fontSize: 13,
-                                fontWeight: 600,
-                                cursor: aiPrompt.trim() && !applyingTweakId ? "pointer" : "not-allowed",
-                              }}
-                            >
+                          <div style={{ marginTop: "auto", paddingTop: 4 }}>
+                            <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="Tell me how you'd like to tweak your resume…" rows={3}
+                              style={{ width: "100%", padding: "10px 12px", border: `1px solid ${RT.border}`, borderRadius: RT.ctaSecondaryRadius, fontFamily: fontSans, fontSize: 13, resize: "vertical", boxSizing: "border-box", marginBottom: 8 }} />
+                            <button type="button" disabled={!aiPrompt.trim() || !!applyingTweakId} onClick={() => void applyAiPrompt()}
+                              style={{ width: "100%", padding: "11px", ...(aiPrompt.trim() && !applyingTweakId ? scoutPrimaryCtaStyle : { background: "rgba(0,0,0,0.05)", color: "var(--scout-muted)", border: "none" }), borderRadius: RT.ctaPrimaryRadius, fontFamily: fontSans, fontSize: 13, fontWeight: 600, cursor: aiPrompt.trim() && !applyingTweakId ? "pointer" : "not-allowed" }}>
                               {applyingTweakId ? "Applying…" : "Edit With AI ✦"}
                             </button>
                           </div>
@@ -1862,6 +1756,8 @@ export function ResumeMatchDrawer({
                         <TailoredResumeEditorPanel
                           sections={editorSections}
                           onChange={syncSectionsToTailored}
+                          onEditBaseResume={() => window.open("/profile", "_blank", "noopener,noreferrer")}
+                          sectionOrderNote="Edits here apply to this job's tailored resume only."
                         />
                       )}
 
@@ -1871,6 +1767,7 @@ export function ResumeMatchDrawer({
                           onChange={(next) => setResumeStyle(normalizeResumeStyle(next))}
                           compact
                           useTailorTokens
+                          onFitToOnePage={() => setResumeStyle((s) => normalizeResumeStyle({ ...s, fitToOnePage: true }))}
                         />
                       )}
                     </div>
@@ -1893,14 +1790,16 @@ export function ResumeMatchDrawer({
           >
             <button
               type="button"
+              className={BRUDDLE_BTN_CLASS}
               onClick={handleAlign}
               style={{
                 width: "100%",
                 padding: "15px",
                 background: RT.green,
                 color: RT.text,
-                border: "none",
+                border: "var(--scout-border)",
                 borderRadius: RT.ctaPrimaryRadius,
+                boxShadow: "var(--scout-shadow-bruddle)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 700,

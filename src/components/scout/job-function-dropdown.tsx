@@ -16,7 +16,7 @@ const MINT_CHIP: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "5px 10px",
-  borderRadius: 999,
+  borderRadius: "var(--scout-radius)",
   border: "1px solid rgba(76, 175, 80, 0.35)",
   background: "rgba(76, 175, 80, 0.16)",
   color: color.ink,

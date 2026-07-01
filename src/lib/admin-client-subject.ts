@@ -2,6 +2,7 @@ import type { User } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { canAccessAdminClientTools, getActingUser, type ActingUserResult } from "@/lib/acting-user";
+import { isAdminRosterClientRole } from "@/lib/admin-client-roles";
 
 export function readClientUserIdFromRequest(request?: Request): string | null {
   if (!request) return null;
@@ -28,7 +29,7 @@ export async function resolveAdminClientSubject(
   }
 
   const client = await prisma.user.findUnique({ where: { id: clientUserId } });
-  if (!client || client.role !== "USER") {
+  if (!client || !isAdminRosterClientRole(client.role)) {
     return { subject: null, error: NextResponse.json({ error: "Client not found" }, { status: 404 }) };
   }
 

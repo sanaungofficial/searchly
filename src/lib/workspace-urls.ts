@@ -12,7 +12,44 @@ export type OpportunitiesNavItem = {
   match: (pathname: string) => boolean;
 };
 
-export const INBOX_PATH = "/inbox";
+export const NETWORKING_PATH = "/networking";
+export const NETWORKING_SECTION_PARAM = "section";
+export const NETWORKING_NETWORK_JOB_PARAM = "networkJobId";
+export const NETWORKING_INBOX_PATH = `${NETWORKING_PATH}?${NETWORKING_SECTION_PARAM}=inbox`;
+export const NETWORKING_IN_NETWORK_PATH = `${NETWORKING_PATH}?${NETWORKING_SECTION_PARAM}=in-network`;
+export const INBOX_PATH = NETWORKING_PATH;
+export const LEGACY_INBOX_PATH = "/inbox";
+
+export type NetworkingSection = "leads" | "inbox" | "in-network";
+
+export function networkingSectionPath(
+  section: NetworkingSection = "leads",
+  opts?: { networkJobId?: string | null },
+): string {
+  if (section === "leads" && !opts?.networkJobId) return NETWORKING_PATH;
+  const params = new URLSearchParams();
+  if (section !== "leads") params.set(NETWORKING_SECTION_PARAM, section);
+  if (opts?.networkJobId) params.set(NETWORKING_NETWORK_JOB_PARAM, opts.networkJobId);
+  const qs = params.toString();
+  return qs ? `${NETWORKING_PATH}?${qs}` : NETWORKING_PATH;
+}
+
+export function networkingNetworkJobPath(jobId: string): string {
+  return networkingSectionPath("in-network", { networkJobId: jobId });
+}
+
+export function parseNetworkingSection(search: URLSearchParams | string): NetworkingSection {
+  const params =
+    typeof search === "string"
+      ? new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+      : search;
+  const section = params.get(NETWORKING_SECTION_PARAM) ?? params.get("tab");
+  if (section === "inbox" || section === "in-network") return section;
+  if (params.get("messageId")) return "inbox";
+  if (params.get("contactId")) return "leads";
+  if (params.get(NETWORKING_NETWORK_JOB_PARAM)) return "in-network";
+  return "leads";
+}
 
 export const OPPORTUNITIES_PATH = "/opportunities";
 export const NETWORK_ROLES_PATH = "/network/roles";
@@ -47,7 +84,16 @@ export function matchNetworkRolesPath(pathname: string): boolean {
 }
 
 export function matchInboxPath(pathname: string): boolean {
-  return pathname === INBOX_PATH || pathname.startsWith(`${INBOX_PATH}/`);
+  return (
+    pathname === NETWORKING_PATH ||
+    pathname.startsWith(`${NETWORKING_PATH}/`) ||
+    pathname === LEGACY_INBOX_PATH ||
+    pathname.startsWith(`${LEGACY_INBOX_PATH}/`)
+  );
+}
+
+export function matchNetworkingPath(pathname: string): boolean {
+  return matchInboxPath(pathname) || matchNetworkRolesPath(pathname);
 }
 
 const JOB_TOOLS = new Set(["resume", "cover", "fit"]);
@@ -109,7 +155,7 @@ export function profileTargetCompaniesUrl(companyId?: string | null): string {
 }
 
 export function networkJobUrl(jobId: string): string {
-  return `${NETWORK_ROLES_PATH}/jobs/${encodeURIComponent(jobId)}`;
+  return networkingNetworkJobPath(jobId);
 }
 
 export function pipelineNetworkJobUrl(jobId: string): string {

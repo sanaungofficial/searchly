@@ -1,93 +1,79 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { DiscoveryScoreInput, DiscoveryScoreResult } from "@/lib/discovery-score";
-import {
-  readDiscoveryScoreCache,
-  writeDiscoveryScoreCache,
-} from "@/lib/discovery-score-cache";
+import type { DiscoveryScoreResult } from "@/lib/discovery-score";
+import type { DiscoveryScoreApiResponse, DiscoveryScoreCachePayload } from "@/lib/discovery-score/types";
 
 type Options = {
-  input: DiscoveryScoreInput;
   withClientScope: (path: string) => string;
-  hasAccess: boolean;
-  isLoggedIn: boolean;
-  subLoading: boolean;
-  onSubscribe?: () => void;
 };
 
-export function useDiscoveryScore({
-  input,
-  withClientScope,
-  hasAccess,
-  isLoggedIn,
-  subLoading,
-  onSubscribe,
-}: Options) {
-  const cached = readDiscoveryScoreCache();
-  const [result, setResult] = useState<DiscoveryScoreResult | null>(() => cached?.result ?? null);
-  const [loading, setLoading] = useState(() => isLoggedIn && hasAccess && !subLoading && !cached);
+function payloadToResult(payload: DiscoveryScoreCachePayload): DiscoveryScoreResult {
+  return {
+    score: payload.score,
+    percentile: payload.percentile,
+    breakdown: payload.breakdown,
+    tier: payload.tier,
+    summary: payload.summary,
+    topImprovement: payload.topImprovement,
+    strengths: payload.strengths,
+    gaps: payload.gaps,
+    benchmarks: payload.benchmarks,
+    refreshedAt: payload.refreshedAt,
+    benchmarkTargetRole: payload.benchmarkTargetRole,
+    benchmarkPeerLabel: payload.benchmarkPeerLabel,
+    benchmarkJobFunction: payload.benchmarkJobFunction,
+  };
+}
+
+export function useDiscoveryScore({ withClientScope }: Options) {
+  const [result, setResult] = useState<DiscoveryScoreResult | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [fetchedAt, setFetchedAt] = useState<number | null>(() => cached?.fetchedAt ?? null);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchScore = useCallback(
-    async (force: boolean) => {
-      if (!isLoggedIn || !hasAccess || subLoading) return;
-
-      if (!force) {
-        const hit = readDiscoveryScoreCache();
-        if (hit) {
-          setResult(hit.result);
-          setFetchedAt(hit.fetchedAt);
-          setLoading(false);
-          return;
-        }
-      }
-
-      if (result) setRefreshing(true);
-      else setLoading(true);
-
-      try {
-        const res = await fetch(withClientScope("/api/discovery-score"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-          cache: force ? "no-store" : "default",
-        });
-        const data = res.ok ? await res.json() : null;
-        if (data && typeof data.score === "number") {
-          const next = data as DiscoveryScoreResult;
-          const at = Date.now();
-          setResult(next);
-          setFetchedAt(at);
-          writeDiscoveryScoreCache({ result: next, fetchedAt: at });
-        }
-      } catch {
-        /* keep existing result */
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [hasAccess, input, isLoggedIn, result, subLoading, withClientScope],
-  );
+  const applyResponse = useCallback((data: DiscoveryScoreApiResponse | null) => {
+    if (!data) return;
+    setError(data.error ?? null);
+    if (data.result) setResult(payloadToResult(data.result));
+  }, []);
 
   useEffect(() => {
-    if (!isLoggedIn || (!hasAccess && !subLoading)) {
-      setLoading(false);
-      return;
-    }
-    if (!hasAccess || subLoading) return;
-    void fetchScore(false);
-  }, [fetchScore, hasAccess, isLoggedIn, subLoading]);
+    let cancelled = false;
+    setLoading(true);
+    fetch(withClientScope("/api/profile/discovery-score"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: DiscoveryScoreApiResponse | null) => {
+        if (!cancelled) applyResponse(data);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load Discovery Score.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyResponse, withClientScope]);
 
-  const refresh = useCallback(() => {
-    if (!hasAccess) {
-      onSubscribe?.();
-      return;
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const res = await fetch(withClientScope("/api/profile/discovery-score"), {
+        method: "POST",
+        cache: "no-store",
+      });
+      const data = res.ok ? ((await res.json()) as DiscoveryScoreApiResponse) : null;
+      applyResponse(data);
+      if (!res.ok) setError("Refresh failed. Try again in a moment.");
+    } catch {
+      setError("Refresh failed. Try again in a moment.");
+    } finally {
+      setRefreshing(false);
     }
-    void fetchScore(true);
-  }, [fetchScore, hasAccess, onSubscribe]);
+  }, [applyResponse, withClientScope]);
 
-  return { result, loading, refreshing, refresh, fetchedAt };
+  return { result, loading, refreshing, refresh, error };
 }

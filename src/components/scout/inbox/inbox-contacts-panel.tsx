@@ -142,7 +142,7 @@ export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
                   color: color.forest,
                   background: "rgba(42,107,74,0.1)",
                   padding: "2px 8px",
-                  borderRadius: 999,
+                  borderRadius: "var(--scout-radius)",
                 }}
               >
                 Saved

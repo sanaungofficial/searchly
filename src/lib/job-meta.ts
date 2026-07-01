@@ -18,6 +18,8 @@ export interface JobMeta {
   benefits?: string[];
   requirements?: string[];
   tags?: string[];
+  /** User pipeline labels (distinct from listing industry tags in `tags`). */
+  pipelineTags?: string[];
   /** Extra Hirebase job fields (recommended / prospect jobs). */
   datePosted?: string | null;
   department?: string | null;
@@ -29,6 +31,10 @@ export interface JobMeta {
   subindustries?: string[];
   nextStep?: string | null;
   nextStepDue?: string | null;
+  /** Interview stage detail (when pipeline stage is interviewing). */
+  interviewRound?: string | null;
+  interviewDate?: string | null;
+  offerDate?: string | null;
   /** Hirebase vector search match explanation (recommended jobs). */
   vectorMatch?: {
     matchScore: number;

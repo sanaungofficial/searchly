@@ -23,7 +23,7 @@ import {
   ArrowRightSmall,
   ClockIcon,
 } from "./icons";
-import { KimchiBySecondLadder } from "./scout-box";
+import { KimchiBySecondLadder, BRUDDLE_BTN_CLASS } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { LocationAutocompleteInput } from "./location-autocomplete-input";
@@ -637,7 +637,7 @@ export function ScreenWelcome({
       {path === "resume" && canContinueWithResume && (
         <OnboardingActions skipLabel="Choose another option" onSkip={() => setPath(null)}>
           <button
-            className="onboarding-cta"
+            className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
             onClick={onContinue}
             style={{ ...PRIMARY_CTA, width: "100%" }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
@@ -652,7 +652,7 @@ export function ScreenWelcome({
         <OnboardingActions skipLabel="Choose another option" onSkip={() => setPath(null)}>
           <button
             type="button"
-            className="onboarding-cta"
+            className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
             onClick={onLinkedInOnly}
             disabled={linkedinImporting}
             style={{
@@ -681,7 +681,7 @@ export function ScreenWelcome({
         <OnboardingActions skipLabel="Choose another option" onSkip={() => setPath(null)}>
           <button
             type="button"
-            className="onboarding-cta"
+            className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
             onClick={onStartFromScratch}
             style={{ ...PRIMARY_CTA, width: "100%" }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
@@ -1222,7 +1222,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBa
           </p>
           <div className="onboarding-readback-actions">
             <button
-              className="onboarding-cta"
+              className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
               onClick={() => onConfirm(data)}
               style={{ ...PRIMARY_CTA, flex: 1 }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
@@ -1254,7 +1254,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip, onBa
               </button>
             ) : (
               <button
-                className="onboarding-cta"
+                className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
                 onClick={onRefine}
                 style={{
                   padding: "14px 24px",
@@ -1755,7 +1755,7 @@ export function ScreenTargetRoles({
       {canContinue && (
         <div className="anim-fade-up" style={ONBOARDING_CARD}>
           <button
-            className="onboarding-cta"
+            className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
             onClick={onContinue}
             style={{ ...PRIMARY_CTA, width: "100%" }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
@@ -1841,7 +1841,6 @@ export type OnboardingCompanySuggestion = {
 interface TargetCompaniesProps {
   selectedCompanies: OnboardingCompanyPick[];
   targetRoles: string[];
-  prioritizedRoles?: string[];
   readbackData?: ReadBackData | null;
   onAddCompany: (company: OnboardingCompanyPick) => void;
   onRemoveCompany: (catalogSlug: string) => void;
@@ -1864,13 +1863,11 @@ function suggestionToPick(
 
 function OnboardingSuggestedCompanies({
   targetRoles,
-  prioritizedRoles,
   readbackData,
   selectedCompanies,
   onAddCompany,
 }: {
   targetRoles: string[];
-  prioritizedRoles: string[];
   readbackData: ReadBackData | null;
   selectedCompanies: OnboardingCompanyPick[];
   onAddCompany: (company: OnboardingCompanyPick) => void;
@@ -1889,10 +1886,9 @@ function OnboardingSuggestedCompanies({
     () =>
       JSON.stringify({
         targetRoles,
-        prioritizedRoles,
         readbackRoles: readbackData?.targetRoles?.map((r) => r.role) ?? [],
       }),
-    [targetRoles, prioritizedRoles, readbackData],
+    [targetRoles, readbackData],
   );
 
   useEffect(() => {
@@ -1904,7 +1900,6 @@ function OnboardingSuggestedCompanies({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         targetRoles,
-        prioritizedRoles,
         readbackData,
       }),
     })
@@ -1927,7 +1922,7 @@ function OnboardingSuggestedCompanies({
     return () => {
       cancelled = true;
     };
-  }, [signalKey, targetRoles, prioritizedRoles, readbackData]);
+  }, [signalKey, targetRoles, readbackData]);
 
   const visible = recommendations.filter((rec) => !selectedSlugs.has(rec.catalogSlug));
   if (!loading && visible.length === 0) return null;
@@ -2313,7 +2308,6 @@ function TargetCompanyAutocomplete({
 export function ScreenTargetCompanies({
   selectedCompanies,
   targetRoles,
-  prioritizedRoles = [],
   readbackData = null,
   onAddCompany,
   onRemoveCompany,
@@ -2356,7 +2350,6 @@ export function ScreenTargetCompanies({
       >
         <OnboardingSuggestedCompanies
           targetRoles={targetRoles}
-          prioritizedRoles={prioritizedRoles}
           readbackData={readbackData}
           selectedCompanies={selectedCompanies}
           onAddCompany={onAddCompany}
@@ -2386,7 +2379,7 @@ export function ScreenTargetCompanies({
       {canContinue && (
         <div className="anim-fade-up" style={ONBOARDING_CARD}>
           <button
-            className="onboarding-cta"
+            className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
             onClick={onContinue}
             style={{ ...PRIMARY_CTA, width: "100%" }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
@@ -3455,7 +3448,7 @@ export function ScreenTransition({
           {!analysis && (
             <button
               type="button"
-              className="onboarding-cta"
+              className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
               disabled={!canAnalyze}
               onClick={onAnalyze}
               style={{
@@ -3700,7 +3693,7 @@ export function ScreenTransition({
                 {analysis.role && (
                   <button
                     type="button"
-                    className="onboarding-cta"
+                    className={`onboarding-cta ${BRUDDLE_BTN_CLASS}`}
                     onClick={onFinishWithJob}
                     style={PRIMARY_CTA}
                   >

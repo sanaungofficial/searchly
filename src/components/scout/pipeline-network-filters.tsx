@@ -7,6 +7,7 @@ import { HIREBASE_JOB_TYPES, HIREBASE_LOCATION_TYPES } from "@/lib/vector-matche
 import type { NetworkJobFilterForm, NetworkJobFilterSuggestions } from "@/lib/network-job-filters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
+import { BRUDDLE_BTN_CLASS, BRUDDLE_HOVER_LIFT_CLASS, scoutPrimaryCtaStyle } from "./scout-box";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import {
   ChipToggle,
@@ -49,7 +50,7 @@ function FilterPill({
             alignItems: "center",
             gap: 4,
             padding: "6px 12px",
-            borderRadius: 999,
+            borderRadius: "var(--scout-radius)",
             border: active ? border.lineStrong : border.line,
             background: active ? surface.inset : surface.card,
             color: active ? color.forest : color.ink,
@@ -260,7 +261,7 @@ export function NetworkFiltersDrawer({
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", borderTop: border.line, flexShrink: 0, background: surface.card }}>
           <button type="button" onClick={onReset} style={{ border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, cursor: "pointer", textDecoration: "underline" }}>Reset</button>
-          <button type="button" onClick={onApply} disabled={applying} style={{ padding: "10px 20px", border: border.lineStrong, borderRadius: 999, background: color.forest, color: color.gold, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: applying ? "default" : "pointer", opacity: applying ? 0.7 : 1 }}>
+          <button type="button" className={BRUDDLE_BTN_CLASS} onClick={onApply} disabled={applying} style={{ padding: "10px 20px", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", ...scoutPrimaryCtaStyle, fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, cursor: applying ? "default" : "pointer", opacity: applying ? 0.7 : 1 }}>
             {applying ? "Loading…" : "Show results"}
           </button>
         </div>
@@ -294,7 +295,7 @@ export function NetworkQuickFiltersBar({
     setOpenKey(null);
   };
   const applyBtn = (key: string) => (
-    <button type="button" onClick={() => applyAndClose(form, key)} style={{ marginTop: 10, width: "100%", padding: "8px 12px", border: border.lineStrong, borderRadius: 999, background: color.forest, color: color.gold, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, cursor: "pointer" }}>
+    <button type="button" className={BRUDDLE_BTN_CLASS} onClick={() => applyAndClose(form, key)} style={{ marginTop: 10, width: "100%", padding: "8px 12px", border: "var(--scout-border)", borderRadius: "var(--scout-radius)", ...scoutPrimaryCtaStyle, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, cursor: "pointer" }}>
       Apply
     </button>
   );
@@ -339,7 +340,7 @@ export function NetworkQuickFiltersBar({
         </FilterPill>
       )}
       <div style={{ width: 1, height: 24, background: "rgba(17,17,17,0.14)", margin: "0 2px" }} aria-hidden />
-      <button type="button" onClick={onOpenAllFilters} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 999, border: activeFilterCount > 0 ? border.lineStrong : border.line, background: activeFilterCount > 0 ? surface.inset : surface.card, color: activeFilterCount > 0 ? color.forest : color.ink, fontFamily: fontSans, fontSize: T.caption, fontWeight: activeFilterCount > 0 ? 600 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
+      <button type="button" className={BRUDDLE_HOVER_LIFT_CLASS} onClick={onOpenAllFilters} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: "var(--scout-radius)", border: activeFilterCount > 0 ? border.lineStrong : border.line, background: activeFilterCount > 0 ? surface.inset : surface.card, color: activeFilterCount > 0 ? color.forest : color.ink, fontFamily: fontSans, fontSize: T.caption, fontWeight: activeFilterCount > 0 ? 600 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
         All filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
       </button>
     </div>

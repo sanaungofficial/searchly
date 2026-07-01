@@ -15,6 +15,7 @@ import {
   type ParsedResumeData,
   type ParsedWorkEntry,
 } from "@/lib/resume-parse";
+import { addMatchableToBuckets, reconcileSkillsToolsFields } from "@/lib/skills-tools";
 
 /** LinkedIn shows a trimmed skill list; About keeps the full set. */
 export const LINKEDIN_SKILLS_DISPLAY_MAX = 20;
@@ -206,12 +207,11 @@ export function syncParsedFromLinkedInDraft(
     };
   });
 
-  const mergedSkills = [...existing.skills];
+  let skillBuckets = { skills: [...existing.skills], tools: [...(existing.tools ?? [])] };
   for (const skill of draft.skills) {
-    if (!mergedSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
-      mergedSkills.push(skill);
-    }
+    skillBuckets = addMatchableToBuckets(skillBuckets, skill);
   }
+  const reconciled = reconcileSkillsToolsFields(skillBuckets);
 
   return {
     ...existing,
@@ -219,7 +219,9 @@ export function syncParsedFromLinkedInDraft(
     location: draft.location ?? existing.location ?? null,
     workExperience,
     education,
-    skills: mergedSkills,
+    skills: reconciled.skills,
+    tools: reconciled.tools,
+    skillGroups: reconciled.skillGroups,
   };
 }
 

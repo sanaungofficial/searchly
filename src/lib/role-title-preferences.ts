@@ -1,3 +1,5 @@
+import { unifiedTargetRoles } from "@/lib/target-roles-unified";
+
 /** Profile-driven title/category boosts/penalties — reorder only, never filter. */
 
 export type RoleTitlePreferences = {
@@ -22,8 +24,16 @@ export type RoleTitlePreferenceAdjustment = {
 /** Boost when job title matches a target role (Profile → Dream roles). */
 export const TARGET_ROLE_TITLE_BOOST = 15;
 
-/** Stronger boost for explicitly prioritized role patterns (Hirebase-backed list). */
+/** Strongest boost for the top ordered target role (legacy: prioritizedRoles). */
 export const PRIORITIZED_ROLE_TITLE_BOOST = 20;
+
+/** Feed boost by position in ordered targetRoles (index 0 = strongest). */
+export function targetRoleBoostForIndex(index: number): number {
+  if (index <= 0) return PRIORITIZED_ROLE_TITLE_BOOST;
+  if (index === 1) return PRIORITIZED_ROLE_TITLE_BOOST - 2;
+  if (index === 2) return PRIORITIZED_ROLE_TITLE_BOOST - 4;
+  return TARGET_ROLE_TITLE_BOOST;
+}
 
 /** Boost when a job's Hirebase category matches a prioritized category. */
 export const PRIORITIZED_CATEGORY_BOOST = 12;
@@ -167,21 +177,17 @@ export function adjustMatchScoreForRoleTitlePreferences(
   let deprioritizedMatch: string | undefined;
   let deprioritizedCategoryMatch: string | undefined;
 
-  for (const role of preferences.prioritizedRoles ?? []) {
-    const trimmed = role.trim();
+  const orderedRoles = preferences.targetRoles ?? [];
+  for (let i = 0; i < orderedRoles.length; i++) {
+    const trimmed = orderedRoles[i]!.trim();
     if (!trimmed) continue;
     if (jobTitleMatchesRolePattern(jobTitle, trimmed)) {
-      boost = Math.max(boost, PRIORITIZED_ROLE_TITLE_BOOST);
-      prioritizedMatch = trimmed;
-    }
-  }
-
-  for (const role of preferences.targetRoles ?? []) {
-    const trimmed = role.trim();
-    if (!trimmed) continue;
-    if (jobTitleMatchesRolePattern(jobTitle, trimmed)) {
-      boost = Math.max(boost, TARGET_ROLE_TITLE_BOOST);
-      preferredMatch = trimmed;
+      const roleBoost = targetRoleBoostForIndex(i);
+      if (roleBoost > boost) {
+        boost = roleBoost;
+        preferredMatch = trimmed;
+        if (i === 0) prioritizedMatch = trimmed;
+      }
     }
   }
 
@@ -238,7 +244,7 @@ export function applyRoleTitlePreferenceToScore(
 export function roleTitlePreferenceReasons(adjustment: RoleTitlePreferenceAdjustment): string[] {
   const reasons: string[] = [];
   if (adjustment.prioritizedMatch) {
-    reasons.push(`Matches your prioritized role: ${adjustment.prioritizedMatch}.`);
+    reasons.push(`Matches your top target role: ${adjustment.prioritizedMatch}.`);
   } else if (adjustment.preferredMatch) {
     reasons.push(`Matches your target role: ${adjustment.preferredMatch}.`);
   }
@@ -270,33 +276,28 @@ type ProfileRoleFields = {
 export function buildRoleTitlePreferencesFromProfile(
   profile: ProfileRoleFields | null | undefined,
 ): RoleTitlePreferences {
+  const ordered = unifiedTargetRoles({
+    targetRoles: profile?.targetRoles,
+    prioritizedRoles: profile?.prioritizedRoles,
+  });
   return {
-    targetRoles: (profile?.targetRoles ?? []).slice(0, 30),
-    prioritizedRoles: (profile?.prioritizedRoles ?? []).slice(0, 30),
+    targetRoles: ordered.slice(0, 30),
+    prioritizedRoles: [],
     prioritizedCategories: (profile?.prioritizedCategories ?? []).slice(0, 20),
     deprioritizedRoles: (profile?.deprioritizedRoles ?? []).slice(0, 30),
     deprioritizedCategories: (profile?.deprioritizedCategories ?? []).slice(0, 20),
   };
 }
 
-/** Role titles used for keyword/resume matching — prioritized first, then targets. */
+/** Role titles used for keyword/resume matching — ordered targetRoles. */
 export function profileRoleTitlesForMatch(preferences: RoleTitlePreferences): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const role of [...(preferences.prioritizedRoles ?? []), ...(preferences.targetRoles ?? [])]) {
-    const trimmed = role.trim();
-    if (!trimmed) continue;
-    const key = trimmed.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(trimmed);
-  }
-  return out;
+  return (preferences.targetRoles ?? [])
+    .map((role) => role.trim())
+    .filter(Boolean);
 }
 
 export function hasRoleTitlePreferenceSignals(preferences: RoleTitlePreferences): boolean {
   return (
-    (preferences.prioritizedRoles?.length ?? 0) > 0 ||
     (preferences.targetRoles?.length ?? 0) > 0 ||
     (preferences.prioritizedCategories?.length ?? 0) > 0 ||
     (preferences.deprioritizedRoles?.length ?? 0) > 0 ||

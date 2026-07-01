@@ -11,6 +11,7 @@ import {
   type ParsedResumeData,
 } from "@/lib/resume-parse";
 import type { ReadbackPayload } from "@/lib/readback-display";
+import { unifiedTargetRoles } from "@/lib/target-roles-unified";
 
 export type CompanyRecommendation = {
   catalogSlug: string;
@@ -31,7 +32,6 @@ export type CompanyRecommendationsCache = {
 
 export type RecommendationProfileSignals = {
   targetRoles: string[];
-  prioritizedRoles: string[];
   parsedData: ParsedResumeData | null;
   readbackData: ReadbackPayload | null;
   watchlistSlugs: string[];
@@ -132,7 +132,6 @@ function typeMatchesHint(companyType: string | undefined, hintTypes: string[]): 
 function collectSignalText(signals: RecommendationProfileSignals): string {
   const parts: string[] = [
     ...signals.targetRoles,
-    ...signals.prioritizedRoles,
     ...(signals.parsedData?.skills ?? []),
     ...(signals.parsedData?.tools ?? []),
     ...(signals.readbackData?.strengths ?? []),
@@ -147,8 +146,7 @@ function collectSignalText(signals: RecommendationProfileSignals): string {
 
 export function buildRecommendationFingerprint(signals: RecommendationProfileSignals): string {
   const payload = {
-    targetRoles: [...signals.targetRoles].sort(),
-    prioritizedRoles: [...signals.prioritizedRoles].sort(),
+    targetRoles: [...signals.targetRoles],
     skills: [...(signals.parsedData?.skills ?? [])].sort(),
     tools: [...(signals.parsedData?.tools ?? [])].sort(),
     readbackRoles: [...(signals.readbackData?.targetRoles?.map((r) => r.role) ?? [])].sort(),
@@ -185,8 +183,10 @@ export function buildRecommendationSignals(input: {
       : null;
 
   return {
-    targetRoles: input.targetRoles ?? [],
-    prioritizedRoles: input.prioritizedRoles ?? [],
+    targetRoles: unifiedTargetRoles({
+      targetRoles: input.targetRoles,
+      prioritizedRoles: input.prioritizedRoles,
+    }),
     parsedData,
     readbackData: readback,
     watchlistSlugs: input.watchlistSlugs ?? [],
@@ -208,11 +208,12 @@ function scoreCompany(company: CatalogCompany, signals: RecommendationProfileSig
   let score = 0;
   const reasons: string[] = [];
 
-  for (const role of signals.prioritizedRoles) {
-    const roleLower = role.toLowerCase();
+  const topRole = signals.targetRoles[0]?.trim();
+  if (topRole) {
+    const roleLower = topRole.toLowerCase();
     if (company.type?.toLowerCase().includes(roleLower) || company.name.toLowerCase().includes(roleLower)) {
       score += 12;
-      reasons.push(`Top priority role: ${role}`);
+      reasons.push(`Top target role: ${topRole}`);
     }
   }
 
@@ -290,7 +291,6 @@ function scoreCompany(company: CatalogCompany, signals: RecommendationProfileSig
 export function hasRecommendationSignals(signals: RecommendationProfileSignals): boolean {
   return (
     signals.targetRoles.length > 0 ||
-    signals.prioritizedRoles.length > 0 ||
     (signals.parsedData?.skills.length ?? 0) > 0 ||
     (signals.parsedData?.tools.length ?? 0) > 0 ||
     (signals.parsedData?.workExperience.length ?? 0) > 0 ||

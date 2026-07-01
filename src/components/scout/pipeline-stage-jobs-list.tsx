@@ -7,6 +7,7 @@ import { STAGE_COLORS, STAGE_DESCRIPTIONS, STAGE_LABELS, type KanbanCard, type K
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { CompanyLogo } from "./company-logo";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
+import { PipelineJobTagsRow } from "./pipeline-job-tags";
 import { fontSans, color, border, displayTitleStyle, surface, type as T } from "@/lib/typography";
 
 function StageDropdown({
@@ -139,7 +140,7 @@ export function PipelineStageJobsList({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {stageCards.map((card) => {
-            const ext = card as KanbanCard & { _url?: string; _meta?: JobMeta };
+            const ext = card as KanbanCard & { _url?: string; _meta?: JobMeta; _pipelineTags?: string[] };
             return (
               <ScoutBox key={card.id} padding={18} style={{ border: "1.5px solid #161616" }}>
                 <div
@@ -168,6 +169,7 @@ export function PipelineStageJobsList({
                         Saved {card.days === 0 ? "today" : `${card.days}d ago`}
                       </p>
                     ) : null}
+                    <PipelineJobTagsRow tags={ext._pipelineTags ?? ext._meta?.pipelineTags ?? []} />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>

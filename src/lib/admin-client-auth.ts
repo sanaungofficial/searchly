@@ -1,5 +1,6 @@
-import { UserRole, type User } from "@prisma/client";
+import { type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { adminRosterClientWhere } from "@/lib/admin-client-roles";
 import { findSupabaseAuthUserIdByEmail, getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export function getAppAuthRedirectUrl(next = "/dashboard"): string {
@@ -98,7 +99,7 @@ export async function updateClientEmail(userId: string, newEmailRaw: string): Pr
   }
 
   const user = await prisma.user.findFirst({
-    where: { id: userId, role: UserRole.USER },
+    where: adminRosterClientWhere(userId),
   });
   if (!user) throw new Error("Client not found.");
 
