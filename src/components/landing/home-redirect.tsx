@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { resolvePostAuthRedirect } from "@/components/auth/post-auth-redirect";
 
-/** App subdomain root — redirect authenticated users into the product. */
+/** App subdomain root — redirect authenticated users into the product; guests stay on landing. */
 export function HomeRedirect() {
   const router = useRouter();
 
@@ -21,10 +21,7 @@ export function HomeRedirect() {
     }
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+      if (!user) return;
       try {
         const destination = await resolvePostAuthRedirect();
         router.replace(destination);

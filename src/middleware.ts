@@ -50,17 +50,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // App host `/` — signed-in users go to dashboard, not marketing landing.
-  if (user && pathname === "/" && onAppHost) {
-    const url = request.nextUrl.clone();
-    url.pathname = APP_HOME_PATH;
-    url.search = "";
-    return NextResponse.redirect(url);
+  // Root `/` — marketing landing for guests; signed-in app-host users → dashboard.
+  if (pathname === "/") {
+    if (user && onAppHost) {
+      const url = request.nextUrl.clone();
+      url.pathname = APP_HOME_PATH;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
   }
 
   // Allow public routes through always
   if (
-    pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/r/") ||
