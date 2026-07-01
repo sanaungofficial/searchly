@@ -228,109 +228,56 @@ function resumeAnalysisBadge(asset: UserAssetRow): { label: string; bg: string; 
   return { label: "Analysis Complete", bg: "#F0FFF8", border: "#A8DFC0", color: "#1A7A4A" };
 }
 
-function UpskillNextStepCard({
+function UpskillQueuedBanner({
   skill,
   role,
-  skills,
-  variant = "prompt",
   onGoToUpskill,
   onDismiss,
   isMobile,
 }: {
-  skill?: string;
+  skill: string;
   role?: string;
-  skills?: string[];
-  variant?: "prompt" | "next-steps";
   onGoToUpskill: (skill: string) => void;
   onDismiss?: () => void;
   isMobile?: boolean;
 }) {
-  const skillList = skills?.length ? skills : skill ? [skill] : [];
-  const primarySkill = skill ?? skillList[0] ?? "";
-  const title =
-    variant === "prompt"
-      ? "Skill queued for Upskill"
-      : "Close these gaps with learning";
-  const body =
-    variant === "prompt" ? (
-      <>
-        We added <strong style={{ color: color.ink }}>{skill}</strong> to your Upskill queue
+  return (
+    <ScoutBox
+      padding={isMobile ? "10px 12px" : "12px 14px"}
+      style={{
+        marginBottom: 14,
+        background: "rgba(26,58,47,0.04)",
+        borderColor: color.forest,
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        alignItems: isMobile ? "stretch" : "center",
+        justifyContent: "space-between",
+        gap: 10,
+      }}
+    >
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: 0, lineHeight: 1.5 }}>
+        <strong>{skill}</strong> queued in Upskill
         {role ? (
           <>
             {" "}
-            for <strong style={{ color: color.ink }}>{role}</strong>
-          </>
-        ) : null}
-        . Pick a course when you&apos;re ready — no deadline.
-      </>
-    ) : (
-      <>
-        Upskill matches courses to your role gaps. Pick a skill to see paths
-        {role ? (
-          <>
-            {" "}
-            for <strong style={{ color: color.ink }}>{role}</strong>
+            for <strong>{role}</strong>
           </>
         ) : null}
         .
-      </>
-    );
-
-  return (
-    <ScoutBox
-      padding={isMobile ? "14px 16px" : "16px 18px"}
-      style={{
-        marginBottom: variant === "next-steps" ? 14 : 0,
-        background: "rgba(26,58,47,0.04)",
-        borderColor: color.forest,
-      }}
-    >
-      <p style={{ fontFamily: fontDisplay, fontSize: T.bodySm, fontWeight: 600, fontStyle: "italic", color: color.forest, margin: "0 0 8px", lineHeight: 1.35 }}>
-        {title}
       </p>
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 12px", lineHeight: 1.6 }}>
-        {body}
-      </p>
-      {variant === "next-steps" && skillList.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-          {skillList.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onGoToUpskill(s)}
-              style={{
-                padding: "6px 12px",
-                background: surface.card,
-                border: "var(--scout-border)",
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                color: color.forest,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              {s}
-              <span style={{ color: color.muted }}>→ Learn</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
         <ScoutPrimaryBtn
-          onClick={() => primarySkill && onGoToUpskill(primarySkill)}
-          disabled={!primarySkill}
-          style={{ minHeight: 44, width: isMobile ? "100%" : undefined, justifyContent: "center" }}
+          onClick={() => onGoToUpskill(skill)}
+          style={{ minHeight: 36, fontSize: T.caption, padding: "6px 12px" }}
         >
-          {variant === "prompt" ? "Explore learning paths" : "Go to Upskill"}
+          Go to Upskill
         </ScoutPrimaryBtn>
         {onDismiss && (
           <ScoutSecondaryBtn
             onClick={onDismiss}
-            style={{ minHeight: 44, width: isMobile ? "100%" : undefined, justifyContent: "center" }}
+            style={{ minHeight: 36, fontSize: T.caption, padding: "6px 12px" }}
           >
-            {variant === "prompt" ? "Stay on Target Roles" : "Maybe later"}
+            Dismiss
           </ScoutSecondaryBtn>
         )}
       </div>
@@ -1159,7 +1106,7 @@ function DreamRoleTab({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
-  const [obtainNudge, setObtainNudge] = useState<{ role: string; skill: string } | null>(null);
+  const [queuedBanner, setQueuedBanner] = useState<{ role: string; skill: string } | null>(null);
   const analyzingRef = useRef(new Set<string>());
   const isMobile = useIsMobile();
   const hasResume = resumeAssets.length > 0;
@@ -1365,6 +1312,17 @@ function DreamRoleTab({
 
   const isInLearning = (skill: string) =>
     skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase());
+
+  const queuedSkillsForRole = (role: string) =>
+    skillGoals
+      .filter((g) => g.role === role && !hasSkill(g.skill))
+      .map((g) => g.skill);
+
+  useEffect(() => {
+    if (!queuedBanner) return;
+    const timer = window.setTimeout(() => setQueuedBanner(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [queuedBanner]);
 
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
@@ -1612,9 +1570,7 @@ function DreamRoleTab({
                         );
                         const useMarketGaps = marketGaps.length > 0;
                         const haveSkills = loaded.requiredSkills.filter((s) => hasSkill(s));
-                        const learningSkills = useMarketGaps
-                          ? marketGaps.filter((g) => isInLearning(g.skill)).map((g) => g.skill)
-                          : loaded.requiredSkills.filter((s) => !hasSkill(s) && isInLearning(s));
+                        const queuedSkills = queuedSkillsForRole(role);
                         const missingRows = useMarketGaps
                           ? marketGaps.map((g) => ({
                               skill: g.skill,
@@ -1677,7 +1633,7 @@ function DreamRoleTab({
                                     }}
                                     style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "var(--scout-border)", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
                                   >
-                                    {row.kind === "technology" ? "Add to my tools" : "Add to my skills"}
+                                    I already have this {row.kind === "technology" ? "tool" : "skill"}
                                   </button>
                                   <button
                                     type="button"
@@ -1691,12 +1647,12 @@ function DreamRoleTab({
                                             ? "corpus"
                                             : "archetype";
                                       onObtainSkill(skill, role, { gapSource, kind: row.kind });
-                                      setObtainNudge({ skill, role });
+                                      setQueuedBanner({ skill, role });
                                       setSkillMenu(null);
                                     }}
-                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, fontWeight: 600, cursor: "pointer" }}
                                   >
-                                    Obtain this {row.kind === "technology" ? "tool" : "skill"}
+                                    Add to Upskill
                                   </button>
                                 </div>
                               )}
@@ -1731,19 +1687,24 @@ function DreamRoleTab({
                                   </div>
                                 ))}
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                                  <span>Add to your profile if you already have it, or obtain it to track learning in Upskill.</span>
+                                  <span>Mark skills you already have, or add gaps to Upskill to learn them.</span>
                                   <ScoreExplainerPopover variant="upskill-recommendations" />
                                 </p>
                               </div>
                             )}
-                            {learningSkills.length > 0 && (
+                            {queuedSkills.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Working on</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Queued in Upskill</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {learningSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  {queuedSkills.map((skill) => (
+                                    <button
+                                      key={skill}
+                                      type="button"
+                                      onClick={() => onGoToUpskill(skill)}
+                                      style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer" }}
+                                    >
                                       <span style={{ fontSize: 14 }}>→</span> {skill}
-                                    </span>
+                                    </button>
                                   ))}
                                 </div>
                               </div>
@@ -1753,61 +1714,51 @@ function DreamRoleTab({
                                 {loaded._cachedAt
                                   ? `Last refreshed ${formatLastRefreshed(loaded._cachedAt)}. Scores are saved per resume — switch resumes to compare, or refresh for a new analysis.`
                                   : "Scores are saved per resume. Refresh when you want an updated analysis."}
-                                {loaded._stale ? " Your profile changed since this score — refresh when ready." : ""}
                               </p>
-                              <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
-                                ↻ Refresh
+                              <button
+                                onClick={() => handleRefresh(role)}
+                                style={{
+                                  padding: "5px 12px",
+                                  background: loaded._stale ? "rgba(196,168,106,0.1)" : "#FFFFFF",
+                                  border: loaded._stale ? "1px solid rgba(196,168,106,0.45)" : "1px solid #E5DDD0",
+                                  borderRadius: "var(--scout-radius)",
+                                  fontFamily: "var(--font-ui)",
+                                  fontSize: 14,
+                                  color: loaded._stale ? "#7A6020" : "#52493F",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  whiteSpace: "nowrap",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                ↻ {loaded._stale ? "Refresh score" : "Refresh"}
                               </button>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {obtainNudge?.role === role && (
-                        <div style={{ marginBottom: 20 }}>
-                          <UpskillNextStepCard
-                            skill={obtainNudge.skill}
-                            role={obtainNudge.role}
-                            onGoToUpskill={(s) => {
-                              onGoToUpskill(s);
-                              setObtainNudge(null);
-                              onClearUpskillPrompt?.();
-                            }}
-                            onDismiss={() => {
-                              setObtainNudge(null);
-                              onClearUpskillPrompt?.();
-                            }}
-                            isMobile={isMobile}
-                          />
-                        </div>
+                      {queuedBanner?.role === role && (
+                        <UpskillQueuedBanner
+                          skill={queuedBanner.skill}
+                          role={queuedBanner.role}
+                          onGoToUpskill={(s) => {
+                            onGoToUpskill(s);
+                            setQueuedBanner(null);
+                            onClearUpskillPrompt?.();
+                          }}
+                          onDismiss={() => {
+                            setQueuedBanner(null);
+                            onClearUpskillPrompt?.();
+                          }}
+                          isMobile={isMobile}
+                        />
                       )}
 
                       <div>
                         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
-                        {(() => {
-                          const marketGaps = corpusGapsForRole(roleCorpusGaps, role)
-                            .filter((g) => !hasSkill(g.skill))
-                            .map((g) => g.skill);
-                          const required = loaded.requiredSkills ?? [];
-                          const gapSkills = marketGaps.length
-                            ? marketGaps
-                            : required.filter((s) => !hasSkill(s));
-                          const queuedSkills = skillGoals
-                            .filter((g) => g.role === role)
-                            .map((g) => g.skill)
-                            .filter((s) => !gapSkills.some((g) => g.toLowerCase() === s.toLowerCase()));
-                          const upskillSkills = [...gapSkills, ...queuedSkills];
-                          if (upskillSkills.length === 0) return null;
-                          return (
-                            <UpskillNextStepCard
-                              variant="next-steps"
-                              role={role}
-                              skills={upskillSkills}
-                              onGoToUpskill={onGoToUpskill}
-                              isMobile={isMobile}
-                            />
-                          );
-                        })()}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {loaded.nextSteps.map((step, i) => (
                             <div key={i} style={{ display: "flex", gap: 8 }}>
@@ -3321,7 +3272,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (
           <div style={{ marginBottom: 16 }}>
-            <UpskillNextStepCard
+            <UpskillQueuedBanner
               skill={upskillPrompt.skill}
               role={upskillPrompt.role}
               onGoToUpskill={goToUpskill}

@@ -752,7 +752,7 @@ export function UpskillLearningTab({
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: "0 0 16px", lineHeight: 1.6 }}>
               {unqueuedGapCount > 0
                 ? `We found ${unqueuedGapCount} market gap${unqueuedGapCount === 1 ? "" : "s"} across your target roles. Queue skills from Target Roles or add one here.`
-                : "Add a skill above, or on Target Roles choose Obtain this skill on a gap."}
+                : "Add a skill above, or on Target Roles choose Add to Upskill on a gap."}
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {unqueuedGapCount > 0 && (
