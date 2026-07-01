@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPublicCoachingPath, requiresAuthCoachingPath, sanitizeReturnPath } from "@/lib/auth-return-url";
+import { isAppHost } from "@/lib/site-host";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -32,7 +33,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") ?? "";
-  const onAppHost = host.includes("app.kimchi.so");
+  const onAppHost = isAppHost(host);
 
   // Passcode gate — production only, login/signup pages (any host). Marketing / and app routes bypass.
   if (process.env.VERCEL_ENV === "production") {

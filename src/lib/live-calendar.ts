@@ -1,4 +1,5 @@
 import { formatSessionDateRange } from "@/lib/live-session-display";
+import { resolveAppUrl } from "@/lib/site-host";
 
 function formatIcsDate(d: Date): string {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
@@ -13,7 +14,7 @@ export function buildLiveSessionIcs(session: {
   legacyNumericId: number | null;
   id: string;
 }): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.kimchi.so";
+  const base = resolveAppUrl();
   const routeId = session.legacyNumericId != null ? String(session.legacyNumericId) : session.id;
   const url = `${base.replace(/\/$/, "")}/live/${routeId}`;
   const { date, time } = formatSessionDateRange(session.scheduledStart, session.scheduledEnd);
@@ -54,7 +55,7 @@ export function googleCalendarUrl(session: {
   legacyNumericId: number | null;
   id: string;
 }): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.kimchi.so";
+  const base = resolveAppUrl();
   const routeId = session.legacyNumericId != null ? String(session.legacyNumericId) : session.id;
   const url = `${base.replace(/\/$/, "")}/live/${routeId}`;
 

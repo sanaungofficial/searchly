@@ -3,6 +3,8 @@
  * Docs: https://docs.partnero.com/guides/tracking/refer-a-friend-api
  */
 
+import { resolveAppUrl } from "@/lib/site-host";
+
 const PARTNERO_API = "https://api.partnero.com/v1";
 
 export type PartneroCustomer = {
@@ -158,7 +160,7 @@ export async function ensurePartneroCustomer(input: {
 }
 
 export function partneroReferralLink(customer: PartneroCustomer, fallbackKey: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const base = resolveAppUrl();
   const link = customer.referral_link ?? customer.referral_links?.[0];
   if (link) return link;
   return `${base}/signup?ref=${encodeURIComponent(customer.key ?? fallbackKey)}`;

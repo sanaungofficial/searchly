@@ -8,6 +8,7 @@ import {
   loadPackageForCheckout,
   resolvePackageQuote,
 } from "@/lib/coach-purchase";
+import { resolveAppUrl } from "@/lib/site-host";
 
 function parseLeadSource(raw: unknown): CoachPurchaseLeadSource {
   if (raw === "SALES_ASSISTED") return CoachPurchaseLeadSource.SALES_ASSISTED;
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const baseUrl = resolveAppUrl();
   const coachSlug = row.coachProfile.slug;
 
   const session = await stripe.checkout.sessions.create({

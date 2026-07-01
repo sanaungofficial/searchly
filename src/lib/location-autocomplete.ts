@@ -31,7 +31,7 @@ type PhotonFeature = {
 const PHOTON_BASE = "https://photon.komoot.io/api/";
 const PHOTON_REVERSE = "https://photon.komoot.io/reverse";
 const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
-const KIMCHI_USER_AGENT = "Kimchi/1.0 (https://app.kimchi.so; contact@kimchi.so)";
+const KIMCHI_USER_AGENT = "Kimchi/1.0 (https://kimchi.so; contact@kimchi.so)";
 
 const PLACE_TYPES = new Set(["city", "town", "village", "hamlet", "suburb", "locality", "municipality"]);
 

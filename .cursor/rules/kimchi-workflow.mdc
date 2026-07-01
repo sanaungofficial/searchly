@@ -18,7 +18,7 @@ Full details: `AGENTS.md` in repo root.
 
 - **Non-AI features:** browser-test on `https://kimchi-git-dev-second-ladder.vercel.app`
 - **AI features:** UI on dev only; say clearly that AI E2E needs prod or San's manual test (no `ANTHROPIC_API_KEY` on dev).
-- **Passcode:** production (`app.kimchi.so`) only — dev staging has no passcode gate.
+- **Passcode:** production (`kimchi.so`) only — dev staging has no passcode gate.
 
 ## Do not edit without approval
 

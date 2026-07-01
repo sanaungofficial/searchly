@@ -30,7 +30,9 @@ export function getNylasConfig(appUrlOverride?: string): NylasConfig | null {
   };
 }
 
-/** Prefer the live request host so OAuth redirect URIs match Nylas dashboard (app.kimchi.so). */
+import { KIMCHI_PRODUCTION_ORIGIN, resolveAppUrl } from "@/lib/site-host";
+
+/** Prefer the live request host so OAuth redirect URIs match Nylas dashboard (kimchi.so). */
 export function resolveKimchiAppUrl(req?: { headers: Headers; nextUrl?: { origin: string } }): string {
   if (req) {
     const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "")
@@ -44,7 +46,7 @@ export function resolveKimchiAppUrl(req?: { headers: Headers; nextUrl?: { origin
   const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (envUrl && envUrl.includes("kimchi.so")) return envUrl.replace(/\/$/, "");
 
-  return "https://app.kimchi.so";
+  return KIMCHI_PRODUCTION_ORIGIN;
 }
 
 export function nylasRedirectUri(appUrl: string): string {
@@ -59,7 +61,7 @@ export function nylasOAuthAppUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (envUrl && envUrl.includes("kimchi.so")) return envUrl.replace(/\/$/, "");
 
-  return "https://app.kimchi.so";
+  return KIMCHI_PRODUCTION_ORIGIN;
 }
 
 export function nylasOAuthRedirectUri(): string {

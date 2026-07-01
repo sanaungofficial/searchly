@@ -16,12 +16,12 @@ In [Nylas Dashboard](https://dashboard.nylas.com) for the Kimchi app:
 ### Hosted OAuth (user inboxes)
 
 1. **Hosted Authentication → Identity providers** — enable Google and Microsoft.
-2. **Redirect URI** — ensure `https://app.kimchi.so/api/nylas/callback` is registered (same as coach flow).
+2. **Redirect URI** — ensure `https://kimchi.so/api/nylas/callback` is registered (keep `https://app.kimchi.so/api/nylas/callback` during transition if needed).
 3. **Scopes** — enable email read and calendar read for connected accounts (Gmail readonly + Calendar readonly).
 
 ### Webhooks
 
-Subscribe at `https://app.kimchi.so/api/webhooks/nylas`:
+Subscribe at `https://kimchi.so/api/webhooks/nylas`:
 
 - `message.created`, `message.updated`
 - `event.created`, `event.updated`
@@ -42,7 +42,7 @@ Subscribe at `https://app.kimchi.so/api/webhooks/nylas`:
 | `NYLAS_API_KEY` | API key (includes Smart Compose when enabled on your Nylas app) |
 | `NYLAS_CLIENT_ID` | OAuth client |
 | `NYLAS_WEBHOOK_SECRET` | Webhook HMAC |
-| `NYLAS_OAUTH_APP_URL` | `https://app.kimchi.so` |
+| `NYLAS_OAUTH_APP_URL` | `https://kimchi.so` |
 | `KIMCHI_AGENT_EMAIL` | Nylas Agent Account address |
 | `CRON_SECRET` | Cron auth for `/api/cron/email-agent-sync` |
 

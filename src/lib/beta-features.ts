@@ -37,7 +37,7 @@ export function isProductionEnv(): boolean {
     return true;
   }
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  return appUrl.includes("app.kimchi.so");
+  return appUrl.includes("kimchi.so");
 }
 
 /** Page-level access for Live / Coaching / Network routes. */
