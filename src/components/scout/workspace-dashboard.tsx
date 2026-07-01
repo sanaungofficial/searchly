@@ -6,6 +6,7 @@ import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { DashboardHomeTop } from "@/components/scout/dashboard-home-top";
 import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { surface } from "@/lib/typography";
+import { ClickConnectorTourAutoStart } from "@/components/clickconnector-tour-auto-start";
 
 export function WorkspaceDashboard() {
   const isMobile = useIsMobile();
@@ -41,6 +42,7 @@ export function WorkspaceDashboard() {
           <DashboardHomeTop isMobile={isMobile} />
         </WorkspaceContent>
       </WorkspaceScroll>
+      <ClickConnectorTourAutoStart />
       {showWelcome && <GrowthWelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   );

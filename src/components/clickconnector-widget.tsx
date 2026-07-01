@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { CLICKCONNECTOR_WIDGET_ID } from "@/lib/clickconnector-tour";
 
-const WIDGET_ID = "5efd60-6hvno";
+export { CLICKCONNECTOR_WIDGET_ID };
 
 function splitName(fullName: string | null | undefined): {
   firstName?: string;
@@ -112,7 +113,7 @@ export function ClickConnectorWidget() {
 
     void (async () => {
       const { ChatWidget } = await import("@clickconnector/widget-sdk");
-      await ChatWidget.load(WIDGET_ID);
+      await ChatWidget.load(CLICKCONNECTOR_WIDGET_ID);
       if (cancelled) return;
 
       await syncAuth(ChatWidget);
