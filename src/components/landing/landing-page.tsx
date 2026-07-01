@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 import {
   LANDING_ANALYTICS,
@@ -24,8 +23,6 @@ import {
 } from "@/lib/landing-content";
 import { MarketingTopNav } from "@/components/landing/marketing-top-nav";
 import { useAppEntryHref } from "@/hooks/use-app-entry-href";
-import { createClient } from "@/utils/supabase/client";
-import { APP_HOME_PATH } from "@/lib/site-host";
 import "./landing.css";
 
 function KimchiWordmark({ compact = false }: { compact?: boolean }) {
@@ -189,20 +186,11 @@ function SectionIntro({
 }
 
 export function LandingPage() {
-  const router = useRouter();
   const loginHref = useAppEntryHref("/login");
   const signupHref = useAppEntryHref("/signup");
   const [faqOpen, setFaqOpen] = useState(0);
   const [testimonial, setTestimonial] = useState(0);
   const t = LANDING_TESTIMONIALS.items[testimonial]!;
-
-  // Fallback when middleware/page SSR miss a client-only session (e.g. post domain migration).
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.replace(APP_HOME_PATH);
-    });
-  }, [router]);
 
   const nextTestimonial = useCallback(() => {
     setTestimonial((n) => (n + 1) % LANDING_TESTIMONIALS.items.length);

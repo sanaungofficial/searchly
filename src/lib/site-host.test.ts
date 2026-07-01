@@ -1,9 +1,39 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
+  APP_HOME_PATH,
   KIMCHI_PRODUCTION_ORIGIN,
+  isAppHost,
+  isKimchiProductionHost,
   resolveAppUrl,
   resolveRequestOrigin,
 } from "@/lib/site-host";
+
+describe("isAppHost", () => {
+  it("treats kimchi.so and dev staging as app hosts", () => {
+    expect(isAppHost("kimchi.so")).toBe(true);
+    expect(isAppHost("app.kimchi.so")).toBe(true);
+    expect(isAppHost("kimchi-git-dev-second-ladder.vercel.app")).toBe(true);
+    expect(isAppHost("localhost")).toBe(true);
+  });
+
+  it("does not treat unknown marketing domains as app hosts", () => {
+    expect(isAppHost("example.com")).toBe(false);
+  });
+});
+
+describe("isKimchiProductionHost", () => {
+  it("recognizes production app domains", () => {
+    expect(isKimchiProductionHost("kimchi.so")).toBe(true);
+    expect(isKimchiProductionHost("www.kimchi.so")).toBe(true);
+    expect(isKimchiProductionHost("app.kimchi.so")).toBe(true);
+  });
+});
+
+describe("APP_HOME_PATH", () => {
+  it("points returning users at the workspace dashboard", () => {
+    expect(APP_HOME_PATH).toBe("/dashboard");
+  });
+});
 
 describe("resolveRequestOrigin", () => {
   it("prefers x-forwarded-host over request.url host", () => {
