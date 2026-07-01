@@ -765,10 +765,27 @@ export function JobDrawer({
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [requestModal, setRequestModal] = useState<NetworkJobRequestModalKind | null>(null);
-  const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
-  const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
-  const cardExt = card as KanbanCard & { _meta?: JobMeta; _coverLetter?: string; _fitAnalysis?: string };
-  const meta = cardExt._meta ?? null;
+  const extCard = card as KanbanCard & {
+    _dbId?: string;
+    _url?: string;
+    _userNotes?: string;
+    _companyLinkedinUrl?: string;
+    _pipelineTags?: string[];
+    _meta?: JobMeta;
+    _coverLetter?: string;
+    _fitAnalysis?: string;
+  };
+  const dbId = extCard._dbId ?? null;
+  const cardUrl = extCard._url ?? null;
+  const meta = extCard._meta ?? null;
+  const [urlValue, setUrlValue] = useState(extCard._url ?? "");
+  const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
+  const [pipelineTags, setPipelineTags] = useState<string[]>(
+    extCard._pipelineTags ?? parsePipelineTagsFromMeta(meta),
+  );
+  const [descValue, setDescValue] = useState(meta?.description ?? "");
+  const [nextStepValue, setNextStepValue] = useState(meta?.nextStep ?? "");
+  const [nextStepDueValue, setNextStepDueValue] = useState(meta?.nextStepDue ?? "");
   const [activeSection, setActiveSection] = useState<ScrollSection>("overview");
   const scrollRef = useRef<HTMLDivElement>(null);
   const companySectionRef = useRef<HTMLDivElement>(null);
@@ -881,22 +898,6 @@ export function JobDrawer({
       container.removeEventListener("scroll", onScroll);
     };
   }, [card.id]);
-
-  const extCard = card as KanbanCard & {
-    _dbId?: string;
-    _url?: string;
-    _userNotes?: string;
-    _companyLinkedinUrl?: string;
-    _pipelineTags?: string[];
-  };
-  const [urlValue, setUrlValue] = useState(extCard._url ?? "");
-  const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
-  const [pipelineTags, setPipelineTags] = useState<string[]>(
-    extCard._pipelineTags ?? parsePipelineTagsFromMeta(meta),
-  );
-  const [descValue, setDescValue] = useState(meta?.description ?? "");
-  const [nextStepValue, setNextStepValue] = useState(meta?.nextStep ?? "");
-  const [nextStepDueValue, setNextStepDueValue] = useState(meta?.nextStepDue ?? "");
 
   function patchNextStep(nextStep: string, nextStepDue: string) {
     if (!dbId) return;
@@ -1841,7 +1842,7 @@ export function JobDrawer({
           company={card.company}
           description={jobDescription}
           jobId={dbId ?? undefined}
-          initialLetter={cardExt._coverLetter ?? null}
+          initialLetter={extCard._coverLetter ?? null}
           onClose={() => setCoverDrawerOpen(false)}
           onLetterSaved={(letter) => onCardUpdate({ coverLetter: letter })}
         />
