@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const baseUrl = resolveAppUrl();
+  const baseUrl = resolveAppUrl({ headers: req.headers, url: req.url });
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
