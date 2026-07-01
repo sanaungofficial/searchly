@@ -225,7 +225,6 @@ export function MatchScoreColumn({
         alignItems: "center",
         justifyContent: "center",
         borderLeft: "none",
-        borderRadius: "0 16px 16px 0",
       }}
     >
       <MatchWhyScorePopover
