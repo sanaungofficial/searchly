@@ -11,6 +11,7 @@ const defaultFeedLoadedScopes = new Set<string>();
 
 export type RecommendedCacheEntry = {
   jobs: VectorMatchedJob[];
+  reserveJobs?: VectorMatchedJob[];
   filtersKey: string;
   fetchedAt: number;
   matchMode?: string;

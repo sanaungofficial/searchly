@@ -2,7 +2,9 @@ import {
   RECOMMENDED_DISPLAY_COUNT,
   RECOMMENDED_MATCH_SCORE_FLOOR,
   RECOMMENDED_PREFERRED_MIN_SCORE,
+  RECOMMENDED_RESERVE_COUNT,
 } from "@/lib/recommended-jobs-config";
+import { filterOutPipelineJobs, vectorMatchedJobDedupeKey } from "@/lib/pipeline-job-dedupe";
 import { jobListingDedupeKey } from "@/lib/cached-job";
 import { compareJobFreshness, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
 import {
@@ -65,17 +67,18 @@ export function dedupeVectorMatchedJobs(jobs: VectorMatchedJob[]): VectorMatched
   return [...byKey.values()];
 }
 
-export function finalizeRecommendedJobs(
+export type RankRecommendedJobsOptions = {
+  filterStale?: boolean;
+  roleTitlePreferences?: RoleTitlePreferences;
+  profileSkills?: string[];
+  fetchLaneByKey?: Map<string, RecommendedFetchLane>;
+  preferredMinScore?: number;
+};
+
+function prepareRankedRecommendedJobs(
   jobs: VectorMatchedJob[],
   isTrackedFn: (job: VectorMatchedJob) => boolean,
-  maxJobs: number,
-  options?: {
-    filterStale?: boolean;
-    roleTitlePreferences?: RoleTitlePreferences;
-    profileSkills?: string[];
-    fetchLaneByKey?: Map<string, RecommendedFetchLane>;
-    preferredMinScore?: number;
-  },
+  options?: RankRecommendedJobsOptions,
 ): VectorMatchedJob[] {
   const filterStale = options?.filterStale !== false;
   const freshnessFiltered = filterStale
@@ -84,13 +87,51 @@ export function finalizeRecommendedJobs(
   const floored = applyRecommendedScoreFloor(freshnessFiltered);
   const deduped = dedupeVectorMatchedJobs(floored);
 
-  const tiered = enrichJobsWithFitTiers(deduped, {
+  return enrichJobsWithFitTiers(deduped, {
     isTrackedFn,
     roleTitlePreferences: options?.roleTitlePreferences ?? {},
     profileSkills: options?.profileSkills ?? [],
     fetchLaneByKey: options?.fetchLaneByKey,
   });
+}
 
+/** Full ranked pool from Hirebase fetch — before display/reserve split. */
+export function rankRecommendedJobPool(
+  jobs: VectorMatchedJob[],
+  isTrackedFn: (job: VectorMatchedJob) => boolean,
+  options?: RankRecommendedJobsOptions,
+): VectorMatchedJob[] {
+  return sortRecommendedJobsByFit(prepareRankedRecommendedJobs(jobs, isTrackedFn, options));
+}
+
+export function splitRecommendedDisplayAndReserve(
+  rankedJobs: VectorMatchedJob[],
+  pipelineKeys: Set<string>,
+  options?: {
+    displayCount?: number;
+    reserveCount?: number;
+    preferredMinScore?: number;
+  },
+): { jobs: VectorMatchedJob[]; reserveJobs: VectorMatchedJob[] } {
+  const displayCount = options?.displayCount ?? RECOMMENDED_DISPLAY_COUNT;
+  const reserveCount = options?.reserveCount ?? RECOMMENDED_RESERVE_COUNT;
+  const preferredMinScore = options?.preferredMinScore ?? RECOMMENDED_PREFERRED_MIN_SCORE;
+  const available = filterOutPipelineJobs(rankedJobs, pipelineKeys);
+  const jobs = selectDisplayJobs(available, { displayCount, preferredMinScore });
+  const usedKeys = new Set(jobs.map((job) => vectorMatchedJobDedupeKey(job)));
+  const reserveJobs = available
+    .filter((job) => !usedKeys.has(vectorMatchedJobDedupeKey(job)))
+    .slice(0, reserveCount);
+  return { jobs, reserveJobs };
+}
+
+export function finalizeRecommendedJobs(
+  jobs: VectorMatchedJob[],
+  isTrackedFn: (job: VectorMatchedJob) => boolean,
+  maxJobs: number,
+  options?: RankRecommendedJobsOptions,
+): VectorMatchedJob[] {
+  const tiered = prepareRankedRecommendedJobs(jobs, isTrackedFn, options);
   const displayCount = Math.min(maxJobs, RECOMMENDED_DISPLAY_COUNT);
   return selectDisplayJobs(tiered, {
     displayCount,

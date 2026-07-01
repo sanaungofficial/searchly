@@ -14,6 +14,7 @@ import {
   recordManualRefresh,
 } from "@/lib/recommended-jobs-snapshot";
 import { applyRoleTitlePreferencesToMatchedJobs } from "@/lib/recommended-jobs-ranking";
+import { filterOutPipelineJobs, loadUserPipelineDedupeKeys } from "@/lib/pipeline-job-dedupe";
 import { buildRoleTitlePreferencesFromProfile } from "@/lib/role-title-preferences";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -50,6 +51,7 @@ function snapshotResponse(
   if (!payload) return null;
   return NextResponse.json({
     jobs: payload.jobs,
+    reserveJobs: [],
     totalCount: payload.jobs.length,
     page: 1,
     limit: VECTOR_SEARCH_RESULTS_MAX,
@@ -114,7 +116,9 @@ async function handleRecommended(request: Request) {
     try {
       const cached = await readRecommendedSnapshot(dbUser.id, snapshotDate);
       if (cached?.jobs.length) {
-        const jobs = applyRoleTitlePreferencesToMatchedJobs(cached.jobs, roleTitlePreferences);
+        const pipelineKeys = await loadUserPipelineDedupeKeys(dbUser.id);
+        const visibleJobs = filterOutPipelineJobs(cached.jobs, pipelineKeys);
+        const jobs = applyRoleTitlePreferencesToMatchedJobs(visibleJobs, roleTitlePreferences);
         return snapshotResponse({ ...cached, jobs });
       }
     } catch (err) {
@@ -158,6 +162,7 @@ async function handleRecommended(request: Request) {
 
     return NextResponse.json({
       jobs: applyRoleTitlePreferencesToMatchedJobs(result.jobs, roleTitlePreferences),
+      reserveJobs: applyRoleTitlePreferencesToMatchedJobs(result.reserveJobs ?? [], roleTitlePreferences),
       totalCount: result.jobs.length,
       page: 1,
       limit: VECTOR_SEARCH_RESULTS_MAX,

@@ -33,7 +33,12 @@ import {
   tagSourcesWithLane,
   type RecommendedJobSource,
 } from "@/lib/recommended-jobs-fallback";
-import { finalizeRecommendedJobs } from "@/lib/recommended-jobs-ranking";
+import {
+  finalizeRecommendedJobs,
+  rankRecommendedJobPool,
+  splitRecommendedDisplayAndReserve,
+} from "@/lib/recommended-jobs-ranking";
+import { loadUserPipelineDedupeKeys } from "@/lib/pipeline-job-dedupe";
 import { buildRoleTitlePreferencesFromProfile, type RoleTitlePreferences } from "@/lib/role-title-preferences";
 import { mergeParsedWithReadback, normalizeParsedResumeData, personalNameMatchTokens } from "@/lib/resume-parse";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -55,6 +60,7 @@ export type UnifiedSearchInput = {
 
 export type UnifiedSearchResult = {
   jobs: VectorMatchedJob[];
+  reserveJobs?: VectorMatchedJob[];
   totalCount: number;
   matchMode: RecommendedMatchMode;
   companyCount: number;
@@ -260,6 +266,7 @@ async function enrichAndRankSources(
   ctx: UserSearchContext,
   userId: string,
   maxJobs: number,
+  options?: { fullPool?: boolean },
 ): Promise<VectorMatchedJob[]> {
   if (!sources.length) return [];
 
@@ -276,17 +283,19 @@ async function enrichAndRankSources(
   });
 
   const { index } = await loadTrackedCompanyIndex(userId);
-  return finalizeRecommendedJobs(
-    enriched,
-    (job) => companyNameMatchesTracked(job.companyName, index),
-    maxJobs,
-    {
-      filterStale: false,
-      roleTitlePreferences: ctx.roleTitlePreferences,
-      profileSkills: ctx.profileSkills,
-      fetchLaneByKey,
-    },
-  );
+  const rankOptions = {
+    filterStale: false,
+    roleTitlePreferences: ctx.roleTitlePreferences,
+    profileSkills: ctx.profileSkills,
+    fetchLaneByKey,
+  };
+  const isTrackedFn = (job: VectorMatchedJob) => companyNameMatchesTracked(job.companyName, index);
+
+  if (options?.fullPool) {
+    return rankRecommendedJobPool(enriched, isTrackedFn, rankOptions);
+  }
+
+  return finalizeRecommendedJobs(enriched, isTrackedFn, maxJobs, rankOptions);
 }
 
 function countDistinctCompanies(jobs: VectorMatchedJob[]): number {
@@ -342,7 +351,21 @@ export async function executeUnifiedJobsSearch(input: UnifiedSearchInput): Promi
   let notice: string | undefined;
   let matchMode: RecommendedMatchMode = sources[0]?.fetchLane === "profile_summary" ? "profile_summary" : "profile_roles";
 
-  let jobs = await enrichAndRankSources(sources, ctx, input.userId, maxJobs);
+  const pipelineKeys = input.mode === "recommended" ? await loadUserPipelineDedupeKeys(input.userId) : new Set<string>();
+  const rankedPool = await enrichAndRankSources(sources, ctx, input.userId, maxJobs, {
+    fullPool: input.mode === "recommended",
+  });
+
+  let jobs: VectorMatchedJob[];
+  let reserveJobs: VectorMatchedJob[] | undefined;
+
+  if (input.mode === "recommended") {
+    const split = splitRecommendedDisplayAndReserve(rankedPool, pipelineKeys);
+    jobs = split.jobs;
+    reserveJobs = split.reserveJobs;
+  } else {
+    jobs = rankedPool.slice(0, maxJobs);
+  }
 
   if (input.mode === "recommended" && !jobs.length) {
     const broad = await fetchRecommendedBroadFallback({
@@ -352,7 +375,10 @@ export async function executeUnifiedJobsSearch(input: UnifiedSearchInput): Promi
     });
     if (broad.sources.length) {
       sources = dedupeRecommendedSources(broad.sources, RECOMMENDED_FETCH_POOL);
-      jobs = await enrichAndRankSources(sources, ctx, input.userId, maxJobs);
+      const broadPool = await enrichAndRankSources(sources, ctx, input.userId, maxJobs, { fullPool: true });
+      const split = splitRecommendedDisplayAndReserve(broadPool, pipelineKeys);
+      jobs = split.jobs;
+      reserveJobs = split.reserveJobs;
       matchMode = "broad";
       notice =
         "Showing recent open roles — refine profile filters or add target roles for tighter matches.";
@@ -366,6 +392,7 @@ export async function executeUnifiedJobsSearch(input: UnifiedSearchInput): Promi
   if (!jobs.length) {
     return {
       jobs: [],
+      reserveJobs: [],
       totalCount: 0,
       matchMode,
       companyCount: 0,
@@ -383,6 +410,7 @@ export async function executeUnifiedJobsSearch(input: UnifiedSearchInput): Promi
 
   return {
     jobs,
+    reserveJobs,
     totalCount: jobs.length,
     matchMode,
     companyCount: countDistinctCompanies(jobs),
