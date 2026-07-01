@@ -4,6 +4,7 @@ import {
   scrapeLinkedInProfile,
 } from "@/lib/apify-linkedin";
 import { tierFromScore } from "@/lib/discovery-score";
+import { benchmarkPeerLabel, type DiscoveryBenchmarkResolution } from "./benchmark-role";
 import type {
   DiscoveryBenchmarkProfile,
   DiscoveryProfileContext,
@@ -211,7 +212,18 @@ function skillInsights(ctx: DiscoveryProfileContext, cohort: EnrichedBenchmark[]
 export function computeDiscoveryScoreFromCohort(
   ctx: DiscoveryProfileContext,
   cohort: EnrichedBenchmark[],
-): Omit<DiscoveryScoreCachePayload, "version" | "fingerprint" | "refreshedAt"> {
+  benchmark?: DiscoveryBenchmarkResolution,
+  _queryUsed?: string | null,
+): Omit<
+  DiscoveryScoreCachePayload,
+  | "version"
+  | "fingerprint"
+  | "refreshedAt"
+  | "benchmarkTargetRole"
+  | "benchmarkPeerLabel"
+  | "benchmarkJobFunction"
+  | "benchmarkQuery"
+> {
   const user = userMetrics(ctx);
   const cohortMetricList = cohort.map(benchmarkMetrics);
   const cohortAvg = averageMetrics(cohortMetricList);
@@ -222,12 +234,20 @@ export function computeDiscoveryScoreFromCohort(
   const breakdown = buildBreakdown(user, cohortAvg);
   const score = breakdown.resumeStrength + breakdown.positioningClarity + breakdown.marketReadiness + breakdown.competitiveSignals;
   const { strengths, gaps } = skillInsights(ctx, cohort);
-  const primaryRole = ctx.prioritizedRoles[0] ?? ctx.targetRoles[0] ?? "similar roles";
+  const resolution = benchmark ?? {
+    targetRoleLabel: ctx.prioritizedRoles[0] ?? ctx.targetRoles[0] ?? "similar roles",
+    hirebaseCategory: ctx.prioritizedCategories[0] ?? null,
+    sumbleJobFunction: null,
+    sumbleJobLevel: null,
+    titleTokens: [],
+    source: "target_role_only" as const,
+  };
+  const peerLabel = benchmarkPeerLabel(resolution);
   const location = ctx.location?.split(",")[0]?.trim();
 
   const summary = location
-    ? `You rank in the ${percentile >= 80 ? "top tier" : percentile >= 55 ? "upper half" : "building range"} among professionals targeting ${primaryRole} in ${location}.`
-    : `You rank in the ${percentile >= 80 ? "top tier" : percentile >= 55 ? "upper half" : "building range"} among professionals targeting ${primaryRole}.`;
+    ? `You rank in the ${percentile >= 80 ? "top tier" : percentile >= 55 ? "upper half" : "building range"} among ${peerLabel} professionals in ${location}.`
+    : `You rank in the ${percentile >= 80 ? "top tier" : percentile >= 55 ? "upper half" : "building range"} among ${peerLabel} professionals.`;
 
   const topImprovement =
     gaps[0]

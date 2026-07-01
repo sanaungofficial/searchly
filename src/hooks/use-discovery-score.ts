@@ -20,6 +20,9 @@ function payloadToResult(payload: DiscoveryScoreCachePayload): DiscoveryScoreRes
     gaps: payload.gaps,
     benchmarks: payload.benchmarks,
     refreshedAt: payload.refreshedAt,
+    benchmarkTargetRole: payload.benchmarkTargetRole,
+    benchmarkPeerLabel: payload.benchmarkPeerLabel,
+    benchmarkJobFunction: payload.benchmarkJobFunction,
   };
 }
 

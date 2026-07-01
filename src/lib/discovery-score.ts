@@ -77,6 +77,9 @@ export type DiscoveryScoreResult = {
   gaps: string[];
   benchmarks: DiscoveryBenchmarkProfile[];
   refreshedAt: string | null;
+  benchmarkTargetRole?: string | null;
+  benchmarkPeerLabel?: string | null;
+  benchmarkJobFunction?: string | null;
 };
 
 export type DiscoveryScoreInput = {
