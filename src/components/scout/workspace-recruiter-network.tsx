@@ -12,7 +12,8 @@ import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
-  networkingSectionPath,
+  NETWORK_ROLES_PATH,
+  networkJobUrl,
   parseNetworkRolesLocation,
   pipelineJobUrl,
 } from "@/lib/workspace-urls";
@@ -54,14 +55,14 @@ export function WorkspaceRecruiterNetwork() {
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
-    go(networkingSectionPath("in-network"));
+    go(NETWORK_ROLES_PATH);
   };
 
   const openNetworkJob = useCallback(
     (job: NetworkJobListing) => {
       pendingNetworkNavRef.current = job.id;
       loadedNetworkJobRef.current = job.id;
-      go(networkingSectionPath("in-network", { networkJobId: job.id }));
+      go(networkJobUrl(job.id));
       const drawerId = -Math.abs(Date.now() % 1_000_000);
       setNetworkProspectJob(job);
       setNetworkProspectCard(
@@ -119,7 +120,7 @@ export function WorkspaceRecruiterNetwork() {
       if (created) {
         go(pipelineJobUrl(created.id));
       } else {
-        go(networkingSectionPath("in-network"));
+        go(NETWORK_ROLES_PATH);
       }
     } finally {
       setAddingNetworkJob(false);
