@@ -5,7 +5,7 @@ import { startProductTour } from "@/lib/clickconnector-tour";
 
 const AUTO_START_DELAY_MS = 2000;
 
-/** Starts the product tour once for first-time workspace visitors on dashboard. */
+/** Starts the product tour once for first-time workspace visitors on Opportunities. */
 export function ClickConnectorTourAutoStart() {
   const startedRef = useRef(false);
 

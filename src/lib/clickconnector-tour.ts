@@ -32,19 +32,20 @@ async function withChatWidget<T>(
  * Kimchi page, map the step number to an App Router path here.
  *
  * Update this record when you edit tour steps in the ClickConnector console.
- * Step 1 usually stays on the current page (dashboard landing).
+ * Step 1 anchors on Opportunities; map it here so manual starts from other pages
+ * navigate before the spotlight renders.
  *
  * @example
  * ```ts
  * export const TOUR_STEP_ROUTES = {
- *   2: "/opportunities",
+ *   1: "/opportunities",
  *   3: "/profile",
  *   4: "/coaching",
  * };
  * ```
  */
 export const TOUR_STEP_ROUTES: Partial<Record<number, string>> = {
-  // Add routes when tour steps target elements on other pages.
+  1: "/opportunities",
 };
 
 export function hasSeenProductTour(): boolean {
