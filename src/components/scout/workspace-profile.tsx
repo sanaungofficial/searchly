@@ -294,6 +294,7 @@ interface ReadbackData {
 
 interface UserProfile {
   userId?: string;
+  adminReview?: { clientId: string; name?: string | null; email?: string | null };
   name: string;
   email: string | null;
   avatarUrl?: string | null;
@@ -2548,7 +2549,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating, isAdmin } = useWorkspace();
+  const { adminReviewClientId, withClientScope, withClientReviewPath, isAdminReviewing, openPricing, user, showAdminUi, isImpersonating, isAdmin } = useWorkspace();
   const profileLoc = parseProfileLocation(pathname);
   const urlClientId = searchParams.get("clientUserId")?.trim() || undefined;
   const [profileReviewClientId, setProfileReviewClientId] = useState<string | undefined>();
@@ -2556,15 +2557,23 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     ? undefined
     : (adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? urlClientId ?? profileReviewClientId ?? undefined);
   const profileScopeKey = isImpersonating ? "impersonate" : (clientId ?? "self");
-  const canAccessImport = Boolean(clientId) && isAdmin && !isImpersonating;
   const preferencesSection = profileLoc.preferencesSection;
   const profileBase = profileBasePath(clientId, { sessionScoped: isAdminReviewing });
   const api = withClientScope;
   const page = profileLoc.page;
+  const pushProfilePath = (path: string) => {
+    router.push(withClientReviewPath(path));
+  };
   const setPage = (tab: PageTab) => {
-    router.push(profileTabPath(profileBase, tab));
+    pushProfilePath(profileTabPath(profileBase, tab));
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const importClientUserId =
+    clientId ?? profile?.adminReview?.clientId ?? profileReviewClientId ?? undefined;
+  const canAccessImport =
+    !isImpersonating &&
+    Boolean(importClientUserId) &&
+    (isAdmin || Boolean(profile?.adminReview) || Boolean(profileReviewClientId));
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
@@ -3555,7 +3564,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                           key={id}
                           type="button"
                           onClick={() =>
-                            router.push(
+                            pushProfilePath(
                               profileTabPath(profileBase, "preferences", {
                                 preferencesSection: id === "import" ? "import" : undefined,
                               }),
@@ -3580,9 +3589,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   </div>
                 )}
 
-                {preferencesSection === "import" && canAccessImport && clientId ? (
+                {preferencesSection === "import" && canAccessImport && importClientUserId ? (
                   <ProfileImportPanel
-                    clientUserId={clientId}
+                    clientUserId={importClientUserId}
                     isMobile={isMobile}
                     onPatchProfile={async (patch) => {
                       await patchProfile(patch);
