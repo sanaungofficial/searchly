@@ -162,6 +162,21 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+:root {
+  /* Workspace fixed top nav — synced from workspace-context + workspace-top-nav */
+  --workspace-top-offset: 0px;
+  --workspace-nav-height: 64px;
+  --workspace-stack-top: 64px;
+  --top-nav-z: 225;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --workspace-nav-height: 56px;
+    --workspace-stack-top: 56px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

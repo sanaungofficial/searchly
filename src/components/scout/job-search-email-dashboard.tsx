@@ -10,6 +10,8 @@ import { InboxContactDrawer } from "./inbox/inbox-contact-drawer";
 import { InboxLeadsPanel } from "./inbox/inbox-leads-panel";
 import { InboxMailView } from "./inbox/inbox-mail-view";
 import type { ComposeState, InboxStatus } from "./inbox/inbox-types";
+import { useWorkspaceStackTop } from "@/hooks/use-workspace-stack-top";
+import { backdropBelowNav } from "@/lib/z-layers";
 import { NETWORKING_INBOX_PATH, type NetworkingSection } from "@/lib/workspace-urls";
 
 type Props = {
@@ -18,6 +20,7 @@ type Props = {
 
 export function JobSearchEmailDashboard({ section }: Props) {
   const isMobile = useIsMobile();
+  const stackTop = useWorkspaceStackTop();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { withClientScope, isAdminReviewing, adminReviewClientId } = useWorkspace();
@@ -248,7 +251,7 @@ export function JobSearchEmailDashboard({ section }: Props) {
         <>
           <div
             onClick={() => setCompose({ ...compose, open: false })}
-            style={{ position: "fixed", inset: 0, background: "rgba(26,24,20,0.45)", zIndex: 1000 }}
+            style={{ ...backdropBelowNav(stackTop), background: "rgba(26,24,20,0.45)", zIndex: 1000 }}
           />
           <div
             className="bruddle"

@@ -16,6 +16,7 @@ import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 import { matchNetworkingPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
+import { syncWorkspaceNavHeight } from "@/lib/workspace-layout";
 import { TOP_NAV_Z } from "@/lib/z-layers";
 import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
 
@@ -429,7 +430,7 @@ function MobileTopNavDrawer({
         onClick={onClose}
         style={{
           position: "fixed",
-          top: TOP_NAV_HEIGHT_MOBILE,
+          top: "var(--workspace-stack-top, 56px)",
           left: 0,
           right: 0,
           bottom: 0,
@@ -447,7 +448,7 @@ function MobileTopNavDrawer({
         aria-label="Main navigation"
         style={{
           position: "fixed",
-          top: TOP_NAV_HEIGHT_MOBILE,
+          top: "var(--workspace-stack-top, 56px)",
           left: 0,
           bottom: 0,
           width: "min(300px, calc(100vw - 48px))",
@@ -745,6 +746,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   useEffect(() => () => clearNavDropdownCloseTimer(), []);
 
   useEffect(() => {
+    syncWorkspaceNavHeight(navHeight);
+  }, [navHeight]);
+
+  useEffect(() => {
     if (!isStaffPortal || isImpersonating || isAdminReviewing) return;
     if (isExpertPortalPath(pathname)) {
       setStaffDashboardView("expert");
@@ -815,6 +820,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
     const homeHref = pathname.startsWith("/coaching") ? "/coaching" : "/";
 
     return (
+      <>
       <header
         style={{
           height: navHeight,
@@ -822,8 +828,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           background: surface.page,
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
-          position: "sticky",
-          top: 0,
+          position: "fixed",
+          top: "var(--workspace-top-offset, 0px)",
+          left: 0,
+          right: 0,
           zIndex: TOP_NAV_Z,
           isolation: "isolate",
         }}
@@ -913,6 +921,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           </div>
         </div>
       </header>
+      <div aria-hidden style={{ height: navHeight, flexShrink: 0 }} />
+      </>
     );
   }
 
@@ -926,8 +936,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           background: surface.card,
           borderBottom: "var(--scout-border)",
           boxSizing: "border-box",
-          position: "sticky",
-          top: 0,
+          position: "fixed",
+          top: "var(--workspace-top-offset, 0px)",
+          left: 0,
+          right: 0,
           zIndex: TOP_NAV_Z,
           isolation: "isolate",
         }}
@@ -1320,6 +1332,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           </div>
         </div>
       </header>
+      <div aria-hidden style={{ height: navHeight, flexShrink: 0 }} />
 
       <MobileTopNavDrawer
         open={mobileMenuOpen}
@@ -1432,13 +1445,13 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
         <>
           <div
             onClick={onToggleNotif}
-            style={{ position: "fixed", top: navHeight, left: 0, right: 0, bottom: 0, zIndex: 110 }}
+            style={{ position: "fixed", top: "var(--workspace-stack-top)", left: 0, right: 0, bottom: 0, zIndex: 110 }}
             aria-hidden
           />
           <div
             style={{
               position: "fixed",
-              top: navHeight + 8,
+              top: `calc(var(--workspace-stack-top, ${navHeight}px) + 8px)`,
               right: horizontalPad,
               width: isMobile ? "min(320px, calc(100vw - 32px))" : 320,
               background: surface.card,
