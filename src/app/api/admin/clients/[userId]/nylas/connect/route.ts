@@ -10,6 +10,7 @@ import {
 } from "@/lib/nylas";
 import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { withClientUserId } from "@/lib/workspace-urls";
+import { isAdminRosterClientRole } from "@/lib/admin-client-roles";
 
 function adminClientInboxReturnPath(clientUserId: string) {
   return withClientUserId("/networking?section=inbox", clientUserId);
@@ -35,7 +36,7 @@ export async function GET(
     where: { id: clientUserId },
     select: { id: true, email: true, role: true },
   });
-  if (!client || client.role !== "USER") {
+  if (!client || !isAdminRosterClientRole(client.role)) {
     return NextResponse.json({ error: "Client not found" }, { status: 404 });
   }
 

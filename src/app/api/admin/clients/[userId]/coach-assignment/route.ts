@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { assignCoachToClient, removeCoachAssignment } from "@/lib/coach-client-assignment";
 import { fetchAdminClientById } from "@/lib/admin-client-provision";
 import { prisma } from "@/lib/prisma";
+import { adminRosterClientWhere } from "@/lib/admin-client-roles";
 
 export async function POST(
   req: NextRequest,
@@ -19,7 +20,7 @@ export async function POST(
   }
 
   const client = await prisma.user.findFirst({
-    where: { id: userId, role: "USER" },
+    where: adminRosterClientWhere(userId),
     select: { id: true },
   });
   if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
