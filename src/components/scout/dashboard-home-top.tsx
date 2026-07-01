@@ -590,26 +590,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
   );
 
   // ── Discovery Score ───────────────────────────────────────────────────────
-  const discoveryScoreCard = profile && !loading && tuningInput && (
-    <DiscoveryScoreCard
-      input={{
-        name: profile.name,
-        headline: profile.headline,
-        targetRoles: profile.targetRoles,
-        resumeUrl: profile.resumeUrl,
-        linkedinUrl: profile.linkedinUrl,
-        experience: (profile.parsedData?.workExperience as unknown[] | null) ?? null,
-        skills: (profile.parsedData?.skills as string[] | null) ?? null,
-        targetSalary: profile.targetSalary,
-        location: profile.parsedData?.location ?? profile.targetMarket ?? null,
-        employmentStatus: profile.employmentStatus,
-        summary: profile.summary,
-      }}
-      avatarUrl={profile.avatarUrl}
-      isMobile={isMobile}
-      withClientScope={withClientScope}
-      onSubscribe={openPricing}
-    />
+  const discoveryScoreCard = profile && !loading && (
+    <DiscoveryScoreCard isMobile={isMobile} withClientScope={withClientScope} />
   );
 
   // ── Goals card ────────────────────────────────────────────────────────────

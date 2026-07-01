@@ -12,6 +12,7 @@ import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
 import { isApifyConfigured } from "@/lib/apify-linkedin";
+import { mergeParsedDataPreservingDiscoveryCache } from "@/lib/discovery-score/persist";
 
 export async function GET(request: Request) {
   try {
@@ -125,7 +126,16 @@ export async function PATCH(request: Request) {
   if (prioritizedCategories !== undefined) profileUpdate.prioritizedCategories = prioritizedCategories;
   if (deprioritizedRoles !== undefined) profileUpdate.deprioritizedRoles = deprioritizedRoles;
   if (deprioritizedCategories !== undefined) profileUpdate.deprioritizedCategories = deprioritizedCategories;
-  if (parsedData !== undefined) profileUpdate.parsedData = parsedData;
+  if (parsedData !== undefined) {
+    const existingProfile = await prisma.profile.findUnique({
+      where: { userId: dbUser.id },
+      select: { parsedData: true },
+    });
+    profileUpdate.parsedData = mergeParsedDataPreservingDiscoveryCache(
+      parsedData,
+      existingProfile?.parsedData,
+    );
+  }
   if (employmentStatus !== undefined) profileUpdate.employmentStatus = employmentStatus;
   if (currentSalary !== undefined) profileUpdate.currentSalary = currentSalary;
   if (targetSalary !== undefined) profileUpdate.targetSalary = targetSalary;

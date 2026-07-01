@@ -4058,24 +4058,10 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                   name: profile.name,
                   headline: profile.headline,
                   targetRoles: profile.targetRoles,
-                  resumeUrl: profile.resumeUrl,
-                  linkedinUrl: profile.linkedinUrl,
-                  experience: (profile.parsedData?.workExperience as unknown[] | null) ?? null,
-                  skills: (profile.parsedData?.skills as string[] | null) ?? null,
-                  targetSalary: profile.targetSalary,
-                  location: profile.parsedData?.location ?? profile.targetMarket ?? null,
-                  employmentStatus: profile.employmentStatus,
-                  summary: profile.summary,
-                  jobTimeline: profile.jobTimeline,
-                  linkedInAnalysisScore: profile.linkedInAnalysisScore ?? null,
                   avatarUrl: clientId ? profile.avatarUrl : user?.avatarUrl ?? profile.avatarUrl,
-                  email: profile.email,
-                  parsedData: profile.parsedData,
-                  priorities: profile.priorities,
                 }}
                 isMobile={isMobile}
                 withClientScope={withClientScope}
-                onSubscribe={openPricing}
               />
             )}
             {page === "discoveryscore" && !profile && !loading && (
