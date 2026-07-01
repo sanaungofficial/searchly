@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { NETWORK_ROLES_PATH } from "@/lib/workspace-urls";
+import { NETWORKING_IN_NETWORK_PATH } from "@/lib/workspace-urls";
 
 export default function LegacyOpportunitiesNetworkPage() {
-  redirect(NETWORK_ROLES_PATH);
+  redirect(NETWORKING_IN_NETWORK_PATH);
 }

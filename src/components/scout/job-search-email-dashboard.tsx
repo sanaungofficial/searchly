@@ -13,7 +13,7 @@ import type { ComposeState, InboxStatus } from "./inbox/inbox-types";
 import { NETWORKING_INBOX_PATH, type NetworkingSection } from "@/lib/workspace-urls";
 
 type Props = {
-  section: NetworkingSection;
+  section: Exclude<NetworkingSection, "in-network">;
 };
 
 export function JobSearchEmailDashboard({ section }: Props) {
