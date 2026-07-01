@@ -18,6 +18,8 @@ export interface JobMeta {
   benefits?: string[];
   requirements?: string[];
   tags?: string[];
+  /** User pipeline labels (distinct from listing industry tags in `tags`). */
+  pipelineTags?: string[];
   /** Extra Hirebase job fields (recommended / prospect jobs). */
   datePosted?: string | null;
   department?: string | null;
