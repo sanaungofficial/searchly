@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { ADMIN_REVIEW_COOKIE, IMPERSONATE_COOKIE } from "@/lib/acting-user";
-import { UserRole } from "@prisma/client";
+import { isAdminRosterClientRole } from "@/lib/admin-client-roles";
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -24,8 +24,8 @@ export async function POST(request: Request) {
   }
 
   const target = await prisma.user.findUnique({ where: { id: userId } });
-  if (!target || target.role !== UserRole.USER) {
-    return NextResponse.json({ error: "Only client (USER) accounts can be reviewed" }, { status: 400 });
+  if (!target || !isAdminRosterClientRole(target.role)) {
+    return NextResponse.json({ error: "Only client accounts can be reviewed" }, { status: 400 });
   }
 
   const cookieStore = await cookies();

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { fetchAdminClientById, provisionClient } from "@/lib/admin-client-provision";
 import { prisma } from "@/lib/prisma";
-import { UserRole } from "@prisma/client";
+import { ADMIN_ROSTER_CLIENT_ROLES } from "@/lib/admin-client-roles";
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -64,7 +64,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const clients = await prisma.user.findMany({
-    where: { role: UserRole.USER },
+    where: { role: { in: [...ADMIN_ROSTER_CLIENT_ROLES] } },
     include: {
       profile: {
         select: {
