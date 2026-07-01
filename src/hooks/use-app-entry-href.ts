@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { hasValidClientSession } from "@/lib/client-auth-session";
 
-/** Log In / Sign Up targets — workspace home when a session exists. */
+/** Log In / Sign Up targets — workspace home only when the server accepts the session. */
 export function useAppEntryHref(fallback: "/login" | "/signup"): "/login" | "/signup" | "/dashboard" {
   const [href, setHref] = useState<"/login" | "/signup" | "/dashboard">(fallback);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setHref("/dashboard");
+    hasValidClientSession().then((valid) => {
+      if (valid) setHref("/dashboard");
     });
   }, []);
 
