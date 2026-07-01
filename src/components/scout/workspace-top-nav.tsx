@@ -15,7 +15,7 @@ import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { KimchiBySecondLadder } from "./scout-box";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
-import { matchInboxPath, matchNetworkRolesPath, matchOpportunitiesNavPath, INBOX_PATH, NETWORK_ROLES_NAV } from "@/lib/workspace-urls";
+import { matchNetworkingPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/lib/workspace-urls";
 import { TOP_NAV_Z } from "@/lib/z-layers";
 import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
 
@@ -50,16 +50,10 @@ function buildNavLinks(opts: { isAdmin: boolean }): NavLink[] {
     match: matchOpportunitiesNavPath,
   });
   links.push({
-    id: "network-roles",
-    label: NETWORK_ROLES_NAV.label,
-    path: NETWORK_ROLES_NAV.path,
-    match: matchNetworkRolesPath,
-  });
-  links.push({
     id: "networking",
     label: "Networking",
     path: INBOX_PATH,
-    match: matchInboxPath,
+    match: matchNetworkingPath,
   });
   if (canAccessBetaFeature("coaching", isAdmin)) {
     links.push({
@@ -760,7 +754,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
       pathname === "/dashboard" ||
       pathname.startsWith("/dashboard/") ||
       pathname.startsWith("/opportunities") ||
-      matchInboxPath(pathname) ||
+      matchNetworkingPath(pathname) ||
       pathname.startsWith("/coaching") ||
       pathname.startsWith("/profile")
     ) {
