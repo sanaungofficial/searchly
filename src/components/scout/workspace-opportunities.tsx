@@ -603,7 +603,19 @@ export function WorkspaceOpportunities() {
             onToolChange={handleDrawerToolChange}
             onDelete={() => { removeJob(card.id); closeDrawer(); }}
             onCardUpdate={(fields) => setKanbanCards((prev) =>
-              prev.map((c) => c.id === card.id ? { ...c, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`_${k}`, v ?? undefined])) } : c)
+              prev.map((c) => {
+                if (c.id !== card.id) return c;
+                const next = { ...c } as KanbanCard & { _pipelineTags?: string[]; _meta?: JobMeta };
+                for (const [k, v] of Object.entries(fields)) {
+                  if (k === "pipelineTags" && Array.isArray(v)) {
+                    next._pipelineTags = v;
+                    next._meta = { ...(next._meta ?? {}), pipelineTags: v };
+                    continue;
+                  }
+                  (next as Record<string, unknown>)[`_${k}`] = v ?? undefined;
+                }
+                return next;
+              }),
             )}
             onAddGapToUpskill={(skill, role) => void addGapToUpskill(skill, role)}
           />

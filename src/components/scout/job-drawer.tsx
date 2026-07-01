@@ -46,6 +46,8 @@ import {
 import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 import { JobInsiderConnectionSection } from "./job-insider-connection-section";
 import { ApplicationQaModal } from "./application-qa-bank";
+import { PipelineJobTagsEditor } from "./pipeline-job-tags";
+import { parsePipelineTagsFromMeta } from "@/lib/pipeline-tags";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -54,7 +56,7 @@ interface JobDrawerProps {
   onClose: () => void;
   moveCard: (id: number, stage: KanbanStage) => void;
   onDelete: () => void;
-  onCardUpdate: (fields: Record<string, string | null>) => void;
+  onCardUpdate: (fields: Record<string, string | string[] | null | undefined>) => void;
   tool?: DrawerTool;
   onToolChange?: (t: DrawerTool) => void;
   prospectMode?: boolean;
@@ -830,6 +832,10 @@ export function JobDrawer({
   }, [card.id, meta?.description]);
 
   useEffect(() => {
+    setPipelineTags(extCard._pipelineTags ?? parsePipelineTagsFromMeta(meta));
+  }, [card.id, extCard._pipelineTags, meta]);
+
+  useEffect(() => {
     setActiveSection("overview");
     setMobileToolsOpen(false);
     scrollRef.current?.scrollTo({ top: 0 });
@@ -876,9 +882,18 @@ export function JobDrawer({
     };
   }, [card.id]);
 
-  const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
+  const extCard = card as KanbanCard & {
+    _dbId?: string;
+    _url?: string;
+    _userNotes?: string;
+    _companyLinkedinUrl?: string;
+    _pipelineTags?: string[];
+  };
   const [urlValue, setUrlValue] = useState(extCard._url ?? "");
   const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
+  const [pipelineTags, setPipelineTags] = useState<string[]>(
+    extCard._pipelineTags ?? parsePipelineTagsFromMeta(meta),
+  );
   const [descValue, setDescValue] = useState(meta?.description ?? "");
   const [nextStepValue, setNextStepValue] = useState(meta?.nextStep ?? "");
   const [nextStepDueValue, setNextStepDueValue] = useState(meta?.nextStepDue ?? "");
@@ -904,6 +919,11 @@ export function JobDrawer({
       body: JSON.stringify(fields),
     });
     onCardUpdate(fields);
+  }
+
+  function patchPipelineTags(tags: string[]) {
+    setPipelineTags(tags);
+    onCardUpdate({ pipelineTags: tags });
   }
 
   function patchDescription(value: string) {
@@ -1437,6 +1457,21 @@ export function JobDrawer({
                     onChange={(e) => setNextStepDueValue(e.target.value)}
                     onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                     style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
+                  />
+                </div>
+              )}
+
+              {!prospectMode && dbId && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                    Tags
+                  </p>
+                  <PipelineJobTagsEditor
+                    jobId={dbId}
+                    tags={pipelineTags}
+                    scopePath={withClientScope}
+                    onTagsChange={patchPipelineTags}
+                    manageLibrary
                   />
                 </div>
               )}
