@@ -10,12 +10,10 @@ import { InboxContactDrawer } from "./inbox/inbox-contact-drawer";
 import { InboxLeadsPanel } from "./inbox/inbox-leads-panel";
 import { InboxMailView } from "./inbox/inbox-mail-view";
 import type { ComposeState, InboxStatus } from "./inbox/inbox-types";
-import { INBOX_PATH } from "@/lib/workspace-urls";
-
-export type NetworkingSection = "leads" | "inbox";
+import { NETWORKING_INBOX_PATH, type NetworkingSection } from "@/lib/workspace-urls";
 
 type Props = {
-  section: NetworkingSection;
+  section: Exclude<NetworkingSection, "in-network">;
 };
 
 export function JobSearchEmailDashboard({ section }: Props) {
@@ -74,14 +72,14 @@ export function JobSearchEmailDashboard({ section }: Props) {
           ? "Client inbox connected — mail and contacts will sync shortly."
           : "Inbox connected — ask Kimchi in chat about your mail anytime.",
       });
-      router.replace(withClientScope(`${INBOX_PATH}?tab=inbox`));
+      router.replace(withClientScope(NETWORKING_INBOX_PATH));
       bootstrap().catch(() => {});
     } else if (inbox === "error") {
       setNotice({
         type: "error",
         text: reason === "denied" ? "Connection cancelled." : "Could not connect inbox.",
       });
-      router.replace(withClientScope(`${INBOX_PATH}?tab=inbox`));
+      router.replace(withClientScope(NETWORKING_INBOX_PATH));
     }
   }, [searchParams, router, bootstrap, isAdminReviewing, withClientScope]);
 
@@ -236,7 +234,7 @@ export function JobSearchEmailDashboard({ section }: Props) {
           mailConnected={connected}
           onClose={() => setSelectedContactId(null)}
           onOpenMessage={(messageId) => {
-            router.push(withClientScope(`${INBOX_PATH}?tab=inbox&messageId=${encodeURIComponent(messageId)}`));
+            router.push(withClientScope(`${NETWORKING_INBOX_PATH}&messageId=${encodeURIComponent(messageId)}`));
           }}
           onComposeTo={(email) => setCompose({ open: true, to: email, subject: "", body: "" })}
           onNotice={setNotice}

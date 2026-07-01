@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   const returnTo = req.nextUrl.searchParams.get("returnTo");
   const returnPath =
-    returnTo === "inbox" || returnTo === "opportunities" ? "/networking?tab=inbox" : "/profile/preferences";
+    returnTo === "inbox" || returnTo === "opportunities" ? "/networking?section=inbox" : "/profile/preferences";
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
   const oauthPayload = {

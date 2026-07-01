@@ -1,24 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/lib/job-meta";
 import { findPipelineCardByUrl } from "@/lib/cached-job";
 import type { KanbanCard } from "./workspace-data";
 import { PipelineNetworkSection } from "./pipeline-network-section";
-import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
+  NETWORKING_NETWORK_JOB_PARAM,
   networkingSectionPath,
-  parseNetworkRolesLocation,
   pipelineJobUrl,
 } from "@/lib/workspace-urls";
 import { JobDrawer } from "./job-drawer";
 
-export function WorkspaceRecruiterNetwork() {
+export function NetworkingInNetworkSection() {
   const {
     kanbanCards,
     addJob,
@@ -30,8 +29,9 @@ export function WorkspaceRecruiterNetwork() {
     withClientReviewPath,
   } = useWorkspace();
   const router = useRouter();
-  const pathname = usePathname();
-  const loc = parseNetworkRolesLocation(pathname);
+  const searchParams = useSearchParams();
+  const networkJobId = searchParams.get(NETWORKING_NETWORK_JOB_PARAM);
+
   const go = useCallback(
     (path: string) => router.push(withClientReviewPath(path)),
     [router, withClientReviewPath],
@@ -47,15 +47,14 @@ export function WorkspaceRecruiterNetwork() {
   const pendingNetworkNavRef = useRef<string | null>(null);
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
 
-  const closeNetworkDrawer = () => {
+  const closeNetworkDrawer = useCallback(() => {
     pendingNetworkNavRef.current = null;
-    if (loc.jobId) loadedNetworkJobRef.current = loc.jobId;
-    else loadedNetworkJobRef.current = null;
+    loadedNetworkJobRef.current = networkJobId;
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
     go(networkingSectionPath("in-network"));
-  };
+  }, [go, networkJobId]);
 
   const openNetworkJob = useCallback(
     (job: NetworkJobListing) => {
@@ -72,21 +71,21 @@ export function WorkspaceRecruiterNetwork() {
   );
 
   useEffect(() => {
-    if (!loc.jobId) {
+    if (!networkJobId) {
       if (pendingNetworkNavRef.current) return;
       loadedNetworkJobRef.current = null;
       setNetworkProspectJob(null);
       setNetworkProspectCard(null);
       return;
     }
-    if (loc.jobId === pendingNetworkNavRef.current) {
+    if (networkJobId === pendingNetworkNavRef.current) {
       pendingNetworkNavRef.current = null;
     }
-    if (loadedNetworkJobRef.current === loc.jobId) return;
-    loadedNetworkJobRef.current = loc.jobId;
+    if (loadedNetworkJobRef.current === networkJobId) return;
+    loadedNetworkJobRef.current = networkJobId;
     void (async () => {
       try {
-        const res = await fetch(withClientScope(`/api/network-jobs/${encodeURIComponent(loc.jobId!)}`));
+        const res = await fetch(withClientScope(`/api/network-jobs/${encodeURIComponent(networkJobId)}`));
         const data = (await res.json().catch(() => ({}))) as { job?: NetworkJobListing };
         if (res.ok && data.job) {
           const drawerId = -Math.abs(Date.now() % 1_000_000);
@@ -99,7 +98,7 @@ export function WorkspaceRecruiterNetwork() {
         // ignore
       }
     })();
-  }, [loc.jobId, networkInternalView, withClientScope]);
+  }, [networkJobId, networkInternalView, withClientScope]);
 
   const addNetworkJobToPipeline = async (job: NetworkJobListing = networkProspectJob!) => {
     if (!job) return;
@@ -131,27 +130,13 @@ export function WorkspaceRecruiterNetwork() {
     : null;
 
   return (
-    <div
-      className="bruddle"
-      style={{
-        height: "100%",
-        minHeight: 0,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "var(--scout-page)",
-        animation: "fadeIn 0.3s ease both",
-      }}
-    >
-      <WorkspaceScroll>
-        <WorkspaceContent>
-          <PipelineNetworkSection
-            onOpenJob={openNetworkJob}
-            onSaveJob={addNetworkJobToPipeline}
-            actingUserId={actingUserId}
-          />
-        </WorkspaceContent>
-      </WorkspaceScroll>
+    <>
+      <PipelineNetworkSection
+        embedded
+        onOpenJob={openNetworkJob}
+        onSaveJob={addNetworkJobToPipeline}
+        actingUserId={actingUserId}
+      />
 
       {networkProspectCard && networkProspectJob && (
         <JobDrawer
@@ -178,6 +163,6 @@ export function WorkspaceRecruiterNetwork() {
           }
         />
       )}
-    </div>
+    </>
   );
 }

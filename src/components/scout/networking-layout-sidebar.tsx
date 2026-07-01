@@ -6,6 +6,7 @@ import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/ty
 export const NETWORKING_SIDEBAR_TABS: { id: NetworkingSection; label: string }[] = [
   { id: "leads", label: "Leads" },
   { id: "inbox", label: "Inbox" },
+  { id: "in-network", label: "In-Network Roles" },
 ];
 
 type Props = {
@@ -49,7 +50,7 @@ export function NetworkingLayoutSidebar({ tabs, activeSection, onNavigate }: Pro
               lineHeight: 1.45,
             }}
           >
-            Manage leads and email outreach in one place.
+            Leads, inbox, and recruiter-network roles in one place.
           </p>
         </div>
       </div>
