@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { resolveAppUrl } from "@/lib/site-host";
 
 let _resend: Resend | null = null;
 function getResend() {
@@ -48,7 +49,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
                       <table cellpadding="0" cellspacing="0">
                         <tr>
                           <td style="background:#1C3A2F;border-radius:10px;">
-                            <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.secondladder.com"}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:600;color:#F2EDE3;text-decoration:none;">
+                            <a href="${resolveAppUrl()}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:600;color:#F2EDE3;text-decoration:none;">
                               Go to Kimchi →
                             </a>
                           </td>
