@@ -6,7 +6,7 @@ import {
   resolveDiscoveryBenchmark,
   titleTokensForBenchmark,
 } from "./benchmark-role";
-import { buildDiscoverySearchDebug, buildSumblePeopleQuery, buildSumblePeopleQueryLadder } from "./query-build";
+import { buildDiscoverySearchDebug, buildSumbleJobsQueryLadder, buildSumblePeopleQuery, buildSumblePeopleQueryLadder } from "./query-build";
 import type { DiscoveryProfileContext } from "./types";
 
 const baseCtx = (overrides: Partial<DiscoveryProfileContext> = {}): DiscoveryProfileContext => ({
@@ -102,5 +102,15 @@ describe("buildSumblePeopleQuery", () => {
     expect(debug.targetRole).toBe("Dance Program Director");
     expect(debug.jobFunction).toBe("Arts");
     expect(debug.queriesTried.length).toBeGreaterThan(0);
+  });
+
+  it("builds job queries for Marketing cohort search", () => {
+    const ctx = baseCtx({
+      targetRoles: ["Marketing Manager"],
+      prioritizedCategories: ["Marketing Jobs"],
+    });
+    const ladder = buildSumbleJobsQueryLadder(ctx);
+    expect(ladder.length).toBeGreaterThan(0);
+    expect(ladder.some((step) => step.query.includes('job_function EQ "Marketing"'))).toBe(true);
   });
 });
