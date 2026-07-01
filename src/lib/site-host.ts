@@ -3,6 +3,9 @@
 export const KIMCHI_PRODUCTION_ORIGIN = "https://kimchi.so";
 export const KIMCHI_LEGACY_APP_ORIGIN = "https://app.kimchi.so";
 
+/** Default workspace home for returning users (AGENTS.md: dashboard after login). */
+export const APP_HOME_PATH = "/dashboard";
+
 export function normalizeHost(host: string): string {
   return host.replace(/^www\./, "").split(":")[0]?.toLowerCase() ?? "";
 }
