@@ -117,7 +117,7 @@ function WebAppMockup() {
           <span className="landing-browser__dot landing-browser__dot--red" />
           <span className="landing-browser__dot landing-browser__dot--yellow" />
           <span className="landing-browser__dot landing-browser__dot--green" />
-          <span className="landing-browser__url">app.kimchi.so/dashboard</span>
+          <span className="landing-browser__url">kimchi.so/dashboard</span>
         </div>
         <div className="landing-browser__body">
           <aside className="landing-browser__sidebar">

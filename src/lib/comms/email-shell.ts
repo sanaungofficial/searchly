@@ -8,8 +8,10 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+import { resolveAppUrl } from "@/lib/site-host";
+
 export function appBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") || "https://app.kimchi.so";
+  return resolveAppUrl();
 }
 
 export function emailPreferencesUrl(): string {

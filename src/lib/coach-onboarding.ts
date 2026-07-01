@@ -1,6 +1,7 @@
 /** Helpers for coach onboarding completion and profile assembly. */
 
 import type { CoachClientTierId, CoachExperienceLevel } from "./coach-categories";
+import { resolveAppUrl } from "@/lib/site-host";
 
 export type CoachOnboardingDraft = {
   goal: "career" | "school" | "test";
@@ -76,7 +77,7 @@ export function coachOnboardingPhase(input: {
 }
 
 export function coachVouchUrl(coachProfileId: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const base = resolveAppUrl();
   return `${base.replace(/\/$/, "")}/vouch/${coachProfileId}`;
 }
 

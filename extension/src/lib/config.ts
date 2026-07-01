@@ -1,7 +1,7 @@
 import type { ExtensionSettings, KimchiEnv } from "./types";
 
 export const KIMCHI_URLS: Record<KimchiEnv, string> = {
-  prod: "https://app.kimchi.so",
+  prod: "https://kimchi.so",
   dev: "https://kimchi-git-dev-second-ladder.vercel.app",
 };
 

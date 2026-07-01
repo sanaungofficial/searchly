@@ -39,7 +39,7 @@ npm run build
 
 **Host permissions** (not `*://*/*`):
 
-- Kimchi: `app.kimchi.so`, dev staging URL
+- Kimchi: `kimchi.so` (legacy `app.kimchi.so`), dev staging URL
 - ATS: Greenhouse, Lever, Ashby, LinkedIn Jobs
 
 ## Auth strategy (v0.1)

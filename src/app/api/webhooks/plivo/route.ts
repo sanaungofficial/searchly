@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (phone && keyword === "HELP") {
-    return plivoXmlReply("Kimchi webinar & coach alerts. Reply STOP to opt out. app.kimchi.so");
+    return plivoXmlReply("Kimchi webinar & coach alerts. Reply STOP to opt out. kimchi.so");
   }
 
   if (phone && keyword === "START") {

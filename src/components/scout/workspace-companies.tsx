@@ -104,7 +104,7 @@ function hasScanSource(company: TrackedCompany): boolean {
 
 function humanizeApiError(message: string | undefined, status: number): string {
   if (status === 503 || message === "AI not configured") {
-    return "AI scanning isn't available on staging — try on app.kimchi.so.";
+    return "AI scanning isn't available on staging — try on kimchi.so.";
   }
   if (message?.includes("target roles")) {
     return "Upload a resume from Profile — matching roles are based on your background.";

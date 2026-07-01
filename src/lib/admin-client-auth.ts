@@ -2,9 +2,10 @@ import { type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { adminRosterClientWhere } from "@/lib/admin-client-roles";
 import { findSupabaseAuthUserIdByEmail, getSupabaseAdmin } from "@/lib/supabase-admin";
+import { resolveAppUrl } from "@/lib/site-host";
 
 export function getAppAuthRedirectUrl(next = "/dashboard"): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") || "https://app.kimchi.so";
+  const base = resolveAppUrl();
   const path = next.startsWith("/") ? next : `/${next}`;
   return `${base}/auth/callback?next=${encodeURIComponent(path)}`;
 }

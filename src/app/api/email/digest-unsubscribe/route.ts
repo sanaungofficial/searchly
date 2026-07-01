@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyDigestUnsubscribeToken } from "@/lib/digest-unsubscribe";
 import { prisma } from "@/lib/prisma";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+import { resolveAppUrl } from "@/lib/site-host";
+
+const APP_URL = resolveAppUrl();
 
 /** One-click unsubscribe from daily job match emails. */
 export async function GET(req: NextRequest) {

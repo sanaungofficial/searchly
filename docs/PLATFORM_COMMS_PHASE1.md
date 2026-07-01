@@ -277,7 +277,7 @@ model CommunicationLog {
 
 - [ ] Create Plivo account for Kimchi
 - [ ] Buy a US long code or toll-free number capable of SMS
-- [ ] Create a **Messaging Application**; set Message URL → `https://app.kimchi.so/api/webhooks/plivo`
+- [ ] Create a **Messaging Application**; set Message URL → `https://kimchi.so/api/webhooks/plivo`
 - [ ] Assign the application to your Plivo number
 - [ ] **A2P 10DLC** brand + campaign registration (US — required regardless of provider)
 - [ ] Env on Vercel (preview + production):

@@ -1,3 +1,4 @@
+import { resolveAppUrl } from "@/lib/site-host";
 import { prisma } from "@/lib/prisma";
 import { grantFeatureBonus } from "@/lib/feature-credits";
 import { REFERRAL_BONUS_PER_FEATURE, LINKEDIN_SHARE_PRO_DAYS } from "@/lib/plan-config";
@@ -209,6 +210,6 @@ export async function hasActiveProTrial(userId: string): Promise<boolean> {
 }
 
 export function referralLink(code: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const base = resolveAppUrl();
   return `${base}/r/${code}`;
 }

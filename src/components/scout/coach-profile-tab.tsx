@@ -280,7 +280,7 @@ export function CoachProfileTab({
         state: "Session expired — please try connecting again.",
         profile: "Coach profile not found.",
         redirect:
-          "OAuth redirect URI mismatch. In Nylas → Hosted Authentication, add https://app.kimchi.so/api/nylas/callback",
+          "OAuth redirect URI mismatch. In Nylas → Hosted Authentication, add https://kimchi.so/api/nylas/callback",
         setup: "Connected, but scheduler setup failed. Try again or contact support.",
       };
       let base = messages[reason ?? ""] ?? "Calendar connection failed. Please try again.";
