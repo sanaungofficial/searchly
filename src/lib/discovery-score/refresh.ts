@@ -114,8 +114,8 @@ export async function refreshDiscoveryScore(userId: string): Promise<DiscoverySc
       result: null,
       searchDebug,
       error: benchmarks.benchmark.sumbleJobFunction
-        ? `No benchmark profiles found for ${peerLabel} (${benchmarks.benchmark.sumbleJobFunction}). Try picking a job function from the list below, then refresh.`
-        : `Could not map "${benchmarks.benchmark.targetRoleLabel}" to a Sumble job function. Pick a job function category below (e.g. Arts, Education, Operations), then refresh. Searched: ${triedSummary}.`,
+        ? `No benchmark peers found for ${peerLabel} yet. Confirm the job function below matches your target role, then refresh.`
+        : `Could not map "${benchmarks.benchmark.targetRoleLabel}" to a Sumble job function. Pick a job function below (e.g. Arts, Education, Marketing), then refresh. Tried: ${triedSummary}.`,
     };
   }
 

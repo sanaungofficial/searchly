@@ -34,13 +34,13 @@ function jobLevelClause(benchmark: DiscoveryBenchmarkResolution): string | null 
   return `job_level EQ "${escapeQueryTerm(benchmark.sumbleJobLevel)}"`;
 }
 
-function titleClause(benchmark: DiscoveryBenchmarkResolution): string | null {
+function titleClause(benchmark: DiscoveryBenchmarkResolution, field: "job_title" | "title" = "job_title"): string | null {
   const tokens = benchmark.titleTokens;
   if (!tokens.length) return null;
   const parts = tokens
     .map((token) => {
       const term = escapeQueryTerm(token);
-      return term ? `job_title CONTAINS "${term}"` : null;
+      return term ? `${field} CONTAINS "${term}"` : null;
     })
     .filter(Boolean);
   return parts.length ? `(${parts.join(" OR ")})` : null;
@@ -110,6 +110,45 @@ export function buildSumblePeopleQueryLadder(
   return out;
 }
 
+/** Job-post queries for global Sumble search (related people on matching postings). */
+export function buildSumbleJobsQueryLadder(
+  ctx: DiscoveryProfileContext,
+  benchmark: DiscoveryBenchmarkResolution = resolveDiscoveryBenchmark(ctx),
+): SumbleQueryStep[] {
+  const loc = locationClause(ctx);
+  const fn = jobFunctionClause(benchmark);
+  const lvl = jobLevelClause(benchmark);
+  const title = titleClause(benchmark, "title");
+
+  const steps: Array<SumbleQueryStep | null> = [
+    fn && lvl && title && loc
+      ? { id: "function_level_title_location", label: "job function, level, title, location", query: joinAnd([fn, lvl, title, loc])! }
+      : null,
+    fn && lvl && title
+      ? { id: "function_level_title", label: "job function, level, and title", query: joinAnd([fn, lvl, title])! }
+      : null,
+    fn && title && loc
+      ? { id: "function_title_location", label: "job function, title, and location", query: joinAnd([fn, title, loc])! }
+      : null,
+    fn && lvl && loc
+      ? { id: "function_level_location", label: "job function, level, and location", query: joinAnd([fn, lvl, loc])! }
+      : null,
+    fn && title ? { id: "function_title", label: "job function and title", query: joinAnd([fn, title])! } : null,
+    fn && lvl ? { id: "function_level", label: "job function and level", query: joinAnd([fn, lvl])! } : null,
+    fn && loc ? { id: "function_location", label: "job function and location", query: joinAnd([fn, loc])! } : null,
+    fn ? { id: "function_only", label: "job function", query: fn } : null,
+  ];
+
+  const seen = new Set<string>();
+  const out: SumbleQueryStep[] = [];
+  for (const step of steps) {
+    if (!step?.query || seen.has(step.query)) continue;
+    seen.add(step.query);
+    out.push(step);
+  }
+  return out;
+}
+
 /** @deprecated Prefer buildSumblePeopleQueryLadder — kept for tests and legacy callers. */
 export function buildSumblePeopleQuery(ctx: DiscoveryProfileContext): string | null {
   return buildSumblePeopleQueryLadder(ctx)[0]?.query ?? null;
@@ -119,12 +158,14 @@ export function buildDiscoverySearchDebug(
   ctx: DiscoveryProfileContext,
   benchmark: DiscoveryBenchmarkResolution = resolveDiscoveryBenchmark(ctx),
 ) {
+  const jobsQueries = buildSumbleJobsQueryLadder(ctx, benchmark).map((step) => step.query);
+  const peopleQueries = buildSumblePeopleQueryLadder(ctx, benchmark).map((step) => step.query);
   return {
     targetRole: benchmark.targetRoleLabel,
     peerLabel: benchmark.hirebaseCategory
       ? benchmark.hirebaseCategory.replace(/ Jobs$/i, "")
       : benchmark.sumbleJobFunction ?? benchmark.targetRoleLabel,
     jobFunction: benchmark.sumbleJobFunction,
-    queriesTried: buildSumblePeopleQueryLadder(ctx, benchmark).map((step) => step.query),
+    queriesTried: [...jobsQueries, ...peopleQueries.map((q) => `org-scoped people: ${q}`)],
   };
 }

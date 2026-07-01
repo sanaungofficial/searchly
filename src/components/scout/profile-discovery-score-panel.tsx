@@ -7,9 +7,14 @@ import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout
 import { DiscoveryScoreCluster } from "@/components/scout/discovery-score-ui";
 import { useDiscoveryScore } from "@/hooks/use-discovery-score";
 import { tierPeerCopy } from "@/lib/discovery-score";
-import { displayJobFunctionLabel } from "@/lib/job-function-groups";
+import { Search } from "lucide-react";
+import {
+  displayJobFunctionLabel,
+  groupLabelForJobFunction,
+  jobFunctionBreadcrumb,
+} from "@/lib/job-function-groups";
 import type { GroupedJobFunctions } from "@/lib/job-function-groups";
-import { bruddleHeadingStyle, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
+import { bruddleHeadingStyle, border, color, fontSans, fontDisplay, surface, type as T } from "@/lib/typography";
 import { pipelineInputStyle } from "@/components/scout/pipeline-filters-ui";
 
 type ProfileInput = {
@@ -112,7 +117,7 @@ function BenchmarkCard({
   );
 }
 
-function BenchmarkJobFunctionPicker({
+function BenchmarkJobFunctionCombobox({
   selectedCategory,
   fallbackCategories,
   withClientScope,
@@ -125,18 +130,23 @@ function BenchmarkJobFunctionPicker({
   onSave?: (category: string | null) => Promise<void>;
   disabled?: boolean;
 }) {
+  const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<string[]>(fallbackCategories);
   const [groups, setGroups] = useState<GroupedJobFunctions[]>([]);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     void fetch(withClientScope("/api/jobs/job-functions"))
       .then((res) => (res.ok ? res.json() : { categories: [], groups: [] }))
       .then((data: { categories?: string[]; groups?: GroupedJobFunctions[] }) => {
         if (data.categories?.length) setCategories(data.categories);
         if (data.groups?.length) setGroups(data.groups);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [withClientScope]);
 
   const options = useMemo(() => {
@@ -147,20 +157,37 @@ function BenchmarkJobFunctionPicker({
     return merged.sort((a, b) => a.localeCompare(b));
   }, [categories, fallbackCategories]);
 
-  const selectedValue = selectedCategory ?? fallbackCategories[0] ?? "";
+  const selectedValue = selectedCategory ?? fallbackCategories[0] ?? null;
+  const trimmedQuery = query.trim();
+  const queryLower = trimmedQuery.toLowerCase();
 
-  const handleChange = useCallback(
+  const filtered = useMemo(() => {
+    if (!queryLower) return options.slice(0, 24);
+    return options
+      .filter(
+        (cat) =>
+          cat.toLowerCase().includes(queryLower) ||
+          displayJobFunctionLabel(cat).toLowerCase().includes(queryLower),
+      )
+      .slice(0, 24);
+  }, [queryLower, options]);
+
+  const handleSelect = useCallback(
     async (value: string) => {
-      if (!onSave) return;
+      if (!onSave || disabled || saving) return;
       setSaving(true);
+      setOpen(false);
+      setQuery("");
       try {
         await onSave(value.trim() || null);
       } finally {
         setSaving(false);
       }
     },
-    [onSave],
+    [disabled, onSave, saving],
   );
+
+  const showResults = open && (trimmedQuery.length > 0 || filtered.length > 0);
 
   return (
     <ScoutBox padding="14px 16px" style={{ marginTop: 12 }}>
@@ -178,32 +205,146 @@ function BenchmarkJobFunctionPicker({
         Benchmark job function
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
-        Discovery Score compares you to Sumble professionals in this job function. Pick the closest match to your target
-        role, then refresh.
+        We compare you to Sumble professionals in this job function. Search and pick the closest match — your score
+        refreshes automatically.
       </p>
-      <select
-        value={selectedValue}
-        disabled={disabled || saving || !onSave}
-        onChange={(e) => void handleChange(e.target.value)}
-        style={{ ...pipelineInputStyle, width: "100%", maxWidth: 420 }}
-      >
-        <option value="">Select a job function…</option>
-        {groups.length
-          ? groups.map((group) => (
-              <optgroup key={group.id} label={group.label}>
-                {group.categories.map((cat) => (
-                  <option key={cat} value={cat}>
+
+      {selectedValue && !open && (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 10px",
+            marginBottom: 10,
+            borderRadius: "var(--scout-radius)",
+            border: "1px solid rgba(76, 175, 80, 0.35)",
+            background: "rgba(76, 175, 80, 0.16)",
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 600,
+            color: color.ink,
+          }}
+        >
+          {displayJobFunctionLabel(selectedValue)}
+        </div>
+      )}
+
+      <div style={{ position: "relative" }}>
+        <Search
+          size={14}
+          style={{
+            position: "absolute",
+            left: 10,
+            top: "50%",
+            transform: "translateY(-50%)",
+            opacity: 0.4,
+            pointerEvents: "none",
+          }}
+        />
+        <input
+          style={{
+            ...pipelineInputStyle,
+            paddingLeft: 32,
+            margin: 0,
+            width: "100%",
+            maxWidth: 420,
+            background: surface.inset,
+            border: "1px solid rgba(0,0,0,0.08)",
+          }}
+          value={query}
+          disabled={disabled || saving || !onSave}
+          placeholder={selectedValue ? "Change job function…" : "Search job functions…"}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            window.setTimeout(() => setOpen(false), 150);
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && filtered[0]) {
+              e.preventDefault();
+              void handleSelect(filtered[0]);
+            }
+          }}
+        />
+      </div>
+
+      {showResults && (
+        <div
+          style={{
+            maxHeight: 220,
+            overflowY: "auto",
+            marginTop: 4,
+            border: border.line,
+            borderRadius: 8,
+            background: surface.card,
+          }}
+        >
+          {loading && (
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 10px" }}>
+              Loading job functions…
+            </p>
+          )}
+          {!loading &&
+            filtered.map((cat) => {
+              const groupLabel = groupLabelForJobFunction(cat, groups);
+              const breadcrumb = groupLabel ? jobFunctionBreadcrumb(cat, groupLabel) : null;
+              const isSelected = selectedValue?.toLowerCase() === cat.toLowerCase();
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void handleSelect(cat)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 10px",
+                    border: "none",
+                    borderBottom: border.line,
+                    background: isSelected ? "rgba(76, 175, 80, 0.12)" : "transparent",
+                    cursor: disabled || saving ? "default" : "pointer",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      fontFamily: fontSans,
+                      fontSize: T.caption,
+                      fontWeight: 700,
+                      color: color.ink,
+                    }}
+                  >
                     {displayJobFunctionLabel(cat)}
-                  </option>
-                ))}
-              </optgroup>
-            ))
-          : options.map((cat) => (
-              <option key={cat} value={cat}>
-                {displayJobFunctionLabel(cat)}
-              </option>
-            ))}
-      </select>
+                    {isSelected ? " ✓" : ""}
+                  </span>
+                  {breadcrumb && (
+                    <span
+                      style={{
+                        display: "block",
+                        fontFamily: fontSans,
+                        fontSize: T.label,
+                        color: color.muted,
+                        marginTop: 3,
+                      }}
+                    >
+                      {breadcrumb}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          {!loading && !filtered.length && (
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: "8px 10px" }}>
+              No matches — try a broader term like Marketing, Engineering, or Sales.
+            </p>
+          )}
+        </div>
+      )}
     </ScoutBox>
   );
 }
@@ -223,11 +364,21 @@ export function ProfileDiscoveryScorePanel({
     profile.prioritizedCategories?.[0]?.replace(/ Jobs$/i, "") ??
     targetRole;
   const score = result?.score ?? null;
-  const tier = result?.tier ?? "building";
-  const peerCopy = tierPeerCopy(tier, peerLabel);
+  const hasScore = score != null && result != null;
+  const tier = result?.tier ?? null;
+  const peerCopy = tier ? tierPeerCopy(tier, peerLabel) : null;
   const showLoader = loading || refreshing;
   const selectedBenchmarkCategory =
     profile.benchmarkCategoryOverride ?? profile.prioritizedCategories?.[0] ?? null;
+
+  const handleBenchmarkCategorySave = useCallback(
+    async (category: string | null) => {
+      if (!onBenchmarkCategorySave) return;
+      await onBenchmarkCategorySave(category);
+      await refresh();
+    },
+    [onBenchmarkCategorySave, refresh],
+  );
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -321,12 +472,16 @@ export function ProfileDiscoveryScorePanel({
                   : null}
               </p>
             )}
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
-              {peerCopy}
-            </p>
+            {peerCopy && (
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
+                {peerCopy}
+              </p>
+            )}
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, lineHeight: 1.6, margin: 0 }}>
               {result?.summary ??
-                "Refresh your score to see how you compare to professionals in a matching job function."}
+                (hasScore
+                  ? "Your score reflects how you compare to professionals in your benchmark cohort."
+                  : "Refresh to compare yourself to Sumble professionals in a matching job function.")}
             </p>
             {error && (
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#b45309", margin: "8px 0 0" }}>
@@ -348,11 +503,11 @@ export function ProfileDiscoveryScorePanel({
           )}
         </div>
 
-        <BenchmarkJobFunctionPicker
+        <BenchmarkJobFunctionCombobox
           selectedCategory={selectedBenchmarkCategory}
           fallbackCategories={profile.prioritizedCategories ?? []}
           withClientScope={withClientScope}
-          onSave={onBenchmarkCategorySave}
+          onSave={handleBenchmarkCategorySave}
           disabled={showLoader}
         />
       </ScoutBox>
