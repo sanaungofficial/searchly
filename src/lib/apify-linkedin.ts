@@ -2,7 +2,8 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { logApifyLinkedInRun } from "@/lib/external-api-usage";
 import type { LinkedInProfileDraft } from "@/lib/linkedin-profile";
-import type { ParsedResumeData } from "@/lib/resume-parse";
+import { emptyParsedResumeData, reconcileParsedSkillsTools, type ParsedResumeData } from "@/lib/resume-parse";
+import { reconcileSkillsToolsFields, splitMatchablesByKind, syncSkillGroupsFromBuckets } from "@/lib/skills-tools";
 
 /**
  * LinkedIn scrape via Apify.
@@ -222,9 +223,10 @@ export function mapApifyProfileToParsedData(raw: ApifyLinkedInProfile): ParsedRe
     };
   });
 
-  const skills = (raw.skills ?? [])
+  const linkedInSkills = (raw.skills ?? [])
     .map((s) => s.skillName?.trim())
     .filter(Boolean) as string[];
+  const skillBuckets = splitMatchablesByKind(linkedInSkills);
 
   const certifications = (raw.certifications ?? []).map((cert, index) => ({
     id: `li_cert_${index}`,
@@ -233,17 +235,19 @@ export function mapApifyProfileToParsedData(raw: ApifyLinkedInProfile): ParsedRe
     date: formatYearMonth(cert.startYear, cert.startMonth),
   }));
 
-  return {
+  return reconcileParsedSkillsTools({
+    ...emptyParsedResumeData(),
     name,
     location: raw.locationName?.trim() || null,
     linkedinUrl: raw.url?.trim() || null,
     summary: raw.summary?.trim() || raw.headline?.trim() || null,
     education,
     workExperience,
-    skills,
-    skillGroups: skills.length ? [{ id: "li_skills", label: "Skills", skills }] : [],
+    skills: skillBuckets.skills,
+    tools: skillBuckets.tools,
+    skillGroups: syncSkillGroupsFromBuckets(skillBuckets.skills, skillBuckets.tools),
     certifications,
-  };
+  });
 }
 
 export function mapApifyProfileToLinkedInDraft(raw: ApifyLinkedInProfile): LinkedInProfileDraft {

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   allMatchableSkills,
   bucketsFromSkillGroups,
+  classifyMatchableKind,
   isToolsGroupLabel,
   reconcileSkillsToolsFields,
+  splitMatchablesByKind,
 } from "@/lib/skills-tools";
 
 describe("isToolsGroupLabel", () => {
@@ -42,6 +44,29 @@ describe("reconcileSkillsToolsFields", () => {
   });
 });
 
+describe("classifyMatchableKind", () => {
+  it("routes software and languages to technology", () => {
+    expect(classifyMatchableKind("Python")).toBe("technology");
+    expect(classifyMatchableKind("SQL")).toBe("technology");
+    expect(classifyMatchableKind("Tableau")).toBe("technology");
+  });
+
+  it("routes capabilities to skill", () => {
+    expect(classifyMatchableKind("Stakeholder management")).toBe("skill");
+    expect(classifyMatchableKind("Operating model design")).toBe("skill");
+  });
+});
+
+describe("splitMatchablesByKind", () => {
+  it("splits mixed LinkedIn-style skill lists", () => {
+    expect(
+      splitMatchablesByKind(["Python", "Stakeholder management", "SQL", "Product strategy"]),
+    ).toEqual({
+      skills: ["Stakeholder management", "Product strategy"],
+      tools: ["Python", "SQL"],
+    });
+  });
+});
 describe("bucketsFromSkillGroups", () => {
   it("routes items by group label", () => {
     expect(

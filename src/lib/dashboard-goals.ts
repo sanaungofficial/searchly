@@ -1,3 +1,5 @@
+import { unifiedTargetRoles } from "@/lib/target-roles-unified";
+
 export type DashboardGoalCategory = "job_search" | "coaching" | "career" | "applications";
 
 export type DashboardGoal = {
@@ -41,7 +43,6 @@ export type DashboardGoalOption = {
 /** Profile fields goals read from — never re-asked in the wizard. */
 export type GoalProfileContext = {
   targetRoles: string[];
-  prioritizedRoles: string[];
   prioritizedCategories: string[];
   deprioritizedCategories: string[];
   careerMotivation: string | null;
@@ -230,10 +231,9 @@ export function isActivelySearching(ctx: GoalProfileContext): boolean {
 }
 
 function roleSummary(ctx: GoalProfileContext, max = 2): string | null {
-  const roles = ctx.prioritizedRoles.length ? ctx.prioritizedRoles : ctx.targetRoles;
-  const trimmed = roles.map((r) => r.trim()).filter(Boolean).slice(0, max);
-  if (!trimmed.length) return null;
-  return trimmed.join(" or ");
+  const roles = ctx.targetRoles.map((r) => r.trim()).filter(Boolean).slice(0, max);
+  if (!roles.length) return null;
+  return roles.join(" or ");
 }
 
 export type WizardEntryDisplay = {
@@ -484,8 +484,10 @@ export function goalProfileContextFromProfile(profile: {
   priorities?: string[];
 }): GoalProfileContext {
   return {
-    targetRoles: profile.targetRoles ?? [],
-    prioritizedRoles: profile.prioritizedRoles ?? [],
+    targetRoles: unifiedTargetRoles({
+      targetRoles: profile.targetRoles,
+      prioritizedRoles: profile.prioritizedRoles,
+    }),
     prioritizedCategories: profile.prioritizedCategories ?? [],
     deprioritizedCategories: profile.deprioritizedCategories ?? [],
     careerMotivation: profile.careerMotivation ?? null,

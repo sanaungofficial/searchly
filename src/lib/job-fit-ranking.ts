@@ -86,9 +86,7 @@ function jobMatchesAnyRole(title: string, roles: string[]): boolean {
   return roles.some((role) => jobTitleMatchesRolePattern(title, role));
 }
 
-function jobMatchesTargetOrPrioritizedRole(title: string, preferences: RoleTitlePreferences): boolean {
-  const prioritized = preferences.prioritizedRoles ?? [];
-  if (prioritized.length && jobMatchesAnyRole(title, prioritized)) return true;
+function jobMatchesTargetRole(title: string, preferences: RoleTitlePreferences): boolean {
   const targets = preferences.targetRoles ?? [];
   return targets.length > 0 && jobMatchesAnyRole(title, targets);
 }
@@ -107,7 +105,7 @@ export function assignJobFitTier(input: {
   const { job, isTrackedCompany, fetchLane, roleTitlePreferences, profileSkills } = input;
   const title = job.title;
   const categories = [...(job.tags ?? [])];
-  const roleMatch = jobMatchesTargetOrPrioritizedRole(title, roleTitlePreferences);
+  const roleMatch = jobMatchesTargetRole(title, roleTitlePreferences);
   const jobSkillPool = [...(job.skills ?? []), ...(job.technologies ?? [])];
   const { overlapCount, overlapRatio } = computeJobSkillsOverlap(jobSkillPool, profileSkills);
   const skillsOverlap = hasMeaningfulSkillsOverlap(overlapCount, overlapRatio);

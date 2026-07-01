@@ -12,8 +12,8 @@ import {
   DEPRIORITIZED_CATEGORY_SUGGESTIONS,
   DEPRIORITIZED_ROLE_SUGGESTIONS,
   PRIORITIZED_CATEGORY_SUGGESTIONS,
-  PRIORITIZED_ROLE_SUGGESTIONS,
 } from "@/lib/role-title-preferences";
+import { migrateLegacyRoleFields } from "@/lib/target-roles-unified";
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
 import { SearchPreferencesExperienceEditor } from "./search-preferences-profile-section";
 import {
@@ -46,11 +46,27 @@ import {
   buildSkillGoal,
   findProgramsForSkill,
   normalizeSkillGoals,
+  skillGoalGapSourceLabel,
+  type SkillGoalGapSource,
   type SkillGoalRecord,
   type UpskillProgram,
   type UpskillProgressMap,
 } from "@/lib/upskill-programs";
-import { allMatchableSkills, reconcileSkillsToolsFields } from "@/lib/skills-tools";
+import {
+  corpusGapSourceLabel,
+  corpusGapsForRole,
+  readRoleCorpusGaps,
+  type RoleCorpusGapsCache,
+} from "@/lib/job-corpus-gaps";
+import {
+  addMatchableToBuckets,
+  allMatchableSkills,
+  classifyMatchableKind,
+  reconcileSkillsToolsFields,
+  SKILLS_GROUP_LABEL,
+  TOOLS_GROUP_LABEL,
+  type MatchableKind,
+} from "@/lib/skills-tools";
 import { profileHasResumeMaterial } from "@/lib/master-resume-shared";
 import {
   buildResumeFingerprint,
@@ -397,7 +413,7 @@ const SKILL_GOALS_KEY = "kimchi_skill_goals";
 async function migrateLegacyProfileData(
   userProfile: UserProfile,
   patchProfileFn: (patch: Record<string, unknown>) => Promise<void>,
-): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[] }> {
+): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[]; targetRoles?: string[] }> {
   const patch: Record<string, unknown> = {};
   let skillGoals = userProfile.skillGoals ?? [];
   let roleAnalyses = normalizeRoleAnalysesMap(userProfile.roleAnalyses);
@@ -456,7 +472,18 @@ async function migrateLegacyProfileData(
     await patchProfileFn(patch);
   }
 
-  return { roleAnalyses, skillGoals };
+  const roleMigration = migrateLegacyRoleFields({
+    targetRoles: userProfile.targetRoles,
+    prioritizedRoles: userProfile.prioritizedRoles,
+  });
+  if (roleMigration.migrated) {
+    await patchProfileFn({
+      targetRoles: roleMigration.targetRoles,
+      prioritizedRoles: roleMigration.prioritizedRoles,
+    });
+  }
+
+  return { roleAnalyses, skillGoals, targetRoles: roleMigration.targetRoles };
 }
 
 type SkillGoal = SkillGoalRecord;
@@ -1065,9 +1092,6 @@ function DreamRoleTab({
   dreamList,
   setDreamList,
   onSave,
-  prioritizedList,
-  setPrioritizedList,
-  onPrioritizedSave,
   prioritizedCategories,
   setPrioritizedCategories,
   onPrioritizedCategoriesSave,
@@ -1083,6 +1107,9 @@ function DreamRoleTab({
   userSkills,
   skillGoals,
   roleAnalyses,
+  roleCorpusGaps,
+  corpusGapsRefreshing,
+  onRefreshCorpusGaps,
   targetRoleSettings,
   onTargetRoleSettingsChange,
   onRoleAnalysisUpdate,
@@ -1097,9 +1124,6 @@ function DreamRoleTab({
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
-  prioritizedList: string[];
-  setPrioritizedList: (l: string[]) => void;
-  onPrioritizedSave: (list: string[]) => void;
   prioritizedCategories: string[];
   setPrioritizedCategories: (l: string[]) => void;
   onPrioritizedCategoriesSave: (list: string[]) => void;
@@ -1115,12 +1139,19 @@ function DreamRoleTab({
   userSkills: string[];
   skillGoals: SkillGoal[];
   roleAnalyses: RoleAnalysesMap;
+  roleCorpusGaps: RoleCorpusGapsCache | null;
+  corpusGapsRefreshing: boolean;
+  onRefreshCorpusGaps: () => void;
   targetRoleSettings: TargetRoleSettingsMap;
   onTargetRoleSettingsChange: (role: string, resumeAssetId: string | null) => void;
   onRoleAnalysisUpdate: (role: string, analysis: StoredRoleAnalysis) => void;
   onClearRoleAnalysis: (role: string) => void;
-  onAddToPortfolio: (skill: string) => void;
-  onObtainSkill: (skill: string, role: string) => void;
+  onAddToPortfolio: (skill: string, kind?: MatchableKind) => void;
+  onObtainSkill: (
+    skill: string,
+    role: string,
+    opts?: { gapSource?: SkillGoalGapSource; kind?: MatchableKind },
+  ) => void;
   onGoToUpskill: (skill: string) => void;
   onClearUpskillPrompt?: () => void;
   onInitRoleSettings: (role: string) => void;
@@ -1278,6 +1309,15 @@ function DreamRoleTab({
     if (expandedRole === title) setExpandedRole(null);
   };
 
+  const moveRole = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= dreamList.length) return;
+    const next = [...dreamList];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    setDreamList(next);
+    onSave(next);
+  };
+
   const toggleExpand = async (role: string) => {
     if (expandedRole === role) { setExpandedRole(null); return; }
     setExpandedRole(role);
@@ -1341,20 +1381,44 @@ function DreamRoleTab({
       </p>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
-        <ScoutLabel>Feed ranking</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Target roles unlock fit analysis. Prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
-        </p>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <ScoutLabel>Feed ranking</ScoutLabel>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.7 }}>
+              Order matters — your top role gets the strongest feed boost. Deprioritized patterns sort lower; nothing is hidden.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onRefreshCorpusGaps}
+            disabled={corpusGapsRefreshing || !dreamList.length}
+            style={{
+              padding: "8px 14px",
+              background: corpusGapsRefreshing ? "rgba(0,0,0,0.04)" : "transparent",
+              color: color.forest,
+              border: "1px solid rgba(26,58,47,0.25)",
+              borderRadius: "var(--scout-radius)",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              cursor: corpusGapsRefreshing || !dreamList.length ? "default" : "pointer",
+              opacity: !dreamList.length ? 0.5 : 1,
+              flexShrink: 0,
+            }}
+          >
+            {corpusGapsRefreshing ? "Refreshing gaps…" : "Refresh gaps"}
+          </button>
+        </div>
+        {roleCorpusGaps?.refreshedAt && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "10px 0 0", lineHeight: 1.5 }}>
+            Market skill gaps last refreshed {formatLastRefreshed(roleCorpusGaps.refreshedAt)} — from Hirebase postings and saved jobs.
+          </p>
+        )}
+        <div style={{ marginTop: 16 }}>
         <RoleListBulkPaste
         dreamList={dreamList}
         onTargetChange={(next) => {
           setDreamList(next);
           onSave(next);
-        }}
-        prioritizedList={prioritizedList}
-        onPrioritizedChange={(next) => {
-          setPrioritizedList(next);
-          onPrioritizedSave(next);
         }}
         deprioritizedList={deprioritizedList}
         onDeprioritizedChange={(next) => {
@@ -1373,12 +1437,13 @@ function DreamRoleTab({
         }}
         onInitRoleSettings={onInitRoleSettings}
       />
+        </div>
       </ScoutBox>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Target roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles you want at the top of Recommended and In-network. Add as many as you need; pick a resume per role for fit analysis.
+          Roles you want at the top of Recommended and In-network. List order sets feed priority — drag with arrows to reorder.
         </p>
         {!showSearch ? (
           <button
@@ -1425,7 +1490,7 @@ function DreamRoleTab({
         )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {dreamList.map((role) => {
+        {dreamList.map((role, roleIndex) => {
           const isOpen = expandedRole === role;
           const result = analysis[role];
           const loaded = getLoaded(role);
@@ -1466,6 +1531,22 @@ function DreamRoleTab({
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); moveRole(roleIndex, -1); }}
+                      disabled={roleIndex === 0}
+                      aria-label={`Move ${role} up`}
+                      style={{ background: "none", border: "none", cursor: roleIndex === 0 ? "default" : "pointer", color: roleIndex === 0 ? "#E0E0E0" : color.muted, fontSize: 12, lineHeight: 1, padding: "2px 4px" }}
+                    >↑</button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); moveRole(roleIndex, 1); }}
+                      disabled={roleIndex === dreamList.length - 1}
+                      aria-label={`Move ${role} down`}
+                      style={{ background: "none", border: "none", cursor: roleIndex === dreamList.length - 1 ? "default" : "pointer", color: roleIndex === dreamList.length - 1 ? "#E0E0E0" : color.muted, fontSize: 12, lineHeight: 1, padding: "2px 4px" }}
+                    >↓</button>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeRole(role); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
@@ -1530,9 +1611,102 @@ function DreamRoleTab({
                         const gapWhy = new Map(
                           (loaded.gaps ?? []).map((g) => [g.skill.toLowerCase(), g.why]),
                         );
+                        const marketGaps = corpusGapsForRole(roleCorpusGaps, role).filter(
+                          (g) => !hasSkill(g.skill) && !isInLearning(g.skill),
+                        );
+                        const useMarketGaps = marketGaps.length > 0;
                         const haveSkills = loaded.requiredSkills.filter((s) => hasSkill(s));
-                        const learningSkills = loaded.requiredSkills.filter((s) => !hasSkill(s) && isInLearning(s));
-                        const missingSkills = loaded.requiredSkills.filter((s) => !hasSkill(s) && !isInLearning(s));
+                        const learningSkills = useMarketGaps
+                          ? marketGaps.filter((g) => isInLearning(g.skill)).map((g) => g.skill)
+                          : loaded.requiredSkills.filter((s) => !hasSkill(s) && isInLearning(s));
+                        const missingRows = useMarketGaps
+                          ? marketGaps.map((g) => ({
+                              skill: g.skill,
+                              kind: g.kind,
+                              sources: g.sources,
+                            }))
+                          : loaded.requiredSkills
+                              .filter((s) => !hasSkill(s) && !isInLearning(s))
+                              .map((skill) => ({
+                                skill,
+                                kind: classifyMatchableKind(skill),
+                                why: gapWhy.get(skill.toLowerCase()),
+                              }));
+                        const missingGroups = [
+                          { label: SKILLS_GROUP_LABEL, rows: missingRows.filter((row) => row.kind === "skill") },
+                          { label: TOOLS_GROUP_LABEL, rows: missingRows.filter((row) => row.kind === "technology") },
+                        ].filter((group) => group.rows.length > 0);
+                        const renderGapRow = (row: (typeof missingRows)[number]) => {
+                          const skill = row.skill;
+                          return (
+                            <div key={skill} style={{ position: "relative" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSkillMenu((prev) =>
+                                    prev?.role === role && prev.skill === skill ? null : { role, skill },
+                                  );
+                                }}
+                                style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}
+                              >
+                                {skill}
+                                {"sources" in row && row.sources?.map((source) => (
+                                  <span key={source} style={{ fontSize: 10, color: color.muted, background: "rgba(0,0,0,0.04)", padding: "2px 6px", borderRadius: 999 }}>
+                                    {corpusGapSourceLabel(source)}
+                                  </span>
+                                ))}
+                                <span style={{ fontSize: 10, color: color.muted }}>▼</span>
+                              </button>
+                              {"why" in row && row.why && (
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B0A898", margin: "4px 0 0 4px", lineHeight: 1.45 }}>{row.why}</p>
+                              )}
+                              {skillMenu?.role === role && skillMenu.skill === skill && (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    border: "var(--scout-border)",
+                                    background: surface.card,
+                                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                    minWidth: 220,
+                                    zIndex: 2,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onAddToPortfolio(skill, row.kind);
+                                      setSkillMenu(null);
+                                    }}
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "var(--scout-border)", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                  >
+                                    {row.kind === "technology" ? "Add to my tools" : "Add to my skills"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const sources = "sources" in row ? row.sources : undefined;
+                                      const gapSource: SkillGoalGapSource | undefined = sources?.includes("saved_job")
+                                        ? "saved_job"
+                                        : sources?.includes("corpus")
+                                          ? "corpus"
+                                          : useMarketGaps
+                                            ? "corpus"
+                                            : "archetype";
+                                      onObtainSkill(skill, role, { gapSource, kind: row.kind });
+                                      setObtainNudge({ skill, role });
+                                      setSkillMenu(null);
+                                    }}
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                  >
+                                    Obtain this {row.kind === "technology" ? "tool" : "skill"}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        };
                         return (
                           <div style={{ marginBottom: 20 }}>
                             {haveSkills.length > 0 && (
@@ -1547,68 +1721,21 @@ function DreamRoleTab({
                                 </div>
                               </div>
                             )}
-                            {missingSkills.length > 0 && (
+                            {missingGroups.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you&apos;re missing</p>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                  {missingSkills.map((skill) => (
-                                    <div key={skill} style={{ position: "relative" }}>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSkillMenu((prev) =>
-                                            prev?.role === role && prev.skill === skill ? null : { role, skill },
-                                          );
-                                        }}
-                                        style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
-                                      >
-                                        {skill}
-                                        <span style={{ fontSize: 10, color: color.muted }}>▼</span>
-                                      </button>
-                                      {gapWhy.get(skill.toLowerCase()) && (
-                                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B0A898", margin: "4px 0 0 4px", lineHeight: 1.45 }}>{gapWhy.get(skill.toLowerCase())}</p>
-                                      )}
-                                      {skillMenu?.role === role && skillMenu.skill === skill && (
-                                        <div
-                                          style={{
-                                            marginTop: 6,
-                                            border: "var(--scout-border)",
-                                            background: surface.card,
-                                            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                                            minWidth: 220,
-                                            zIndex: 2,
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              onAddToPortfolio(skill);
-                                              setSkillMenu(null);
-                                            }}
-                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "var(--scout-border)", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
-                                          >
-                                            Add to my skills
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              onObtainSkill(skill, role);
-                                              setObtainNudge({ skill, role });
-                                              setSkillMenu(null);
-                                            }}
-                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
-                                          >
-                                            Obtain this skill
-                                          </button>
-                                        </div>
-                                      )}
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>
+                                  {useMarketGaps ? "Market gaps" : "What you\u2019re missing"}
+                                </p>
+                                {missingGroups.map((group) => (
+                                  <div key={group.label} style={{ marginBottom: 12 }}>
+                                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: color.muted, margin: "0 0 8px" }}>{group.label}</p>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                      {group.rows.map((row) => renderGapRow(row))}
                                     </div>
-                                  ))}
-                                </div>
+                                  </div>
+                                ))}
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                                  <span>Add to skills if you already have it, or obtain it to track learning in Upskill.</span>
+                                  <span>Add to your profile if you already have it, or obtain it to track learning in Upskill.</span>
                                   <ScoreExplainerPopover variant="upskill-recommendations" />
                                 </p>
                               </div>
@@ -1662,8 +1789,13 @@ function DreamRoleTab({
                       <div>
                         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
                         {(() => {
+                          const marketGaps = corpusGapsForRole(roleCorpusGaps, role)
+                            .filter((g) => !hasSkill(g.skill))
+                            .map((g) => g.skill);
                           const required = loaded.requiredSkills ?? [];
-                          const gapSkills = required.filter((s) => !hasSkill(s));
+                          const gapSkills = marketGaps.length
+                            ? marketGaps
+                            : required.filter((s) => !hasSkill(s));
                           const queuedSkills = skillGoals
                             .filter((g) => g.role === role)
                             .map((g) => g.skill)
@@ -1700,22 +1832,11 @@ function DreamRoleTab({
       </ScoutBox>
 
       <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
-        <ScoutLabel>Prioritized roles</ScoutLabel>
+        <ScoutLabel>Feed filters</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles and add similar titles to cast a wider net.
+          Narrow which jobs rank higher by job function and experience level.
         </p>
-        <RoleTitlePicker
-          selected={prioritizedList}
-          onChange={(next) => {
-            setPrioritizedList(next);
-            onPrioritizedSave(next);
-          }}
-          placeholder="e.g. Commercial Product Lead, GTM Operations…"
-          addButtonLabel="+ Add prioritized role"
-          quickSuggestions={PRIORITIZED_ROLE_SUGGESTIONS}
-          enableRelatedExpand
-        />
-        <div style={{ marginTop: 20 }}>
+        <div>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Job functions
           </p>
@@ -1906,10 +2027,6 @@ function LearningTab({
     setProgress({ ...progress, [String(id)]: status });
   };
 
-  const doneCount = Object.values(progress).filter((v) => v === "completed").length;
-  const customDone = customItems.filter((i) => i.status === "completed").length;
-  const total = UPSKILL_CATEGORIES.reduce((a, c) => a + c.items.length, 0);
-
   const handleGraduate = async (skill: string) => {
     setGraduating(skill);
     await onGraduate(skill);
@@ -1970,6 +2087,10 @@ function LearningTab({
     ),
   );
 
+  const doneCount = programItems.filter((item) => progress[String(item.id)] === "completed").length;
+  const customDone = customItems.filter((i) => i.status === "completed").length;
+  const total = programItems.length + customItems.length;
+
   const renderSkillRow = (g: SkillGoal) => {
     const isHighlighted = highlightSkill?.toLowerCase() === g.skill.toLowerCase();
     return (
@@ -1987,6 +2108,10 @@ function LearningTab({
         >
           <div style={{ flex: 1 }}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{g.skill}</p>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
+              {g.kind === "technology" ? TOOLS_GROUP_LABEL : SKILLS_GROUP_LABEL}
+              {skillGoalGapSourceLabel(g.gapSource) ? ` · ${skillGoalGapSourceLabel(g.gapSource)}` : ""}
+            </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <ScoutPrimaryBtn
@@ -3012,7 +3137,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
-  const [prioritizedList, setPrioritizedList] = useState<string[]>([]);
   const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [deprioritizedList, setDeprioritizedList] = useState<string[]>([]);
   const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
@@ -3020,6 +3144,8 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [roleAnalyses, setRoleAnalyses] = useState<RoleAnalysesMap>({});
   const [upskillProgress, setUpskillProgress] = useState<UpskillProgressMap>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
+  const [roleCorpusGaps, setRoleCorpusGaps] = useState<RoleCorpusGapsCache | null>(null);
+  const [corpusGapsRefreshing, setCorpusGapsRefreshing] = useState(false);
   const [targetRoleSettings, setTargetRoleSettings] = useState<TargetRoleSettingsMap>({});
   const [upskillPrompt, setUpskillPrompt] = useState<{ skill: string; role: string } | null>(null);
   const legacyMigratedRef = useRef(false);
@@ -3081,7 +3207,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         const userProfile = data as UserProfile;
         setProfile(userProfile);
         setDreamList(userProfile.targetRoles || []);
-        setPrioritizedList(userProfile.prioritizedRoles || []);
         setPrioritizedCategories(userProfile.prioritizedCategories || []);
         setDeprioritizedList(userProfile.deprioritizedRoles || []);
         setDeprioritizedCategories(userProfile.deprioritizedCategories || []);
@@ -3090,6 +3215,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
         );
         setRoleAnalyses(normalizeRoleAnalysesMap(userProfile.roleAnalyses));
         setSkillGoals(normalizeSkillGoals(userProfile.skillGoals));
+        setRoleCorpusGaps(readRoleCorpusGaps(userProfile.parsedData));
         setUpskillProgress(userProfile.upskillProgress ?? {});
         setTargetRoleSettings(normalizeTargetRoleSettings(userProfile.targetRoleSettings));
 
@@ -3102,6 +3228,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
           const migrated = await migrateLegacyProfileData(userProfile, patchProfile);
           setRoleAnalyses(migrated.roleAnalyses);
           setSkillGoals(migrated.skillGoals);
+          if (migrated.targetRoles?.length) {
+            setDreamList(migrated.targetRoles);
+          }
         }
       })
       .catch(() => {})
@@ -3224,13 +3353,18 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     });
   };
 
-  const addSkillToPortfolio = async (skill: string) => {
+  const addSkillToPortfolio = async (skill: string, kind?: MatchableKind) => {
     const currentSkills = profile?.parsedData?.skills || [];
     const currentTools = profile?.parsedData?.tools || [];
-    if (allMatchableSkills({ skills: currentSkills, tools: currentTools }).some((s) => s.toLowerCase() === skill.toLowerCase())) {
+    const buckets = addMatchableToBuckets({ skills: currentSkills, tools: currentTools }, skill, kind);
+    if (
+      allMatchableSkills({ skills: currentSkills, tools: currentTools }).some(
+        (s) => s.toLowerCase() === skill.toLowerCase(),
+      )
+    ) {
       return;
     }
-    await handleSkillsToolsSave([...currentSkills, skill], currentTools);
+    await handleSkillsToolsSave(buckets.skills, buckets.tools);
   };
 
   const hasSkillGoal = (skill: string, role: string) =>
@@ -3238,14 +3372,43 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
       (g) => g.skill.toLowerCase() === skill.toLowerCase() && g.role === role,
     );
 
-  const obtainSkill = (skill: string, role: string) => {
+  const obtainSkill = (
+    skill: string,
+    role: string,
+    opts?: { gapSource?: SkillGoalGapSource; kind?: MatchableKind },
+  ) => {
+    const kind = opts?.kind ?? classifyMatchableKind(skill);
     if (!hasSkillGoal(skill, role)) {
-      const next = [...skillGoals, buildSkillGoal(skill, role)];
+      const next = [...skillGoals, buildSkillGoal(skill, role, opts?.gapSource ?? "manual", kind)];
       setSkillGoals(next);
       void patchProfile({ skillGoals: next });
     }
     setUpskillPrompt({ skill, role });
   };
+
+  const refreshCorpusGaps = useCallback(async () => {
+    setCorpusGapsRefreshing(true);
+    try {
+      const res = await fetch(api("/api/profile/role-corpus-gaps"), { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.roleCorpusGaps) {
+        setRoleCorpusGaps(data.roleCorpusGaps as RoleCorpusGapsCache);
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                parsedData: {
+                  ...(prev.parsedData && typeof prev.parsedData === "object" ? prev.parsedData : {}),
+                  roleCorpusGaps: data.roleCorpusGaps,
+                },
+              }
+            : prev,
+        );
+      }
+    } finally {
+      setCorpusGapsRefreshing(false);
+    }
+  }, [api]);
 
   const goToUpskill = (skill: string) => {
     setUpskillPrompt(null);
@@ -3263,9 +3426,14 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     router.push(pipelineProspectUrl(prospectId));
   }, [router]);
 
-  const addSkillGoal = (skill: string, role: string) => {
+  const addSkillGoal = (
+    skill: string,
+    role: string,
+    gapSource?: SkillGoalGapSource,
+    kind?: MatchableKind,
+  ) => {
     if (hasSkillGoal(skill, role)) return;
-    const next = [...skillGoals, buildSkillGoal(skill, role)];
+    const next = [...skillGoals, buildSkillGoal(skill, role, gapSource ?? "manual", kind ?? classifyMatchableKind(skill))];
     setSkillGoals(next);
     void patchProfile({ skillGoals: next });
   };
@@ -3374,8 +3542,15 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const graduateSkill = async (skill: string) => {
     const currentSkills = profile?.parsedData?.skills || [];
     const currentTools = profile?.parsedData?.tools || [];
-    if (!allMatchableSkills({ skills: currentSkills, tools: currentTools }).some((s) => s.toLowerCase() === skill.toLowerCase())) {
-      await handleSkillsToolsSave([...currentSkills, skill], currentTools);
+    const goalKind = skillGoals.find((g) => g.skill.toLowerCase() === skill.toLowerCase())?.kind;
+    const kind = goalKind ?? classifyMatchableKind(skill);
+    if (
+      !allMatchableSkills({ skills: currentSkills, tools: currentTools }).some(
+        (s) => s.toLowerCase() === skill.toLowerCase(),
+      )
+    ) {
+      const buckets = addMatchableToBuckets({ skills: currentSkills, tools: currentTools }, skill, kind);
+      await handleSkillsToolsSave(buckets.skills, buckets.tools);
     }
     setSkillGoals((prev) => {
       const next = prev.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase());
@@ -3477,7 +3652,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
     }
   };
 
-  const targetRolesForResumes = dedupeRoles([...dreamList, ...prioritizedList]);
+  const targetRolesForResumes = dedupeRoles(dreamList);
 
   const handleResumeUpload = async (file: File) => {
     setResumeUploading(true);
@@ -3844,9 +4019,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 dreamList={dreamList}
                 setDreamList={setDreamList}
                 onSave={(list) => patchProfile({ targetRoles: list })}
-                prioritizedList={prioritizedList}
-                setPrioritizedList={setPrioritizedList}
-                onPrioritizedSave={(list) => patchProfile({ prioritizedRoles: list })}
                 prioritizedCategories={prioritizedCategories}
                 setPrioritizedCategories={setPrioritizedCategories}
                 onPrioritizedCategoriesSave={(list) => patchProfile({ prioritizedCategories: list })}
@@ -3872,6 +4044,9 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
                 userSkills={matchableSkills}
                 skillGoals={skillGoals}
                 roleAnalyses={roleAnalyses}
+                roleCorpusGaps={roleCorpusGaps}
+                corpusGapsRefreshing={corpusGapsRefreshing}
+                onRefreshCorpusGaps={() => void refreshCorpusGaps()}
                 targetRoleSettings={targetRoleSettings}
                 onTargetRoleSettingsChange={handleTargetRoleSettingsChange}
                 onRoleAnalysisUpdate={handleRoleAnalysisUpdate}

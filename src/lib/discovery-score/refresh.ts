@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import { isApifyConfigured } from "@/lib/apify-linkedin";
 import { isSumbleConfigured } from "@/lib/sumble/client";
+import { unifiedTargetRoles } from "@/lib/target-roles-unified";
 import { benchmarkPeerLabel, readDiscoveryBenchmarkCategoryOverride } from "./benchmark-role";
 import { computeDiscoveryScoreFromCohort, enrichBenchmarksWithApify } from "./compute";
 import { buildDiscoverySearchDebug } from "./query-build";
@@ -12,9 +13,12 @@ import type { DiscoveryProfileContext, DiscoveryScoreApiResponse, DiscoveryScore
 import type { Profile, User } from "@prisma/client";
 
 export function discoveryScoreFingerprint(ctx: DiscoveryProfileContext): string {
+  const orderedRoles = unifiedTargetRoles({
+    targetRoles: ctx.targetRoles,
+    prioritizedRoles: ctx.prioritizedRoles,
+  });
   const parts = [
-    ...ctx.targetRoles,
-    ...ctx.prioritizedRoles,
+    ...orderedRoles,
     ...ctx.prioritizedCategories,
     ctx.benchmarkCategoryOverride ?? "",
     ...(ctx.parsedData?.skills ?? []),

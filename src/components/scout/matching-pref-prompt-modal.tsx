@@ -19,7 +19,6 @@ import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/ty
 
 export type MatchingPrefProfile = {
   targetRoles: string[];
-  prioritizedRoles: string[];
   targetMarket: string;
   fullyRemote: boolean;
   workArrangement: WorkArrangementId;
@@ -96,7 +95,6 @@ export function MatchingPrefPromptModal({
 
   const titleMap: Record<MatchingTuningGapId, { title: string; body: string }> = {
     target_roles: { title: "Add target roles", body: "Open your profile to add up to 3 role titles." },
-    priority_role: { title: "Pick your #1 target role", body: "We boost this title in your recommended feed." },
     location: { title: "Where do you want to work?", body: "City or fully remote — powers location filtering." },
     work_mode: { title: "How do you want to work?", body: "Remote, hybrid, or open to on-site." },
     relocation: { title: "Would you relocate?", body: "Expands or tightens geographies in your feed." },
@@ -139,16 +137,6 @@ export function MatchingPrefPromptModal({
         >
           Open goal wizard
         </ScoutPrimaryBtn>
-      );
-    }
-
-    if (gapId === "priority_role") {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {local.targetRoles.map((role) =>
-            listOption(local.prioritizedRoles[0] === role, () => setLocal({ ...local, prioritizedRoles: [role] }), role),
-          )}
-        </div>
       );
     }
 
@@ -265,11 +253,6 @@ export function MatchingPrefPromptModal({
 
   const handleSave = async () => {
     if (gapId === "target_roles" || gapId === "resume" || gapId === "primary_goal") return;
-
-    if (gapId === "priority_role") {
-      await savePatch({ prioritizedRoles: local.prioritizedRoles.slice(0, 1) });
-      return;
-    }
 
     const priorities = buildOnboardingPriorities({
       workArrangement: local.workArrangement,

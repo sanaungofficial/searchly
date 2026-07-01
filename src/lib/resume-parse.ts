@@ -1,5 +1,5 @@
 import { normalizeOrgRef, type LinkedInOrgRef } from "@/lib/linkedin-profile";
-import { reconcileSkillsToolsFields } from "@/lib/skills-tools";
+import { reconcileSkillsToolsFields, splitMatchablesByKind, syncSkillGroupsFromBuckets } from "@/lib/skills-tools";
 
 export interface ParsedEducationEntry {
   id: string;
@@ -631,15 +631,16 @@ function parseEducationBlock(block: string): ParsedEducationEntry[] {
     });
 }
 
-function parseSkillsBlock(block: string): { skills: string[]; groups: ParsedSkillGroup[] } {
-  const skills = block
+function parseSkillsBlock(block: string): { skills: string[]; tools: string[]; groups: ParsedSkillGroup[] } {
+  const terms = block
     .split(/[,;|\n•\-\*–—]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 1 && s.length < 60);
-  if (!skills.length) return { skills: [], groups: [] };
+  if (!terms.length) return { skills: [], tools: [], groups: [] };
+  const buckets = splitMatchablesByKind(terms);
   return {
-    skills,
-    groups: [{ id: "sg_0", label: "Skills", skills }],
+    ...buckets,
+    groups: syncSkillGroupsFromBuckets(buckets.skills, buckets.tools),
   };
 }
 
@@ -680,8 +681,9 @@ export function fallbackParseResumeFromText(rawText: string): ParsedResumeData {
   if (sections.experience) data.workExperience = parseExperienceBlock(sections.experience);
   if (sections.education) data.education = parseEducationBlock(sections.education);
   if (sections.skills) {
-    const { skills, groups } = parseSkillsBlock(sections.skills);
+    const { skills, tools, groups } = parseSkillsBlock(sections.skills);
     data.skills = skills;
+    data.tools = tools;
     data.skillGroups = groups;
   }
   if (sections.certifications) {

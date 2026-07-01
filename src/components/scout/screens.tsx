@@ -1841,7 +1841,6 @@ export type OnboardingCompanySuggestion = {
 interface TargetCompaniesProps {
   selectedCompanies: OnboardingCompanyPick[];
   targetRoles: string[];
-  prioritizedRoles?: string[];
   readbackData?: ReadBackData | null;
   onAddCompany: (company: OnboardingCompanyPick) => void;
   onRemoveCompany: (catalogSlug: string) => void;
@@ -1864,13 +1863,11 @@ function suggestionToPick(
 
 function OnboardingSuggestedCompanies({
   targetRoles,
-  prioritizedRoles,
   readbackData,
   selectedCompanies,
   onAddCompany,
 }: {
   targetRoles: string[];
-  prioritizedRoles: string[];
   readbackData: ReadBackData | null;
   selectedCompanies: OnboardingCompanyPick[];
   onAddCompany: (company: OnboardingCompanyPick) => void;
@@ -1889,10 +1886,9 @@ function OnboardingSuggestedCompanies({
     () =>
       JSON.stringify({
         targetRoles,
-        prioritizedRoles,
         readbackRoles: readbackData?.targetRoles?.map((r) => r.role) ?? [],
       }),
-    [targetRoles, prioritizedRoles, readbackData],
+    [targetRoles, readbackData],
   );
 
   useEffect(() => {
@@ -1904,7 +1900,6 @@ function OnboardingSuggestedCompanies({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         targetRoles,
-        prioritizedRoles,
         readbackData,
       }),
     })
@@ -1927,7 +1922,7 @@ function OnboardingSuggestedCompanies({
     return () => {
       cancelled = true;
     };
-  }, [signalKey, targetRoles, prioritizedRoles, readbackData]);
+  }, [signalKey, targetRoles, readbackData]);
 
   const visible = recommendations.filter((rec) => !selectedSlugs.has(rec.catalogSlug));
   if (!loading && visible.length === 0) return null;
@@ -2313,7 +2308,6 @@ function TargetCompanyAutocomplete({
 export function ScreenTargetCompanies({
   selectedCompanies,
   targetRoles,
-  prioritizedRoles = [],
   readbackData = null,
   onAddCompany,
   onRemoveCompany,
@@ -2356,7 +2350,6 @@ export function ScreenTargetCompanies({
       >
         <OnboardingSuggestedCompanies
           targetRoles={targetRoles}
-          prioritizedRoles={prioritizedRoles}
           readbackData={readbackData}
           selectedCompanies={selectedCompanies}
           onAddCompany={onAddCompany}

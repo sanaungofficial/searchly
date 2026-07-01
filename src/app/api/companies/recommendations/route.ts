@@ -32,7 +32,8 @@ function watchlistSlugsFromCompanies(
 function profileSummaryFromSignals(signals: ReturnType<typeof buildRecommendationSignals>): string {
   const parts: string[] = [];
   if (signals.targetRoles.length) parts.push(`Target roles: ${signals.targetRoles.join(", ")}`);
-  if (signals.prioritizedRoles.length) parts.push(`Priority roles: ${signals.prioritizedRoles.join(", ")}`);
+  const topRole = signals.targetRoles[0];
+  if (topRole && signals.targetRoles.length > 1) parts.push(`Top target role: ${topRole}`);
   const skills = [...(signals.parsedData?.skills ?? []), ...(signals.parsedData?.tools ?? [])];
   if (skills.length) parts.push(`Skills/tools: ${skills.slice(0, 20).join(", ")}`);
   const latest = signals.parsedData?.workExperience?.[0];
@@ -64,7 +65,6 @@ async function enrichWithAiBlurbs(
   const template = await getPrompt("COMPANY_RECOMMENDATIONS");
   const prompt = interpolate(template, {
     targetRoles: signals.targetRoles.join(", ") || "Not specified",
-    prioritizedRoles: signals.prioritizedRoles.join(", ") || "None",
     skills: skills || "None listed",
     tools: (signals.parsedData?.tools ?? []).join(", ") || "None listed",
     companiesJson,

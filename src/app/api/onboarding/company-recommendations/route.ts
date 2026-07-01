@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
   }
 
   const targetRoles = asStringArray(body.targetRoles);
-  const prioritizedRoles = asStringArray(body.prioritizedRoles, 5);
   const watchlistSlugs = asStringArray(body.watchlistSlugs, 10);
   const clientReadback = asReadbackPayload(body.readbackData);
 
@@ -77,7 +76,6 @@ export async function POST(req: NextRequest) {
 
     const signals = buildRecommendationSignals({
       targetRoles: targetRoles.length ? targetRoles : profile?.targetRoles,
-      prioritizedRoles: prioritizedRoles.length ? prioritizedRoles : profile?.prioritizedRoles,
       parsedData: profile?.parsedData,
       readbackData: clientReadback ?? profile?.readbackData,
       watchlistSlugs,

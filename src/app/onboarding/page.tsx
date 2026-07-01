@@ -134,13 +134,10 @@ function saveMatchingPreferences(state: OnboardingMatchingState): Promise<void> 
   }).then(() => {});
 }
 
-function savePrioritizedRoles(roles: string[]): Promise<void> {
-  if (!roles.length) return Promise.resolve();
-  return fetch("/api/profile", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prioritizedRoles: roles }),
-  }).then(() => {});
+function savePriorityTargetRole(priorityRole: string, allRoles: string[]): Promise<void> {
+  if (!priorityRole.trim()) return Promise.resolve();
+  const rest = allRoles.filter((r) => r.toLowerCase() !== priorityRole.trim().toLowerCase());
+  return saveTargetRoles([priorityRole.trim(), ...rest]);
 }
 
 function saveTargetRoles(roles: string[]): Promise<void> {
@@ -657,10 +654,7 @@ export default function OnboardingPage() {
   const onRolesContinue = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
     await savePrioritizedCategories(prioritizedCategories);
-    if (selectedTitles.length === 1) {
-      await savePrioritizedRoles([selectedTitles[0]!]);
-      goTo(4);
-    } else if (selectedTitles.length >= 2) {
+    if (selectedTitles.length >= 2) {
       setPriorityRole((prev) => prev || selectedTitles[0] || "");
       goTo(3);
     } else {
@@ -675,9 +669,9 @@ export default function OnboardingPage() {
   }, [selectedTitles, prioritizedCategories, goTo]);
 
   const onPriorityContinue = useCallback(async () => {
-    if (priorityRole) await savePrioritizedRoles([priorityRole]);
+    if (priorityRole) await savePriorityTargetRole(priorityRole, selectedTitles);
     goTo(4);
-  }, [priorityRole, goTo]);
+  }, [priorityRole, selectedTitles, goTo]);
 
   const onPrioritySkip = useCallback(() => goTo(4), [goTo]);
 
@@ -1171,7 +1165,6 @@ export default function OnboardingPage() {
                 <ScreenTargetCompanies
                   selectedCompanies={selectedCompanies}
                   targetRoles={selectedTitles}
-                  prioritizedRoles={priorityRole ? [priorityRole] : []}
                   readbackData={readbackData}
                   onAddCompany={onAddTargetCompany}
                   onRemoveCompany={onRemoveTargetCompany}

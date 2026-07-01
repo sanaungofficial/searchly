@@ -1,7 +1,13 @@
 import { DISCOVERY_BENCHMARK_CATEGORY_KEY, DISCOVERY_SCORE_CACHE_KEY } from "./constants";
 import type { DiscoveryScoreCachePayload } from "./types";
 
-const PRESERVED_PARSED_DATA_KEYS = [DISCOVERY_SCORE_CACHE_KEY, DISCOVERY_BENCHMARK_CATEGORY_KEY] as const;
+import { ROLE_CORPUS_GAPS_KEY } from "@/lib/job-corpus-gaps";
+
+const PRESERVED_PARSED_DATA_KEYS = [
+  DISCOVERY_SCORE_CACHE_KEY,
+  DISCOVERY_BENCHMARK_CATEGORY_KEY,
+  ROLE_CORPUS_GAPS_KEY,
+] as const;
 
 function isCachePayload(value: unknown): value is DiscoveryScoreCachePayload {
   if (!value || typeof value !== "object") return false;

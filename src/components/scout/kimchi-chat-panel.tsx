@@ -32,6 +32,9 @@ import {
 } from "@/lib/kimchi-assistant/chat-chips";
 import { stripKimchiFollowUpsMarker } from "@/lib/kimchi-assistant/chat-follow-ups";
 import { profileLearningPathUrl, pipelineJobUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
+import { buildSkillGoal, normalizeSkillGoals } from "@/lib/upskill-programs";
+import { classifyMatchableKind } from "@/lib/skills-tools";
+import { primaryTargetRole } from "@/lib/target-roles-unified";
 import { ProfileResumeEditor } from "@/components/scout/profile-resume-editor";
 import { CreditsInlineHint } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
@@ -447,10 +450,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     async (skill: string) => {
       const profileRes = await fetch(withClientScope("/api/profile"));
       const profile = profileRes.ok ? await profileRes.json() : null;
-      const existing = Array.isArray(profile?.skillGoals) ? profile.skillGoals : [];
+      const existing = normalizeSkillGoals(profile?.skillGoals);
+      const role = primaryTargetRole(profile?.targetRoles) ?? "General";
       const next = [
-        ...existing.filter((g: { skill?: string }) => g.skill?.toLowerCase() !== skill.toLowerCase()),
-        { skill, status: "queued", addedAt: new Date().toISOString() },
+        ...existing.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase()),
+        buildSkillGoal(skill, role, "manual", classifyMatchableKind(skill)),
       ];
       await fetch(withClientScope("/api/profile"), {
         method: "PATCH",
