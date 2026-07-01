@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPublicCoachingPath, requiresAuthCoachingPath, sanitizeReturnPath } from "@/lib/auth-return-url";
-import { isAppHost } from "@/lib/site-host";
+import { APP_HOME_PATH, isAppHost } from "@/lib/site-host";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -48,6 +48,14 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
       }
     }
+  }
+
+  // App host `/` — signed-in users go to dashboard, not marketing landing.
+  if (user && pathname === "/" && onAppHost) {
+    const url = request.nextUrl.clone();
+    url.pathname = APP_HOME_PATH;
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   // Allow public routes through always

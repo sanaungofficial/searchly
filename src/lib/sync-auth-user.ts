@@ -4,6 +4,7 @@ import { sendWelcomeEmail } from "@/lib/email";
 import { attachReferrer } from "@/lib/referrals";
 import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { ensurePartneroCustomer, partneroEnabled } from "@/lib/partnero";
+import { APP_HOME_PATH } from "@/lib/site-host";
 import {
   persistExternalImageToAvatarsBucket,
 } from "@/lib/persist-external-image";
@@ -17,7 +18,7 @@ export function authRedirectForUser(
   next?: string | null,
 ) {
   if (next && next !== "/") return next;
-  return onboardingCompletedAt ? "/dashboard" : "/onboarding";
+  return onboardingCompletedAt ? APP_HOME_PATH : "/onboarding";
 }
 
 /** Server-side redirect — backfills completion for returning users who already have a profile. */
@@ -26,7 +27,7 @@ export async function resolveAuthRedirectForUser(
   next?: string | null,
 ) {
   if (next && next !== "/") return next;
-  if (dbUser.onboardingCompletedAt) return "/dashboard";
+  if (dbUser.onboardingCompletedAt) return APP_HOME_PATH;
 
   const profile = await prisma.profile.findUnique({
     where: { userId: dbUser.id },
@@ -34,7 +35,7 @@ export async function resolveAuthRedirectForUser(
   });
   if (profile) {
     await markOnboardingComplete(dbUser.id);
-    return "/dashboard";
+    return APP_HOME_PATH;
   }
 
   return "/onboarding";
