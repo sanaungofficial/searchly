@@ -13,7 +13,7 @@ import type { ComposeState, InboxStatus } from "./inbox/inbox-types";
 import { NETWORKING_INBOX_PATH, type NetworkingSection } from "@/lib/workspace-urls";
 
 type Props = {
-  section: Exclude<NetworkingSection, "in-network">;
+  section: NetworkingSection;
 };
 
 export function JobSearchEmailDashboard({ section }: Props) {
@@ -234,9 +234,12 @@ export function JobSearchEmailDashboard({ section }: Props) {
           mailConnected={connected}
           onClose={() => setSelectedContactId(null)}
           onOpenMessage={(messageId) => {
-            router.push(withClientScope(`${NETWORKING_INBOX_PATH}&messageId=${encodeURIComponent(messageId)}`));
+            router.push(withClientScope(`${NETWORKING_INBOX_PATH}${NETWORKING_INBOX_PATH.includes("?") ? "&" : "?"}messageId=${encodeURIComponent(messageId)}`));
           }}
-          onComposeTo={(email) => setCompose({ open: true, to: email, subject: "", body: "" })}
+          onComposeTo={(email) => {
+            setCompose({ open: true, to: email, subject: "", body: "" });
+            router.push(withClientScope(NETWORKING_INBOX_PATH));
+          }}
           onNotice={setNotice}
         />
       )}
