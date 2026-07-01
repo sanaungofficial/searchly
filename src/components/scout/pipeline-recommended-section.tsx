@@ -8,7 +8,7 @@ import {
   type VectorMatchedJob,
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
-import { cachedJobToMeta, jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
+import { cachedJobToMeta } from "@/lib/cached-job";
 import {
   vectorJobToRoleListing,
   type RoleListing,
@@ -42,6 +42,8 @@ import {
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import { compareRoleSearchRelevance } from "@/lib/job-match";
+import { RECOMMENDED_DISPLAY_COUNT } from "@/lib/recommended-jobs-config";
+import { pipelineJobDedupeKeys, vectorMatchedJobDedupeKey } from "@/lib/pipeline-job-dedupe";
 import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
@@ -85,6 +87,7 @@ type ViewMode = "recommended" | "search";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
+  reserveJobs?: VectorMatchedJob[];
   totalCount?: number;
   totalPages?: number;
   page?: number;
@@ -320,14 +323,21 @@ export function buildRecommendedProspectCard(
   };
 }
 
-function recommendedDedupeKey(job: VectorMatchedJob): string {
-  return jobListingDedupeKey({
-    companyName: job.companyName,
-    title: job.title,
-    url: job.url,
+function syncRecommendedCache(
+  jobs: VectorMatchedJob[],
+  reserveJobs: VectorMatchedJob[],
+  filtersKey: string,
+  matchMode?: string,
+) {
+  writeRecommendedCache({
+    jobs,
+    reserveJobs,
+    filtersKey,
+    fetchedAt: Date.now(),
+    matchMode,
+    error: null,
   });
 }
-
 
 function RecommendedResultsList({
   listings,
@@ -402,6 +412,7 @@ export function PipelineRecommendedSection({
   const [profileCountry, setProfileCountry] = useState("");
 
   const [jobs, setJobs] = useState<VectorMatchedJob[]>(() => readDefaultFeedCache()?.jobs ?? []);
+  const [reserveJobs, setReserveJobs] = useState<VectorMatchedJob[]>(() => readDefaultFeedCache()?.reserveJobs ?? []);
   const [loading, setLoading] = useState(() => !readDefaultFeedCache());
   const [revalidating, setRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(() => readDefaultFeedCache()?.error ?? null);
@@ -443,6 +454,7 @@ export function PipelineRecommendedSection({
     const cached = readRecommendedCache(filtersKey);
     if (!cached) return false;
     setJobs(cached.jobs);
+    setReserveJobs(cached.reserveJobs ?? []);
     setError(cached.error ?? null);
     setHasLoadedOnce(true);
     setLoading(false);
@@ -499,12 +511,14 @@ export function PipelineRecommendedSection({
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
+            reserveJobs: [],
             filtersKey: cacheKey,
             fetchedAt: Date.now(),
             error: msg,
           });
         } else {
           const nextJobs = data.jobs ?? [];
+          const nextReserve = data.reserveJobs ?? [];
           const snapshotPending =
             nextJobs.length === 0 &&
             data.needsRefresh === true &&
@@ -518,6 +532,7 @@ export function PipelineRecommendedSection({
             });
           } else {
             setJobs(nextJobs);
+            setReserveJobs(nextReserve);
             setError(null);
             setNotice(data.notice?.trim() || null);
             const applied = data.effectiveFilters ?? data.filtersApplied;
@@ -526,13 +541,7 @@ export function PipelineRecommendedSection({
               fromSnapshot: data.fromSnapshot === true,
               generatedAt: data.generatedAt ?? new Date().toISOString(),
             });
-            writeRecommendedCache({
-              jobs: nextJobs,
-              filtersKey: cacheKey,
-              fetchedAt: Date.now(),
-              matchMode: data.matchMode,
-              error: null,
-            });
+            syncRecommendedCache(nextJobs, nextReserve, cacheKey, data.matchMode);
             if (nextJobs.length > 0) {
               markDefaultRecommendedFeedLoaded();
             }
@@ -594,6 +603,7 @@ export function PipelineRecommendedSection({
         } else {
           const nextJobs = data.jobs ?? [];
           setJobs(nextJobs);
+          setReserveJobs([]);
           setError(null);
           setNotice(data.notice?.trim() || null);
           const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
@@ -793,6 +803,7 @@ export function PipelineRecommendedSection({
     setPrefConfirmOpen(false);
     clearRecommendedCache();
     setJobs([]);
+    setReserveJobs([]);
     setHasLoadedOnce(false);
     setLoading(true);
     setError(null);
@@ -930,21 +941,24 @@ export function PipelineRecommendedSection({
     }
   };
 
-  const savedKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const card of pipelineCards) {
-      const ext = card as KanbanCard & { _url?: string };
-      const key = normalizeJobUrl(ext._url) ?? `${card.company.trim()}:${card.role.trim()}`.toLowerCase();
-      keys.add(key);
-    }
-    return keys;
-  }, [pipelineCards]);
+  const savedKeys = useMemo(() => pipelineJobDedupeKeys(pipelineCards), [pipelineCards]);
 
+  const recommendationPool = useMemo(() => {
+    const byKey = new Map<string, VectorMatchedJob>();
+    for (const job of [...jobs, ...reserveJobs]) {
+      const key = vectorMatchedJobDedupeKey(job);
+      const existing = byKey.get(key);
+      if (!existing || (job.matchScore ?? 0) > (existing.matchScore ?? 0)) {
+        byKey.set(key, job);
+      }
+    }
+    return [...byKey.values()];
+  }, [jobs, reserveJobs]);
 
   const recommendedListings = useMemo(() => {
     const byKey = new Map<string, UnifiedListing>();
-    for (const job of jobs) {
-      if (savedKeys.has(recommendedDedupeKey(job))) continue;
+    for (const job of recommendationPool) {
+      if (savedKeys.has(vectorMatchedJobDedupeKey(job))) continue;
       const listing: UnifiedListing = vectorJobToRoleListing(job);
       const existing = byKey.get(listing.dedupeKey);
       if (!existing) {
@@ -956,7 +970,7 @@ export function PipelineRecommendedSection({
       if (scoreA > scoreB) byKey.set(listing.dedupeKey, listing);
     }
     return [...byKey.values()];
-  }, [jobs, savedKeys]);
+  }, [recommendationPool, savedKeys]);
 
   const appliedFilterCount = useMemo(
     () =>
@@ -970,16 +984,17 @@ export function PipelineRecommendedSection({
     let list = [...recommendedListings];
     if (hasActiveSearch && appliedForm.semanticQuery.trim()) {
       const query = appliedForm.semanticQuery.trim();
-      return list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
-    }
-    if (sortOption === "newest") {
-      return list.sort((a, b) => {
+      list = list.sort((a, b) => compareRoleSearchRelevance(a.title, b.title, query));
+    } else if (sortOption === "newest") {
+      list = list.sort((a, b) => {
         const da = a.cached?.datePosted ? new Date(a.cached.datePosted).getTime() : 0;
         const db = b.cached?.datePosted ? new Date(b.cached.datePosted).getTime() : 0;
         return db - da;
       });
+    } else {
+      list = list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
     }
-    return list.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+    return list.slice(0, RECOMMENDED_DISPLAY_COUNT);
   }, [recommendedListings, hasActiveSearch, appliedForm.semanticQuery, sortOption]);
 
   const emptyMessage = error

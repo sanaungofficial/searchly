@@ -27,6 +27,7 @@ export type GenerateRecommendedInput = {
 };
 
 export type GenerateRecommendedResult = RecommendedJobSnapshotPayload & {
+  reserveJobs?: import("@/lib/vector-matched-job").VectorMatchedJob[];
   artifactReEmbedded?: boolean;
   resumeVSearch?: boolean;
   effectiveFilters?: VectorSearchFilters;
@@ -86,6 +87,7 @@ export async function generateRecommendedJobsForUser(
 
   return {
     jobs: result.jobs,
+    reserveJobs: result.reserveJobs,
     matchMode: result.matchMode,
     companyCount: result.companyCount,
     trackedWithMatches: result.trackedWithMatches,

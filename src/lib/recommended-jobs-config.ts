@@ -1,6 +1,9 @@
 /** Jobs shown in Open Roles recommended feed. */
 export const RECOMMENDED_DISPLAY_COUNT = 15;
 
+/** Extra ranked candidates kept client-side to backfill when a role is saved (no extra Hirebase call). */
+export const RECOMMENDED_RESERVE_COUNT = 10;
+
 /** Prefer this score when selecting display jobs; backfill below if needed. */
 export const RECOMMENDED_PREFERRED_MIN_SCORE = 70;
 
