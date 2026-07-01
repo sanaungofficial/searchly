@@ -35,10 +35,10 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const onAppHost = isAppHost(host);
 
-  // Passcode gate — production only, login/signup pages (any host). Marketing / and app routes bypass.
+  // Passcode gate — production only, login page (any host). Marketing / and app routes bypass.
   if (process.env.VERCEL_ENV === "production") {
     const gatePasscode =
-      pathname.startsWith("/login") || pathname.startsWith("/signup");
+      pathname.startsWith("/login");
 
     if (gatePasscode) {
       const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
