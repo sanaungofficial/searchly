@@ -12,15 +12,13 @@ import {
   type CachedJob,
 } from "@/lib/cached-job";
 import {
-  STAGE_DESCRIPTIONS,
-  STAGE_LABELS,
   type KanbanCard,
   type KanbanStage,
 } from "./workspace-data";
 import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { DataSourcesPopover } from "./data-sources-popover";
 import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
-import { PipelineStageJobsList } from "./pipeline-stage-jobs-list";
+import { PipelineOpportunitiesTable } from "./pipeline-opportunities-table";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
 import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
@@ -57,6 +55,7 @@ interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
   const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId, isImpersonating, withClientScope, withClientReviewPath } = useWorkspace();
+  const scopePath = withClientScope;
   const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
@@ -507,34 +506,21 @@ export function WorkspaceOpportunities() {
     boxShadow: "var(--scout-shadow-bruddle)",
   };
 
-  const [pipelineView, setPipelineView] = useState<PipelineView>("recommended");
-  const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer"];
-  const closedCount = kanbanCards.filter((c) => c.stage === "closed").length;
-  const activeCount = kanbanCards.filter((c) => c.stage !== "closed").length;
-  const stageCounts = stageOrder.map((s) => ({
-    stage: s,
-    count: kanbanCards.filter((c) => c.stage === s).length,
-  }));
-  const pipelineTabs: { id: PipelineView; label: string }[] = [
-    { id: "recommended", label: "Find roles" },
-    ...stageCounts.map(({ stage, count }) => ({
-      id: stage,
-      label: count > 0 ? `${STAGE_LABELS[stage]} · ${count}` : STAGE_LABELS[stage],
-    })),
-    ...(closedCount > 0
-      ? [{ id: "closed" as const, label: `${STAGE_LABELS.closed} · ${closedCount}` }]
-      : []),
+  const [mainView, setMainView] = useState<OpportunitiesMainView>("find");
+  const pipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
+  const mainTabs: { id: OpportunitiesMainView; label: string }[] = [
+    { id: "find", label: "Find opportunities" },
+    {
+      id: "my",
+      label: pipelineCount > 0 ? `My opportunities · ${pipelineCount}` : "My opportunities",
+    },
   ];
   const headerTitle =
-    pipelineView === "recommended"
-      ? "Find roles that fit"
-      : (STAGE_LABELS[pipelineView as KanbanStage] ?? "Pipeline");
+    mainView === "find" ? "Find opportunities" : "My opportunities";
   const headerSubtitle =
-    pipelineView === "recommended"
+    mainView === "find"
       ? "Open roles scored against your profile — save any you want to track."
-      : pipelineView === "closed"
-        ? `${STAGE_DESCRIPTIONS.closed} · ${closedCount} role${closedCount === 1 ? "" : "s"}`
-        : `${STAGE_DESCRIPTIONS[pipelineView as KanbanStage]} · ${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline`;
+      : `${pipelineCount} active role${pipelineCount === 1 ? "" : "s"} in your pipeline — filter by stage, tag, or search.`;
 
   return (
     <div
@@ -620,16 +606,19 @@ export function WorkspaceOpportunities() {
           />
 
           <WorkspaceSegmentTabs
-            tabs={pipelineTabs}
-            active={pipelineView}
-            onChange={setPipelineView}
+            tabs={mainTabs}
+            active={mainView}
+            onChange={setMainView}
             isMobile={isMobile}
             variant="bruddle"
           />
 
           {tab === "pipeline" && (
-            <ScoutBox padding={isMobile ? "16px 16px 24px" : "20px clamp(16px, 4vw, 28px) 28px"}>
-              {showAddPanel && (
+            <ScoutBox
+              padding={mainView === "my" ? 0 : isMobile ? "16px 16px 24px" : "20px clamp(16px, 4vw, 28px) 28px"}
+              style={mainView === "my" ? { overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 480 } : undefined}
+            >
+              {mainView === "find" && showAddPanel && (
                 <MyJobsUrlPastePanel
                   url={addJobUrl}
                   setUrl={setAddJobUrl}
@@ -642,7 +631,7 @@ export function WorkspaceOpportunities() {
                 />
               )}
 
-              {showCsvPanel && (
+              {mainView === "find" && showCsvPanel && (
                 <CsvUploadPanel
                   loading={csvLoading}
                   progress={csvProgress}
@@ -652,16 +641,48 @@ export function WorkspaceOpportunities() {
                 />
               )}
 
-              <PipelineTab
-                pipelineView={pipelineView}
-                cards={kanbanCards}
-                onOpenDrawer={openDrawer}
-                onChangeStage={changeStage}
-                onOpenRecommended={openRecommendedJob}
-                onSaveRecommended={saveRecommendedJob}
-                onBackToRecommendations={() => setPipelineView("recommended")}
-                actingUserId={actingUserId}
-              />
+              {mainView === "find" ? (
+                <PipelineRecommendedSection
+                  pipelineCards={kanbanCards}
+                  onOpenJob={openRecommendedJob}
+                  onSaveJob={saveRecommendedJob}
+                  actingUserId={actingUserId}
+                />
+              ) : (
+                <>
+                  {showAddPanel && (
+                    <div style={{ padding: isMobile ? "16px 16px 0" : "20px clamp(16px, 4vw, 28px) 0" }}>
+                      <MyJobsUrlPastePanel
+                        url={addJobUrl}
+                        setUrl={setAddJobUrl}
+                        onSubmit={submitAddJob}
+                        loading={addJobLoading}
+                        analysis={jobAnalysis}
+                        error={addJobError}
+                        onAddToKanban={addToKanban}
+                        onDismiss={() => { setJobAnalysis(null); setShowAddPanel(false); setAddJobUrl(""); setAddJobError(null); }}
+                      />
+                    </div>
+                  )}
+                  {showCsvPanel && (
+                    <div style={{ padding: isMobile ? "16px 16px 0" : "20px clamp(16px, 4vw, 28px) 0" }}>
+                      <CsvUploadPanel
+                        loading={csvLoading}
+                        progress={csvProgress}
+                        onFileSelected={onCsvFileSelected}
+                        onClose={() => setShowCsvPanel(false)}
+                        inputRef={csvInputRef}
+                      />
+                    </div>
+                  )}
+                  <PipelineOpportunitiesTable
+                    cards={kanbanCards}
+                    scopePath={scopePath}
+                    onOpenDrawer={openDrawer}
+                    onChangeStage={changeStage}
+                  />
+                </>
+              )}
             </ScoutBox>
           )}
         </WorkspaceContent>
@@ -998,55 +1019,6 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
   );
 }
 
-/* ──────────────────────────────────────────────────────────────
-   Pipeline tab — stage tabs + recommended / saved lists
-   ────────────────────────────────────────────────────────────── */
-
-type PipelineView = "recommended" | KanbanStage;
-
-interface PipelineTabProps {
-  pipelineView: PipelineView;
-  cards: KanbanCard[];
-  onOpenDrawer: (id: number) => void;
-  onChangeStage: (id: number, stage: KanbanStage) => void;
-  onOpenRecommended: (job: VectorMatchedJob) => void;
-  onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
-  onBackToRecommendations: () => void;
-  actingUserId?: string | null;
-}
-
-function PipelineTab({
-  pipelineView,
-  cards,
-  onOpenDrawer,
-  onChangeStage,
-  onOpenRecommended,
-  onSaveRecommended,
-  onBackToRecommendations,
-  actingUserId,
-}: PipelineTabProps) {
-  if (pipelineView === "recommended") {
-    return (
-      <PipelineRecommendedSection
-        pipelineCards={cards}
-        onOpenJob={onOpenRecommended}
-        onSaveJob={onSaveRecommended}
-        actingUserId={actingUserId}
-      />
-    );
-  }
-
-  return (
-    <PipelineStageJobsList
-      stage={pipelineView}
-      cards={cards}
-      onOpenDrawer={onOpenDrawer}
-      onChangeStage={onChangeStage}
-      onBackToRecommendations={onBackToRecommendations}
-    />
-  );
-}
-
-
+type OpportunitiesMainView = "find" | "my";
 
 
