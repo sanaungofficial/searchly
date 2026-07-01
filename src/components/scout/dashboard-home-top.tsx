@@ -356,7 +356,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const actionItemsMinHeight = isMobile ? undefined : 440;
   const pillBtnStyle: React.CSSProperties = {
-    borderRadius: "var(--scout-radius)",
     padding: "8px 18px",
     minHeight: 36,
     fontSize: T.btnSm,

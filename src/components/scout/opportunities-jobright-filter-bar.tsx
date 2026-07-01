@@ -19,7 +19,7 @@ import { isCanadianLocationCountry } from "@/lib/recommended-filter-utils";
 import { JobFunctionDropdown, jobFunctionPillItems } from "./job-function-dropdown";
 import type { RecommendedFilterForm } from "./pipeline-recommended-filters";
 import { JR } from "@/lib/opportunities-jobright-tokens";
-import { BRUDDLE_BTN_CLASS, BRUDDLE_HOVER_LIFT_CLASS } from "./scout-box";
+import { BRUDDLE_BTN_CLASS, BRUDDLE_HOVER_LIFT_CLASS, scoutPrimaryCtaStyle } from "./scout-box";
 
 const ACTIVE_PILL: React.CSSProperties = {
   display: "inline-flex",
@@ -598,12 +598,11 @@ export function OpportunitiesJobrightFilterBar({
 
         <button
           type="button"
-          className={BRUDDLE_HOVER_LIFT_CLASS}
+          className={BRUDDLE_BTN_CLASS}
           onClick={onOpenAllFilters}
           style={{
             ...INACTIVE_PILL,
-            background: JR.mint,
-            border: `1px solid ${JR.mint}`,
+            ...scoutPrimaryCtaStyle,
             fontWeight: 700,
           }}
         >
@@ -639,14 +638,12 @@ export function OpportunitiesJobrightFilterBar({
           {onSearchSubmit && (
             <button
               type="button"
+              className={BRUDDLE_BTN_CLASS}
               onClick={onSearchSubmit}
               disabled={searching || searchDisabled}
               style={{
                 padding: "7px 14px",
-                background: JR.mint,
-                color: JR.text,
-                border: "none",
-                borderRadius: JR.ctaRadius,
+                ...scoutPrimaryCtaStyle,
                 fontFamily: fontSans,
                 fontSize: T.label,
                 fontWeight: 700,
