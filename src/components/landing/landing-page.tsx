@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 import {
   LANDING_ANALYTICS,
@@ -23,6 +24,8 @@ import {
 } from "@/lib/landing-content";
 import { MarketingTopNav } from "@/components/landing/marketing-top-nav";
 import { useAppEntryHref } from "@/hooks/use-app-entry-href";
+import { hasValidClientSession } from "@/lib/client-auth-session";
+import { APP_HOME_PATH } from "@/lib/site-host";
 import "./landing.css";
 
 function KimchiWordmark({ compact = false }: { compact?: boolean }) {
@@ -186,11 +189,19 @@ function SectionIntro({
 }
 
 export function LandingPage() {
+  const router = useRouter();
   const loginHref = useAppEntryHref("/login");
   const signupHref = useAppEntryHref("/signup");
   const [faqOpen, setFaqOpen] = useState(0);
   const [testimonial, setTestimonial] = useState(0);
   const t = LANDING_TESTIMONIALS.items[testimonial]!;
+
+  // Domain-migration fallback: only enter the app when the server accepts the session.
+  useEffect(() => {
+    hasValidClientSession().then((valid) => {
+      if (valid) router.replace(APP_HOME_PATH);
+    });
+  }, [router]);
 
   const nextTestimonial = useCallback(() => {
     setTestimonial((n) => (n + 1) % LANDING_TESTIMONIALS.items.length);
