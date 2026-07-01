@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobMeta } from "@/lib/job-meta";
+import { INTERVIEW_ROUNDS } from "@/lib/interview-round";
 import { companyLogoFromJobData } from "@/lib/cached-job";
 import type { PipelineTagSummary } from "@/lib/pipeline-tags";
 import { normalizePipelineTags } from "@/lib/pipeline-tags";
@@ -233,6 +234,40 @@ export function PipelineOpportunitiesTable({
         return <CellText value={row.company} />;
       case "stage":
         return <PipelineStageBadge stage={row.stage} />;
+      case "interviewRound":
+        if (row.stage !== "interview") return <CellText value={null} />;
+        return (
+          <select
+            value={ext._meta?.interviewRound ?? ""}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation();
+              const extRow = row as KanbanCard & { _dbId?: string; _meta?: JobMeta };
+              if (!extRow._dbId) return;
+              const interviewRound = e.target.value || null;
+              void fetch(scopePath(`/api/jobs/${extRow._dbId}`), {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jobMeta: { interviewRound } }),
+              });
+            }}
+            style={{
+              width: "100%",
+              padding: "6px 8px",
+              border: line,
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              background: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            <option value="">Round…</option>
+            {INTERVIEW_ROUNDS.map((r) => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
+          </select>
+        );
       case "tags":
         if (!tags.length) return <CellText value={null} />;
         return (

@@ -7,8 +7,10 @@ import {
   parsePipelineTagsFromNotes,
 } from "@/lib/pipeline-tags";
 import { parseJobMetaFromNotes } from "@/lib/client-import/enrich-jobs";
+import { mergeJobMetaIntoNotes, parseAppliedAtInput } from "@/lib/job-meta-merge";
+import type { JobMeta } from "@/lib/job-meta";
 
-// PATCH /api/jobs/[id] — update stage, notes, etc.
+// PATCH /api/jobs/[id] — update stage, notes, appliedAt, pipeline meta, etc.
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -29,9 +31,22 @@ export async function PATCH(
       existing.notes,
       normalizePipelineTags(body.pipelineTags),
     );
+  } else if (body.jobMeta !== undefined && body.jobMeta !== null && typeof body.jobMeta === "object") {
+    notesUpdate = mergeJobMetaIntoNotes(existing.notes, body.jobMeta as Partial<JobMeta>);
   } else if (body.notes !== undefined) {
     notesUpdate = body.notes;
   }
+
+  const parsedAppliedAt = parseAppliedAtInput(body.appliedAt);
+  if (body.appliedAt !== undefined && parsedAppliedAt === undefined) {
+    return NextResponse.json({ error: "Invalid appliedAt" }, { status: 400 });
+  }
+
+  const movingToApplied = body.stage === "APPLIED";
+  const defaultAppliedAt =
+    movingToApplied && parsedAppliedAt === undefined && !existing.appliedAt
+      ? new Date()
+      : undefined;
 
   const job = await prisma.job.update({
     where: { id },
@@ -44,7 +59,8 @@ export async function PATCH(
       ...(body.coverLetter !== undefined && { coverLetter: body.coverLetter }),
       ...(body.fitAnalysis !== undefined && { fitAnalysis: body.fitAnalysis }),
       ...(body.resumeUrl !== undefined && { resumeUrl: body.resumeUrl }),
-      ...(body.stage === "APPLIED" && { appliedAt: new Date() }),
+      ...(parsedAppliedAt !== undefined && { appliedAt: parsedAppliedAt }),
+      ...(defaultAppliedAt !== undefined && { appliedAt: defaultAppliedAt }),
     },
   });
 

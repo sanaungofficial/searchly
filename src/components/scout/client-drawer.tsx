@@ -7,7 +7,10 @@ import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-as
 import { ClientAuthAccountSection } from "@/components/admin/client-auth-account-section";
 import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
 import { CoachClientSessionNotesPanel } from "@/components/scout/coach-client-session-notes-panel";
+import { SearchMetricsSections } from "@/components/scout/search-metrics-sections";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { SearchMetrics } from "@/lib/search-metrics";
+import { withClientUserId } from "@/lib/workspace-urls";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
@@ -63,6 +66,20 @@ export function ClientDetailBody({
   const activeJobs = client.jobs.filter((j) => activeStage(j.stage));
   const appliedJobs = client.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
   const displayName = client.name ?? client.email.split("@")[0];
+  const isMobile = useIsMobile();
+  const [searchMetrics, setSearchMetrics] = useState<SearchMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+
+  useEffect(() => {
+    setMetricsLoading(true);
+    fetch(withClientUserId("/api/user/search-metrics", client.id))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.jobs && data?.relationships) setSearchMetrics(data as SearchMetrics);
+      })
+      .catch(() => {})
+      .finally(() => setMetricsLoading(false));
+  }, [client.id]);
 
   return (
     <>
@@ -142,21 +159,29 @@ export function ClientDetailBody({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
-        {[
-          { label: "Total jobs", value: client._count.jobs },
-          { label: "Active pipeline", value: activeJobs.length },
-          { label: "Applied / in process", value: appliedJobs.length },
-          { label: "Tailored resumes", value: client._count.tailoredResumes },
-        ].map(({ label, value }) => (
-          <ScoutBox key={label} padding="14px 18px">
-            <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 6, marginTop: 0 }}>
-              {label}
-            </p>
-            <p style={{ ...displayTitleStyle(24), margin: 0 }}>{value}</p>
-          </ScoutBox>
-        ))}
-      </div>
+      <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 14, marginTop: 0 }}>
+          Search metrics
+        </p>
+        <SearchMetricsSections
+          metrics={searchMetrics}
+          loading={metricsLoading}
+          isMobile={isMobile}
+          opportunitiesPath={withClientUserId("/opportunities", client.id)}
+          networkingPath={withClientUserId("/networking", client.id)}
+          compact
+        />
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16, paddingTop: 16, borderTop: border.line }}>
+          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
+            {client._count.jobs} total jobs · {client._count.tailoredResumes} tailored resumes
+          </span>
+          {!searchMetrics && !metricsLoading && (
+            <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
+              {activeJobs.length} active · {appliedJobs.length} applied / in process
+            </span>
+          )}
+        </div>
+      </ScoutBox>
 
       {client.profile && (client.profile.targetRoles.length > 0 || client.profile.targetSalary) && (
         <ScoutBox padding="16px 20px" style={{ marginBottom: 20 }}>
