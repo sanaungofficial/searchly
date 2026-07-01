@@ -8,7 +8,7 @@ import {
   setClientAuthPassword,
 } from "@/lib/admin-client-auth";
 import { prisma } from "@/lib/prisma";
-import { UserRole } from "@prisma/client";
+import { adminRosterClientWhere } from "@/lib/admin-client-roles";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   const admin = await requireAdmin();
@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ use
 
   const { userId } = await params;
   const user = await prisma.user.findFirst({
-    where: { id: userId, role: UserRole.USER },
+    where: adminRosterClientWhere(userId),
     select: { email: true },
   });
   if (!user) return NextResponse.json({ error: "Client not found" }, { status: 404 });
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
 
   const { userId } = await params;
   const user = await prisma.user.findFirst({
-    where: { id: userId, role: UserRole.USER },
+    where: adminRosterClientWhere(userId),
   });
   if (!user) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 

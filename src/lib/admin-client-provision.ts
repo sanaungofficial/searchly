@@ -13,7 +13,7 @@ import {
   inviteClientAuthUser,
   setClientAuthPassword,
 } from "@/lib/admin-client-auth";
-import { ADMIN_ROSTER_CLIENT_ROLES } from "@/lib/admin-client-roles";
+import { ADMIN_ROSTER_CLIENT_ROLES, adminRosterClientWhere } from "@/lib/admin-client-roles";
 import { Prisma, UserRole, type User } from "@prisma/client";
 
 export type ProvisionClientInput = {
@@ -218,7 +218,7 @@ export async function provisionClient(input: ProvisionClientInput): Promise<Prov
 
 export async function fetchAdminClientById(userId: string) {
   return prisma.user.findFirst({
-    where: { id: userId, role: { in: [...ADMIN_ROSTER_CLIENT_ROLES] } },
+    where: adminRosterClientWhere(userId),
     include: {
       profile: {
         select: {

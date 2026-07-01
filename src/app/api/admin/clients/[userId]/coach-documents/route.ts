@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AssetType, UserRole } from "@prisma/client";
+import { AssetType } from "@prisma/client";
 import { createClient } from "@/utils/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/coach-shared-documents";
 import { assetTypeLabel } from "@/lib/asset-types";
 import { prisma } from "@/lib/prisma";
+import { adminRosterClientWhere } from "@/lib/admin-client-roles";
 
 const BUCKET = "resumes";
 
@@ -25,7 +26,7 @@ export async function GET(
   const coachProfileId = req.nextUrl.searchParams.get("coachProfileId")?.trim() || undefined;
 
   const client = await prisma.user.findFirst({
-    where: { id: clientUserId, role: UserRole.USER },
+    where: adminRosterClientWhere(clientUserId),
     select: { id: true },
   });
   if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
@@ -48,7 +49,7 @@ export async function POST(
   const { userId: clientUserId } = await params;
 
   const client = await prisma.user.findFirst({
-    where: { id: clientUserId, role: UserRole.USER },
+    where: adminRosterClientWhere(clientUserId),
     select: { id: true },
   });
   if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
