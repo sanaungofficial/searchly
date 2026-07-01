@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { JobMeta } from "@/lib/job-meta";
-import { interviewRoundLabel } from "@/lib/interview-round";
 import { companyLogoFromJobData } from "@/lib/cached-job";
 import type { PipelineTagSummary } from "@/lib/pipeline-tags";
 import { normalizePipelineTags } from "@/lib/pipeline-tags";
@@ -11,14 +9,13 @@ import {
   PIPELINE_COLUMNS,
   PIPELINE_SORT_OPTIONS,
   STAGE_SORT_ORDER,
-  formatSavedDays,
+  formatLastModified,
   readStoredPipelineColumns,
   storePipelineColumns,
   type PipelineColumnId,
   type PipelineSortField,
 } from "./pipeline-opportunities-columns";
 import {
-  PipelineStageBadge,
   PipelineStageFilterChip,
   PipelineStagePicker,
 } from "./pipeline-stage-badge";
@@ -26,6 +23,18 @@ import { PipelineTagChip } from "./pipeline-job-tags";
 import { CompanyLogo } from "./company-logo";
 import { KANBAN_STAGES, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import type { JobMeta } from "@/lib/job-meta";
+
+type PipelineCard = KanbanCard & { _updatedAt?: string; _url?: string; _meta?: JobMeta; _pipelineTags?: string[] };
+
+function cardUpdatedAtMs(row: KanbanCard): number {
+  const iso = (row as PipelineCard)._updatedAt;
+  if (iso) {
+    const ms = new Date(iso).getTime();
+    if (!Number.isNaN(ms)) return ms;
+  }
+  return Date.now() - (row.days ?? 0) * 86400000;
+}
 
 type ScopePath = (path: string) => string;
 
@@ -46,8 +55,8 @@ export function PipelineOpportunitiesTable({
   onChangeStage,
 }: Props) {
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<PipelineSortField>("saved");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sort, setSort] = useState<PipelineSortField>("lastModified");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [stageFilter, setStageFilter] = useState<Set<KanbanStage>>(() => new Set(ACTIVE_STAGES));
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -121,9 +130,9 @@ export function PipelineOpportunitiesTable({
           return dir * (STAGE_SORT_ORDER[a.stage] - STAGE_SORT_ORDER[b.stage]);
         case "fit":
           return dir * ((a.fit ?? 0) - (b.fit ?? 0));
-        case "saved":
+        case "lastModified":
         default:
-          return dir * ((a.days ?? 999) - (b.days ?? 999));
+          return dir * (cardUpdatedAtMs(a) - cardUpdatedAtMs(b));
       }
     });
   }, [filtered, sort, sortDir]);
@@ -206,7 +215,7 @@ export function PipelineOpportunitiesTable({
   }, [library, cards]);
 
   function renderCell(col: PipelineColumnId, row: KanbanCard) {
-    const ext = row as KanbanCard & { _url?: string; _meta?: JobMeta; _pipelineTags?: string[] };
+    const ext = row as PipelineCard;
     const tags = normalizePipelineTags(ext._pipelineTags ?? ext._meta?.pipelineTags ?? []);
     const lookup = new Map(library.map((r) => [r.label.toLowerCase(), r]));
 
@@ -232,18 +241,6 @@ export function PipelineOpportunitiesTable({
         );
       case "company":
         return <CellText value={row.company} />;
-      case "stage":
-        return <PipelineStageBadge stage={row.stage} />;
-      case "interviewRound":
-        return (
-          <CellText
-            value={
-              row.stage === "interview" || row.stage === "offer"
-                ? interviewRoundLabel(ext._meta?.interviewRound) ?? null
-                : null
-            }
-          />
-        );
       case "tags":
         if (!tags.length) return <CellText value={null} />;
         return (
@@ -267,8 +264,8 @@ export function PipelineOpportunitiesTable({
         );
       case "location":
         return <CellText value={ext._meta?.location ?? null} />;
-      case "saved":
-        return <CellText value={formatSavedDays(row.days)} />;
+      case "lastModified":
+        return <CellText value={formatLastModified(ext._updatedAt)} />;
       case "fit":
         return row.fit ? <CellText value={`${row.fit}%`} /> : <CellText value={null} />;
       default:
@@ -397,7 +394,7 @@ export function PipelineOpportunitiesTable({
                     if (sort === opt.id) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
                     else {
                       setSort(opt.id);
-                      setSortDir(opt.id === "saved" ? "asc" : "desc");
+                      setSortDir(opt.id === "lastModified" || opt.id === "fit" ? "desc" : "asc");
                     }
                     setSortOpen(false);
                   }}

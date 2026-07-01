@@ -22,6 +22,7 @@ interface DbJob {
   fitAnalysis: string | null;
   appliedAt: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {
@@ -54,7 +55,8 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     _meta,
     _pipelineTags: parsePipelineTagsFromMeta(_meta),
     _appliedAt: job.appliedAt ?? undefined,
-  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta; _pipelineTags?: string[]; _appliedAt?: string };
+    _updatedAt: job.updatedAt,
+  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta; _pipelineTags?: string[]; _appliedAt?: string; _updatedAt?: string };
 }
 
 export function useJobs(fallback: KanbanCard[], reloadKey?: string, adminReviewClientId?: string | null) {
