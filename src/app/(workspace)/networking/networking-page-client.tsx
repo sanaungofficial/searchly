@@ -2,20 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  JobSearchEmailDashboard,
-  type NetworkingSection,
-} from "@/components/scout/job-search-email-dashboard";
+import { JobSearchEmailDashboard } from "@/components/scout/job-search-email-dashboard";
 import {
   NETWORKING_SIDEBAR_TABS,
   NetworkingLayoutSidebar,
 } from "@/components/scout/networking-layout-sidebar";
+import { NetworkingInNetworkSection } from "@/components/scout/networking-in-network-section";
 import { ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
 import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "@/components/scout/workspace-content";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { color, fontSans, surface, type as T } from "@/lib/typography";
-import { INBOX_PATH } from "@/lib/workspace-urls";
+import {
+  INBOX_PATH,
+  NETWORKING_NETWORK_JOB_PARAM,
+  NETWORKING_SECTION_PARAM,
+  type NetworkingSection,
+  parseNetworkingSection,
+} from "@/lib/workspace-urls";
 
 export function NetworkingPageClient() {
   const isMobile = useIsMobile();
@@ -25,27 +29,23 @@ export function NetworkingPageClient() {
   const [section, setSection] = useState<NetworkingSection>("leads");
 
   useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab === "inbox" || tab === "leads") {
-      setSection(tab);
-      return;
-    }
-    if (searchParams.get("messageId")) {
-      setSection("inbox");
-      return;
-    }
-    if (searchParams.get("contactId")) {
-      setSection("leads");
-    }
+    setSection(parseNetworkingSection(searchParams));
   }, [searchParams]);
 
   function selectSection(next: NetworkingSection) {
     setSection(next);
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", next);
+    params.delete("tab");
+    if (next === "leads") {
+      params.delete(NETWORKING_SECTION_PARAM);
+    } else {
+      params.set(NETWORKING_SECTION_PARAM, next);
+    }
     if (next !== "inbox") params.delete("messageId");
     if (next !== "leads") params.delete("contactId");
-    router.replace(withClientScope(`${INBOX_PATH}?${params.toString()}`), { scroll: false });
+    if (next !== "in-network") params.delete(NETWORKING_NETWORK_JOB_PARAM);
+    const qs = params.toString();
+    router.replace(withClientScope(qs ? `${INBOX_PATH}?${qs}` : INBOX_PATH), { scroll: false });
   }
 
   return (
@@ -70,10 +70,10 @@ export function NetworkingPageClient() {
                 <ScoutLabel>Networking</ScoutLabel>
               </div>
               <ScoutDisplayTitle size={28} style={{ marginBottom: 8 }}>
-                Leads &amp; inbox
+                Leads, inbox &amp; roles
               </ScoutDisplayTitle>
               <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-                Manage leads and email outreach in one place.
+                Manage leads, email outreach, and recruiter-network roles in one place.
               </p>
             </div>
           )}
@@ -126,7 +126,11 @@ export function NetworkingPageClient() {
             )}
 
             <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <JobSearchEmailDashboard section={section} />
+              {section === "in-network" ? (
+                <NetworkingInNetworkSection />
+              ) : (
+                <JobSearchEmailDashboard section={section} />
+              )}
             </div>
           </div>
         </WorkspaceContent>
