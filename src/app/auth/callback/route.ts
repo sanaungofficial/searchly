@@ -5,6 +5,8 @@ import {
   isPkceVerifierError,
   PKCE_FRIENDLY_MESSAGE,
 } from "@/lib/auth-errors";
+import { sanitizeReturnPath } from "@/lib/auth-return-url";
+import { resolveRequestOrigin } from "@/lib/site-host";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -22,11 +24,12 @@ function hasPkceVerifierCookie(
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = resolveRequestOrigin({ headers: request.headers, url: request.url });
   const code = searchParams.get("code");
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type");
-  const next = searchParams.get("next") ?? "/";
+  const next = sanitizeReturnPath(searchParams.get("next")) ?? "/";
   const oauthError =
     searchParams.get("error_description") ?? searchParams.get("error");
 
