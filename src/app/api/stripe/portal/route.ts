@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { resolveAppUrl } from "@/lib/site-host";
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -26,7 +27,7 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account found" }, { status: 400 });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.secondladder.com";
+  const baseUrl = resolveAppUrl();
 
   const session = await stripe.billingPortal.sessions.create({
     customer: dbUser.stripeCustomerId,
