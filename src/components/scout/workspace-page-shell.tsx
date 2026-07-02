@@ -16,7 +16,7 @@ type Props = {
   compact?: boolean;
   children: ReactNode;
   /** Max content width; defaults to WORKSPACE_MAX_WIDTH */
-  maxWidth?: number;
+  maxWidth?: number | string;
   /** Apply Bruddle design tokens (job seeker pages) */
   bruddle?: boolean;
 };

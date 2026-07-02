@@ -958,7 +958,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
             justifyContent: "space-between",
             gap: isMobile ? 12 : 24,
             padding: `0 ${horizontalPad}px`,
-            maxWidth: 1440,
+            width: "90%",
+            maxWidth: "90%",
             margin: "0 auto",
             boxSizing: "border-box",
           }}
@@ -1065,7 +1066,8 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
             alignItems: "center",
             gap: isMobile ? 12 : 32,
             padding: `0 ${horizontalPad}px`,
-            maxWidth: 1440,
+            width: "90%",
+            maxWidth: "90%",
             margin: "0 auto",
             boxSizing: "border-box",
           }}
