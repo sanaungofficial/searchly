@@ -96,6 +96,7 @@ async function handleRecommended(request: Request) {
     profileResumeUrl: profile?.resumeUrl,
     resumeText: profile?.resumeText ?? "",
     parsedData,
+    readbackData: profile?.readbackData,
   });
 
   if (!hasSignals) {
@@ -104,7 +105,7 @@ async function handleRecommended(request: Request) {
         error: "Add target roles in your profile or upload a resume to see recommendations.",
         needsResume: true,
         needsProfile: true,
-        hint: "Set target roles under Profile → About, or upload a resume under Profile → Resumes.",
+        hint: "Set target roles under Profile → Role ranking, or upload a resume under Profile → Resumes.",
       },
       { status: 404 },
     );

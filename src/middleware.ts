@@ -77,19 +77,13 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Redirect unauthenticated users — login with return path when entering the app
+  // Redirect unauthenticated users to the marketing homepage `/` rather than `/login`.
+  // This prevents auto-completed browser requests from displaying the passcode page immediately,
+  // ensuring guests only see the passcode gate when they explicitly click "Log In".
   if (!user) {
     const url = request.nextUrl.clone();
-    const returnPath = sanitizeReturnPath(`${pathname}${request.nextUrl.search}`);
-    const sendToLogin = onAppHost || requiresAuthCoachingPath(pathname);
-    if (sendToLogin) {
-      url.pathname = "/login";
-      url.search = "";
-      if (returnPath) url.searchParams.set("next", returnPath);
-    } else {
-      url.pathname = "/";
-      url.search = "";
-    }
+    url.pathname = "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
