@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { ChevronRight } from "lucide-react";
 import { JR } from "./profile-resume-editor-panels";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
@@ -41,6 +42,7 @@ export function ResumeImprovePreviewDrawer({
   onAccept: () => void;
   accepting?: boolean;
 }) {
+  const { stackTop, backdropStyle } = useWorkspaceDrawerLayout({ inset: 0 });
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -59,8 +61,7 @@ export function ResumeImprovePreviewDrawer({
       <div
         onClick={onClose}
         style={{
-          position: "fixed",
-          inset: 0,
+          ...backdropStyle,
           background: "rgba(17,24,39,0.35)",
           zIndex: 1600,
           opacity: visible ? 1 : 0,
@@ -70,7 +71,7 @@ export function ResumeImprovePreviewDrawer({
       <div
         style={{
           position: "fixed",
-          top: 0,
+          top: stackTop,
           right: 0,
           bottom: 0,
           width: "min(960px, 94vw)",

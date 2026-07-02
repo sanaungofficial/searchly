@@ -12,6 +12,7 @@ import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import type { CompanyRecommendation } from "@/lib/company-recommendations";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useCredits } from "@/hooks/useCredits";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -1208,7 +1209,6 @@ function CompanyDrawer({
   onRefreshed,
   onRemove,
   onOpenJob,
-  isMobile = false,
 }: {
   company: TrackedCompany;
   userHasResume: boolean;
@@ -1217,8 +1217,8 @@ function CompanyDrawer({
   onRefreshed: (updated: TrackedCompany) => void;
   onRemove: (id: string) => void;
   onOpenJob?: (job: CachedJob) => void;
-  isMobile?: boolean;
 }) {
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const { withClientScope } = useWorkspace();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -1252,15 +1252,12 @@ function CompanyDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z, backdropFilter: isMobile ? "none" : "blur(1px)" }} />
+      <div onClick={onClose} style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z, backdropFilter: isMobile ? "none" : "blur(1px)" }} />
 
       {/* Drawer — full screen on mobile, wide panel on desktop (matches JobDrawer) */}
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
+          ...panelStyle,
           left: isMobile ? 0 : undefined,
           width: isMobile ? "100%" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
@@ -2222,7 +2219,6 @@ export function WorkspaceCompanies({
         <CompanyDrawer
           company={selectedCompany}
           userHasResume={userHasResume}
-          isMobile={isMobile}
           onClose={() => selectCompany(null)}
           onPatch={patchField}
           onRefreshed={handleRefreshed}

@@ -5,8 +5,8 @@ import type { ContactListFilter } from "@/lib/inbox-crm/list-contacts";
 import { INBOX_CONTACT_STATUSES } from "@/lib/inbox-crm/contact-status";
 import { INBOX_USER_TAGS } from "@/lib/email-sender-display";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
-import { useWorkspaceStackTop } from "@/hooks/use-workspace-stack-top";
-import { DRAWER_BACKDROP_Z, DRAWER_Z, backdropBelowNav } from "@/lib/z-layers";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 type FilterFieldDef = {
   category: ContactListFilter["category"];
@@ -57,7 +57,7 @@ export function InboxLeadsFilterDrawer({ open, filters, onClose, onApply }: Prop
   const [configValue, setConfigValue] = useState("");
   const [configOp, setConfigOp] = useState<"contains" | "eq" | "gte" | "lte" | "is_true" | "is_false">("contains");
   const [search, setSearch] = useState("");
-  const stackTop = useWorkspaceStackTop();
+  const { backdropStyle, panelStyle } = useWorkspaceDrawerLayout({ inset: 0 });
 
   const filteredFields = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -155,14 +155,11 @@ export function InboxLeadsFilterDrawer({ open, filters, onClose, onApply }: Prop
     <>
       <div
         onClick={onClose}
-        style={{ ...backdropBelowNav(stackTop), background: "rgba(0,0,0,0.2)", zIndex: DRAWER_BACKDROP_Z }}
+        style={{ ...backdropStyle, background: "rgba(0,0,0,0.2)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <aside
         style={{
-          position: "fixed",
-          top: stackTop,
-          right: 0,
-          bottom: 0,
+          ...panelStyle,
           width: "min(400px, 92vw)",
           background: surface.card,
           zIndex: DRAWER_Z,

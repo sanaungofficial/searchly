@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { DRAWER_BACKDROP_Z } from "@/lib/z-layers";
+
+/** Side drawers sit below fixed workspace nav — see useWorkspaceDrawerLayout. */
+const WORKSPACE_DRAWER_VIEWPORT: CSSProperties = {
+  position: "fixed",
+  top: "var(--workspace-stack-top, 64px)",
+  left: 0,
+  right: 0,
+  bottom: 0,
+};
 
 type UserRole = "USER" | "COACH" | "ADMIN";
 
@@ -167,7 +176,7 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
   }, {}) ?? {};
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: DRAWER_BACKDROP_Z, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
+    <div style={{ ...WORKSPACE_DRAWER_VIEWPORT, zIndex: DRAWER_BACKDROP_Z, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.15)" }} />
       <div style={{
         position: "relative", width: 420, height: "100%", background: "#fff",
@@ -332,7 +341,7 @@ function EditPanel({ user, onClose, onSaved }: { user: AdminUser; onClose: () =>
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: DRAWER_BACKDROP_Z, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
+    <div style={{ ...WORKSPACE_DRAWER_VIEWPORT, zIndex: DRAWER_BACKDROP_Z, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.15)" }} />
       <div style={{ position: "relative", width: 340, height: "100%", background: "#fff", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -533,7 +542,7 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: DRAWER_BACKDROP_Z, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
+    <div style={{ ...WORKSPACE_DRAWER_VIEWPORT, zIndex: DRAWER_BACKDROP_Z, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.15)" }} />
       <div style={{ position: "relative", width: 460, height: "100%", background: "#fff", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ece6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

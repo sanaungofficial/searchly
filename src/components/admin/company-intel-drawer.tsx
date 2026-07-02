@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import type { CompanyEnrichmentCache } from "@/lib/hirebase-company-sync";
@@ -85,6 +86,7 @@ export function CompanyIntelDrawer({
   onClose: () => void;
   onUpdated?: () => void;
 }) {
+  const { stackTop } = useWorkspaceDrawerLayout({ inset: 0 });
   const [company, setCompany] = useState<CompanyIntelDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -156,12 +158,14 @@ export function CompanyIntelDrawer({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[220]"
+        className="fixed left-0 right-0 bottom-0 bg-black/20 backdrop-blur-[1px] z-[220]"
+        style={{ top: stackTop }}
         onClick={onClose}
         aria-hidden
       />
       <aside
-        className="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-[var(--scout-surface)] z-[221] shadow-2xl flex flex-col overflow-hidden"
+        className="fixed right-0 bottom-0 w-full max-w-lg bg-[var(--scout-surface)] z-[221] shadow-2xl flex flex-col overflow-hidden"
+        style={{ top: stackTop }}
         role="dialog"
         aria-modal="true"
         aria-label={company?.name ?? "Company intel"}

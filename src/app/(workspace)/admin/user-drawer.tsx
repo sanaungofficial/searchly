@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { clearAdminReviewClient, clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
@@ -85,6 +86,7 @@ export function UserDrawer({
   onClose: () => void;
   onRoleUpdate: (id: string, role: UserRole) => void;
 }) {
+  const { stackTop } = useWorkspaceDrawerLayout({ inset: 0 });
   const [role, setRole] = useState<UserRole>(user.role);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -163,10 +165,13 @@ export function UserDrawer({
   const drawer = (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/25 z-[220]" onClick={onClose} />
+      <div className="fixed left-0 right-0 bottom-0 bg-black/25 z-[220]" style={{ top: stackTop }} onClick={onClose} />
 
-      {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-[var(--scout-page)] border-l border-[rgba(17,17,17,0.14)] z-[221] overflow-y-auto shadow-2xl flex flex-col">
+      {/* Panel — below fixed workspace nav */}
+      <div
+        className="fixed right-0 bottom-0 w-full max-w-lg bg-[var(--scout-page)] border-l border-[rgba(17,17,17,0.14)] z-[221] overflow-y-auto shadow-2xl flex flex-col"
+        style={{ top: stackTop }}
+      >
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-[rgba(17,17,17,0.14)] bg-[var(--scout-surface)]/60 backdrop-blur-sm sticky top-0 z-10">
           <div className="min-w-0 flex-1 pr-4">

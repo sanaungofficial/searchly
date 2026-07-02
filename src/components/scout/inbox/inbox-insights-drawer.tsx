@@ -2,7 +2,7 @@
 
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { INBOX_WISDOM_TIPS } from "@/lib/inbox-wisdom-tips";
 import type { FollowUpSuggestion, InboxInsightsPayload } from "@/lib/inbox-insights-api";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
@@ -42,7 +42,7 @@ export function InboxInsightsDrawer({
   onOpenMail,
   onAction,
 }: Props) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const tips = INBOX_WISDOM_TIPS;
   const tipsTitle = "Job search tips";
   const checkHint =
@@ -55,8 +55,7 @@ export function InboxInsightsDrawer({
       <div
         onClick={onClose}
         style={{
-          position: "fixed",
-          inset: 0,
+          ...backdropStyle,
           background: "rgba(0,0,0,0.18)",
           zIndex: DRAWER_BACKDROP_Z,
           backdropFilter: isMobile ? "none" : "blur(1px)",
@@ -64,11 +63,7 @@ export function InboxInsightsDrawer({
       />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100%" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,
