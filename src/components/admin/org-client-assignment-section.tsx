@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
+import { CreateClientModal } from "@/components/admin/create-client-modal";
 import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
@@ -34,6 +35,8 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [clientEmail, setClientEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [createNotice, setCreateNotice] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -100,10 +103,36 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
 
   return (
     <ScoutBox padding={20}>
-      <ScoutLabel>Assigned clients</ScoutLabel>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-        Link Kimchi client accounts to this organization. Org admins can manage these via the company portal (future).
-      </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <ScoutLabel>Assigned clients</ScoutLabel>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
+            Create new client accounts or link existing ones to this organization.
+          </p>
+        </div>
+        <ScoutPrimaryBtn
+          onClick={() => { setShowCreate(true); setCreateNotice(null); }}
+          style={{ minHeight: 40 }}
+        >
+          + Create client
+        </ScoutPrimaryBtn>
+      </div>
+
+      {createNotice && (
+        <div
+          style={{
+            background: "rgba(26,58,47,0.06)",
+            border: "var(--scout-border)",
+            padding: "12px 16px",
+            marginTop: 16,
+            fontSize: T.bodySm,
+            color: color.stone,
+            lineHeight: 1.5,
+          }}
+        >
+          {createNotice}
+        </div>
+      )}
 
       {error && (
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", margin: "12px 0 0" }}>{error}</p>
@@ -181,6 +210,29 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showCreate && (
+        <CreateClientModal
+          apiUrl={`/api/admin/orgs/${orgId}/clients/provision`}
+          title="Create client for org"
+          description="Creates a new client account and assigns them to this organization. Resume, LinkedIn, and sign-in invite are optional."
+          onClose={() => setShowCreate(false)}
+          onCreated={(data) => {
+            const assignment = data.assignment as OrgClientRow | undefined;
+            const warnings = Array.isArray(data.warnings) ? (data.warnings as string[]) : [];
+            if (assignment) {
+              setClients((prev) => [assignment, ...prev.filter((c) => c.userId !== assignment.userId)]);
+            } else {
+              void load();
+            }
+            setCreateNotice(
+              warnings.length > 0
+                ? warnings.join(" ")
+                : "Client created and assigned to this org.",
+            );
+          }}
+        />
       )}
     </ScoutBox>
   );
