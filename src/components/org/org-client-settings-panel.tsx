@@ -14,7 +14,7 @@ export function OrgClientSettingsPanel({ orgId }: { orgId: string }) {
         </Link>
         <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Employees</h1>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          Manage supported employees and intro matching for your organization.
+          Manage employees assigned to your organization for intro matching.
         </p>
         <OrgSettingsNav orgId={orgId} active="clients" />
       </div>
