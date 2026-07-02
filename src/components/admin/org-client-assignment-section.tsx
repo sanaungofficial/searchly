@@ -31,7 +31,15 @@ const inputStyle: React.CSSProperties = {
   color: color.ink,
 };
 
-export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
+export function OrgClientAssignmentSection({
+  orgId,
+  apiBase = `/api/admin/orgs/${orgId}`,
+  showIntroMatches = true,
+}: {
+  orgId: string;
+  apiBase?: string;
+  showIntroMatches?: boolean;
+}) {
   const [clients, setClients] = useState<OrgClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -46,7 +54,7 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/orgs/${orgId}/clients`);
+      const res = await fetch(`${apiBase}/clients`);
       const data = (await res.json()) as { clients?: OrgClientRow[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Could not load assigned clients.");
       setClients(data.clients ?? []);
@@ -69,7 +77,7 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
     setAdding(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/orgs/${orgId}/clients`, {
+      const res = await fetch(`${apiBase}/clients`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, notes: notes.trim() || undefined }),
@@ -90,7 +98,7 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
     setRemovingUserId(userId);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/orgs/${orgId}/clients`, {
+      const res = await fetch(`${apiBase}/clients`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientId: userId }),
@@ -208,11 +216,13 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
                     >
                       {removingUserId === client.userId ? "Removing…" : "Remove"}
                     </ScoutSecondaryBtn>
-                    <OrgClientIntroMatchesPanel
-                      orgId={orgId}
-                      clientUserId={client.userId}
-                      clientLabel={client.name ?? client.email}
-                    />
+                    {showIntroMatches && (
+                      <OrgClientIntroMatchesPanel
+                        orgId={orgId}
+                        clientUserId={client.userId}
+                        clientLabel={client.name ?? client.email}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -221,11 +231,11 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
         </div>
       )}
 
-      <OrgIntroMatchPriorityPanel orgId={orgId} />
+      {showIntroMatches && <OrgIntroMatchPriorityPanel orgId={orgId} />}
 
       {showCreate && (
         <CreateClientModal
-          apiUrl={`/api/admin/orgs/${orgId}/clients/provision`}
+          apiUrl={`${apiBase}/clients/provision`}
           title="Create client for org"
           description="Creates a new client account and assigns them to this organization. Resume, LinkedIn, and sign-in invite are optional."
           onClose={() => setShowCreate(false)}
