@@ -1,6 +1,7 @@
-import { InboxActivityCategory } from "@prisma/client";
+import { InboxActivityCategory, InboxActivityKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { categorizeInboxMail } from "@/lib/inbox-crm/categorize";
+import { normalizeContactStatus } from "@/lib/inbox-crm/contact-status";
 import { companyFromEmailDomain } from "@/lib/org-contact-graph/normalize-email";
 import { domainFromUrl } from "@/lib/sumble/client";
 import { normalizeTargetCompanyKey } from "@/lib/org-network-match";
@@ -10,20 +11,134 @@ const JUNK_CATEGORIES = new Set<InboxActivityCategory>([
   InboxActivityCategory.AUTOMATED,
 ]);
 
+const BLOCKED_LOCAL_PARTS = new Set([
+  "info",
+  "noreply",
+  "no-reply",
+  "hello",
+  "support",
+  "team",
+  "contact",
+  "admin",
+  "help",
+  "sales",
+  "marketing",
+  "newsletter",
+  "news",
+  "notifications",
+  "notify",
+  "billing",
+  "accounts",
+  "account",
+  "careers",
+  "jobs",
+  "hr",
+  "hiring",
+  "talent",
+  "recruiting",
+  "updates",
+  "mailer",
+  "postmaster",
+  "daemon",
+  "donotreply",
+  "do-not-reply",
+  "feedback",
+  "office",
+  "enquiries",
+  "inquiries",
+  "service",
+  "mail",
+  "email",
+]);
+
+const ROLE_NAME_PATTERNS = [
+  /^support(\s|$)/i,
+  /^team(\s|$)/i,
+  /^info(\s|$)/i,
+  /^customer(\s|$)/i,
+  /^hr(\s|$)/i,
+  /^recruiting(\s|$)/i,
+  /^talent(\s|$)/i,
+  /^careers(\s|$)/i,
+  /^noreply(\s|$)/i,
+  /^no-reply(\s|$)/i,
+];
+
 export type InboxContactSuggestion = {
   contactId: string;
   email: string;
-  name: string | null;
+  name: string;
   company: string | null;
   reason: string;
   score: number;
   lastActivityAt: string | null;
+  activityPreview: string;
 };
 
 function domainKey(email: string): string | null {
   const domain = email.split("@")[1]?.toLowerCase();
   if (!domain) return null;
   return domain.replace(/^www\./, "");
+}
+
+function isBlockedLocalPart(localPart: string): boolean {
+  const lower = localPart.toLowerCase();
+  if (BLOCKED_LOCAL_PARTS.has(lower)) return true;
+  for (const blocked of BLOCKED_LOCAL_PARTS) {
+    if (lower.startsWith(`${blocked}+`) || lower.startsWith(`${blocked}.`) || lower.startsWith(`${blocked}_`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Require a real person name — not generic mailboxes or role accounts. */
+export function isHumanInboxContact(email: string, name: string | null | undefined): boolean {
+  const localPart = email.split("@")[0]?.trim().toLowerCase() ?? "";
+  if (!localPart || isBlockedLocalPart(localPart)) return false;
+
+  const trimmedName = name?.trim();
+  if (!trimmedName || trimmedName.includes("@")) return false;
+  if (ROLE_NAME_PATTERNS.some((p) => p.test(trimmedName))) return false;
+
+  const parts = trimmedName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return false;
+
+  if (parts.length === 1) {
+    const word = parts[0]!.toLowerCase();
+    if (BLOCKED_LOCAL_PARTS.has(word)) return false;
+    if (/^(support|team|info|admin|careers|recruiting|hello)$/i.test(word)) return false;
+    return word.length >= 2;
+  }
+
+  return parts.length >= 2 && parts.every((p) => p.length >= 1);
+}
+
+function formatActivityDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+export function buildActivityPreview(params: {
+  kind: InboxActivityKind;
+  subject?: string | null;
+  occurredAt?: Date | string | null;
+}): string {
+  const dateStr = formatActivityDate(
+    params.occurredAt instanceof Date ? params.occurredAt.toISOString() : (params.occurredAt ?? null),
+  );
+  const subject = params.subject?.trim();
+
+  if (params.kind === InboxActivityKind.MEETING) {
+    const title = subject || "Meeting";
+    return dateStr ? `Meeting on ${dateStr}: ${title}` : `Meeting: ${title}`;
+  }
+
+  if (subject) {
+    return dateStr ? `Recent email thread — ${subject} (${dateStr})` : `Recent email thread — ${subject}`;
+  }
+
+  return dateStr ? `Recent inbox activity (${dateStr})` : "Recent inbox conversation";
 }
 
 function buildTargetKeys(names: string[], websites: (string | null)[]): Set<string> {
@@ -61,7 +176,7 @@ function contactMatchesTargets(
   return null;
 }
 
-/** Rule-based v1: recent inbox participants that look human and match target employers or pipeline companies. */
+/** Rule-based: recent inbox participants that look human and match target employers or pipeline companies. */
 export async function suggestContactsFromInbox(
   userId: string,
   opts?: { limit?: number },
@@ -116,6 +231,8 @@ export async function suggestContactsFromInbox(
   for (const activity of activities) {
     const contact = activity.contact;
     if (!contact) continue;
+    if (normalizeContactStatus(contact.status) === "archived") continue;
+    if (!isHumanInboxContact(contact.email, contact.name)) continue;
 
     const recheck = categorizeInboxMail({
       fromEmail: contact.email,
@@ -146,22 +263,34 @@ export async function suggestContactsFromInbox(
       reason = "Job search thread";
     } else if (activity.category === InboxActivityCategory.PERSONAL) {
       reason = "Personal email — possible warm intro";
+    } else if (activity.kind === InboxActivityKind.MEETING) {
+      reason = "Recent meeting";
     }
 
+    const activityPreview = buildActivityPreview({
+      kind: activity.kind,
+      subject: activity.subject,
+      occurredAt: activity.occurredAt,
+    });
+
+    const displayName = contact.name!.trim();
+    const occurredAt = activity.occurredAt?.toISOString() ?? null;
+
     const existing = byContact.get(contact.id);
-    const occurredAt = activity.occurredAt.toISOString();
     if (!existing || score > existing.score) {
       byContact.set(contact.id, {
         contactId: contact.id,
         email: contact.email,
-        name: contact.name,
+        name: displayName,
         company: contact.company,
         reason,
         score,
         lastActivityAt: occurredAt,
+        activityPreview,
       });
-    } else if (existing && occurredAt > (existing.lastActivityAt ?? "")) {
+    } else if (existing && occurredAt && (!existing.lastActivityAt || occurredAt > existing.lastActivityAt)) {
       existing.lastActivityAt = occurredAt;
+      existing.activityPreview = activityPreview;
     }
   }
 
