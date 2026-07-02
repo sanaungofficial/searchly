@@ -7,7 +7,14 @@ export async function listEmployeeTargetCompanies(userId: string) {
   return prisma.trackedCompany.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, website: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      website: true,
+      careersUrl: true,
+      createdAt: true,
+      companyIntel: { select: { slug: true, website: true, careersUrl: true } },
+    },
     take: 50,
   });
 }
