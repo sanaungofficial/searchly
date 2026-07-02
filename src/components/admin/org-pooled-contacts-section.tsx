@@ -49,7 +49,13 @@ function formatKnownBy(members: KnownByRow[]): string {
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 }
 
-export function OrgPooledContactsSection({ orgId }: { orgId: string }) {
+export function OrgPooledContactsSection({
+  orgId,
+  apiBase = `/api/admin/orgs/${orgId}`,
+}: {
+  orgId: string;
+  apiBase?: string;
+}) {
   const [contacts, setContacts] = useState<OrgContactRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -67,7 +73,7 @@ export function OrgPooledContactsSection({ orgId }: { orgId: string }) {
       if (appliedSearch.trim()) params.set("search", appliedSearch.trim());
       if (appliedCompany.trim()) params.set("company", appliedCompany.trim());
 
-      const res = await fetch(`/api/admin/orgs/${orgId}/contacts?${params.toString()}`);
+      const res = await fetch(`${apiBase}/contacts?${params.toString()}`);
       const data = (await res.json()) as ContactsResponse;
       if (!res.ok) throw new Error(data.error ?? "Could not load contacts.");
       setContacts(data.contacts ?? []);
@@ -77,7 +83,7 @@ export function OrgPooledContactsSection({ orgId }: { orgId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [orgId, appliedSearch, appliedCompany]);
+  }, [apiBase, appliedSearch, appliedCompany]);
 
   useEffect(() => {
     void load();

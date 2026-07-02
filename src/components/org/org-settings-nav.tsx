@@ -4,16 +4,22 @@ import Link from "next/link";
 import { color, fontSans, type as T } from "@/lib/typography";
 
 const tabs = [
+  { id: "dashboard", label: "Dashboard", href: (orgId: string) => `/org/${orgId}/dashboard` },
   { id: "clients", label: "Clients", href: (orgId: string) => `/org/${orgId}/settings/clients` },
   { id: "network", label: "Network inbox", href: (orgId: string) => `/org/${orgId}/settings/network` },
+  { id: "contacts", label: "Contacts", href: (orgId: string) => `/org/${orgId}/contacts` },
 ] as const;
+
+export type OrgNavTab = (typeof tabs)[number]["id"];
+
+export { tabs as orgNavTabs };
 
 export function OrgSettingsNav({
   orgId,
   active,
 }: {
   orgId: string;
-  active: (typeof tabs)[number]["id"];
+  active: OrgNavTab;
 }) {
   return (
     <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>

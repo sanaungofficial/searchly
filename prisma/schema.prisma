@@ -71,6 +71,8 @@ model User {
   clientAssignments    ClientAssignment[] @relation("ClientAssignments")
   clientAssignmentsMade ClientAssignment[] @relation("ClientAssignmentAdmin")
   orgMatchResults      OrgMatchResult[]   @relation("OrgMatchResults")
+  orgIntroTrackingAsClient OrgIntroTracking[] @relation("OrgIntroTrackingClient")
+  orgIntroTrackingRequested OrgIntroTracking[] @relation("OrgIntroTrackingRequestedBy")
 
   @@index([referredByUserId])
 }
@@ -1429,6 +1431,7 @@ model Org {
   clientAssignments ClientAssignment[]
   orgContacts       OrgContact[]
   matchResults      OrgMatchResult[]
+  introTracking     OrgIntroTracking[]
 }
 
 enum OrgMemberRole {
@@ -1511,6 +1514,7 @@ model OrgContact {
 
   knownBy OrgContactKnownBy[]
   matchResults OrgMatchResult[]
+  introTracking OrgIntroTracking[]
 
   @@unique([orgId, emailNormalized])
   @@index([orgId, company])
@@ -1560,6 +1564,34 @@ model OrgMatchResult {
   @@unique([orgId, clientId, targetCompanyKey, contactId])
   @@index([orgId, clientId])
   @@index([orgId, clientId, strengthScore(sort: Desc)])
+}
+
+enum OrgIntroTrackingStatus {
+  REQUESTED
+  SENT
+  DONE
+  DECLINED
+}
+
+/// Warm intro request tracking for org admins (Enterprise Step 7).
+model OrgIntroTracking {
+  id                String                 @id @default(cuid())
+  orgId             String
+  org               Org                    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            User                   @relation("OrgIntroTrackingClient", fields: [clientId], references: [id], onDelete: Cascade)
+  orgContactId      String
+  orgContact        OrgContact             @relation(fields: [orgContactId], references: [id], onDelete: Cascade)
+  requestedByUserId String
+  requestedBy       User                   @relation("OrgIntroTrackingRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  status            OrgIntroTrackingStatus @default(REQUESTED)
+  notes             String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@unique([orgId, clientId, orgContactId])
+  @@index([orgId, clientId])
+  @@index([orgId, status])
 }
 
 enum AssignmentAssignerType {
