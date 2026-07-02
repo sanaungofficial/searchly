@@ -93,7 +93,19 @@ export function OrgClientDetailPanel({
         <OrgSettingsNav orgId={orgId} isOrgAdmin={detail.isOrgAdmin} />
       </div>
 
-      <ScoutBox padding={20}>
+      <ScoutBox
+        padding={20}
+        style={{
+          border: "2px solid rgba(74,139,106,0.35)",
+          background: "rgba(74,139,106,0.06)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+          <ScoutLabel>Target employers</ScoutLabel>
+          <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.forest }}>
+            Step 1 · Required for intro matches
+          </span>
+        </div>
         <OrgEmployeeTargetEmployersSection
           orgId={orgId}
           userId={clientUserId}

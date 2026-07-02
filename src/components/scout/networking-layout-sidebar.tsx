@@ -4,7 +4,7 @@ import type { NetworkingSection } from "@/lib/workspace-urls";
 import { color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
 export const NETWORKING_SIDEBAR_TABS: { id: NetworkingSection; label: string }[] = [
-  { id: "leads", label: "Leads" },
+  { id: "leads", label: "My Network" },
   { id: "inbox", label: "Inbox" },
   { id: "in-network", label: "In-Network Roles" },
 ];
@@ -50,7 +50,7 @@ export function NetworkingLayoutSidebar({ tabs, activeSection, onNavigate }: Pro
               lineHeight: 1.45,
             }}
           >
-            Leads, inbox, and recruiter-network roles in one place.
+            My network, inbox, and recruiter-network roles in one place.
           </p>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContactListFilter } from "@/lib/inbox-crm/list-contacts";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { InboxContactStatusBadge } from "./inbox-contact-status-badge";
 import { InboxLeadsFilterDrawer } from "./inbox-leads-filter-drawer";
 import { SenderAvatar } from "./sender-avatar";
@@ -40,6 +41,16 @@ type ContactRow = {
   linkedJobs: { id: string; company: string; role: string; stage: string }[];
 };
 
+type ContactSuggestion = {
+  contactId: string;
+  email: string;
+  name: string | null;
+  company: string | null;
+  reason: string;
+  score: number;
+  lastActivityAt: string | null;
+};
+
 type Props = {
   scopePath: (path: string) => string;
   onSelectContact: (contactId: string) => void;
@@ -65,6 +76,9 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
   const [sortOpen, setSortOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<ContactSuggestion[] | null>(null);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
   const columnsRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +152,33 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
   function toggleSelectAll() {
     if (selected.size === contacts.length) setSelected(new Set());
     else setSelected(new Set(contacts.map((c) => c.id)));
+  }
+
+  async function suggestFromInbox() {
+    if (!mailConnected) {
+      setSuggestError("Connect your inbox first to suggest contacts from recent mail.");
+      return;
+    }
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const res = await fetch(scopePath("/api/user/inbox/contacts/suggest-from-inbox"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 15 }),
+      });
+      const data = (await res.json()) as { suggestions?: ContactSuggestion[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not suggest contacts.");
+      setSuggestions(data.suggestions ?? []);
+      if ((data.suggestions ?? []).length === 0) {
+        setSuggestError("No new suggestions — try syncing mail from the Inbox tab first.");
+      }
+    } catch (e) {
+      setSuggestions(null);
+      setSuggestError(e instanceof Error ? e.message : "Could not suggest contacts.");
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   function renderCell(col: LeadColumnId, row: ContactRow) {
@@ -254,6 +295,60 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", background: surface.card }}>
+      {(suggestions !== null || suggestError) && (
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: line,
+            background: suggestions?.length ? "rgba(74,139,106,0.08)" : "rgba(196,87,74,0.06)",
+          }}
+        >
+          {suggestions && suggestions.length > 0 ? (
+            <>
+              <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>
+                {suggestions.length} contact{suggestions.length === 1 ? "" : "s"} suggested from your inbox
+              </p>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+                {suggestions.slice(0, 5).map((s) => (
+                  <li key={s.contactId} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectContact(s.contactId)}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        fontFamily: fontSans,
+                        fontSize: T.bodySm,
+                        color: color.forest,
+                        textDecoration: "underline",
+                        textAlign: "left",
+                      }}
+                    >
+                      {s.name ?? s.email}
+                    </button>
+                    <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>{s.reason}</span>
+                  </li>
+                ))}
+              </ul>
+              {suggestions.length > 5 && (
+                <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+                  +{suggestions.length - 5} more — search or scroll the table below.
+                </p>
+              )}
+            </>
+          ) : suggestError ? (
+            <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A" }}>{suggestError}</p>
+          ) : null}
+          <div style={{ marginTop: 10 }}>
+            <ScoutSecondaryBtn onClick={() => { setSuggestions(null); setSuggestError(null); }}>
+              Dismiss
+            </ScoutSecondaryBtn>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div
         style={{
@@ -286,6 +381,13 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         <button type="button" onClick={() => setFilterOpen(true)} style={toolbarBtn(filters.length > 0)}>
           + Add filter{filters.length > 0 ? ` (${filters.length})` : ""}
         </button>
+        <ScoutPrimaryBtn
+          onClick={() => void suggestFromInbox()}
+          disabled={suggesting}
+          style={{ padding: "8px 14px", minHeight: 36, fontSize: T.bodySm }}
+        >
+          {suggesting ? "Scanning inbox…" : "Suggest from inbox"}
+        </ScoutPrimaryBtn>
         <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>
           {total.toLocaleString()} contact{total === 1 ? "" : "s"}
         </span>
