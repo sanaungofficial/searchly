@@ -323,6 +323,7 @@ export function WorkspaceSidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
+  const [userOrgs, setUserOrgs] = useState<Array<{ id: string; name: string }>>([]);
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
 
@@ -337,6 +338,16 @@ export function WorkspaceSidebar({
       })
       .catch(() => {});
   }, [authChecked, withClientScope]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    fetch("/api/org/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { orgs?: Array<{ id: string; name: string }> } | null) => {
+        setUserOrgs((data?.orgs ?? []).map((o) => ({ id: o.id, name: o.name })));
+      })
+      .catch(() => setUserOrgs([]));
+  }, [authChecked]);
 
   // On mobile: collapsed = hidden (off-screen). On desktop: collapsed = icon rail.
   const isVisible = isMobile ? !collapsed : true;
@@ -353,6 +364,7 @@ export function WorkspaceSidebar({
     if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     if (path === "/coaching") return pathname.startsWith("/coaching");
     if (path === "/resume") return pathname === "/resume" || pathname.startsWith("/resume/");
+    if (path.startsWith("/org/")) return pathname.startsWith(path) || pathname.startsWith(`${path}/`);
     return pathname === path;
   };
 
@@ -637,6 +649,34 @@ export function WorkspaceSidebar({
               )}
             />
           )}
+
+          {userOrgs.map((org) => {
+            const orgPath = `/org/${org.id}/dashboard`;
+            const orgActive = pathname.startsWith(`/org/${org.id}`);
+            return (
+              <SidebarNavButton
+                key={org.id}
+                active={orgActive}
+                onClick={() => navigate(orgPath)}
+                label={org.name.length > 18 ? `${org.name.slice(0, 16)}…` : org.name}
+                isRail={isRail}
+                Icon={() => (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke={orgActive ? S.iconActive : S.iconMuted}
+                    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <path d="M3 21h18" />
+                    <path d="M5 21V7l8-4v18" />
+                    <path d="M19 21V11l-6-4" />
+                    <path d="M9 9v.01" />
+                    <path d="M9 12v.01" />
+                    <path d="M9 15v.01" />
+                    <path d="M9 18v.01" />
+                  </svg>
+                )}
+              />
+            );
+          })}
 
           <SidebarOpportunitiesNav
             isRail={isRail}
