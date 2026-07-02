@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgClientIntroMatchesPanel } from "@/components/admin/org-client-intro-matches-section";
 import { OrgEmployeeTargetEmployersSection } from "@/components/org/org-employee-target-employers-section";
+import { OrgEmployeePotentialConnectionsSection } from "@/components/org/org-employee-potential-connections-section";
 import { OrgSettingsNav } from "@/components/org/org-settings-nav";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
@@ -110,7 +111,20 @@ export function OrgClientDetailPanel({
           orgId={orgId}
           userId={clientUserId}
           readOnly={!detail.isOrgAdmin}
+          showHeader={false}
           onChange={setTargetCount}
+        />
+      </ScoutBox>
+
+      <ScoutBox padding={20}>
+        <ScoutLabel>Potential connections</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 12px" }}>
+          Pooled org contacts at this employee&apos;s target companies — expand a company to copy or email intro targets.
+        </p>
+        <OrgEmployeePotentialConnectionsSection
+          orgId={orgId}
+          userId={clientUserId}
+          targetCount={targetCount}
         />
       </ScoutBox>
 
@@ -127,7 +141,7 @@ export function OrgClientDetailPanel({
           clientLabel={label}
           apiBase={apiBase}
           readOnly={!detail.isOrgAdmin}
-          defaultExpanded
+          defaultExpanded={false}
           targetCompanyCount={targetCount}
         />
       </ScoutBox>

@@ -19,6 +19,7 @@ import { matchNetworkingPath, matchOpportunitiesNavPath, INBOX_PATH } from "@/li
 import { syncWorkspaceNavHeight } from "@/lib/workspace-layout";
 import { TOP_NAV_Z } from "@/lib/z-layers";
 import { buildAuthUrl, isPublicCoachingPath } from "@/lib/auth-return-url";
+import { LANDING_NAV } from "@/lib/landing-content";
 import { markProductTourSeen, startProductTour } from "@/lib/clickconnector-tour";
 
 export const TOP_NAV_HEIGHT = 64;
@@ -720,11 +721,24 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
   const showGuestWorkspaceNav = isLoggedOut && isPublicCoachingPath(pathname);
 
   const resolveNavHref = (path: string) => {
-    if (showGuestWorkspaceNav && !isPublicCoachingPath(path)) {
+    if (showGuestWorkspaceNav) {
+      if (path === "/" || path.startsWith("/#") || isPublicCoachingPath(path)) {
+        return path;
+      }
       return buildAuthUrl("login", path);
     }
     return withClientReviewPath(path);
   };
+
+  const guestLinks: NavLink[] = LANDING_NAV.map((item) => {
+    const path = item.href.startsWith("#") ? `/${item.href}` : item.href;
+    return {
+      id: item.label.toLowerCase(),
+      label: item.label,
+      path: path,
+      match: (p) => p === path || (path === "/coaching" && p.startsWith("/coaching")),
+    };
+  });
 
   const expertPortalActive =
     isStaffPortal &&
@@ -1118,7 +1132,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               minWidth: 0,
             }}
           >
-            {navLinks.map(({ id, label, path, match, children }) => {
+            {(showGuestWorkspaceNav ? guestLinks : navLinks).map(({ id, label, path, match, children }) => {
               const active = match(pathname);
               const hasChildren = Boolean(children?.length);
               const dropdownOpen = navDropdownOpen === id;
@@ -1480,7 +1494,7 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
       <MobileTopNavDrawer
         open={mobileMenuOpen}
         onClose={closeMobileMenu}
-        navLinks={navLinks}
+        navLinks={showGuestWorkspaceNav ? guestLinks : navLinks}
         pathname={pathname}
         resolveHref={resolveNavHref}
         onNavigateMain={navigateMainFromDrawer}
