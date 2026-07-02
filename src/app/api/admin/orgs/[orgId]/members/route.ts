@@ -60,6 +60,48 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
   });
 }
 
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { orgId } = await params;
+  const org = await prisma.org.findUnique({ where: { id: orgId }, select: { id: true } });
+  if (!org) return NextResponse.json({ error: "Org not found" }, { status: 404 });
+
+  const body = await req.json().catch(() => ({}));
+  const userId = String(body.userId ?? "").trim();
+  if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
+
+  const role = parseRole(body.role);
+  if (!role) return NextResponse.json({ error: "role must be ADMIN or MEMBER" }, { status: 400 });
+
+  const member = await prisma.orgMember.findUnique({
+    where: { orgId_userId: { orgId, userId } },
+  });
+  if (!member) return NextResponse.json({ error: "Member not found" }, { status: 404 });
+
+  const updated = await prisma.orgMember.update({
+    where: { id: member.id },
+    data: { role },
+    include: {
+      user: { select: { id: true, email: true, name: true } },
+      invitedBy: { select: { id: true, email: true, name: true } },
+    },
+  });
+
+  return NextResponse.json({
+    member: {
+      id: updated.id,
+      role: updated.role,
+      joinedAt: updated.joinedAt.toISOString(),
+      createdAt: updated.createdAt.toISOString(),
+      user: updated.user,
+      invitedBy: updated.invitedBy,
+    },
+  });
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

@@ -58,7 +58,7 @@ export function OrgClientAssignmentSection({
   const [drawerClient, setDrawerClient] = useState<OrgClientRow | null>(null);
   const isAdminOrgApi = apiBase.startsWith("/api/admin/");
   const resolvedReviewReturnPath =
-    reviewReturnPath ?? (isAdminOrgApi ? `/admin/orgs/${orgId}` : `/org/${orgId}/settings/clients`);
+    reviewReturnPath ?? (isAdminOrgApi ? `/admin/orgs/${orgId}#employees` : `/org/${orgId}/settings/clients`);
   const resolvedReviewReturnLabel =
     reviewReturnLabel ?? (isAdminOrgApi ? "Back to organization" : "Back to employee settings");
   const canReview = !readOnly || isAdminOrgApi;
