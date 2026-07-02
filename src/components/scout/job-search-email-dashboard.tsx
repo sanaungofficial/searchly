@@ -165,8 +165,7 @@ export function JobSearchEmailDashboard({ section }: Props) {
         padding={0}
         style={{
           flex: 1,
-          minHeight: isMobile ? 520 : "min(72vh, 840px)",
-          maxHeight: isMobile ? undefined : "calc(100vh - 260px)",
+          minHeight: isMobile ? 520 : 0,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
