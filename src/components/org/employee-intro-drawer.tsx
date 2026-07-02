@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgClientIntroMatchesPanel } from "@/components/admin/org-client-intro-matches-section";
 import { OrgEmployeeTargetEmployersSection } from "@/components/org/org-employee-target-employers-section";
+import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
 import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
@@ -24,12 +25,22 @@ export function EmployeeIntroDrawer({
   apiBase,
   readOnly = false,
   onClose,
+  canReview = false,
+  canImpersonate = false,
+  startingUserId,
+  onViewAsAdmin,
+  onViewAsEmployee,
 }: {
   orgId: string;
   client: EmployeeDrawerClient;
   apiBase: string;
   readOnly?: boolean;
   onClose: () => void;
+  canReview?: boolean;
+  canImpersonate?: boolean;
+  startingUserId?: string | null;
+  onViewAsAdmin?: (userId: string) => void;
+  onViewAsEmployee?: (userId: string) => void;
 }) {
   const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const [visible, setVisible] = useState(false);
@@ -107,6 +118,18 @@ export function EmployeeIntroDrawer({
             <p style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, margin: "6px 0 0" }}>
               {client.email}
             </p>
+            {(canReview || canImpersonate) && (
+              <div style={{ marginTop: 14 }}>
+                <EmployeeViewAsActions
+                  userId={client.userId}
+                  startingUserId={startingUserId}
+                  canReview={canReview}
+                  canImpersonate={canImpersonate}
+                  onViewAsAdmin={onViewAsAdmin}
+                  onViewAsEmployee={onViewAsEmployee}
+                />
+              </div>
+            )}
           </div>
           <button
             type="button"

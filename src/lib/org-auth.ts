@@ -46,6 +46,29 @@ export async function requireOrgMemberOrPlatformAdmin(
   return { user: dbUser, membership };
 }
 
+/** Org ADMIN may review an employee assigned to any org they administer. */
+export async function canOrgAdminReviewEmployee(
+  reviewerUserId: string,
+  employeeUserId: string,
+): Promise<boolean> {
+  const adminMemberships = await prisma.orgMember.findMany({
+    where: { userId: reviewerUserId, role: "ADMIN" },
+    select: { orgId: true },
+  });
+  if (adminMemberships.length === 0) return false;
+
+  const orgIds = adminMemberships.map((m) => m.orgId);
+  const assignment = await prisma.clientAssignment.findFirst({
+    where: {
+      clientId: employeeUserId,
+      orgId: { in: orgIds },
+      assignerType: "COMPANY",
+    },
+    select: { id: true },
+  });
+  return Boolean(assignment);
+}
+
 export async function canOrgAccessClient(orgId: string, clientId: string): Promise<boolean> {
   const assigned = await isClientAssignedToOrg(orgId, clientId);
   if (!assigned) return false;
