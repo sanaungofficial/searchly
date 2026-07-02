@@ -1,14 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { PipelineTag } from "@/components/scout/pipeline-tag";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import type {
   OrgPotentialConnectionContact,
+  OrgPotentialConnectionKnownBy,
   OrgTargetPotentialConnections,
 } from "@/lib/org-network-match";
-import { formatPotentialConnectionOwnersSummary } from "@/lib/org-network-match";
-import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
+import { color, fontMono, fontSans, type as T } from "@/lib/typography";
+
+const line = "var(--scout-border)";
+
+const compactBtnStyle: React.CSSProperties = {
+  padding: "6px 10px",
+  minHeight: 32,
+  fontSize: T.caption,
+};
+
+const thStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  textAlign: "left",
+  fontFamily: fontSans,
+  fontSize: T.caption,
+  fontWeight: 700,
+  color: color.muted,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+  borderBottom: line,
+  background: "var(--bruddle-surface, #FAF4F0)",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  verticalAlign: "top",
+  borderBottom: line,
+  fontFamily: fontSans,
+  fontSize: T.bodySm,
+  color: color.ink,
+};
 
 async function copyEmail(email: string): Promise<boolean> {
   try {
@@ -25,152 +57,194 @@ function matchTypeLabel(matchType: OrgPotentialConnectionContact["matchType"]): 
   return "Similar name";
 }
 
-function TargetConnectionRow({
-  target,
-  expanded,
-  onToggle,
+function matchTagColor(matchType: OrgPotentialConnectionContact["matchType"]) {
+  if (matchType === "exact") return "green" as const;
+  if (matchType === "domain") return "purple" as const;
+  return "gray" as const;
+}
+
+function formatTargetDomain(website: string | null): string | null {
+  if (!website) return null;
+  return website.replace(/^https?:\/\//, "").replace(/^www\./, "");
+}
+
+function ConnectionOwnerCell({ knownBy }: { knownBy: OrgPotentialConnectionKnownBy }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        {knownBy.isViewer && (
+          <PipelineTag label="You" color="purple" variant="light" compact />
+        )}
+        <span style={{ fontWeight: 600 }}>{knownBy.memberFullName}</span>
+      </div>
+      {knownBy.memberEmail && (
+        <div
+          style={{
+            marginTop: 2,
+            fontFamily: fontMono,
+            fontSize: T.caption,
+            color: color.muted,
+            wordBreak: "break-all",
+          }}
+        >
+          {knownBy.memberEmail}
+        </div>
+      )}
+      <div style={{ marginTop: 2, fontSize: T.caption, color: color.stone }}>{knownBy.orgName}</div>
+    </div>
+  );
+}
+
+function ContactActionsRow({
+  contact,
   copiedEmail,
   onCopyEmail,
 }: {
-  target: OrgTargetPotentialConnections;
-  expanded: boolean;
-  onToggle: () => void;
+  contact: OrgPotentialConnectionContact;
   copiedEmail: string | null;
   onCopyEmail: (email: string) => void;
 }) {
-  const summary = formatPotentialConnectionOwnersSummary(target.owners);
+  const ownerLabel = contact.knownBy.isViewer
+    ? "owner"
+    : contact.knownBy.memberFullName.split(/\s+/)[0] ?? contact.knownBy.memberFullName;
 
   return (
-    <div style={{ borderTop: border.line }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 12,
-          width: "100%",
-          textAlign: "left",
-          padding: "12px 14px",
-          border: "none",
-          background: expanded ? "rgba(26,58,47,0.03)" : surface.card,
-          cursor: "pointer",
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <ScoutSecondaryBtn style={compactBtnStyle} onClick={() => onCopyEmail(contact.email)}>
+        {copiedEmail === contact.email ? "Copied" : "Copy email"}
+      </ScoutSecondaryBtn>
+      <ScoutSecondaryBtn
+        style={compactBtnStyle}
+        onClick={() => {
+          window.location.href = `mailto:${encodeURIComponent(contact.email)}`;
         }}
       >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "4px 10px",
-            borderRadius: "var(--scout-radius)",
-            border: "1px solid rgba(74,139,106,0.35)",
-            background: "rgba(74,139,106,0.12)",
-            fontFamily: fontSans,
-            fontSize: T.caption,
-            fontWeight: 600,
-            color: color.forest,
-            flexShrink: 0,
-            maxWidth: 180,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+        Email contact
+      </ScoutSecondaryBtn>
+      {contact.knownBy.memberEmail && (
+        <ScoutSecondaryBtn
+          style={compactBtnStyle}
+          onClick={() => {
+            window.location.href = `mailto:${encodeURIComponent(contact.knownBy.memberEmail!)}`;
           }}
         >
-          {target.targetCompany}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink }}>
-            {summary}
-          </p>
-          {target.targetWebsite && (
-            <p
-              style={{
-                margin: "4px 0 0",
-                fontFamily: fontMono,
-                fontSize: T.caption,
-                color: color.muted,
-              }}
-            >
-              {target.targetWebsite.replace(/^https?:\/\//, "").replace(/^www\./, "")}
-            </p>
-          )}
-        </div>
-        <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>
-          {expanded ? "Hide" : `${target.totalContacts}`}
-        </span>
-      </button>
-
-      {expanded && (
-        <div style={{ padding: "0 14px 12px", background: "rgba(26,58,47,0.03)" }}>
-          {target.contacts.map((contact) => {
-            const displayName = contact.name ?? contact.email;
-            return (
-              <div
-                key={contact.id}
-                style={{
-                  padding: "10px 0",
-                  borderTop: border.line,
-                }}
-              >
-                <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>
-                  {displayName}
-                </p>
-                <p style={{ margin: "2px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-                  {contact.email}
-                  {contact.company ? ` · ${contact.company}` : ""}
-                  {contact.title ? ` · ${contact.title}` : ""}
-                </p>
-                <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                  Known via {contact.knownBy.name} · {matchTypeLabel(contact.matchType)}
-                </p>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                  <ScoutSecondaryBtn onClick={() => onCopyEmail(contact.email)}>
-                    {copiedEmail === contact.email ? "Copied" : "Copy email"}
-                  </ScoutSecondaryBtn>
-                  <a
-                    href={`mailto:${encodeURIComponent(contact.email)}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "8px 12px",
-                      border: border.line,
-                      borderRadius: "var(--scout-radius)",
-                      background: surface.card,
-                      fontFamily: fontSans,
-                      fontSize: T.caption,
-                      fontWeight: 600,
-                      color: color.ink,
-                      textDecoration: "none",
-                    }}
-                  >
-                    Email contact
-                  </a>
-                  {contact.knownBy.email && (
-                    <a
-                      href={`mailto:${encodeURIComponent(contact.knownBy.email)}`}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        padding: "8px 12px",
-                        border: border.line,
-                        borderRadius: "var(--scout-radius)",
-                        background: surface.card,
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        fontWeight: 600,
-                        color: color.stone,
-                        textDecoration: "none",
-                      }}
-                    >
-                      Contact {contact.knownBy.name.split(/\s+/)[0] ?? contact.knownBy.name}
-                    </a>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          Contact {ownerLabel}
+        </ScoutSecondaryBtn>
       )}
+    </div>
+  );
+}
+
+function PotentialConnectionsTable({
+  targets,
+  orgName,
+  copiedEmail,
+  onCopyEmail,
+}: {
+  targets: OrgTargetPotentialConnections[];
+  orgName: string | null;
+  copiedEmail: string | null;
+  onCopyEmail: (email: string) => void;
+}) {
+  const totalContacts = useMemo(
+    () => targets.reduce((sum, target) => sum + target.totalContacts, 0),
+    [targets],
+  );
+
+  return (
+    <div className="bruddle">
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px" }}>
+        {totalContacts} pooled contact{totalContacts === 1 ? "" : "s"} across {targets.length} target compan
+        {targets.length === 1 ? "y" : "ies"}
+        {orgName ? ` · ${orgName}` : ""}. Rows show every org member who knows someone at a target company —
+        your connections are labeled <strong>You</strong>.
+      </p>
+      <div style={{ overflowX: "auto", border: line, background: "var(--scout-surface, #fff)" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Contact</th>
+              <th style={thStyle}>Company</th>
+              <th style={thStyle}>Match</th>
+              <th style={thStyle}>Connection owner</th>
+              <th style={thStyle}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {targets.map((target) => {
+              const domain = formatTargetDomain(target.targetWebsite);
+              return target.contacts.map((contact, index) => {
+                const displayName = contact.name ?? contact.email;
+                const isFirstInGroup = index === 0;
+                return (
+                  <tr key={`${target.targetCompanyId}-${contact.id}`}>
+                    <td style={tdStyle}>
+                      {isFirstInGroup && (
+                        <div style={{ marginBottom: 6 }}>
+                          <PipelineTag
+                            label={target.targetCompany}
+                            color="green"
+                            variant="light"
+                            compact
+                          />
+                          {domain && (
+                            <div
+                              style={{
+                                marginTop: 4,
+                                fontFamily: fontMono,
+                                fontSize: T.caption,
+                                color: color.muted,
+                              }}
+                            >
+                              {domain}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ fontWeight: 600 }}>{displayName}</div>
+                      <div
+                        style={{
+                          marginTop: 2,
+                          fontFamily: fontMono,
+                          fontSize: T.caption,
+                          color: color.muted,
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        {contact.email}
+                      </div>
+                      {contact.title && (
+                        <div style={{ marginTop: 2, fontSize: T.caption, color: color.stone }}>
+                          {contact.title}
+                        </div>
+                      )}
+                    </td>
+                    <td style={tdStyle}>{contact.company ?? target.targetCompany}</td>
+                    <td style={tdStyle}>
+                      <PipelineTag
+                        label={matchTypeLabel(contact.matchType)}
+                        color={matchTagColor(contact.matchType)}
+                        variant="light"
+                        compact
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <ConnectionOwnerCell knownBy={contact.knownBy} />
+                    </td>
+                    <td style={tdStyle}>
+                      <ContactActionsRow
+                        contact={contact}
+                        copiedEmail={copiedEmail}
+                        onCopyEmail={onCopyEmail}
+                      />
+                    </td>
+                  </tr>
+                );
+              });
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -185,9 +259,9 @@ export function OrgEmployeePotentialConnectionsSection({
   targetCount?: number;
 }) {
   const [targets, setTargets] = useState<OrgTargetPotentialConnections[]>([]);
+  const [orgName, setOrgName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
 
   const hasTargets = targetCount == null || targetCount > 0;
@@ -196,15 +270,21 @@ export function OrgEmployeePotentialConnectionsSection({
   const load = useCallback(async () => {
     if (!hasTargets) {
       setTargets([]);
+      setOrgName(null);
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(apiBase);
-      const data = (await res.json()) as { targets?: OrgTargetPotentialConnections[]; error?: string };
+      const data = (await res.json()) as {
+        targets?: OrgTargetPotentialConnections[];
+        orgName?: string;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "Could not load potential connections.");
       setTargets(data.targets ?? []);
+      setOrgName(data.orgName ?? null);
     } catch (e) {
       setError(formatApiErrorMessage(e, "Could not load potential connections."));
     } finally {
@@ -255,31 +335,11 @@ export function OrgEmployeePotentialConnectionsSection({
   }
 
   return (
-    <div>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px" }}>
-        {targets.length} target compan{targets.length === 1 ? "y has" : "ies have"} pooled contacts — expand a row to reach out.
-      </p>
-      <div
-        style={{
-          border: border.line,
-          borderRadius: "var(--scout-radius)",
-          overflow: "hidden",
-          background: surface.card,
-        }}
-      >
-        {targets.map((target) => (
-          <TargetConnectionRow
-            key={target.targetCompanyId}
-            target={target}
-            expanded={expandedId === target.targetCompanyId}
-            onToggle={() =>
-              setExpandedId((current) => (current === target.targetCompanyId ? null : target.targetCompanyId))
-            }
-            copiedEmail={copiedEmail}
-            onCopyEmail={(email) => void handleCopyEmail(email)}
-          />
-        ))}
-      </div>
-    </div>
+    <PotentialConnectionsTable
+      targets={targets}
+      orgName={orgName}
+      copiedEmail={copiedEmail}
+      onCopyEmail={(email) => void handleCopyEmail(email)}
+    />
   );
 }
