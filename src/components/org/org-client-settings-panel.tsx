@@ -14,7 +14,7 @@ export function OrgClientSettingsPanel({ orgId }: { orgId: string }) {
         </Link>
         <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Organization settings</h1>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          Manage client accounts for your organization.
+          Manage employee accounts for your organization.
         </p>
         <OrgSettingsNav orgId={orgId} active="clients" />
       </div>

@@ -11,5 +11,5 @@ export default async function OrgContactsPage({
   const membership = await requireOrgMember(orgId);
   if (!membership) redirect("/dashboard");
 
-  return <OrgContactsPanel orgId={orgId} />;
+  return <OrgContactsPanel orgId={orgId} isOrgAdmin={membership.role === "ADMIN"} />;
 }

@@ -117,16 +117,16 @@ export function OrgClientAssignmentSection({
     <ScoutBox padding={20}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <ScoutLabel>Assigned clients</ScoutLabel>
+          <ScoutLabel>Assigned employees</ScoutLabel>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-            Create new client accounts or link existing ones to this organization.
+            Create new employee accounts or link existing Kimchi users to this organization.
           </p>
         </div>
         <ScoutPrimaryBtn
           onClick={() => { setShowCreate(true); setCreateNotice(null); }}
           style={{ minHeight: 40 }}
         >
-          + Create client
+          + Create employee
         </ScoutPrimaryBtn>
       </div>
 
@@ -162,13 +162,13 @@ export function OrgClientAssignmentSection({
         }}
       >
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Client email</span>
+          <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Employee email</span>
           <input
             style={inputStyle}
             type="email"
             value={clientEmail}
             onChange={(e) => setClientEmail(e.target.value)}
-            placeholder="client@company.com"
+            placeholder="employee@company.com"
             required
           />
         </label>
@@ -177,22 +177,22 @@ export function OrgClientAssignmentSection({
           <input style={inputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
         <ScoutPrimaryBtn type="submit" disabled={adding || !clientEmail.trim()}>
-          {adding ? "Assigning…" : "Assign client"}
+          {adding ? "Assigning…" : "Assign employee"}
         </ScoutPrimaryBtn>
       </form>
 
       {loading ? (
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading clients…</p>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading employees…</p>
       ) : clients.length === 0 ? (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          No clients assigned yet — search by the client&apos;s Kimchi login email.
+          No employees assigned yet — search by the employee&apos;s Kimchi login email.
         </p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: T.bodySm }}>
             <thead>
               <tr style={{ textAlign: "left", color: color.muted, fontFamily: fontMono, fontSize: T.caption, textTransform: "uppercase" }}>
-                <th style={{ padding: "10px 8px" }}>Client</th>
+                <th style={{ padding: "10px 8px" }}>Employee</th>
                 <th style={{ padding: "10px 8px" }}>Assigned</th>
                 <th style={{ padding: "10px 8px" }}>Notes</th>
                 <th style={{ padding: "10px 8px" }} />
@@ -236,8 +236,8 @@ export function OrgClientAssignmentSection({
       {showCreate && (
         <CreateClientModal
           apiUrl={`${apiBase}/clients/provision`}
-          title="Create client for org"
-          description="Creates a new client account and assigns them to this organization. Resume, LinkedIn, and sign-in invite are optional."
+          title="Create employee for org"
+          description="Creates a new employee account and assigns them to this organization. Resume, LinkedIn, and sign-in invite are optional."
           onClose={() => setShowCreate(false)}
           onCreated={(data) => {
             const assignment = data.assignment as OrgClientRow | undefined;
@@ -250,7 +250,7 @@ export function OrgClientAssignmentSection({
             setCreateNotice(
               warnings.length > 0
                 ? warnings.join(" ")
-                : "Client created and assigned to this org.",
+                : "Employee created and assigned to this org.",
             );
           }}
         />

@@ -5,6 +5,13 @@ import { countPooledContributors, listOrgNetworkSourcesForOrg } from "@/lib/org-
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { prisma } from "@/lib/prisma";
 
+export type OrgOnboardingChecklist = {
+  emailConnected: boolean;
+  employeesAdded: boolean;
+  targetsSet: boolean;
+  introPathsFound: boolean;
+};
+
 export type OrgDashboardClientRow = {
   userId: string;
   email: string;
@@ -34,7 +41,7 @@ export async function getOrgDashboardData(orgId: string) {
   const clientIds = clients.map((c) => c.userId);
   const networkStats = countPooledContributors(members);
 
-  const [profiles, matchCounts, pendingByClient, trackedCounts] = await Promise.all([
+  const [profiles, matchCounts, pendingByClient, trackedCounts, pooledContactCount] = await Promise.all([
     prisma.profile.findMany({
       where: { userId: { in: clientIds } },
       select: {
@@ -64,6 +71,14 @@ export async function getOrgDashboardData(orgId: string) {
           _count: { _all: true },
         })
       : Promise.resolve([]),
+    prisma.orgContact.count({
+      where: {
+        orgId,
+        knownBy: {
+          some: { networkSource: { visibility: "POOLED", status: "ACTIVE" } },
+        },
+      },
+    }),
   ]);
 
   const profileByUser = new Map(profiles.map((p) => [p.userId, p]));
@@ -105,7 +120,14 @@ export async function getOrgDashboardData(orgId: string) {
     networkCoverage: {
       sharingCount: networkStats.contributing,
       memberCount: networkStats.total,
+      pooledContactCount,
     },
+    onboarding: {
+      emailConnected: networkStats.contributing > 0,
+      employeesAdded: clientRows.length > 0,
+      targetsSet: clientRows.some((c) => c.targetCompanyCount > 0),
+      introPathsFound: clientRows.some((c) => c.hasMatches),
+    } satisfies OrgOnboardingChecklist,
     topMatches,
   };
 }

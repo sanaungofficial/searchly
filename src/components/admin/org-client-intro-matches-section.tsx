@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import type { OrgContactStrengthFactors } from "@/lib/org-contact-graph/types";
 import { color, fontMono, fontSans, type as T } from "@/lib/typography";
 
 type IntroTrackingRow = {
@@ -34,6 +35,7 @@ type IntroMatchRow = {
     email: string | null;
     strengthScore: number;
     lastSeenAt: string | null;
+    strengthFactors?: OrgContactStrengthFactors;
   };
   hirebaseJobs: Array<{ id: string; title: string; url: string | null }>;
   introTracking?: IntroTrackingRow | null;
@@ -42,8 +44,7 @@ type IntroMatchRow = {
 function strengthLabel(score: number): string {
   if (score >= 70) return "Strong";
   if (score >= 40) return "Moderate";
-  if (score > 0) return "Light";
-  return "New";
+  return "Weak";
 }
 
 function strengthColor(score: number): string {
@@ -52,9 +53,16 @@ function strengthColor(score: number): string {
   return color.muted;
 }
 
-function composeUrl(email: string): string {
-  const params = new URLSearchParams({ section: "inbox", composeTo: email });
-  return `/networking?${params.toString()}`;
+function matchTypeLabel(matchType: string | null): string {
+  if (matchType === "exact") return "Exact company name";
+  if (matchType === "domain") return "Email domain match";
+  if (matchType === "fuzzy") return "Similar company name";
+  return "Company match";
+}
+
+function formatActivityDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString();
 }
 
 function introStatusLabel(status: IntroTrackingRow["status"] | undefined): string | null {
@@ -65,6 +73,66 @@ function introStatusLabel(status: IntroTrackingRow["status"] | undefined): strin
   return null;
 }
 
+function WhyThisMatchPanel({ row }: { row: IntroMatchRow }) {
+  const factors = row.knownBy.strengthFactors;
+  const knownByName = row.knownBy.name ?? "You";
+  const contactName = row.contact.name ?? row.contact.email;
+  const company = row.contact.company ?? row.targetCompany;
+  const lastActivity =
+    row.contact.lastActivityAt ?? row.knownBy.lastSeenAt ?? factors?.lastEmailAt ?? factors?.lastMeetingAt;
+
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        padding: "10px 12px",
+        background: "rgba(26,58,47,0.03)",
+        borderRadius: "var(--scout-radius)",
+        fontFamily: fontSans,
+        fontSize: T.caption,
+        color: color.stone,
+        lineHeight: 1.5,
+      }}
+    >
+      <div style={{ fontWeight: 600, color: color.ink, marginBottom: 6 }}>Why this match</div>
+      <ul style={{ margin: 0, paddingLeft: 16 }}>
+        <li>
+          {knownByName} knows {contactName} at {company}
+        </li>
+        <li>
+          Relationship: {strengthLabel(row.strengthScore)} ({row.strengthScore})
+          {factors && (factors.emailCount > 0 || factors.meetingCount > 0) && (
+            <>
+              {" "}
+              · {factors.emailCount} email{factors.emailCount === 1 ? "" : "s"}, {factors.meetingCount} meeting
+              {factors.meetingCount === 1 ? "" : "s"}
+            </>
+          )}
+        </li>
+        <li>Last contact: {formatActivityDate(lastActivity)}</li>
+        <li>
+          Match: {matchTypeLabel(row.matchType)} → target {row.targetCompany}
+        </li>
+        {row.hasOpenRoles && row.hirebaseJobs.length > 0 && (
+          <li style={{ color: color.forest }}>
+            Open role: {row.hirebaseJobs[0]?.title}
+            {row.hirebaseJobs.length > 1 ? ` (+${row.hirebaseJobs.length - 1} more)` : ""}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+async function copyEmail(email: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(email);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function OrgClientIntroMatchesPanel({
   orgId,
   clientUserId,
@@ -72,6 +140,7 @@ export function OrgClientIntroMatchesPanel({
   apiBase = `/api/admin/orgs/${orgId}`,
   readOnly = false,
   defaultExpanded = false,
+  targetCompanyCount,
 }: {
   orgId: string;
   clientUserId: string;
@@ -79,6 +148,7 @@ export function OrgClientIntroMatchesPanel({
   apiBase?: string;
   readOnly?: boolean;
   defaultExpanded?: boolean;
+  targetCompanyCount?: number;
 }) {
   const [matches, setMatches] = useState<IntroMatchRow[]>([]);
   const [loading, setLoading] = useState(defaultExpanded);
@@ -87,6 +157,8 @@ export function OrgClientIntroMatchesPanel({
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [trackingBusyId, setTrackingBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expandedWhyId, setExpandedWhyId] = useState<string | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
 
   const matchesApi = `${apiBase}/clients/${clientUserId}/intro-matches`;
   const enrichApiBase = apiBase.includes("/api/org/")
@@ -95,6 +167,8 @@ export function OrgClientIntroMatchesPanel({
   const trackingApi = apiBase.includes("/api/org/")
     ? `/api/org/${orgId}/intro-tracking`
     : null;
+
+  const hasTargets = targetCompanyCount == null || targetCompanyCount > 0;
 
   const loadCached = useCallback(async () => {
     setLoading(true);
@@ -117,6 +191,10 @@ export function OrgClientIntroMatchesPanel({
 
   async function findMatches() {
     if (readOnly) return;
+    if (!hasTargets) {
+      setError("Add target employers for this employee before finding intro matches.");
+      return;
+    }
     setFinding(true);
     setError(null);
     setExpanded(true);
@@ -191,13 +269,26 @@ export function OrgClientIntroMatchesPanel({
     }
   }
 
+  async function handleCopyEmail(email: string) {
+    const ok = await copyEmail(email);
+    if (ok) {
+      setCopiedEmail(email);
+      window.setTimeout(() => setCopiedEmail((current) => (current === email ? null : current)), 2000);
+    }
+  }
+
   return (
     <div style={{ marginTop: 8 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {!readOnly && (
-          <ScoutSecondaryBtn onClick={() => void findMatches()} disabled={finding}>
+          <ScoutSecondaryBtn onClick={() => void findMatches()} disabled={finding || !hasTargets}>
             {finding ? "Finding matches…" : "Find intro matches"}
           </ScoutSecondaryBtn>
+        )}
+        {!readOnly && !hasTargets && (
+          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+            Add target employers first.
+          </span>
         )}
         {matches.length > 0 && !defaultExpanded && (
           <ScoutSecondaryBtn onClick={() => setExpanded((v) => !v)}>
@@ -239,7 +330,9 @@ export function OrgClientIntroMatchesPanel({
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, padding: 12, margin: 0 }}>
               {readOnly
                 ? "No cached matches yet."
-                : "No matches yet — click Find intro matches after the client has tracked target companies and pooled inboxes are synced."}
+                : hasTargets
+                  ? "No matches yet — click Find intro matches after the pooled inbox is synced."
+                  : "No target employers yet — add companies above, then find intro matches."}
             </p>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -258,7 +351,6 @@ export function OrgClientIntroMatchesPanel({
                     <th style={{ padding: "10px 8px" }}>Company</th>
                     <th style={{ padding: "10px 8px" }}>Known by</th>
                     <th style={{ padding: "10px 8px" }}>Strength</th>
-                    <th style={{ padding: "10px 8px" }}>Last activity</th>
                     <th style={{ padding: "10px 8px" }}>Open roles</th>
                     <th style={{ padding: "10px 8px" }}>Intro</th>
                     <th style={{ padding: "10px 8px" }} />
@@ -269,103 +361,105 @@ export function OrgClientIntroMatchesPanel({
                     const tracking = row.introTracking;
                     const statusNote = introStatusLabel(tracking?.status);
                     const busy = trackingBusyId === row.contact.id;
+                    const whyOpen = expandedWhyId === row.id;
                     return (
-                      <tr key={row.id} style={{ borderTop: "var(--scout-border)" }}>
-                        <td style={{ padding: "12px 8px" }}>
-                          <div style={{ fontWeight: 600, color: color.ink }}>
-                            {row.contact.name ?? row.contact.email}
-                          </div>
-                          {row.contact.title && (
-                            <div style={{ fontSize: T.caption, color: color.muted }}>{row.contact.title}</div>
-                          )}
-                        </td>
-                        <td style={{ padding: "12px 8px" }}>
-                          <div>{row.contact.company ?? row.targetCompany}</div>
-                          {row.matchType && (
-                            <div style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
-                              {row.matchType} match
+                      <Fragment key={row.id}>
+                        <tr key={row.id} style={{ borderTop: "var(--scout-border)" }}>
+                          <td style={{ padding: "12px 8px" }}>
+                            <div style={{ fontWeight: 600, color: color.ink }}>
+                              {row.contact.name ?? row.contact.email}
                             </div>
-                          )}
-                        </td>
-                        <td style={{ padding: "12px 8px" }}>
-                          <div>{row.knownBy.name ?? "Member"}</div>
-                          {row.knownBy.email && (
-                            <div style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
-                              {row.knownBy.email}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: "12px 8px" }}>
-                          <span style={{ color: strengthColor(row.strengthScore), fontWeight: 600 }}>
-                            {strengthLabel(row.strengthScore)} ({row.strengthScore})
-                          </span>
-                        </td>
-                        <td style={{ padding: "12px 8px", color: color.muted }}>
-                          {row.contact.lastActivityAt
-                            ? new Date(row.contact.lastActivityAt).toLocaleDateString()
-                            : row.knownBy.lastSeenAt
-                              ? new Date(row.knownBy.lastSeenAt).toLocaleDateString()
-                              : "—"}
-                        </td>
-                        <td style={{ padding: "12px 8px", color: color.muted }}>
-                          {row.hasOpenRoles ? (
-                            <span style={{ color: color.forest }}>
-                              {row.hirebaseJobs.length} role{row.hirebaseJobs.length === 1 ? "" : "s"}
+                            {row.contact.title && (
+                              <div style={{ fontSize: T.caption, color: color.muted }}>{row.contact.title}</div>
+                            )}
+                            {row.contact.linkedinUrl && (
+                              <a
+                                href={row.contact.linkedinUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: T.caption, color: color.forest }}
+                              >
+                                LinkedIn
+                              </a>
+                            )}
+                          </td>
+                          <td style={{ padding: "12px 8px" }}>
+                            <div>{row.contact.company ?? row.targetCompany}</div>
+                            {row.matchType && (
+                              <div style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
+                                {matchTypeLabel(row.matchType)}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: "12px 8px" }}>
+                            <div>{row.knownBy.name ?? "Member"}</div>
+                          </td>
+                          <td style={{ padding: "12px 8px" }}>
+                            <span style={{ color: strengthColor(row.strengthScore), fontWeight: 600 }}>
+                              {strengthLabel(row.strengthScore)}
                             </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td style={{ padding: "12px 8px", color: color.muted, fontSize: T.caption }}>
-                          {statusNote ?? "—"}
-                        </td>
-                        <td style={{ padding: "12px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                            {!readOnly && trackingApi && tracking?.status !== "SENT" && tracking?.status !== "DONE" && (
+                          </td>
+                          <td style={{ padding: "12px 8px", color: color.muted }}>
+                            {row.hasOpenRoles ? (
+                              <span style={{ color: color.forest }} title={row.hirebaseJobs[0]?.title}>
+                                {row.hirebaseJobs[0]?.title ?? "Open role"}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td style={{ padding: "12px 8px", color: color.muted, fontSize: T.caption }}>
+                            {statusNote ?? "—"}
+                          </td>
+                          <td style={{ padding: "12px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
                               <ScoutSecondaryBtn
-                                onClick={() =>
-                                  void updateIntroTracking(row.contact.id, "SENT", tracking?.id)
-                                }
-                                disabled={busy}
+                                onClick={() => setExpandedWhyId((id) => (id === row.id ? null : row.id))}
                               >
-                                {busy ? "Saving…" : "Mark intro sent"}
+                                {whyOpen ? "Hide why" : "Why?"}
                               </ScoutSecondaryBtn>
-                            )}
-                            {!readOnly && trackingApi && tracking?.status === "SENT" && (
-                              <ScoutSecondaryBtn
-                                onClick={() =>
-                                  void updateIntroTracking(row.contact.id, "DONE", tracking.id)
-                                }
-                                disabled={busy}
-                              >
-                                {busy ? "Saving…" : "Mark done"}
+                              <ScoutSecondaryBtn onClick={() => void handleCopyEmail(row.contact.email)}>
+                                {copiedEmail === row.contact.email ? "Copied" : "Copy email"}
                               </ScoutSecondaryBtn>
-                            )}
-                            {!readOnly && (
-                              <ScoutSecondaryBtn
-                                onClick={() => void enrichContact(row.contact.id)}
-                                disabled={enrichingId === row.contact.id}
-                              >
-                                {enrichingId === row.contact.id ? "Enriching…" : "Enrich with Sumble"}
-                              </ScoutSecondaryBtn>
-                            )}
-                            {!readOnly && (
-                              <Link
-                                href={composeUrl(row.contact.email)}
-                                style={{
-                                  fontFamily: fontSans,
-                                  fontSize: T.caption,
-                                  color: color.forest,
-                                  textDecoration: "underline",
-                                  alignSelf: "center",
-                                }}
-                              >
-                                Send email
-                              </Link>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                              {!readOnly && trackingApi && tracking?.status !== "SENT" && tracking?.status !== "DONE" && (
+                                <ScoutSecondaryBtn
+                                  onClick={() =>
+                                    void updateIntroTracking(row.contact.id, "SENT", tracking?.id)
+                                  }
+                                  disabled={busy}
+                                >
+                                  {busy ? "Saving…" : "Mark intro sent"}
+                                </ScoutSecondaryBtn>
+                              )}
+                              {!readOnly && trackingApi && tracking?.status === "SENT" && (
+                                <ScoutSecondaryBtn
+                                  onClick={() =>
+                                    void updateIntroTracking(row.contact.id, "DONE", tracking.id)
+                                  }
+                                  disabled={busy}
+                                >
+                                  {busy ? "Saving…" : "Mark done"}
+                                </ScoutSecondaryBtn>
+                              )}
+                              {!readOnly && (
+                                <ScoutSecondaryBtn
+                                  onClick={() => void enrichContact(row.contact.id)}
+                                  disabled={enrichingId === row.contact.id}
+                                >
+                                  {enrichingId === row.contact.id ? "Enriching…" : "Enrich with Sumble"}
+                                </ScoutSecondaryBtn>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {whyOpen && (
+                          <tr key={`${row.id}-why`}>
+                            <td colSpan={7} style={{ padding: "0 8px 12px" }}>
+                              <WhyThisMatchPanel row={row} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -417,7 +511,7 @@ export function OrgIntroMatchPriorityPanel({
   if (rows.length === 0) {
     return (
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-        No intro matches yet — assign clients with target companies and run Find intro matches.
+        No intro matches yet — assign employees with target employers and run Find intro matches.
       </p>
     );
   }
@@ -427,7 +521,7 @@ export function OrgIntroMatchPriorityPanel({
       {rows.slice(0, 8).map((row) => (
         <li key={row.id} style={{ marginBottom: 6 }}>
           {row.knownBy.name ?? "Member"} knows {row.contact.name ?? row.contact.email} @{" "}
-          {row.contact.company ?? row.targetCompany} — strength {row.strengthScore}{" "}
+          {row.contact.company ?? row.targetCompany} — {strengthLabel(row.strengthScore)}{" "}
           {clientLinkPrefix ? (
             <Link
               href={`${clientLinkPrefix}/${row.client.id}`}
