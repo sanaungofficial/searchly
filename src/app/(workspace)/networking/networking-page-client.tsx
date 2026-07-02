@@ -116,7 +116,7 @@ export function NetworkingPageClient() {
             </div>
           )}
 
-          <div style={{ display: isMobile ? "block" : "flex", gap: 32, alignItems: "flex-start", flex: 1, minHeight: 0 }}>
+          <div style={{ display: isMobile ? "block" : "flex", gap: 32, alignItems: isMobile ? undefined : "stretch", flex: 1, minHeight: 0 }}>
             {!isMobile && (
               <NetworkingLayoutSidebar
                 tabs={NETWORKING_SIDEBAR_TABS}
