@@ -32,7 +32,7 @@ export function parseNetworkPoolVisibility(value: unknown): NetworkPoolVisibilit
 }
 
 export function orgNetworkAdminReturnPath(orgId: string) {
-  return `/admin/orgs/${encodeURIComponent(orgId)}?network=inbox`;
+  return `/admin/orgs/${encodeURIComponent(orgId)}#employees`;
 }
 
 export function orgNetworkMemberReturnPath(orgId: string) {

@@ -12,9 +12,9 @@ export function OrgClientSettingsPanel({ orgId }: { orgId: string }) {
         <Link href={`/org/${orgId}/dashboard`} style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}>
           ← Org dashboard
         </Link>
-        <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Organization settings</h1>
+        <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Employees</h1>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          Manage employee accounts for your organization.
+          Manage supported employees and intro matching for your organization.
         </p>
         <OrgSettingsNav orgId={orgId} active="clients" />
       </div>
