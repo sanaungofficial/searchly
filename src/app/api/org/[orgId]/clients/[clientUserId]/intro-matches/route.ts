@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireOrgMemberOrPlatformAdmin } from "@/lib/org-auth";
 import {
   computeOrgIntroMatches,
+  listOrgIntroMatchPreview,
   listOrgIntroMatches,
   type OrgIntroMatchRow,
 } from "@/lib/org-network-match";
@@ -18,7 +19,7 @@ async function attachIntroTracking(orgId: string, clientUserId: string, matches:
 }
 
 export async function GET(
-  _: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ orgId: string; clientUserId: string }> },
 ) {
   const { orgId, clientUserId } = await params;
@@ -27,6 +28,22 @@ export async function GET(
 
   const org = await prisma.org.findUnique({ where: { id: orgId }, select: { id: true, name: true } });
   if (!org) return NextResponse.json({ error: "Org not found" }, { status: 404 });
+
+  const preview = req.nextUrl.searchParams.get("preview") === "true";
+  const limitParam = Number.parseInt(req.nextUrl.searchParams.get("limit") ?? "5", 10);
+  const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(limitParam, 20)) : 5;
+
+  if (preview) {
+    const result = await listOrgIntroMatchPreview(orgId, clientUserId, limit);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 404 });
+    const matches = await attachIntroTracking(orgId, clientUserId, result.matches);
+    return NextResponse.json({
+      org: { id: org.id, name: org.name },
+      clientId: clientUserId,
+      matches,
+      totalCount: result.totalCount,
+    });
+  }
 
   const result = await listOrgIntroMatches(orgId, clientUserId);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 404 });

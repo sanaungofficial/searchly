@@ -4,14 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
+import { EmployeeIntroDrawer, type EmployeeDrawerClient } from "@/components/org/employee-intro-drawer";
+import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
 import { OrgSettingsNav } from "@/components/org/org-settings-nav";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
-import { color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
+import { border, color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
 
 type DashboardClient = {
   userId: string;
   email: string;
   name: string | null;
+  assignedAt: string;
   profileComplete: boolean;
   profileCompletenessPct: number;
   hasMatches: boolean;
@@ -87,6 +90,7 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [drawerClient, setDrawerClient] = useState<EmployeeDrawerClient | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,6 +135,7 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
     : `/org/${orgId}/dashboard`;
 
   return (
+    <>
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 960 }}>
       <div>
         <Link href="/dashboard" style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}>
@@ -230,12 +235,24 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
                     <th style={{ padding: "10px 8px" }}>Employee</th>
                     <th style={{ padding: "10px 8px" }}>Status</th>
                     <th style={{ padding: "10px 8px" }}>Targets</th>
-                    <th style={{ padding: "10px 8px" }} />
+                    <th style={{ padding: "10px 8px" }}>Matches</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.clients.map((client) => (
-                    <tr key={client.userId} style={{ borderTop: "var(--scout-border)" }}>
+                    <tr
+                      key={client.userId}
+                      style={{ borderTop: border.line, cursor: "pointer" }}
+                      onClick={() =>
+                        setDrawerClient({
+                          userId: client.userId,
+                          email: client.email,
+                          name: client.name,
+                          assignedAt: client.assignedAt,
+                          notes: null,
+                        })
+                      }
+                    >
                       <td style={{ padding: "12px 8px" }}>
                         <div style={{ fontWeight: 600, color: color.ink }}>{client.name ?? client.email}</div>
                         {client.name && (
@@ -256,25 +273,21 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
                       </td>
                       <td style={{ padding: "12px 8px", color: color.muted }}>
                         {client.targetCompanyCount === 0 ? (
-                          <Link
-                            href={`/org/${orgId}/clients/${client.userId}`}
-                            style={{ color: color.forest, textDecoration: "underline" }}
-                          >
-                            Add targets →
-                          </Link>
+                          <span style={{ color: color.forest }}>Add targets</span>
                         ) : (
                           <>
                             {client.targetCompanyCount} compan{client.targetCompanyCount === 1 ? "y" : "ies"}
                           </>
                         )}
                       </td>
-                      <td style={{ padding: "12px 8px", textAlign: "right" }}>
-                        <Link
-                          href={`/org/${orgId}/clients/${client.userId}`}
-                          style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, textDecoration: "underline" }}
-                        >
-                          View →
-                        </Link>
+                      <td style={{ padding: "12px 8px" }}>
+                        <EmployeeIntroMatchPreviewStack
+                          orgId={orgId}
+                          clientUserId={client.userId}
+                          apiBase={apiBase}
+                          targetCompanyCount={client.targetCompanyCount}
+                          compact
+                        />
                       </td>
                     </tr>
                   ))}
@@ -320,5 +333,16 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
         </ul>
       </ScoutBox>
     </div>
+
+    {drawerClient && (
+      <EmployeeIntroDrawer
+        orgId={orgId}
+        client={drawerClient}
+        apiBase={apiBase}
+        readOnly={!data.isOrgAdmin}
+        onClose={() => setDrawerClient(null)}
+      />
+    )}
+    </>
   );
 }

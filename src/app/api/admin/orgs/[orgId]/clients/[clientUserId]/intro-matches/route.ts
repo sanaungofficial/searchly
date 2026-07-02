@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireOrgMemberOrPlatformAdmin } from "@/lib/org-auth";
 import {
   computeOrgIntroMatches,
+  listOrgIntroMatchPreview,
   listOrgIntroMatches,
   listTopOrgIntroMatchesAcrossClients,
 } from "@/lib/org-network-match";
@@ -22,6 +23,21 @@ export async function GET(
   if (scope === "org") {
     const topMatches = await listTopOrgIntroMatchesAcrossClients(orgId, 15);
     return NextResponse.json({ org: { id: org.id, name: org.name }, topMatches });
+  }
+
+  const preview = req.nextUrl.searchParams.get("preview") === "true";
+  const limitParam = Number.parseInt(req.nextUrl.searchParams.get("limit") ?? "5", 10);
+  const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(limitParam, 20)) : 5;
+
+  if (preview) {
+    const result = await listOrgIntroMatchPreview(orgId, clientUserId, limit);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 404 });
+    return NextResponse.json({
+      org: { id: org.id, name: org.name },
+      clientId: clientUserId,
+      matches: result.matches,
+      totalCount: result.totalCount,
+    });
   }
 
   const result = await listOrgIntroMatches(orgId, clientUserId);
