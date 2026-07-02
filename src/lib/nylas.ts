@@ -532,7 +532,16 @@ export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & 
 
 export type NylasOAuthStatePayload =
   | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string; returnPath?: string; emailSync?: boolean }
-  | { kind: "user"; userId: string; ts: number; returnAppUrl?: string; returnPath?: string };
+  | { kind: "user"; userId: string; ts: number; returnAppUrl?: string; returnPath?: string }
+  | {
+      kind: "orgNetwork";
+      orgMemberId: string;
+      userId: string;
+      visibility: "PRIVATE" | "POOLED";
+      ts: number;
+      returnAppUrl?: string;
+      returnPath?: string;
+    };
 
 export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
 
@@ -560,9 +569,11 @@ export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | n
 
   try {
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as {
-      kind?: "coach" | "user";
+      kind?: "coach" | "user" | "orgNetwork";
       coachProfileId?: string;
       userId?: string;
+      orgMemberId?: string;
+      visibility?: "PRIVATE" | "POOLED";
       ts?: number;
       returnAppUrl?: string;
       returnPath?: string;
@@ -570,12 +581,25 @@ export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | n
     };
     if (!parsed.ts || Date.now() - parsed.ts > 1000 * 60 * 60) return null;
 
+    if (parsed.kind === "orgNetwork" && parsed.orgMemberId && parsed.userId && parsed.visibility) {
+      return {
+        kind: "orgNetwork",
+        orgMemberId: parsed.orgMemberId,
+        userId: parsed.userId,
+        visibility: parsed.visibility,
+        ts: parsed.ts,
+        ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+        ...(parsed.returnPath ? { returnPath: parsed.returnPath } : {}),
+      };
+    }
+
     if (parsed.kind === "user" && parsed.userId) {
       return {
         kind: "user",
         userId: parsed.userId,
         ts: parsed.ts,
         ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+        ...(parsed.returnPath ? { returnPath: parsed.returnPath } : {}),
       };
     }
 

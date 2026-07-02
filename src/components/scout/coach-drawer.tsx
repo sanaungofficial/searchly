@@ -19,7 +19,7 @@ import {
   type CoachBookingRequestSessionType,
 } from "@/components/scout/coach-booking-request-modal";
 import { ScoutPrimaryBtn, scoutFieldStyle } from "@/components/scout/scout-box";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { useRequireAuthRedirect } from "@/hooks/use-auth-return-path";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem, CoachProfileDetail } from "@/lib/coach-types";
@@ -176,7 +176,7 @@ export function CoachDrawer({
   onMyCoachChange,
   initialBookingType = null,
 }: Props) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const requireAuth = useRequireAuthRedirect();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
   const isAdmin = userRole === "ADMIN";
@@ -360,16 +360,12 @@ export function CoachDrawer({
       <div
         onMouseDown={(e) => e.stopPropagation()}
         onClick={closeFromBackdrop}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
+        style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <div
         className="bruddle"
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.card,

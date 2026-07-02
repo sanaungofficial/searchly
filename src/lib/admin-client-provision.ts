@@ -14,6 +14,7 @@ import {
   setClientAuthPassword,
 } from "@/lib/admin-client-auth";
 import { ADMIN_ROSTER_CLIENT_ROLES, adminRosterClientWhere } from "@/lib/admin-client-roles";
+import { getOrgAssignmentsForClient } from "@/lib/client-assignment";
 import { Prisma, UserRole, type User } from "@prisma/client";
 
 export type ProvisionClientInput = {
@@ -36,6 +37,35 @@ export type ProvisionClientResult = {
   linkedinImported: boolean;
   warnings: string[];
 };
+
+export function parseProvisionClientFormData(formData: FormData): ProvisionClientInput {
+  const email = String(formData.get("email") ?? "").trim();
+  const nameRaw = formData.get("name");
+  const name = typeof nameRaw === "string" && nameRaw.trim() ? nameRaw.trim() : null;
+  const linkedinRaw = formData.get("linkedinUrl");
+  const linkedinUrl = typeof linkedinRaw === "string" && linkedinRaw.trim() ? linkedinRaw.trim() : null;
+  const resumeFile = formData.get("resume");
+  const file = resumeFile instanceof File && resumeFile.size > 0 ? resumeFile : null;
+  const sendInviteRaw = formData.get("sendInvite");
+  const sendInvite =
+    sendInviteRaw === "true" ||
+    sendInviteRaw === "1" ||
+    sendInviteRaw === "on";
+  const initialPasswordRaw = formData.get("initialPassword");
+  const initialPassword =
+    typeof initialPasswordRaw === "string" && initialPasswordRaw.trim()
+      ? initialPasswordRaw.trim()
+      : null;
+
+  return {
+    email,
+    name,
+    resumeFile: file,
+    linkedinUrl,
+    sendInvite: initialPassword ? false : sendInvite,
+    initialPassword,
+  };
+}
 
 async function upsertClientUser(email: string, name: string | null): Promise<User> {
   return prisma.user.upsert({
@@ -217,7 +247,7 @@ export async function provisionClient(input: ProvisionClientInput): Promise<Prov
 }
 
 export async function fetchAdminClientById(userId: string) {
-  return prisma.user.findFirst({
+  const client = await prisma.user.findFirst({
     where: adminRosterClientWhere(userId),
     include: {
       profile: {
@@ -254,4 +284,9 @@ export async function fetchAdminClientById(userId: string) {
       },
     },
   });
+
+  if (!client) return null;
+
+  const orgAssignments = await getOrgAssignmentsForClient(userId);
+  return { ...client, orgAssignments };
 }

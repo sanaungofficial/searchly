@@ -5,7 +5,7 @@ import type { DashboardGoal } from "@/lib/dashboard-goals";
 import { DASHBOARD_GOAL_MAX, GOALS_MATCHING_TAGLINE } from "@/lib/dashboard-goals";
 import { DashboardGoalItem } from "@/components/scout/dashboard-goal-item";
 import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 import { bruddleHeadingStyle, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -42,7 +42,7 @@ export function DashboardGoalsDrawer({
   onSaveTarget,
   onRemove,
 }: Props) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -64,15 +64,12 @@ export function DashboardGoalsDrawer({
     <>
       <div
         onClick={close}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
+        style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <aside
         className="bruddle"
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
+          ...panelStyle,
           width: isMobile ? "100vw" : "min(440px, calc(100vw - 16px))",
           background: surface.card,
           border: isMobile ? "none" : line,

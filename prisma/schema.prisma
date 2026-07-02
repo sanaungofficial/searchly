@@ -66,6 +66,13 @@ model User {
   applicationQaEntries ApplicationQaEntry[]
   importRunsAsClient   ImportRun[] @relation("ClientImportRuns")
   importRunsPerformed  ImportRun[] @relation("ImportedByImportRuns")
+  orgMemberships       OrgMember[] @relation("OrgMemberships")
+  orgMembersInvited    OrgMember[] @relation("OrgMemberInvites")
+  clientAssignments    ClientAssignment[] @relation("ClientAssignments")
+  clientAssignmentsMade ClientAssignment[] @relation("ClientAssignmentAdmin")
+  orgMatchResults      OrgMatchResult[]   @relation("OrgMatchResults")
+  orgIntroTrackingAsClient OrgIntroTracking[] @relation("OrgIntroTrackingClient")
+  orgIntroTrackingRequested OrgIntroTracking[] @relation("OrgIntroTrackingRequestedBy")
 
   @@index([referredByUserId])
 }
@@ -324,6 +331,7 @@ model CoachProfile {
   reviews        CoachReview[]
   followers      CoachFollow[]
   clientAssignments CoachClientAssignment[]
+  polymorphicClientAssignments ClientAssignment[]
   sharedDocuments   CoachSharedDocument[]
   clientSessionNotes CoachClientSessionNote[]
   bookings       CoachBooking[]
@@ -1169,6 +1177,8 @@ model UserEmailGrant {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  orgNetworkSources OrgNetworkSource[]
+
   @@index([nylasGrantId])
 }
 
@@ -1405,6 +1415,212 @@ model ImportRun {
 
   @@index([clientUserId, createdAt(sort: Desc)])
   @@index([importedById])
+}
+
+/// Enterprise organization (company admin portal — Step 1 membership only).
+model Org {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  website   String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members           OrgMember[]
+  clientAssignments ClientAssignment[]
+  orgContacts       OrgContact[]
+  matchResults      OrgMatchResult[]
+  introTracking     OrgIntroTracking[]
+}
+
+enum OrgMemberRole {
+  ADMIN
+  MEMBER
+}
+
+/// User membership in an org — same user may belong to multiple orgs via separate rows.
+model OrgMember {
+  id              String        @id @default(cuid())
+  orgId           String
+  org             Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation("OrgMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role            OrgMemberRole @default(MEMBER)
+  invitedByUserId String?
+  invitedBy       User?         @relation("OrgMemberInvites", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  joinedAt        DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  networkSource OrgNetworkSource?
+
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@index([orgId])
+}
+
+enum NetworkPoolVisibility {
+  PRIVATE
+  POOLED
+}
+
+enum NetworkSourceStatus {
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+/// Org member inbox connection for warm-intro network graph (Enterprise Step 3).
+model OrgNetworkSource {
+  id               String                @id @default(cuid())
+  orgMemberId      String                @unique
+  orgMember        OrgMember             @relation(fields: [orgMemberId], references: [id], onDelete: Cascade)
+  userEmailGrantId String?
+  userEmailGrant   UserEmailGrant?       @relation(fields: [userEmailGrantId], references: [id], onDelete: SetNull)
+  nylasGrantId     String?
+  email            String?
+  provider         String?
+  visibility       NetworkPoolVisibility @default(PRIVATE)
+  poolPolicy       Json?
+  status           NetworkSourceStatus   @default(DISCONNECTED)
+  lastSyncAt       DateTime?
+  connectedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  knownContacts OrgContactKnownBy[]
+
+  @@index([nylasGrantId])
+  @@index([status])
+  @@index([visibility])
+}
+
+/// Pooled org network contact (metadata-only — Enterprise Step 4).
+model OrgContact {
+  id              String    @id @default(cuid())
+  orgId           String
+  org             Org       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email           String
+  emailNormalized String
+  name            String?
+  company         String?
+  title           String?
+  linkedinUrl     String?
+  phone           String?
+  lastActivityAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  knownBy OrgContactKnownBy[]
+  matchResults OrgMatchResult[]
+  introTracking OrgIntroTracking[]
+
+  @@unique([orgId, emailNormalized])
+  @@index([orgId, company])
+  @@index([orgId])
+}
+
+/// Which org network source knows an org contact (pooled graph edge).
+model OrgContactKnownBy {
+  id              String           @id @default(cuid())
+  orgContactId    String
+  orgContact      OrgContact       @relation(fields: [orgContactId], references: [id], onDelete: Cascade)
+  networkSourceId String
+  networkSource   OrgNetworkSource @relation(fields: [networkSourceId], references: [id], onDelete: Cascade)
+  strengthScore   Int              @default(0)
+  strengthFactors Json?
+  firstSeenAt     DateTime?
+  lastSeenAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([orgContactId, networkSourceId])
+  @@index([networkSourceId])
+}
+
+/// Cached admin intro-match rows (Enterprise Step 6 — click-computed, not cron).
+model OrgMatchResult {
+  id                   String     @id @default(cuid())
+  orgId                String
+  org                  Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  clientId             String
+  client               User       @relation("OrgMatchResults", fields: [clientId], references: [id], onDelete: Cascade)
+  targetCompany        String
+  targetCompanyKey     String
+  contactId            String
+  contact              OrgContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  strengthScore        Int
+  matchType            String?
+  knownByUserId        String?
+  knownByUserName      String?
+  knownByNetworkSourceId String?
+  hirebaseJobIds       String[]   @default([])
+  hirebaseJobs         Json?
+  computedAt           DateTime   @default(now())
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  @@unique([orgId, clientId, targetCompanyKey, contactId])
+  @@index([orgId, clientId])
+  @@index([orgId, clientId, strengthScore(sort: Desc)])
+}
+
+enum OrgIntroTrackingStatus {
+  REQUESTED
+  SENT
+  DONE
+  DECLINED
+}
+
+/// Warm intro request tracking for org admins (Enterprise Step 7).
+model OrgIntroTracking {
+  id                String                 @id @default(cuid())
+  orgId             String
+  org               Org                    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            User                   @relation("OrgIntroTrackingClient", fields: [clientId], references: [id], onDelete: Cascade)
+  orgContactId      String
+  orgContact        OrgContact             @relation(fields: [orgContactId], references: [id], onDelete: Cascade)
+  requestedByUserId String
+  requestedBy       User                   @relation("OrgIntroTrackingRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  status            OrgIntroTrackingStatus @default(REQUESTED)
+  notes             String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@unique([orgId, clientId, orgContactId])
+  @@index([orgId, clientId])
+  @@index([orgId, status])
+}
+
+enum AssignmentAssignerType {
+  COACH
+  COMPANY
+}
+
+/// Polymorphic client assignment — coach (internal) or company org.
+model ClientAssignment {
+  id               String                 @id @default(cuid())
+  assignerType     AssignmentAssignerType
+  clientId         String
+  client           User                   @relation("ClientAssignments", fields: [clientId], references: [id], onDelete: Cascade)
+  coachProfileId   String?
+  coachProfile     CoachProfile?          @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  orgId            String?
+  org              Org?                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  assignedByUserId String?
+  assignedBy       User?                  @relation("ClientAssignmentAdmin", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  notes            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, assignerType, coachProfileId])
+  @@unique([clientId, assignerType, orgId])
+  @@index([clientId])
+  @@index([coachProfileId])
+  @@index([orgId])
 }
 
 /// Kimchi-owned Nylas Agent Account (system mailbox).

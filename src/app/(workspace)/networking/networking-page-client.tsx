@@ -70,10 +70,10 @@ export function NetworkingPageClient() {
                 <ScoutLabel>Networking</ScoutLabel>
               </div>
               <ScoutDisplayTitle size={28} style={{ marginBottom: 8 }}>
-                Leads, inbox &amp; roles
+                My network, inbox &amp; roles
               </ScoutDisplayTitle>
               <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-                Manage leads, email outreach, and recruiter-network roles in one place.
+                Manage contacts, email outreach, and recruiter-network roles in one place.
               </p>
             </div>
           )}
@@ -116,7 +116,7 @@ export function NetworkingPageClient() {
             </div>
           )}
 
-          <div style={{ display: isMobile ? "block" : "flex", gap: 32, alignItems: "flex-start", flex: 1, minHeight: 0 }}>
+          <div style={{ display: isMobile ? "block" : "flex", gap: 32, alignItems: isMobile ? undefined : "stretch", flex: 1, minHeight: 0 }}>
             {!isMobile && (
               <NetworkingLayoutSidebar
                 tabs={NETWORKING_SIDEBAR_TABS}

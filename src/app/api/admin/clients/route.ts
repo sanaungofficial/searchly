@@ -1,6 +1,11 @@
+import { AssignmentAssignerType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { fetchAdminClientById, provisionClient } from "@/lib/admin-client-provision";
+import {
+  fetchAdminClientById,
+  parseProvisionClientFormData,
+  provisionClient,
+} from "@/lib/admin-client-provision";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_ROSTER_CLIENT_ROLES } from "@/lib/admin-client-roles";
 
@@ -9,37 +14,14 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const formData = await req.formData();
-  const email = String(formData.get("email") ?? "").trim();
-  const nameRaw = formData.get("name");
-  const name = typeof nameRaw === "string" && nameRaw.trim() ? nameRaw.trim() : null;
-  const linkedinRaw = formData.get("linkedinUrl");
-  const linkedinUrl = typeof linkedinRaw === "string" && linkedinRaw.trim() ? linkedinRaw.trim() : null;
-  const resumeFile = formData.get("resume");
-  const file = resumeFile instanceof File && resumeFile.size > 0 ? resumeFile : null;
-  const sendInviteRaw = formData.get("sendInvite");
-  const sendInvite =
-    sendInviteRaw === "true" ||
-    sendInviteRaw === "1" ||
-    sendInviteRaw === "on";
-  const initialPasswordRaw = formData.get("initialPassword");
-  const initialPassword =
-    typeof initialPasswordRaw === "string" && initialPasswordRaw.trim()
-      ? initialPasswordRaw.trim()
-      : null;
+  const input = parseProvisionClientFormData(formData);
 
-  if (!email) {
+  if (!input.email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
   try {
-    const result = await provisionClient({
-      email,
-      name,
-      resumeFile: file,
-      linkedinUrl,
-      sendInvite: initialPassword ? false : sendInvite,
-      initialPassword,
-    });
+    const result = await provisionClient(input);
 
     const client = await fetchAdminClientById(result.user.id);
     if (!client) {
@@ -102,5 +84,44 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(clients);
+  const clientIds = clients.map((client) => client.id);
+  const orgAssignmentRows = clientIds.length
+    ? await prisma.clientAssignment.findMany({
+        where: {
+          clientId: { in: clientIds },
+          assignerType: AssignmentAssignerType.COMPANY,
+        },
+        orderBy: { createdAt: "desc" },
+        include: { org: { select: { id: true, name: true, slug: true } } },
+      })
+    : [];
+
+  const orgMap = new Map<string, Array<{
+    assignmentId: string;
+    orgId: string;
+    orgName: string;
+    orgSlug: string;
+    assignedAt: string;
+    notes: string | null;
+  }>>();
+
+  for (const row of orgAssignmentRows) {
+    const list = orgMap.get(row.clientId) ?? [];
+    list.push({
+      assignmentId: row.id,
+      orgId: row.org!.id,
+      orgName: row.org!.name,
+      orgSlug: row.org!.slug,
+      assignedAt: row.createdAt.toISOString(),
+      notes: row.notes,
+    });
+    orgMap.set(row.clientId, list);
+  }
+
+  return NextResponse.json(
+    clients.map((client) => ({
+      ...client,
+      orgAssignments: orgMap.get(client.id) ?? [],
+    })),
+  );
 }

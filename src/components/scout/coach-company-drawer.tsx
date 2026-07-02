@@ -7,6 +7,7 @@ import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachCompanyLookupMeta, CoachExperienceCompany } from "@/lib/coach-experience-companies";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
@@ -27,6 +28,8 @@ export function CoachCompanyDrawer({
   onClose,
   onWatchlistChange,
 }: Props) {
+  const { isMobile: layoutMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
+  const isMobile = layoutMobile;
   const router = useRouter();
   const { withClientScope, withClientReviewPath } = useWorkspace();
   const [trackedId, setTrackedId] = useState<string | null>(trackedIdProp);
@@ -90,15 +93,11 @@ export function CoachCompanyDrawer({
     <>
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z, backdropFilter: isMobile ? "none" : "blur(1px)" }}
+        style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z, backdropFilter: isMobile ? "none" : "blur(1px)" }}
       />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100%" : "min(720px, calc(100vw - 16px))",
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,

@@ -365,7 +365,7 @@ export function InboxMailView({
   const showMeetingsPanel = !isMobile && !meetingsCollapsed && activeTab === "primary";
 
   return (
-    <>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <InboxTopTabs
         active={activeTab}
         primaryCount={activeTab === "primary" ? primaryUnread : undefined}
@@ -384,6 +384,7 @@ export function InboxMailView({
           padding: "8px 16px",
           borderBottom: "var(--scout-border)",
           background: surface.card,
+          flexShrink: 0,
         }}
       >
         <input
@@ -479,7 +480,6 @@ export function InboxMailView({
           <InboxMeetingsPanel collapsed onToggleCollapse={() => setMeetingsCollapsed(false)} />
         ) : null}
       </div>
-
-    </>
+    </div>
   );
 }

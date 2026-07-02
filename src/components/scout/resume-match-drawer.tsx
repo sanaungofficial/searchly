@@ -32,9 +32,9 @@ import { scoutPrimaryCtaStyle, BRUDDLE_BTN_CLASS } from "./scout-box";
 import { MasterResumeGate } from "./master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z, backdropBelowNav } from "@/lib/z-layers";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
 import { isProductionEnv } from "@/lib/beta-features";
-import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import {
   BigScoreGauge,
   IndustryTag,
@@ -205,7 +205,7 @@ export function ResumeMatchDrawer({
   const autoStartedRef = useRef(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
-  const navTop = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
+  const { stackTop, backdropStyle } = useWorkspaceDrawerLayout({ inset: 0 });
 
   useEffect(() => {
     setMounted(true);
@@ -528,7 +528,7 @@ export function ResumeMatchDrawer({
       <div
         onClick={visible ? handleClose : undefined}
         style={{
-          ...backdropBelowNav(navTop),
+          ...backdropStyle,
           background: "rgba(0,0,0,0.4)",
           zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
@@ -543,7 +543,7 @@ export function ResumeMatchDrawer({
         style={{
           position: "fixed",
           right: 0,
-          top: navTop,
+          top: stackTop,
           bottom: 0,
           width: "min(80vw, calc(100vw - 16px))",
           background: RT.drawerBg,

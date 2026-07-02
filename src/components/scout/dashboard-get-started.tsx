@@ -63,7 +63,7 @@ export function DashboardGetStarted({ isMobile }: Props) {
         help={
           pipelineTotal === 0
             ? "New here? These are the fastest ways to get moving — browse jobs, save one you're interested in, or upload your resume so we can actually help you tailor things."
-            : "Job pipeline and networking lead counts — tap through to update roles or reach out to contacts."
+            : "Job pipeline and My Network counts — tap through to update roles or reach out to contacts."
         }
         titleStyle={{ fontSize: T.label, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, fontWeight: 600 }}
       />

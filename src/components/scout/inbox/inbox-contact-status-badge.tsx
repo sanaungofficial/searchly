@@ -60,7 +60,7 @@ export function InboxContactStatusPicker({
         value={value ?? "new"}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as InboxContactStatus)}
-        aria-label="Lead status"
+        aria-label="Contact status"
         style={{
           position: "absolute",
           inset: 0,

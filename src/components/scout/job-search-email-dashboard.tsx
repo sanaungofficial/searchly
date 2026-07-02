@@ -66,6 +66,13 @@ export function JobSearchEmailDashboard({ section }: Props) {
   }, [searchParams]);
 
   useEffect(() => {
+    const composeTo = searchParams.get("composeTo");
+    if (composeTo?.trim()) {
+      setCompose({ open: true, to: composeTo.trim(), subject: "", body: "" });
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const inbox = searchParams.get("inbox");
     const reason = searchParams.get("reason");
     if (inbox === "connected") {
@@ -158,8 +165,7 @@ export function JobSearchEmailDashboard({ section }: Props) {
         padding={0}
         style={{
           flex: 1,
-          minHeight: isMobile ? 520 : "min(72vh, 840px)",
-          maxHeight: isMobile ? undefined : "calc(100vh - 260px)",
+          minHeight: isMobile ? 520 : 0,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",

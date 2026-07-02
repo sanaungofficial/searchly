@@ -5,6 +5,8 @@ import { coachProfileSlug } from "@/lib/coach-slug";
 import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { syncInboxActivities } from "@/lib/inbox-crm";
 import { syncNylasContactsForUser } from "@/lib/inbox-crm/sync-contacts";
+import { completeOrgNetworkOAuth } from "@/lib/org-network-source";
+import { syncOrgNetworkSource } from "@/lib/org-contact-graph";
 import {
   clearNylasOAuthCookie,
   exchangeNylasCode,
@@ -40,7 +42,20 @@ export async function GET(req: NextRequest) {
 
   const parsedEarly = resolveNylasOAuthState(req, state);
   const isUserFlow = parsedEarly?.kind === "user";
+  const isOrgNetworkFlow = parsedEarly?.kind === "orgNetwork";
   const returnAppUrl = parsedEarly?.returnAppUrl ?? appUrl;
+
+  function redirectOrgNetwork(params: Record<string, string>) {
+    const returnPath =
+      parsedEarly?.kind === "orgNetwork" && parsedEarly.returnPath
+        ? parsedEarly.returnPath
+        : "/admin/orgs";
+    const path = returnPath.startsWith("/") ? returnPath : `/${returnPath}`;
+    const qs = new URLSearchParams(params).toString();
+    const response = NextResponse.redirect(`${returnAppUrl.replace(/\/$/, "")}${path}${qs ? `?${qs}` : ""}`);
+    clearNylasOAuthCookie(response);
+    return response;
+  }
 
   function redirectUser(params: Record<string, string>) {
     const returnPath =
@@ -74,11 +89,18 @@ export async function GET(req: NextRequest) {
   }
 
   async function redirectWith(params: Record<string, string>) {
+    if (isOrgNetworkFlow) return redirectOrgNetwork(params);
     return isUserFlow ? redirectUser(params) : redirectCoach(params);
   }
 
   if (!cfg) {
-    return await redirectWith(isUserFlow ? { inbox: "error", reason: "config" } : { nylas: "error", reason: "config" });
+    return await redirectWith(
+      isOrgNetworkFlow
+        ? { network: "error", reason: "config" }
+        : isUserFlow
+          ? { inbox: "error", reason: "config" }
+          : { nylas: "error", reason: "config" },
+    );
   }
 
   if (oauthError || oauthErrorReason) {
@@ -92,7 +114,7 @@ export async function GET(req: NextRequest) {
       errorReason: oauthErrorReason,
       errorDescription: oauthErrorDescription,
     });
-    const key = isUserFlow ? "inbox" : "nylas";
+    const key = isOrgNetworkFlow ? "network" : isUserFlow ? "inbox" : "nylas";
     return await redirectWith({
       [key]: "error",
       reason: mapped.reason,
@@ -105,19 +127,46 @@ export async function GET(req: NextRequest) {
       redirectUri: nylasOAuthRedirectUri(),
     });
     return await redirectWith(
-      isUserFlow
-        ? { inbox: "error", reason: "auth", detail: "missing_code" }
-        : { nylas: "error", reason: "auth", detail: "missing_code" },
+      isOrgNetworkFlow
+        ? { network: "error", reason: "auth", detail: "missing_code" }
+        : isUserFlow
+          ? { inbox: "error", reason: "auth", detail: "missing_code" }
+          : { nylas: "error", reason: "auth", detail: "missing_code" },
     );
   }
 
   const parsed = parsedEarly;
   if (!parsed) {
-    return await redirectWith(isUserFlow ? { inbox: "error", reason: "state" } : { nylas: "error", reason: "state" });
+    return await redirectWith(
+      isOrgNetworkFlow
+        ? { network: "error", reason: "state" }
+        : isUserFlow
+          ? { inbox: "error", reason: "state" }
+          : { nylas: "error", reason: "state" },
+    );
   }
 
   try {
     const { grantId, email } = await exchangeNylasCode(code, appUrl);
+
+    if (parsed.kind === "orgNetwork") {
+      const source = await completeOrgNetworkOAuth({
+        orgMemberId: parsed.orgMemberId,
+        userId: parsed.userId,
+        nylasGrantId: grantId,
+        email: email ?? null,
+        provider: req.nextUrl.searchParams.get("provider") ?? "google",
+        visibility: parsed.visibility,
+      });
+
+      if (parsed.visibility === "POOLED") {
+        syncOrgNetworkSource(source.id).catch((err) =>
+          console.error("[nylas/callback] org network backfill", err),
+        );
+      }
+
+      return redirectOrgNetwork({ network: "connected" });
+    }
 
     if (parsed.kind === "user") {
       await ensureJobAgentSettings(parsed.userId);
@@ -181,7 +230,7 @@ export async function GET(req: NextRequest) {
     console.error("[nylas/callback]", err);
     const message = err instanceof Error ? err.message : "Setup failed";
     return await redirectWith({
-      ...(isUserFlow ? { inbox: "error" } : { nylas: "error" }),
+      ...(isOrgNetworkFlow ? { network: "error" } : isUserFlow ? { inbox: "error" } : { nylas: "error" }),
       reason: "setup",
       ...(message ? { detail: message.slice(0, 200) } : {}),
     });

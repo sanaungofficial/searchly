@@ -12,8 +12,8 @@ import { scoutPrimaryCtaStyle, ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutLabel } 
 import { MasterResumeGate } from "@/components/scout/master-resume-gate";
 import { useMasterResumeStatus } from "@/hooks/use-master-resume-status";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z, backdropBelowNav } from "@/lib/z-layers";
-import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
+import { DRAWER_NESTED_BACKDROP_Z, DRAWER_NESTED_Z } from "@/lib/z-layers";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { CoverLetterPreview } from "@/components/scout/cover-letter-preview";
 import {
   type CoverLetterContext,
@@ -85,7 +85,7 @@ async function streamInto(
 export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, resumeAssetId, onClose, onLetterSaved }: CoverLetterDrawerProps) {
   const { user, openPricing, withClientScope } = useWorkspace();
   const isMobile = useIsMobile();
-  const navTop = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
+  const { stackTop, backdropStyle } = useWorkspaceDrawerLayout({ inset: 0 });
   const masterResume = useMasterResumeStatus();
   const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
   const [phase, setPhase] = useState<DrawerPhase>(initialLetter?.trim() ? "letter" : "idle");
@@ -336,7 +336,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
       <div
         onClick={visible ? handleClose : undefined}
         style={{
-          ...backdropBelowNav(navTop),
+          ...backdropStyle,
           background: "rgba(0,0,0,0.4)",
           zIndex: DRAWER_NESTED_BACKDROP_Z,
           opacity: visible ? 1 : 0,
@@ -351,7 +351,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
         style={{
           position: "fixed",
           right: 0,
-          top: navTop,
+          top: stackTop,
           bottom: 0,
           width: "min(960px, 85vw)",
           background: "#FFFFFF",

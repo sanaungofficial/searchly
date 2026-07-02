@@ -14,7 +14,10 @@ type BackdropProps = {
   className?: string;
 };
 
-/** Full-screen backdrop — click to close the drawer/modal it belongs to. */
+/**
+ * Full-screen backdrop — click to close the drawer/modal it belongs to.
+ * Workspace rule: drawers sit below the fixed top nav — default top is --workspace-stack-top.
+ */
 export function ScoutDrawerBackdrop({
   onClose,
   zIndex,

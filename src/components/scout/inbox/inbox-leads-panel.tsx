@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContactListFilter } from "@/lib/inbox-crm/list-contacts";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { InboxContactStatusBadge } from "./inbox-contact-status-badge";
 import { InboxLeadsFilterDrawer } from "./inbox-leads-filter-drawer";
+import { SuggestFromInboxDrawer } from "./suggest-from-inbox-drawer";
 import { SenderAvatar } from "./sender-avatar";
 import {
   DEFAULT_VISIBLE_COLUMNS,
@@ -65,6 +67,7 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
   const [sortOpen, setSortOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [suggestDrawerOpen, setSuggestDrawerOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
@@ -286,6 +289,12 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         <button type="button" onClick={() => setFilterOpen(true)} style={toolbarBtn(filters.length > 0)}>
           + Add filter{filters.length > 0 ? ` (${filters.length})` : ""}
         </button>
+        <ScoutPrimaryBtn
+          onClick={() => setSuggestDrawerOpen(true)}
+          style={{ padding: "8px 14px", minHeight: 36, fontSize: T.bodySm }}
+        >
+          Suggest from inbox
+        </ScoutPrimaryBtn>
         <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>
           {total.toLocaleString()} contact{total === 1 ? "" : "s"}
         </span>
@@ -495,6 +504,17 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         onApply={(next) => {
           setFilters(next);
           setPage(1);
+        }}
+      />
+
+      <SuggestFromInboxDrawer
+        open={suggestDrawerOpen}
+        onClose={() => setSuggestDrawerOpen(false)}
+        scopePath={scopePath}
+        mailConnected={mailConnected}
+        onAdded={() => {
+          setPage(1);
+          void load();
         }}
       />
     </div>
