@@ -188,12 +188,22 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
             </>
           )}
         </p>
-        <Link
-          href={`/org/${orgId}/settings/network`}
-          style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, textDecoration: "underline" }}
-        >
-          Network settings →
-        </Link>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 10 }}>
+          {data.isOrgAdmin && (
+            <Link
+              href="/networking"
+              style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, textDecoration: "underline", fontWeight: 600 }}
+            >
+              Review your network →
+            </Link>
+          )}
+          <Link
+            href={`/org/${orgId}/settings/network`}
+            style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, textDecoration: "underline" }}
+          >
+            Network settings →
+          </Link>
+        </div>
       </ScoutBox>
 
       {data.isOrgAdmin && (
@@ -245,7 +255,18 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
                         </div>
                       </td>
                       <td style={{ padding: "12px 8px", color: color.muted }}>
-                        {client.targetCompanyCount} compan{client.targetCompanyCount === 1 ? "y" : "ies"}
+                        {client.targetCompanyCount === 0 ? (
+                          <Link
+                            href={`/org/${orgId}/clients/${client.userId}`}
+                            style={{ color: color.forest, textDecoration: "underline" }}
+                          >
+                            Add targets →
+                          </Link>
+                        ) : (
+                          <>
+                            {client.targetCompanyCount} compan{client.targetCompanyCount === 1 ? "y" : "ies"}
+                          </>
+                        )}
                       </td>
                       <td style={{ padding: "12px 8px", textAlign: "right" }}>
                         <Link

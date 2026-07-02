@@ -162,7 +162,7 @@ export function SearchMetricsSections({
         <div style={{ marginTop: compact ? 0 : 8 }}>
           <SectionHeadingWithHelp
             title="Relationships"
-            help="Networking leads grouped by status — outreach and replies roll up to In conversation."
+            help="My Network contacts grouped by status — outreach and replies roll up to In conversation."
             titleStyle={{
               fontSize: T.label,
               textTransform: "uppercase",
@@ -197,13 +197,13 @@ export function SearchMetricsSections({
             <ScoutBox padding={isMobile ? "14px 16px" : "16px 20px"} style={{ marginBottom: 12, background: surface.inset }}>
               <ScoutLabel>Activity pulse</ScoutLabel>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: "8px 0 0" }}>
-                {rel.statusUpdatesLast7d} lead status update{rel.statusUpdatesLast7d === 1 ? "" : "s"} in the last 7 days
+                {rel.statusUpdatesLast7d} network status update{rel.statusUpdatesLast7d === 1 ? "" : "s"} in the last 7 days
               </p>
             </ScoutBox>
           )}
           {!compact && (
             <ScoutSecondaryBtn onClick={() => router.push(networkingPath)} style={{ minHeight: 40 }}>
-              Open Networking leads →
+              Open My Network →
             </ScoutSecondaryBtn>
           )}
         </>
