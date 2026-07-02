@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Playfair_Display, Cormorant_Garamond, Fraunces, Source_Sans_3, DM_Mono, Roboto_Flex, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -77,6 +78,19 @@ export default function RootLayout({
         className={`${sourceSans.variable} ${dmMono.variable} antialiased`}
         style={{ background: "var(--scout-page)", fontFamily: "var(--font-ui)" }}
       >
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-G4551YKTQD"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-G4551YKTQD');
+          `}
+        </Script>
         {children}
         <PartneroScript />
         <ClickConnectorWidget />

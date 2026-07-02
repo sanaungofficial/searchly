@@ -774,6 +774,9 @@ export function DashboardHomeTop({ isMobile }: Props) {
       {/* Welcome header */}
       {welcomeHeader}
 
+      {/* Job search metrics */}
+      <DashboardGetStarted isMobile={isMobile} />
+
       {/* Two-column row: action items + CTA cards */}
       <div
         style={{
@@ -782,6 +785,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
           gap: isMobile ? 16 : 20,
           marginBottom: isMobile ? 20 : 24,
           alignItems: isMobile ? "start" : "stretch",
+          borderTop: "var(--scout-border)",
+          paddingTop: isMobile ? 20 : 24,
         }}
       >
         {actionItemsAccordion || <div />}
@@ -813,9 +818,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
           {eventsSection}
         </div>
       </div>
-
-      {/* Job search metrics */}
-      <DashboardGetStarted isMobile={isMobile} />
 
       {/* Modals */}
       {pendingSync && <ProfileSyncPromptModal sync={pendingSync} onConfirm={confirmProfileSync} onSkip={() => setPendingSync(null)} saving={syncSaving} />}
