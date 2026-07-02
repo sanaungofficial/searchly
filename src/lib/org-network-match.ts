@@ -393,6 +393,23 @@ export async function computeOrgIntroMatches(params: {
   return { ok: true, matches, targetsScanned: targets.length };
 }
 
+export async function listOrgIntroMatchPreview(
+  orgId: string,
+  clientId: string,
+  limit = 5,
+): Promise<
+  | { ok: true; matches: OrgIntroMatchRow[]; totalCount: number }
+  | { ok: false; error: string }
+> {
+  const result = await listOrgIntroMatches(orgId, clientId);
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    matches: result.matches.slice(0, Math.max(1, Math.min(limit, 20))),
+    totalCount: result.matches.length,
+  };
+}
+
 export async function listOrgIntroMatches(orgId: string, clientId: string) {
   const assigned = await isClientAssignedToOrg(orgId, clientId);
   if (!assigned) return { ok: false as const, error: "Client is not assigned to this organization." };
