@@ -7,6 +7,7 @@ export const ADMIN_NAV = [
   { id: "live", label: "Live sessions", path: "/admin/live" },
   { id: "prompts", label: "Prompts", path: "/admin/prompts" },
   { id: "company-scans", label: "Company scans", path: "/admin/company-scans" },
+  { id: "orgs", label: "Organizations", path: "/admin/orgs" },
 ] as const;
 
 export function matchAdminNavPath(pathname: string, itemPath: string): boolean {
