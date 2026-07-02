@@ -363,6 +363,11 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
     {drawerClient && (
       <EmployeeIntroDrawer
         orgId={orgId}
+        person={{
+          userId: drawerClient.userId,
+          email: drawerClient.email,
+          name: drawerClient.name,
+        }}
         client={drawerClient}
         apiBase={apiBase}
         readOnly={!data.isOrgAdmin}
