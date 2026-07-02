@@ -4,8 +4,9 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import type { OrgContactStrengthFactors } from "@/lib/org-contact-graph/types";
-import { color, fontMono, fontSans, type as T } from "@/lib/typography";
+import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type IntroTrackingRow = {
   id: string;
@@ -51,6 +52,238 @@ function strengthColor(score: number): string {
   if (score >= 70) return color.forest;
   if (score >= 40) return "#78716c";
   return color.muted;
+}
+
+function strengthDotColor(score: number): string {
+  if (score >= 70) return "#4A8B6A";
+  if (score >= 40) return "#CA8A04";
+  return "#A8A29E";
+}
+
+const BRUDDLE_INK = color.bruddleInk;
+
+/** Bruddle pill — colored dot + Via owner or strength label (Contacts list pattern). */
+function IntroMatchViaPill({
+  ownerName,
+  strengthScore,
+  preferStrength = false,
+}: {
+  ownerName: string | null;
+  strengthScore: number;
+  preferStrength?: boolean;
+}) {
+  const dotColor = strengthDotColor(strengthScore);
+  const label =
+    !preferStrength && ownerName?.trim()
+      ? `Via ${ownerName.trim()}`
+      : strengthLabel(strengthScore);
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+        padding: "4px 10px 4px 8px",
+        borderRadius: 0,
+        border: `1.5px solid ${BRUDDLE_INK}`,
+        background: `${dotColor}18`,
+        color: BRUDDLE_INK,
+        fontFamily: fontSans,
+        fontSize: T.caption,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        maxWidth: 160,
+      }}
+    >
+      <span
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: dotColor,
+          flexShrink: 0,
+        }}
+      />
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+    </span>
+  );
+}
+
+function IntroMatchListRow({
+  row,
+  expanded,
+  isLast = false,
+  onToggleExpand,
+  copiedEmail,
+  onCopyEmail,
+  readOnly,
+  trackingApi,
+  trackingBusy,
+  enriching,
+  onEnrich,
+  onUpdateTracking,
+}: {
+  row: IntroMatchRow;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  copiedEmail: string | null;
+  onCopyEmail: (email: string) => void;
+  readOnly: boolean;
+  trackingApi: string | null;
+  trackingBusy: boolean;
+  enriching: boolean;
+  onEnrich: () => void;
+  onUpdateTracking: (status: IntroTrackingRow["status"], existingId?: string) => void;
+}) {
+  const displayName = row.contact.name ?? row.contact.email;
+  const avatar = buildSenderAvatarUrls(displayName, row.contact.email);
+  const company = row.contact.company ?? row.targetCompany;
+  const tracking = row.introTracking;
+  const statusNote = introStatusLabel(tracking?.status);
+
+  return (
+    <div style={{ borderBottom: isLast ? undefined : border.line }}>
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          width: "100%",
+          textAlign: "left",
+          padding: "14px 16px",
+          border: "none",
+          background: expanded ? "rgba(26,58,47,0.03)" : surface.card,
+          cursor: "pointer",
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            overflow: "hidden",
+            flexShrink: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: avatar.primary || avatar.fallback ? "#fff" : undefined,
+            border: avatar.primary || avatar.fallback ? "1px solid rgba(0,0,0,0.06)" : undefined,
+          }}
+        >
+          {avatar.primary || avatar.fallback ? (
+            <img
+              src={avatar.primary ?? avatar.fallback ?? undefined}
+              alt=""
+              width={34}
+              height={34}
+              style={{ objectFit: "cover", borderRadius: "50%" }}
+            />
+          ) : (
+            <span
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: color.forest,
+                color: color.gold,
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {avatar.initials}
+            </span>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink }}>
+            {displayName}
+          </p>
+          <p
+            style={{
+              margin: "2px 0 0",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.muted,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {row.contact.email}
+          </p>
+          {company && (
+            <p
+              style={{
+                margin: "2px 0 0",
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                color: color.stone,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {company}
+              {row.matchType ? ` · ${matchTypeLabel(row.matchType)}` : ""}
+            </p>
+          )}
+        </div>
+        <IntroMatchViaPill ownerName={row.knownBy.name} strengthScore={row.strengthScore} />
+      </button>
+
+      {expanded && (
+        <div style={{ padding: "0 16px 14px", background: "rgba(26,58,47,0.03)" }}>
+          <WhyThisMatchPanel row={row} />
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+            <ScoutSecondaryBtn onClick={() => onCopyEmail(row.contact.email)}>
+              {copiedEmail === row.contact.email ? "Copied" : "Copy email"}
+            </ScoutSecondaryBtn>
+            {!readOnly && trackingApi && tracking?.status !== "SENT" && tracking?.status !== "DONE" && (
+              <ScoutSecondaryBtn
+                onClick={() => onUpdateTracking("SENT", tracking?.id)}
+                disabled={trackingBusy}
+              >
+                {trackingBusy ? "Saving…" : "Mark intro sent"}
+              </ScoutSecondaryBtn>
+            )}
+            {!readOnly && trackingApi && tracking?.status === "SENT" && (
+              <ScoutSecondaryBtn
+                onClick={() => onUpdateTracking("DONE", tracking.id)}
+                disabled={trackingBusy}
+              >
+                {trackingBusy ? "Saving…" : "Mark done"}
+              </ScoutSecondaryBtn>
+            )}
+            {!readOnly && (
+              <ScoutSecondaryBtn onClick={onEnrich} disabled={enriching}>
+                {enriching ? "Enriching…" : "Enrich with Sumble"}
+              </ScoutSecondaryBtn>
+            )}
+          </div>
+          {(statusNote || row.hasOpenRoles) && (
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "10px 0 0" }}>
+              {statusNote && <span>{statusNote}</span>}
+              {statusNote && row.hasOpenRoles && " · "}
+              {row.hasOpenRoles && (
+                <span style={{ color: color.forest }}>
+                  Open role: {row.hirebaseJobs[0]?.title ?? "Yes"}
+                  {row.hirebaseJobs.length > 1 ? ` (+${row.hirebaseJobs.length - 1} more)` : ""}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function matchTypeLabel(matchType: string | null): string {
@@ -141,6 +374,7 @@ export function OrgClientIntroMatchesPanel({
   readOnly = false,
   defaultExpanded = false,
   targetCompanyCount,
+  layout = "table",
 }: {
   orgId: string;
   clientUserId: string;
@@ -149,6 +383,7 @@ export function OrgClientIntroMatchesPanel({
   readOnly?: boolean;
   defaultExpanded?: boolean;
   targetCompanyCount?: number;
+  layout?: "table" | "list";
 }) {
   const [matches, setMatches] = useState<IntroMatchRow[]>([]);
   const [loading, setLoading] = useState(defaultExpanded);
@@ -303,24 +538,36 @@ export function OrgClientIntroMatchesPanel({
 
       {expanded && (
         <div
-          style={{
-            marginTop: 12,
-            border: "var(--scout-border)",
-            borderRadius: "var(--scout-radius)",
-            overflow: "hidden",
-          }}
+          style={
+            layout === "list"
+              ? {
+                  marginTop: 12,
+                  border: `1.5px solid ${BRUDDLE_INK}`,
+                  borderRadius: "var(--scout-radius)",
+                  overflow: "hidden",
+                  background: surface.card,
+                }
+              : {
+                  marginTop: 12,
+                  border: "var(--scout-border)",
+                  borderRadius: "var(--scout-radius)",
+                  overflow: "hidden",
+                }
+          }
         >
-          <div
-            style={{
-              padding: "10px 12px",
-              background: "rgba(26,58,47,0.04)",
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              color: color.muted,
-            }}
-          >
-            Intro matches for {clientLabel} — pooled network only, ranked by relationship strength.
-          </div>
+          {layout === "table" && (
+            <div
+              style={{
+                padding: "10px 12px",
+                background: "rgba(26,58,47,0.04)",
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                color: color.muted,
+              }}
+            >
+              Intro matches for {clientLabel} — pooled network only, ranked by relationship strength.
+            </div>
+          )}
 
           {loading ? (
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, padding: 12, margin: 0 }}>
@@ -334,6 +581,32 @@ export function OrgClientIntroMatchesPanel({
                   ? "No matches yet — click Find intro matches after the pooled inbox is synced."
                   : "No target employers yet — add companies above, then find intro matches."}
             </p>
+          ) : layout === "list" ? (
+            <div>
+              {matches.map((row, index) => {
+                const whyOpen = expandedWhyId === row.id;
+                const busy = trackingBusyId === row.contact.id;
+                return (
+                  <IntroMatchListRow
+                    key={row.id}
+                    row={row}
+                    expanded={whyOpen}
+                    isLast={index === matches.length - 1}
+                    onToggleExpand={() => setExpandedWhyId((id) => (id === row.id ? null : row.id))}
+                    copiedEmail={copiedEmail}
+                    onCopyEmail={(email) => void handleCopyEmail(email)}
+                    readOnly={readOnly}
+                    trackingApi={trackingApi}
+                    trackingBusy={busy}
+                    enriching={enrichingId === row.contact.id}
+                    onEnrich={() => void enrichContact(row.contact.id)}
+                    onUpdateTracking={(status, existingId) =>
+                      void updateIntroTracking(row.contact.id, status, existingId)
+                    }
+                  />
+                );
+              })}
+            </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: T.bodySm }}>
