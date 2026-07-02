@@ -16,10 +16,28 @@ export type ClientTargetCompany = {
   key: string;
 };
 
+export type OrgPotentialConnectionKnownBy = {
+  userId: string;
+  /** @deprecated Prefer memberFullName */
+  name: string;
+  /** @deprecated Prefer memberEmail */
+  email: string | null;
+  memberFullName: string;
+  memberEmail: string | null;
+  orgName: string;
+  isViewer: boolean;
+};
+
 export type OrgPotentialConnectionOwner = {
   userId: string;
+  /** @deprecated Prefer memberFullName */
   name: string;
+  /** @deprecated Prefer memberEmail */
   email: string | null;
+  memberFullName: string;
+  memberEmail: string | null;
+  orgName: string;
+  isViewer: boolean;
   contactCount: number;
 };
 
@@ -30,11 +48,7 @@ export type OrgPotentialConnectionContact = {
   company: string | null;
   title: string | null;
   matchType: "exact" | "domain" | "fuzzy";
-  knownBy: {
-    userId: string;
-    name: string;
-    email: string | null;
-  };
+  knownBy: OrgPotentialConnectionKnownBy;
 };
 
 export type OrgTargetPotentialConnections = {
@@ -505,13 +519,48 @@ export async function listOrgIntroMatches(orgId: string, clientId: string) {
   return { ok: true as const, matches };
 }
 
-export async function listOrgPotentialConnections(orgId: string, clientId: string) {
+function buildPotentialConnectionOwner(
+  user: { id: string; name: string | null; email: string | null },
+  orgName: string,
+  viewerUserId?: string | null,
+): Omit<OrgPotentialConnectionKnownBy, never> {
+  const memberFullName = user.name?.trim() || user.email || "Member";
+  const memberEmail = user.email;
+  const isViewer = viewerUserId != null && user.id === viewerUserId;
+  return {
+    userId: user.id,
+    name: memberFullName,
+    email: memberEmail,
+    memberFullName,
+    memberEmail,
+    orgName,
+    isViewer,
+  };
+}
+
+export async function listOrgPotentialConnections(
+  orgId: string,
+  clientId: string,
+  options?: { viewerUserId?: string | null },
+) {
   const assigned = await isClientAssignedToOrg(orgId, clientId);
   if (!assigned) return { ok: false as const, error: "Client is not assigned to this organization." };
 
+  const org = await prisma.org.findUnique({
+    where: { id: orgId },
+    select: { name: true },
+  });
+  const orgName = org?.name?.trim() || "Organization";
+  const viewerUserId = options?.viewerUserId ?? null;
+
   const targets = await loadClientTargetCompanies(clientId);
   if (targets.length === 0) {
-    return { ok: true as const, targets: [] as OrgTargetPotentialConnections[] };
+    return {
+      ok: true as const,
+      orgName,
+      viewerUserId,
+      targets: [] as OrgTargetPotentialConnections[],
+    };
   }
 
   const contacts = await loadPooledContactsForOrg(orgId);
@@ -521,7 +570,7 @@ export async function listOrgPotentialConnections(orgId: string, clientId: strin
     const contactRows: OrgPotentialConnectionContact[] = [];
     const ownerCounts = new Map<
       string,
-      { userId: string; name: string; email: string | null; count: number }
+      OrgPotentialConnectionOwner & { count: number }
     >();
 
     for (const contact of contacts) {
@@ -532,7 +581,7 @@ export async function listOrgPotentialConnections(orgId: string, clientId: strin
       if (!edge) continue;
 
       const member = edge.networkSource.orgMember.user;
-      const ownerName = member.name ?? member.email ?? "Member";
+      const knownBy = buildPotentialConnectionOwner(member, orgName, viewerUserId);
 
       contactRows.push({
         id: contact.id,
@@ -541,36 +590,29 @@ export async function listOrgPotentialConnections(orgId: string, clientId: strin
         company: contact.company,
         title: contact.title,
         matchType,
-        knownBy: {
-          userId: member.id,
-          name: ownerName,
-          email: member.email,
-        },
+        knownBy,
       });
 
       const existing = ownerCounts.get(member.id);
       if (existing) {
         existing.count += 1;
+        existing.contactCount = existing.count;
       } else {
         ownerCounts.set(member.id, {
-          userId: member.id,
-          name: ownerName,
-          email: member.email,
+          ...knownBy,
+          contactCount: 1,
           count: 1,
         });
       }
     }
 
     const owners = Array.from(ownerCounts.values())
-      .map((owner) => ({
-        userId: owner.userId,
-        name: owner.name,
-        email: owner.email,
-        contactCount: owner.count,
-      }))
+      .map(({ count: _count, ...owner }) => owner)
       .sort((a, b) => b.contactCount - a.contactCount);
 
-    contactRows.sort((a, b) => a.knownBy.name.localeCompare(b.knownBy.name));
+    contactRows.sort((a, b) =>
+      a.knownBy.memberFullName.localeCompare(b.knownBy.memberFullName),
+    );
 
     if (contactRows.length === 0) continue;
 
@@ -584,7 +626,7 @@ export async function listOrgPotentialConnections(orgId: string, clientId: strin
     });
   }
 
-  return { ok: true as const, targets: results };
+  return { ok: true as const, orgName, viewerUserId, targets: results };
 }
 
 function logoFromIntelEnrichment(enrichment: unknown): string | null {
@@ -656,10 +698,16 @@ export function formatPotentialConnectionOwnersSummary(
   return owners
     .map((owner) => {
       const countLabel = `${owner.contactCount} contact${owner.contactCount === 1 ? "" : "s"}`;
-      const firstName = owner.name.split(/\s+/)[0] ?? owner.name;
-      return `${countLabel} via ${firstName}`;
+      const ownerLabel = owner.isViewer ? "You" : owner.memberFullName;
+      return `${countLabel} via ${ownerLabel}`;
     })
     .join(", ");
+}
+
+export function formatConnectionOwnerLabel(knownBy: OrgPotentialConnectionKnownBy): string {
+  const name = knownBy.isViewer ? "You" : knownBy.memberFullName;
+  if (knownBy.memberEmail) return `${name} · ${knownBy.memberEmail}`;
+  return name;
 }
 
 export async function listTopOrgIntroMatchesAcrossClients(orgId: string, limit = 10) {
