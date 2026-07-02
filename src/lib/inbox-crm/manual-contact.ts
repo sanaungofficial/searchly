@@ -7,6 +7,7 @@ export type ManualInboxContactInput = {
   name?: string | null;
   company?: string | null;
   title?: string | null;
+  phone?: string | null;
   linkedinUrl?: string | null;
   notes?: string | null;
   contacted?: boolean | null;
@@ -34,6 +35,7 @@ export async function upsertManualInboxContact(userId: string, input: ManualInbo
     name: mergeOptional(input.name?.trim() || null, existing?.name ?? null),
     company: mergeOptional(input.company?.trim() || null, existing?.company ?? null),
     title: mergeOptional(input.title?.trim() || null, existing?.title ?? null),
+    phone: mergeOptional(input.phone?.trim() || null, existing?.phone ?? null),
     linkedinUrl: mergeOptional(input.linkedinUrl?.trim() || null, existing?.linkedinUrl ?? null),
     notes: mergeOptional(input.notes?.trim() || null, existing?.notes ?? null),
     contacted:

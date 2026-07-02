@@ -6,6 +6,7 @@ import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { InboxContactStatusBadge } from "./inbox-contact-status-badge";
+import { InboxCreateContactDrawer } from "./inbox-create-contact-drawer";
 import { InboxLeadsFilterDrawer } from "./inbox-leads-filter-drawer";
 import { SuggestFromInboxDrawer } from "./suggest-from-inbox-drawer";
 import { SenderAvatar } from "./sender-avatar";
@@ -68,6 +69,7 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [suggestDrawerOpen, setSuggestDrawerOpen] = useState(false);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
@@ -289,6 +291,12 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         <button type="button" onClick={() => setFilterOpen(true)} style={toolbarBtn(filters.length > 0)}>
           + Add filter{filters.length > 0 ? ` (${filters.length})` : ""}
         </button>
+        <ScoutSecondaryBtn
+          onClick={() => setCreateDrawerOpen(true)}
+          style={{ padding: "8px 14px", minHeight: 36, fontSize: T.bodySm }}
+        >
+          + Add contact
+        </ScoutSecondaryBtn>
         <ScoutPrimaryBtn
           onClick={() => setSuggestDrawerOpen(true)}
           style={{ padding: "8px 14px", minHeight: 36, fontSize: T.bodySm }}
@@ -504,6 +512,16 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         onApply={(next) => {
           setFilters(next);
           setPage(1);
+        }}
+      />
+
+      <InboxCreateContactDrawer
+        open={createDrawerOpen}
+        onClose={() => setCreateDrawerOpen(false)}
+        scopePath={scopePath}
+        onCreated={() => {
+          setPage(1);
+          void load();
         }}
       />
 
