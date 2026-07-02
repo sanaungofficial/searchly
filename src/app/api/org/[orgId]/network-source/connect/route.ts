@@ -4,9 +4,9 @@ import { attachNylasOAuthCookie, buildOrgNetworkOAuthRedirect } from "@/lib/org-
 import {
   linkOrgNetworkSourceFromGrant,
   orgNetworkMemberReturnPath,
-  parseNetworkPoolVisibility,
   serializeOrgNetworkSource,
 } from "@/lib/org-network-source";
+import { syncOrgNetworkSource } from "@/lib/org-contact-graph";
 import { prisma } from "@/lib/prisma";
 import { isNylasConfigured, resolveKimchiAppUrl } from "@/lib/nylas";
 
@@ -23,7 +23,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
-  const visibility = parseNetworkPoolVisibility(body.visibility) ?? "PRIVATE";
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
   const appUrl = resolveKimchiAppUrl(req);
   const returnPath = orgNetworkMemberReturnPath(orgId);
@@ -39,8 +38,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
     const linked = await linkOrgNetworkSourceFromGrant({
       orgMemberId: membership.id,
       grant: existingGrant,
-      visibility,
     });
+    syncOrgNetworkSource(linked.id).catch((err) =>
+      console.error("[org network-source/connect] backfill", err),
+    );
     return NextResponse.json({
       linked: true,
       source: serializeOrgNetworkSource(linked),
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
       orgMemberId: membership.id,
       userId: membership.userId,
       userEmail: membership.user?.email ?? auth.user.email,
-      visibility,
+      visibility: "POOLED",
       returnPath,
       provider,
       appUrl,

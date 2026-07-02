@@ -156,14 +156,11 @@ export async function GET(req: NextRequest) {
         nylasGrantId: grantId,
         email: email ?? null,
         provider: req.nextUrl.searchParams.get("provider") ?? "google",
-        visibility: parsed.visibility,
       });
 
-      if (parsed.visibility === "POOLED") {
-        syncOrgNetworkSource(source.id).catch((err) =>
-          console.error("[nylas/callback] org network backfill", err),
-        );
-      }
+      syncOrgNetworkSource(source.id).catch((err) =>
+        console.error("[nylas/callback] org network backfill", err),
+      );
 
       return redirectOrgNetwork({ network: "connected" });
     }

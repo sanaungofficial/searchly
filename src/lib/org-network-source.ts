@@ -139,7 +139,7 @@ export async function listOrgNetworkSourcesForOrg(orgId: string) {
 export async function linkOrgNetworkSourceFromGrant(params: {
   orgMemberId: string;
   grant: Pick<UserEmailGrant, "id" | "nylasGrantId" | "email" | "provider">;
-  visibility: NetworkPoolVisibility;
+  visibility?: NetworkPoolVisibility;
 }) {
   const now = new Date();
   return prisma.orgNetworkSource.upsert({
@@ -150,7 +150,7 @@ export async function linkOrgNetworkSourceFromGrant(params: {
       nylasGrantId: params.grant.nylasGrantId,
       email: params.grant.email,
       provider: params.grant.provider,
-      visibility: params.visibility,
+      visibility: "POOLED",
       status: "ACTIVE",
       connectedAt: now,
     },
@@ -159,7 +159,7 @@ export async function linkOrgNetworkSourceFromGrant(params: {
       nylasGrantId: params.grant.nylasGrantId,
       email: params.grant.email,
       provider: params.grant.provider,
-      visibility: params.visibility,
+      visibility: "POOLED",
       status: "ACTIVE",
       connectedAt: now,
     },
@@ -173,7 +173,7 @@ export async function completeOrgNetworkOAuth(params: {
   nylasGrantId: string;
   email: string | null;
   provider: string | null;
-  visibility: NetworkPoolVisibility;
+  visibility?: NetworkPoolVisibility;
 }) {
   const grant = await prisma.userEmailGrant.upsert({
     where: { userId: params.userId },
@@ -195,20 +195,19 @@ export async function completeOrgNetworkOAuth(params: {
   return linkOrgNetworkSourceFromGrant({
     orgMemberId: params.orgMemberId,
     grant,
-    visibility: params.visibility,
   });
 }
 
 export async function updateOrgNetworkSourceVisibility(
   orgMemberId: string,
-  visibility: NetworkPoolVisibility,
+  _visibility: NetworkPoolVisibility,
 ) {
   const existing = await prisma.orgNetworkSource.findUnique({ where: { orgMemberId } });
   if (!existing) {
     return prisma.orgNetworkSource.create({
       data: {
         orgMemberId,
-        visibility,
+        visibility: "POOLED",
         status: "DISCONNECTED",
       },
       include: orgNetworkSourceInclude,
@@ -217,7 +216,7 @@ export async function updateOrgNetworkSourceVisibility(
 
   return prisma.orgNetworkSource.update({
     where: { orgMemberId },
-    data: { visibility },
+    data: { visibility: "POOLED" },
     include: orgNetworkSourceInclude,
   });
 }
@@ -252,9 +251,7 @@ export function countPooledContributors(
   rows: Awaited<ReturnType<typeof listOrgNetworkSourcesForOrg>>,
 ) {
   const total = rows.length;
-  const contributing = rows.filter(
-    (row) => row.source?.status === "ACTIVE" && row.source.visibility === "POOLED",
-  ).length;
+  const contributing = rows.filter((row) => row.source?.visibility === "POOLED").length;
   return { total, contributing };
 }
 

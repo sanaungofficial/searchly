@@ -168,8 +168,22 @@ export function classifyCompanyMatch(
   }
 
   const inferred = companyFromEmailDomain(contact.email);
-  if (inferred && normalizeCompanyLabel(inferred) === normalizeCompanyLabel(targetName)) {
-    return "domain";
+  if (inferred) {
+    const inferredKey = normalizeCompanyLabel(inferred);
+    const targetKey = normalizeCompanyLabel(targetName);
+    if (inferredKey === targetKey || targetKey.includes(inferredKey) || inferredKey.includes(targetKey)) {
+      return "domain";
+    }
+  }
+
+  if (contactDomain) {
+    const domainBase = contactDomain.split(".")[0]?.toLowerCase();
+    if (domainBase) {
+      const targetKey = normalizeCompanyLabel(targetName);
+      if (targetKey.includes(domainBase) || domainBase === targetKey) {
+        return "domain";
+      }
+    }
   }
 
   if (contactCompany) {
@@ -194,13 +208,13 @@ async function loadPooledContactsForOrg(orgId: string): Promise<PooledContact[]>
       orgId,
       knownBy: {
         some: {
-          networkSource: { visibility: "POOLED", status: "ACTIVE" },
+          networkSource: { visibility: "POOLED" },
         },
       },
     },
     include: {
       knownBy: {
-        where: { networkSource: { visibility: "POOLED", status: "ACTIVE" } },
+        where: { networkSource: { visibility: "POOLED" } },
         include: {
           networkSource: {
             include: {
@@ -557,6 +571,8 @@ export async function listOrgPotentialConnections(orgId: string, clientId: strin
       .sort((a, b) => b.contactCount - a.contactCount);
 
     contactRows.sort((a, b) => a.knownBy.name.localeCompare(b.knownBy.name));
+
+    if (contactRows.length === 0) continue;
 
     results.push({
       targetCompanyId: target.id ?? target.key,

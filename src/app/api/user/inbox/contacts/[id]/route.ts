@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { isInboxContactStatus } from "@/lib/inbox-crm/contact-status";
 import { loadContactCard } from "@/lib/inbox-crm/link-job";
+import { syncUserInboxContactsToOrgPools } from "@/lib/org-contact-graph/sync-inbox-contacts";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -61,6 +62,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     data,
   });
+
+  syncUserInboxContactsToOrgPools(dbUser.id).catch((err) =>
+    console.error("[user/inbox/contacts PATCH] org pool sync", dbUser.id, err),
+  );
 
   const card = await loadContactCard(dbUser.id, id, { timelineLimit: 60 });
   return NextResponse.json(card);

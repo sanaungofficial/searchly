@@ -75,7 +75,7 @@ export async function getOrgDashboardData(orgId: string) {
       where: {
         orgId,
         knownBy: {
-          some: { networkSource: { visibility: "POOLED", status: "ACTIVE" } },
+          some: { networkSource: { visibility: "POOLED" } },
         },
       },
     }),

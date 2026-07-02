@@ -34,11 +34,6 @@ const STATUS_STYLE: Record<NonNullable<NetworkSourceRow["source"]>["status"], { 
   ERROR: { bg: "rgba(196,87,74,0.12)", color: "#C4574A", label: "Error" },
 };
 
-const VISIBILITY_STYLE: Record<"PRIVATE" | "POOLED", { bg: string; color: string; label: string }> = {
-  PRIVATE: { bg: "rgba(160,152,144,0.12)", color: "#78716c", label: "Private" },
-  POOLED: { bg: "rgba(26,58,47,0.1)", color: color.forest, label: "Pooled" },
-};
-
 export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
   const [rows, setRows] = useState<NetworkSourceRow[]>([]);
   const [stats, setStats] = useState({ total: 0, contributing: 0 });
@@ -46,7 +41,6 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [connectingMemberId, setConnectingMemberId] = useState<string | null>(null);
   const [disconnectingMemberId, setDisconnectingMemberId] = useState<string | null>(null);
-  const [poolByMember, setPoolByMember] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,13 +66,12 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
     setConnectingMemberId(memberId);
     setError(null);
     try {
-      const visibility = poolByMember[memberId] ? "POOLED" : "PRIVATE";
       const res = await fetch(
         `/api/admin/orgs/${orgId}/members/${memberId}/network-source/connect`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider, visibility }),
+          body: JSON.stringify({ provider }),
         },
       );
       const data = (await res.json()) as { authUrl?: string; error?: string };
@@ -118,11 +111,11 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
         <ScoutLabel>Member network sources</ScoutLabel>
         <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
-          {stats.contributing} of {stats.total} sharing pooled network
+          {stats.contributing} of {stats.total} in pooled network
         </span>
       </div>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px" }}>
-        Connect member inboxes for warm-intro relationship signals. OAuth must complete as the member&apos;s Google or Outlook account.
+        Connect member inboxes for email and calendar signals. My Network contacts are shared automatically.
       </p>
 
       {error && (
@@ -140,8 +133,6 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
               <tr style={{ textAlign: "left", color: color.muted, fontFamily: fontMono, fontSize: T.caption, textTransform: "uppercase" }}>
                 <th style={{ padding: "10px 8px" }}>Member</th>
                 <th style={{ padding: "10px 8px" }}>Inbox</th>
-                <th style={{ padding: "10px 8px" }}>Visibility</th>
-                <th style={{ padding: "10px 8px" }}>Share with team</th>
                 <th style={{ padding: "10px 8px" }} />
               </tr>
             </thead>
@@ -149,8 +140,6 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
               {rows.map((row) => {
                 const status = row.source?.status ?? "DISCONNECTED";
                 const statusStyle = STATUS_STYLE[status];
-                const visibility = row.source?.visibility ?? "PRIVATE";
-                const visibilityStyle = VISIBILITY_STYLE[visibility];
                 const isConnected = status === "ACTIVE";
                 const busy = connectingMemberId === row.orgMemberId || disconnectingMemberId === row.orgMemberId;
 
@@ -178,7 +167,7 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
                           {row.source.email}
                         </div>
                       )}
-                      {isConnected && visibility === "POOLED" && (
+                      {isConnected && (
                         <div style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, marginTop: 4 }}>
                           {row.source?.syncedContactCount ?? 0} contacts synced
                           {row.source?.lastSyncAt
@@ -186,36 +175,6 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
                             : ""}
                         </div>
                       )}
-                    </td>
-                    <td style={{ padding: "12px 8px" }}>
-                      {isConnected ? (
-                        <span
-                          style={{
-                            fontFamily: fontMono,
-                            fontSize: T.caption,
-                            padding: "2px 7px",
-                            borderRadius: "var(--scout-radius)",
-                            background: visibilityStyle.bg,
-                            color: visibilityStyle.color,
-                          }}
-                        >
-                          {visibilityStyle.label}
-                        </span>
-                      ) : (
-                        <span style={{ color: color.muted }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: "12px 8px" }}>
-                      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={poolByMember[row.orgMemberId] ?? visibility === "POOLED"}
-                          onChange={(e) =>
-                            setPoolByMember((prev) => ({ ...prev, [row.orgMemberId]: e.target.checked }))
-                          }
-                        />
-                        <span style={{ fontSize: T.caption, color: color.muted }}>Share network with team</span>
-                      </label>
                     </td>
                     <td style={{ padding: "12px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
