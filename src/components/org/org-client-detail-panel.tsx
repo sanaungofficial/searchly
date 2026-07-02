@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgClientIntroMatchesPanel } from "@/components/admin/org-client-intro-matches-section";
+import { OrgEmployeeTargetEmployersSection } from "@/components/org/org-employee-target-employers-section";
 import { OrgSettingsNav } from "@/components/org/org-settings-nav";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
@@ -31,6 +32,7 @@ export function OrgClientDetailPanel({
   const [detail, setDetail] = useState<ClientDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [targetCount, setTargetCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,10 +40,11 @@ export function OrgClientDetailPanel({
     try {
       const res = await fetch(`/api/org/${orgId}/clients/${clientUserId}`);
       const json = (await res.json()) as ClientDetail & { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Could not load client.");
+      if (!res.ok) throw new Error(json.error ?? "Could not load employee.");
       setDetail(json);
+      setTargetCount(json.trackedCompanies.length);
     } catch (e) {
-      setError(formatApiErrorMessage(e, "Could not load client."));
+      setError(formatApiErrorMessage(e, "Could not load employee."));
     } finally {
       setLoading(false);
     }
@@ -53,14 +56,14 @@ export function OrgClientDetailPanel({
 
   if (loading) {
     return (
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>Loading client…</p>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>Loading employee…</p>
     );
   }
 
   if (error || !detail) {
     return (
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A" }}>
-        {error ?? "Client not found."}
+        {error ?? "Employee not found."}
       </p>
     );
   }
@@ -87,34 +90,23 @@ export function OrgClientDetailPanel({
           {detail.client.email} · Profile {detail.client.profileCompletenessPct}%
           {detail.client.profileComplete ? " · Ready" : ""}
         </p>
-        <OrgSettingsNav orgId={orgId} active="dashboard" />
+        <OrgSettingsNav orgId={orgId} isOrgAdmin={detail.isOrgAdmin} />
       </div>
 
       <ScoutBox padding={20}>
-        <ScoutLabel>Target companies</ScoutLabel>
-        {detail.trackedCompanies.length === 0 ? (
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "12px 0 0" }}>
-            No tracked companies yet — client should add targets on their profile or opportunities page.
-          </p>
-        ) : (
-          <ul style={{ margin: "12px 0 0", paddingLeft: 18, fontFamily: fontSans, fontSize: T.bodySm, color: color.stone }}>
-            {detail.trackedCompanies.map((c) => (
-              <li key={c.id}>
-                {c.name}
-                {c.website && (
-                  <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}> · {c.website}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <OrgEmployeeTargetEmployersSection
+          orgId={orgId}
+          userId={clientUserId}
+          readOnly={!detail.isOrgAdmin}
+          onChange={setTargetCount}
+        />
       </ScoutBox>
 
       <ScoutBox padding={20}>
         <ScoutLabel>Intro matches</ScoutLabel>
         {!detail.isOrgAdmin && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-            Read-only — org admins can find matches and send intros.
+            Read-only — org admins can find matches and track intros.
           </p>
         )}
         <OrgClientIntroMatchesPanel
@@ -124,6 +116,7 @@ export function OrgClientDetailPanel({
           apiBase={apiBase}
           readOnly={!detail.isOrgAdmin}
           defaultExpanded
+          targetCompanyCount={targetCount}
         />
       </ScoutBox>
     </div>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isClientAssignedToOrg } from "@/lib/client-assignment";
 import { fetchHirebaseCompanyJobs, isHirebaseConfigured } from "@/lib/hirebase";
 import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
+import { parseStrengthFactors, type OrgContactStrengthFactors } from "@/lib/org-contact-graph/types";
 import { domainFromUrl } from "@/lib/sumble/client";
 import { companyFromEmailDomain } from "@/lib/org-contact-graph/normalize-email";
 
@@ -37,6 +38,7 @@ export type OrgIntroMatchRow = {
     networkSourceId: string | null;
     strengthScore: number;
     lastSeenAt: string | null;
+    strengthFactors: OrgContactStrengthFactors;
   };
   hirebaseJobs: Array<{
     id: string;
@@ -208,6 +210,18 @@ async function fetchMatchingHirebaseJobs(params: {
   }
 }
 
+function enrichKnownByFromEdge(
+  serialized: OrgIntroMatchRow,
+  edge: PooledEdge | null | undefined,
+): OrgIntroMatchRow["knownBy"] {
+  return {
+    ...serialized.knownBy,
+    email: edge?.networkSource.orgMember.user.email ?? serialized.knownBy.email,
+    lastSeenAt: edge?.lastSeenAt?.toISOString() ?? serialized.knownBy.lastSeenAt,
+    strengthFactors: parseStrengthFactors(edge?.strengthFactors),
+  };
+}
+
 function serializeMatchRow(row: Awaited<ReturnType<typeof loadCachedOrgIntroMatches>>[number]): OrgIntroMatchRow {
   const hirebaseJobs = Array.isArray(row.hirebaseJobs)
     ? (row.hirebaseJobs as Array<{ id: string; title: string; url: string | null }>)
@@ -234,10 +248,11 @@ function serializeMatchRow(row: Awaited<ReturnType<typeof loadCachedOrgIntroMatc
     knownBy: {
       userId: row.knownByUserId,
       name: row.knownByUserName,
-      email: row.knownByNetworkSourceId ? null : null,
+      email: null,
       networkSourceId: row.knownByNetworkSourceId,
       strengthScore: row.strengthScore,
       lastSeenAt: null,
+      strengthFactors: { ...parseStrengthFactors(null) },
     },
     hirebaseJobs,
   };
@@ -371,11 +386,7 @@ export async function computeOrgIntroMatches(params: {
     const edge = rowsToUpsert.find((r) => r.contact.id === row.contactId)?.edge;
     return {
       ...serialized,
-      knownBy: {
-        ...serialized.knownBy,
-        email: edge?.networkSource.orgMember.user.email ?? null,
-        lastSeenAt: edge?.lastSeenAt?.toISOString() ?? null,
-      },
+      knownBy: enrichKnownByFromEdge(serialized, edge),
     };
   });
 
@@ -414,11 +425,7 @@ export async function listOrgIntroMatches(orgId: string, clientId: string) {
       : null;
     return {
       ...serialized,
-      knownBy: {
-        ...serialized.knownBy,
-        email: edge?.networkSource.orgMember.user.email ?? null,
-        lastSeenAt: edge?.lastSeenAt?.toISOString() ?? null,
-      },
+      knownBy: enrichKnownByFromEdge(serialized, edge ?? null),
     };
   });
 

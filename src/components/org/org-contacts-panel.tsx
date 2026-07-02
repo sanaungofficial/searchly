@@ -5,7 +5,7 @@ import { OrgPooledContactsSection } from "@/components/admin/org-pooled-contacts
 import { OrgSettingsNav } from "@/components/org/org-settings-nav";
 import { color, displayTitleStyle, fontSans, type as T } from "@/lib/typography";
 
-export function OrgContactsPanel({ orgId }: { orgId: string }) {
+export function OrgContactsPanel({ orgId, isOrgAdmin = true }: { orgId: string; isOrgAdmin?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 960 }}>
       <div>
@@ -19,7 +19,7 @@ export function OrgContactsPanel({ orgId }: { orgId: string }) {
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
           Search your organization&apos;s pooled relationship graph by company or name.
         </p>
-        <OrgSettingsNav orgId={orgId} active="contacts" />
+        <OrgSettingsNav orgId={orgId} active="contacts" isOrgAdmin={isOrgAdmin} />
       </div>
 
       <OrgPooledContactsSection orgId={orgId} apiBase={`/api/org/${orgId}`} />

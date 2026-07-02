@@ -17,11 +17,11 @@ type NetworkSource = {
   connectedAt: string | null;
 };
 
-export function OrgNetworkSettingsPanel({ orgId }: { orgId: string }) {
+export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: string; isOrgAdmin?: boolean }) {
   const searchParams = useSearchParams();
   const [source, setSource] = useState<NetworkSource | null>(null);
   const [configured, setConfigured] = useState(false);
-  const [shareWithTeam, setShareWithTeam] = useState(false);
+  const [shareWithTeam, setShareWithTeam] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,9 +126,9 @@ export function OrgNetworkSettingsPanel({ orgId }: { orgId: string }) {
         </Link>
         <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Organization settings</h1>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          Connect your Gmail or Outlook to share relationship context with your organization for warm intros.
+          Connect your Gmail or Outlook as the org&apos;s pooled inbox for warm intro matching (v1: org owner contributes the network).
         </p>
-        <OrgSettingsNav orgId={orgId} active="network" />
+        <OrgSettingsNav orgId={orgId} active="network" isOrgAdmin={isOrgAdmin} />
       </div>
 
       {notice && (
@@ -168,7 +168,7 @@ export function OrgNetworkSettingsPanel({ orgId }: { orgId: string }) {
                 disabled={busy}
               />
               <span style={{ fontFamily: fontSans, fontSize: T.bodySm }}>
-                Share your network with your organization for warm intros
+                Share my inbox with the organization (pooled network for intro matching)
               </span>
             </label>
 

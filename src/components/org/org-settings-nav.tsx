@@ -4,10 +4,10 @@ import Link from "next/link";
 import { color, fontSans, type as T } from "@/lib/typography";
 
 const tabs = [
-  { id: "dashboard", label: "Dashboard", href: (orgId: string) => `/org/${orgId}/dashboard` },
-  { id: "clients", label: "Clients", href: (orgId: string) => `/org/${orgId}/settings/clients` },
-  { id: "network", label: "Network inbox", href: (orgId: string) => `/org/${orgId}/settings/network` },
-  { id: "contacts", label: "Contacts", href: (orgId: string) => `/org/${orgId}/contacts` },
+  { id: "dashboard", label: "Dashboard", href: (orgId: string) => `/org/${orgId}/dashboard`, adminOnly: false },
+  { id: "clients", label: "Employees", href: (orgId: string) => `/org/${orgId}/settings/clients`, adminOnly: true },
+  { id: "network", label: "Network inbox", href: (orgId: string) => `/org/${orgId}/settings/network`, adminOnly: false },
+  { id: "contacts", label: "Contacts", href: (orgId: string) => `/org/${orgId}/contacts`, adminOnly: false },
 ] as const;
 
 export type OrgNavTab = (typeof tabs)[number]["id"];
@@ -17,14 +17,18 @@ export { tabs as orgNavTabs };
 export function OrgSettingsNav({
   orgId,
   active,
+  isOrgAdmin = true,
 }: {
   orgId: string;
-  active: OrgNavTab;
+  active?: OrgNavTab;
+  isOrgAdmin?: boolean;
 }) {
+  const visibleTabs = tabs.filter((tab) => isOrgAdmin || !tab.adminOnly);
+
   return (
     <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
-      {tabs.map((tab) => {
-        const isActive = tab.id === active;
+      {visibleTabs.map((tab) => {
+        const isActive = active != null && tab.id === active;
         return (
           <Link
             key={tab.id}
