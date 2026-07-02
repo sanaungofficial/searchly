@@ -281,7 +281,8 @@ export function EmployeeIntroDrawer({
                 <ScoutBox padding={20}>
                   <ScoutLabel>Potential connections</ScoutLabel>
                   <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 12px" }}>
-                    Who in your org has pooled contacts at this employee&apos;s target companies — by email domain and company name.
+                    Pooled contacts from all org members at this employee&apos;s target companies. Each row shows who
+                    owns the connection — yours are labeled You.
                   </p>
                   <OrgEmployeePotentialConnectionsSection
                     orgId={orgId}

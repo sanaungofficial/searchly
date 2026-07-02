@@ -10,10 +10,16 @@ export async function GET(
   const auth = await requireOrgMemberOrPlatformAdmin(orgId);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const result = await listOrgPotentialConnections(orgId, userId);
+  const result = await listOrgPotentialConnections(orgId, userId, {
+    viewerUserId: auth.user.id,
+  });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 404 });
   }
 
-  return NextResponse.json({ targets: result.targets });
+  return NextResponse.json({
+    orgName: result.orgName,
+    viewerUserId: result.viewerUserId,
+    targets: result.targets,
+  });
 }

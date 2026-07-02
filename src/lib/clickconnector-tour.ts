@@ -45,7 +45,7 @@ async function withChatWidget<T>(
  * ```
  */
 export const TOUR_STEP_ROUTES: Partial<Record<number, string>> = {
-  1: "/opportunities",
+  // 1: "/opportunities",
 };
 
 export function hasSeenProductTour(): boolean {
