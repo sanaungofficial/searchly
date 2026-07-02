@@ -14,6 +14,7 @@ import {
   setClientAuthPassword,
 } from "@/lib/admin-client-auth";
 import { ADMIN_ROSTER_CLIENT_ROLES, adminRosterClientWhere } from "@/lib/admin-client-roles";
+import { getOrgAssignmentsForClient } from "@/lib/client-assignment";
 import { Prisma, UserRole, type User } from "@prisma/client";
 
 export type ProvisionClientInput = {
@@ -254,4 +255,9 @@ export async function fetchAdminClientById(userId: string) {
       },
     },
   });
+
+  if (!client) return null;
+
+  const orgAssignments = await getOrgAssignmentsForClient(userId);
+  return { ...client, orgAssignments };
 }

@@ -58,6 +58,14 @@ export type AdminClient = {
       nylasSchedulerConfigId: string | null;
     };
   }>;
+  orgAssignments?: Array<{
+    assignmentId: string;
+    orgId: string;
+    orgName: string;
+    orgSlug: string;
+    assignedAt: string;
+    notes: string | null;
+  }>;
 };
 
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
@@ -563,6 +571,11 @@ export function AdminClientsPanel({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                     <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14, margin: 0 }}>{displayName}</p>
+                    {(client.orgAssignments?.length ?? 0) > 0 && (
+                      <span style={{ fontSize: 12, background: "rgba(26,58,47,0.08)", color: color.forest, padding: "1px 7px", fontFamily: fontMono }}>
+                        {client.orgAssignments!.length} org{client.orgAssignments!.length === 1 ? "" : "s"}
+                      </span>
+                    )}
                     {hasOffer && (
                       <span style={{ fontSize: 12, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", fontFamily: fontMono }}>
                         offer

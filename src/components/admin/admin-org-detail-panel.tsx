@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { OrgClientAssignmentSection } from "@/components/admin/org-client-assignment-section";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -238,6 +239,8 @@ export function AdminOrgDetailPanel({ orgId }: { orgId: string }) {
           </div>
         </form>
       </ScoutBox>
+
+      <OrgClientAssignmentSection orgId={orgId} />
 
       <ScoutBox padding={20}>
         <ScoutLabel>Members</ScoutLabel>

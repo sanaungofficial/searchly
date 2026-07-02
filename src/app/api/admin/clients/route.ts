@@ -1,3 +1,4 @@
+import { AssignmentAssignerType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { fetchAdminClientById, provisionClient } from "@/lib/admin-client-provision";
@@ -102,5 +103,44 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(clients);
+  const clientIds = clients.map((client) => client.id);
+  const orgAssignmentRows = clientIds.length
+    ? await prisma.clientAssignment.findMany({
+        where: {
+          clientId: { in: clientIds },
+          assignerType: AssignmentAssignerType.COMPANY,
+        },
+        orderBy: { createdAt: "desc" },
+        include: { org: { select: { id: true, name: true, slug: true } } },
+      })
+    : [];
+
+  const orgMap = new Map<string, Array<{
+    assignmentId: string;
+    orgId: string;
+    orgName: string;
+    orgSlug: string;
+    assignedAt: string;
+    notes: string | null;
+  }>>();
+
+  for (const row of orgAssignmentRows) {
+    const list = orgMap.get(row.clientId) ?? [];
+    list.push({
+      assignmentId: row.id,
+      orgId: row.org!.id,
+      orgName: row.org!.name,
+      orgSlug: row.org!.slug,
+      assignedAt: row.createdAt.toISOString(),
+      notes: row.notes,
+    });
+    orgMap.set(row.clientId, list);
+  }
+
+  return NextResponse.json(
+    clients.map((client) => ({
+      ...client,
+      orgAssignments: orgMap.get(client.id) ?? [],
+    })),
+  );
 }

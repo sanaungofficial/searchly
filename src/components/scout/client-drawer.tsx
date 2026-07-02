@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
+import { ClientOrgAssignmentSection } from "@/components/admin/client-org-assignment-section";
 import { ClientDetailsSection } from "@/components/admin/client-details-section";
 import { ClientAuthAccountSection } from "@/components/admin/client-auth-account-section";
 import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
@@ -207,6 +208,8 @@ export function ClientDetailBody({
       {onClientUpdated && (
         <ClientCoachAssignmentSection client={client} onUpdated={onClientUpdated} />
       )}
+
+      <ClientOrgAssignmentSection client={client} />
 
       <CoachSharedDocumentsPanel
         clientUserId={client.id}

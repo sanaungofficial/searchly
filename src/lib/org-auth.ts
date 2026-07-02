@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isClientAssignedToOrg } from "@/lib/client-assignment";
 import type { Org, OrgMember, OrgMemberRole, User } from "@prisma/client";
+import { requireAdmin } from "@/lib/auth";
 
 export type OrgMembershipWithOrg = OrgMember & { org: Org };
 
@@ -26,6 +28,36 @@ export async function requireOrgMember(
   if (!membership) return null;
   if (options?.adminOnly && membership.role !== "ADMIN") return null;
   return membership;
+}
+
+/** Platform admin or org member (any role). */
+export async function requireOrgMemberOrPlatformAdmin(
+  orgId: string,
+  options?: { adminOnly?: boolean },
+): Promise<{ user: User; membership: OrgMembershipWithOrg | null } | null> {
+  const admin = await requireAdmin();
+  if (admin) return { user: admin, membership: null };
+
+  const membership = await requireOrgMember(orgId, options);
+  if (!membership) return null;
+
+  const dbUser = await getAuthenticatedDbUser();
+  if (!dbUser) return null;
+  return { user: dbUser, membership };
+}
+
+export async function canOrgAccessClient(orgId: string, clientId: string): Promise<boolean> {
+  const assigned = await isClientAssignedToOrg(orgId, clientId);
+  if (!assigned) return false;
+
+  const dbUser = await getAuthenticatedDbUser();
+  if (!dbUser) return false;
+
+  const membership = await prisma.orgMember.findUnique({
+    where: { orgId_userId: { orgId, userId: dbUser.id } },
+    select: { id: true },
+  });
+  return Boolean(membership);
 }
 
 export async function listOrgsForUser(userId: string) {
