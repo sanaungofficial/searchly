@@ -21,7 +21,6 @@ export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: s
   const searchParams = useSearchParams();
   const [source, setSource] = useState<NetworkSource | null>(null);
   const [configured, setConfigured] = useState(false);
-  const [shareWithTeam, setShareWithTeam] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +35,6 @@ export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: s
       if (!res.ok) throw new Error(data.error ?? "Could not load network settings.");
       setSource(data.source ?? null);
       setConfigured(Boolean(data.configured));
-      setShareWithTeam(data.source?.visibility === "POOLED");
     } catch (e) {
       setError(formatApiErrorMessage(e, "Could not load network settings."));
     } finally {
@@ -61,10 +59,7 @@ export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: s
       const res = await fetch(`/api/org/${orgId}/network-source/connect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          visibility: shareWithTeam ? "POOLED" : "PRIVATE",
-        }),
+        body: JSON.stringify({ provider }),
       });
       const data = (await res.json()) as { authUrl?: string; linked?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Could not start connect.");
@@ -76,25 +71,6 @@ export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: s
       await load();
     } catch (e) {
       setError(formatApiErrorMessage(e, "Could not start connect."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function updateVisibility(nextVisibility: "PRIVATE" | "POOLED") {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/org/${orgId}/network-source`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visibility: nextVisibility }),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Could not update visibility.");
-      await load();
-    } catch (e) {
-      setError(formatApiErrorMessage(e, "Could not update visibility."));
     } finally {
       setBusy(false);
     }
@@ -126,7 +102,8 @@ export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: s
         </Link>
         <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Organization settings</h1>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          Connect your Gmail or Outlook as the org&apos;s pooled inbox for warm intro matching (v1: org owner contributes the network).
+          Connect your Gmail or Outlook to enrich the org&apos;s shared network with email and calendar signals.
+          My Network contacts are shared with your org automatically.
         </p>
         <OrgSettingsNav orgId={orgId} active="network" isOrgAdmin={isOrgAdmin} />
       </div>
@@ -154,23 +131,9 @@ export function OrgNetworkSettingsPanel({ orgId, isOrgAdmin = true }: { orgId: s
               )}
             </div>
 
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={shareWithTeam}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setShareWithTeam(checked);
-                  if (isConnected) {
-                    void updateVisibility(checked ? "POOLED" : "PRIVATE");
-                  }
-                }}
-                disabled={busy}
-              />
-              <span style={{ fontFamily: fontSans, fontSize: T.bodySm }}>
-                Share my inbox with the organization (pooled network for intro matching)
-              </span>
-            </label>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+              All org members share contacts from My Network for intro matching — no opt-in required.
+            </p>
 
             {!configured && (
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>

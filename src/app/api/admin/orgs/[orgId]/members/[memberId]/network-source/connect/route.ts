@@ -5,9 +5,9 @@ import {
   getOrgMemberById,
   linkOrgNetworkSourceFromGrant,
   orgNetworkAdminReturnPath,
-  parseNetworkPoolVisibility,
   serializeOrgNetworkSource,
 } from "@/lib/org-network-source";
+import { syncOrgNetworkSource } from "@/lib/org-contact-graph";
 import { prisma } from "@/lib/prisma";
 import { isNylasConfigured, resolveKimchiAppUrl } from "@/lib/nylas";
 
@@ -23,7 +23,6 @@ export async function POST(
   if (!member) return NextResponse.json({ error: "Member not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
-  const visibility = parseNetworkPoolVisibility(body.visibility) ?? "PRIVATE";
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
   const appUrl = resolveKimchiAppUrl(req);
   const returnPath = orgNetworkAdminReturnPath(orgId);
@@ -39,8 +38,10 @@ export async function POST(
     const linked = await linkOrgNetworkSourceFromGrant({
       orgMemberId: member.id,
       grant: existingGrant,
-      visibility,
     });
+    syncOrgNetworkSource(linked.id).catch((err) =>
+      console.error("[admin org member network-source/connect] backfill", err),
+    );
     return NextResponse.json({
       linked: true,
       source: serializeOrgNetworkSource(linked),
@@ -52,7 +53,7 @@ export async function POST(
       orgMemberId: member.id,
       userId: member.userId,
       userEmail: member.user.email,
-      visibility,
+      visibility: "POOLED",
       returnPath,
       provider,
       appUrl,

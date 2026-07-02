@@ -80,7 +80,7 @@ export async function recomputeStrengthScoresForOrg(orgId: string): Promise<numb
 export async function recomputeAllPooledStrengthScores(): Promise<number> {
   const edges = await prisma.orgContactKnownBy.findMany({
     where: {
-      networkSource: { visibility: "POOLED", status: "ACTIVE" },
+      networkSource: { visibility: "POOLED" },
     },
     select: { id: true, strengthFactors: true, strengthScore: true },
   });

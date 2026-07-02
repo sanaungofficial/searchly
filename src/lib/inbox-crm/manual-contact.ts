@@ -1,6 +1,7 @@
 import { InboxContactSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CONTACT_STATUS } from "@/lib/inbox-crm/contact-status";
+import { syncUserInboxContactsToOrgPools } from "@/lib/org-contact-graph/sync-inbox-contacts";
 
 export type ManualInboxContactInput = {
   email: string;
@@ -45,13 +46,17 @@ export async function upsertManualInboxContact(userId: string, input: ManualInbo
   };
 
   if (existing) {
-    return prisma.inboxContact.update({
+    const updated = await prisma.inboxContact.update({
       where: { id: existing.id },
       data: { ...payload, source: InboxContactSource.MANUAL },
     });
+    syncUserInboxContactsToOrgPools(userId).catch((err) =>
+      console.error("[inbox-crm] org pool sync after manual update", userId, err),
+    );
+    return updated;
   }
 
-  return prisma.inboxContact.create({
+  const created = await prisma.inboxContact.create({
     data: {
       userId,
       email,
@@ -60,4 +65,8 @@ export async function upsertManualInboxContact(userId: string, input: ManualInbo
       status: DEFAULT_CONTACT_STATUS,
     },
   });
+  syncUserInboxContactsToOrgPools(userId).catch((err) =>
+    console.error("[inbox-crm] org pool sync after manual create", userId, err),
+  );
+  return created;
 }
