@@ -1426,6 +1426,7 @@ model Org {
 
   members           OrgMember[]
   clientAssignments ClientAssignment[]
+  orgContacts       OrgContact[]
 }
 
 enum OrgMemberRole {
@@ -1483,9 +1484,52 @@ model OrgNetworkSource {
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
+  knownContacts OrgContactKnownBy[]
+
   @@index([nylasGrantId])
   @@index([status])
   @@index([visibility])
+}
+
+/// Pooled org network contact (metadata-only — Enterprise Step 4).
+model OrgContact {
+  id              String    @id @default(cuid())
+  orgId           String
+  org             Org       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email           String
+  emailNormalized String
+  name            String?
+  company         String?
+  title           String?
+  linkedinUrl     String?
+  phone           String?
+  lastActivityAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  knownBy OrgContactKnownBy[]
+
+  @@unique([orgId, emailNormalized])
+  @@index([orgId, company])
+  @@index([orgId])
+}
+
+/// Which org network source knows an org contact (pooled graph edge).
+model OrgContactKnownBy {
+  id              String           @id @default(cuid())
+  orgContactId    String
+  orgContact      OrgContact       @relation(fields: [orgContactId], references: [id], onDelete: Cascade)
+  networkSourceId String
+  networkSource   OrgNetworkSource @relation(fields: [networkSourceId], references: [id], onDelete: Cascade)
+  strengthScore   Int              @default(0)
+  strengthFactors Json?
+  firstSeenAt     DateTime?
+  lastSeenAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([orgContactId, networkSourceId])
+  @@index([networkSourceId])
 }
 
 enum AssignmentAssignerType {
