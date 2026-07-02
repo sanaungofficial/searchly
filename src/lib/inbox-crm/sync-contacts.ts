@@ -7,6 +7,7 @@ import {
   nylasContactDisplayName,
   nylasContactPrimaryEmail,
 } from "@/lib/nylas-contacts";
+import { syncUserInboxContactsToOrgPools } from "@/lib/org-contact-graph/sync-inbox-contacts";
 
 function mergeContactFields(
   existing: { name: string | null; company: string | null; title: string | null },
@@ -44,16 +45,20 @@ export async function upsertInboxContactFromNylas(
 
   if (existing) {
     const merged = mergeContactFields(existing, incoming);
-    return prisma.inboxContact.update({
+    const updated = await prisma.inboxContact.update({
       where: { id: existing.id },
       data: {
         ...merged,
         ...(params.nylasContactId ? { nylasContactId: params.nylasContactId, source: InboxContactSource.NYLAS } : {}),
       },
     });
+    syncUserInboxContactsToOrgPools(userId).catch((err) =>
+      console.error("[inbox-crm] org pool sync after nylas upsert", userId, err),
+    );
+    return updated;
   }
 
-  return prisma.inboxContact.create({
+  const created = await prisma.inboxContact.create({
     data: {
       userId,
       email,
@@ -62,6 +67,10 @@ export async function upsertInboxContactFromNylas(
       source: params.nylasContactId ? InboxContactSource.NYLAS : InboxContactSource.EMAIL,
     },
   });
+  syncUserInboxContactsToOrgPools(userId).catch((err) =>
+    console.error("[inbox-crm] org pool sync after nylas create", userId, err),
+  );
+  return created;
 }
 
 export async function syncNylasContactsForUser(userId: string) {

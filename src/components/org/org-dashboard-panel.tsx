@@ -6,7 +6,7 @@ import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
 import { EmployeeIntroDrawer, type EmployeeDrawerClient } from "@/components/org/employee-intro-drawer";
 import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
-import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
+import { EmployeeConnectionCompanyStack } from "@/components/org/employee-connection-company-stack";
 import { OrgSettingsNav } from "@/components/org/org-settings-nav";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useEmployeeViewAs } from "@/hooks/use-employee-view-as";
@@ -294,10 +294,9 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
                         )}
                       </td>
                       <td style={{ padding: "12px 8px" }}>
-                        <EmployeeIntroMatchPreviewStack
+                        <EmployeeConnectionCompanyStack
                           orgId={orgId}
-                          clientUserId={client.userId}
-                          apiBase={apiBase}
+                          userId={client.userId}
                           targetCompanyCount={client.targetCompanyCount}
                           compact
                         />

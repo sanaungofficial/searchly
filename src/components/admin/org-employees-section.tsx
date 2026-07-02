@@ -12,7 +12,7 @@ import {
   type EmployeeDrawerTeamMember,
 } from "@/components/org/employee-intro-drawer";
 import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
-import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
+import { EmployeeConnectionCompanyStack } from "@/components/org/employee-connection-company-stack";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useEmployeeViewAs } from "@/hooks/use-employee-view-as";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
@@ -70,11 +70,6 @@ const STATUS_STYLE: Record<NonNullable<TeamMemberRow["source"]>["status"], { bg:
   ACTIVE: { bg: "rgba(26,58,47,0.1)", color: color.forest, label: "Connected" },
   DISCONNECTED: { bg: "rgba(160,152,144,0.12)", color: "#78716c", label: "Not connected" },
   ERROR: { bg: "rgba(196,87,74,0.12)", color: "#C4574A", label: "Error" },
-};
-
-const VISIBILITY_STYLE: Record<"PRIVATE" | "POOLED", { bg: string; color: string; label: string }> = {
-  PRIVATE: { bg: "rgba(160,152,144,0.12)", color: "#78716c", label: "Private" },
-  POOLED: { bg: "rgba(26,58,47,0.1)", color: color.forest, label: "Pooled" },
 };
 
 const BADGE_BASE: React.CSSProperties = {
@@ -207,7 +202,6 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [connectingMemberId, setConnectingMemberId] = useState<string | null>(null);
   const [disconnectingMemberId, setDisconnectingMemberId] = useState<string | null>(null);
-  const [poolByMember, setPoolByMember] = useState<Record<string, boolean>>({});
 
   const canReview = true;
   const canImpersonate = isAdmin;
@@ -368,11 +362,10 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
     setConnectingMemberId(memberId);
     setError(null);
     try {
-      const visibility = poolByMember[memberId] ? "POOLED" : "PRIVATE";
       const res = await fetch(`${apiBase}/members/${memberId}/network-source/connect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, visibility }),
+        body: JSON.stringify({ provider }),
       });
       const data = (await res.json()) as { authUrl?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Could not start connect.");
@@ -421,7 +414,7 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
           Everyone in this org — team members who contribute network, and supported employees for intro matching.
           {" "}
           <span style={{ fontFamily: fontMono, fontSize: T.caption }}>
-            {rows.length} people · {stats.contributing} of {stats.total} sharing pooled network · {supportedCount} supported
+            {rows.length} people · {stats.contributing} of {stats.total} in pooled network · {supportedCount} supported
           </span>
         </p>
 
@@ -542,8 +535,6 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
                 {rows.map((row) => {
                   const status = row.source?.status ?? "DISCONNECTED";
                   const statusStyle = STATUS_STYLE[status];
-                  const visibility = row.source?.visibility ?? "PRIVATE";
-                  const visibilityStyle = VISIBILITY_STYLE[visibility];
                   const isConnected = status === "ACTIVE";
                   const memberId = row.orgMemberId;
                   const busy =
@@ -603,25 +594,15 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
                                 <span
                                   style={{
                                     ...BADGE_BASE,
-                                    background: visibilityStyle.bg,
-                                    color: visibilityStyle.color,
+                                    background: "rgba(26,58,47,0.1)",
+                                    color: color.forest,
                                   }}
                                 >
-                                  {visibilityStyle.label}
+                                  Pooled
                                 </span>
                               </div>
                             )}
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                                <input
-                                  type="checkbox"
-                                  checked={poolByMember[memberId] ?? visibility === "POOLED"}
-                                  onChange={(e) =>
-                                    setPoolByMember((prev) => ({ ...prev, [memberId]: e.target.checked }))
-                                  }
-                                />
-                                <span style={{ fontSize: T.caption, color: color.muted }}>Pool</span>
-                              </label>
                               <ScoutSecondaryBtn disabled={busy} onClick={() => void connectMember(memberId, "google")}>
                                 {busy ? "…" : isConnected ? "Gmail" : "Connect Gmail"}
                               </ScoutSecondaryBtn>
@@ -641,10 +622,9 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
                       </td>
                       <td style={{ padding: "12px 8px" }}>
                         {row.isSupported ? (
-                          <EmployeeIntroMatchPreviewStack
+                          <EmployeeConnectionCompanyStack
                             orgId={orgId}
-                            clientUserId={row.userId}
-                            apiBase={apiBase}
+                            userId={row.userId}
                             compact
                           />
                         ) : (

@@ -39,14 +39,12 @@ function TargetConnectionRow({
   onCopyEmail: (email: string) => void;
 }) {
   const summary = formatPotentialConnectionOwnersSummary(target.owners);
-  const hasContacts = target.totalContacts > 0;
 
   return (
     <div style={{ borderTop: border.line }}>
       <button
         type="button"
         onClick={onToggle}
-        disabled={!hasContacts}
         style={{
           display: "flex",
           alignItems: "flex-start",
@@ -56,8 +54,7 @@ function TargetConnectionRow({
           padding: "12px 14px",
           border: "none",
           background: expanded ? "rgba(26,58,47,0.03)" : surface.card,
-          cursor: hasContacts ? "pointer" : "default",
-          opacity: hasContacts ? 1 : 0.85,
+          cursor: "pointer",
         }}
       >
         <span
@@ -82,15 +79,9 @@ function TargetConnectionRow({
           {target.targetCompany}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          {hasContacts ? (
-            <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink }}>
-              {summary}
-            </p>
-          ) : (
-            <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-              No pooled contacts at this company yet
-            </p>
-          )}
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink }}>
+            {summary}
+          </p>
           {target.targetWebsite && (
             <p
               style={{
@@ -104,14 +95,12 @@ function TargetConnectionRow({
             </p>
           )}
         </div>
-        {hasContacts && (
-          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>
-            {expanded ? "Hide" : `${target.totalContacts}`}
-          </span>
-        )}
+        <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>
+          {expanded ? "Hide" : `${target.totalContacts}`}
+        </span>
       </button>
 
-      {expanded && hasContacts && (
+      {expanded && (
         <div style={{ padding: "0 14px 12px", background: "rgba(26,58,47,0.03)" }}>
           {target.contacts.map((contact) => {
             const displayName = contact.name ?? contact.email;
@@ -260,19 +249,15 @@ export function OrgEmployeePotentialConnectionsSection({
   if (targets.length === 0) {
     return (
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-        No target employers set yet.
+        No connections at target companies yet.
       </p>
     );
   }
 
-  const withContacts = targets.filter((t) => t.totalContacts > 0).length;
-
   return (
     <div>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px" }}>
-        {withContacts > 0
-          ? `${withContacts} of ${targets.length} target compan${targets.length === 1 ? "y has" : "ies have"} pooled contacts — expand a row to reach out.`
-          : "No pooled contacts match these targets yet — sync member inboxes or add more targets."}
+        {targets.length} target compan{targets.length === 1 ? "y has" : "ies have"} pooled contacts — expand a row to reach out.
       </p>
       <div
         style={{

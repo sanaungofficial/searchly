@@ -2,7 +2,12 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { searchCatalog, normalizeCompanySlug } from "@/lib/company-catalog";
-import { catalogToSuggestItem, hirebaseToSuggestItem, type CompanySuggestItem } from "@/lib/company-intel";
+import {
+  catalogToSuggestItem,
+  hirebaseToSuggestItem,
+  trackedToSuggestItem,
+  type CompanySuggestItem,
+} from "@/lib/company-intel";
 import { ensureDbUser } from "@/lib/ensure-db-user";
 import { isHirebaseConfigured, searchHirebaseCompanies } from "@/lib/hirebase";
 
@@ -75,6 +80,25 @@ export async function GET(request: Request) {
       type: null,
       source: "intel",
     });
+  }
+
+  if (results.length < limit) {
+    const trackedMatches = await prisma.trackedCompany.findMany({
+      where: { name: { contains: q, mode: "insensitive" } },
+      select: {
+        name: true,
+        website: true,
+        careersUrl: true,
+        companyIntel: { select: { slug: true, website: true, careersUrl: true } },
+      },
+      orderBy: { name: "asc" },
+      take: limit * 2,
+    });
+
+    for (const tracked of trackedMatches) {
+      push(trackedToSuggestItem(tracked));
+      if (results.length >= limit) break;
+    }
   }
 
   return NextResponse.json(results.slice(0, limit));

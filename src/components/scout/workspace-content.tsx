@@ -5,7 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { surface } from "@/lib/typography";
 
 /** Max content width — matches mockup airy centered layout */
-export const WORKSPACE_MAX_WIDTH = 1200;
+export const WORKSPACE_MAX_WIDTH = "90%";
 
 type Props = {
   children: ReactNode;
@@ -25,7 +25,7 @@ export function WorkspaceContent({ children, flush, style }: Props) {
   return (
     <div
       style={{
-        width: "100%",
+        width: "90%",
         maxWidth: WORKSPACE_MAX_WIDTH,
         margin: "0 auto",
         padding: workspaceContentPadding(isMobile, flush),

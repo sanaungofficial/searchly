@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
+import { ensurePooledOrgNetworkSource, syncOrgMemberInboxContacts } from "@/lib/org-contact-graph/sync-inbox-contacts";
 import { prisma } from "@/lib/prisma";
 import { OrgMemberRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -47,6 +48,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ org
       invitedBy: { select: { id: true, email: true, name: true } },
     },
   });
+
+  await ensurePooledOrgNetworkSource(member.id);
+  syncOrgMemberInboxContacts(member.id).catch((err) =>
+    console.error("[admin org members POST] inbox pool sync", member.id, err),
+  );
 
   return NextResponse.json({
     member: {

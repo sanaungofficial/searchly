@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { CompanySuggestAutocompleteInput } from "@/components/company-suggest-autocomplete-input";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { CompanyLogo } from "@/components/scout/company-logo";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import type { CompanySuggestItem } from "@/lib/company-intel";
 import { color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type OrgRow = {
@@ -38,6 +41,24 @@ export function AdminOrgsPanel() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [website, setWebsite] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState<CompanySuggestItem | null>(null);
+
+  function resetCreateForm() {
+    setName("");
+    setSlug("");
+    setWebsite("");
+    setLogoUrl("");
+    setSelectedCompany(null);
+  }
+
+  function applyCompanySuggestion(item: CompanySuggestItem) {
+    setSelectedCompany(item);
+    setName(item.name);
+    setSlug(item.catalogSlug);
+    setWebsite(item.website ?? "");
+    setLogoUrl(item.logoUrl ?? "");
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,14 +94,13 @@ export function AdminOrgsPanel() {
           name: trimmedName,
           slug: slug.trim() || undefined,
           website: website.trim() || undefined,
+          logoUrl: logoUrl.trim() || undefined,
         }),
       });
       const data = (await res.json()) as OrgRow & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Could not create organization.");
 
-      setName("");
-      setSlug("");
-      setWebsite("");
+      resetCreateForm();
       setShowForm(false);
       await load();
     } catch (e) {
@@ -122,9 +142,27 @@ export function AdminOrgsPanel() {
             borderRadius: "var(--scout-radius)",
           }}
         >
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Name</span>
-            <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Corp" required />
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "1 / -1" }}>
+            <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
+              Organization name
+            </span>
+            <CompanySuggestAutocompleteInput
+              value={name}
+              onChange={setName}
+              onSelect={(item) => {
+                if (item) applyCompanySuggestion(item);
+                else setSelectedCompany(null);
+              }}
+              placeholder="Search Hirebase — e.g. Stripe, Comcast, Oracle"
+              inputStyle={inputStyle}
+              required
+            />
+            {selectedCompany && (
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0" }}>
+                Prefilled from {selectedCompany.source === "hirebase" ? "Hirebase" : selectedCompany.source}.
+                Edit fields below before creating if needed.
+              </p>
+            )}
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Slug (optional)</span>
@@ -134,6 +172,23 @@ export function AdminOrgsPanel() {
             <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Website (optional)</span>
             <input style={inputStyle} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://acme.com" />
           </label>
+          {(logoUrl.trim() || selectedCompany) && (
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Logo preview</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44 }}>
+                <CompanyLogo
+                  name={name || "Organization"}
+                  website={website}
+                  logoUrl={logoUrl}
+                  size={36}
+                  borderRadius={0}
+                />
+                <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, wordBreak: "break-all" }}>
+                  {logoUrl.trim() || "No logo URL"}
+                </span>
+              </div>
+            </label>
+          )}
           <div style={{ display: "flex", alignItems: "end" }}>
             <ScoutPrimaryBtn type="submit" disabled={creating || !name.trim()}>
               {creating ? "Creating…" : "Create org"}

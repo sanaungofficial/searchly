@@ -1,6 +1,7 @@
 import type { OrgNetworkSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { syncOrgNetworkSourceContacts } from "@/lib/org-contact-graph/sync-contacts";
+import { syncOrgMemberInboxContacts } from "@/lib/org-contact-graph/sync-inbox-contacts";
 import { syncOrgNetworkSourceSignals } from "@/lib/org-contact-graph/sync-signals";
 import { recomputeStrengthScoresForNetworkSource, recomputeAllPooledStrengthScores } from "@/lib/org-contact-strength";
 
@@ -36,9 +37,10 @@ export async function syncOrgNetworkSource(sourceId: string) {
     return { ok: false as const, reason: "not_pooled_active" as const };
   }
 
-  const [contacts, signals] = await Promise.all([
+  const [contacts, signals, inboxContacts] = await Promise.all([
     syncOrgNetworkSourceContacts(source),
     syncOrgNetworkSourceSignals(source),
+    syncOrgMemberInboxContacts(source.orgMemberId),
   ]);
 
   await prisma.orgNetworkSource.update({
@@ -53,11 +55,15 @@ export async function syncOrgNetworkSource(sourceId: string) {
     orgId: source.orgMember.orgId,
     contacts,
     signals,
+    inboxContacts,
     strengthScoresUpdated,
   };
 }
 
 export async function syncAllPooledOrgNetworkSources() {
+  const { syncAllOrgMemberInboxContacts } = await import("@/lib/org-contact-graph/sync-inbox-contacts");
+  const inboxBackfill = await syncAllOrgMemberInboxContacts();
+
   const sources = await prisma.orgNetworkSource.findMany({
     where: {
       visibility: "POOLED",
@@ -81,7 +87,15 @@ export async function syncAllPooledOrgNetworkSources() {
 
   const strengthScoresUpdated = await recomputeAllPooledStrengthScores();
 
-  return { sources: sources.length, synced, failed, strengthScoresUpdated };
+  return {
+    sources: sources.length,
+    synced,
+    failed,
+    strengthScoresUpdated,
+    inboxMembers: inboxBackfill.members,
+    inboxContactsSynced: inboxBackfill.synced,
+    inboxSyncFailed: inboxBackfill.failed,
+  };
 }
 
 export async function countContactsByNetworkSourceIds(sourceIds: string[]) {

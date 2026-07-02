@@ -214,21 +214,15 @@ export function EmployeeIntroDrawer({
                   </dd>
                   {teamMember.source?.status === "ACTIVE" && (
                     <>
-                      <dt style={{ color: color.muted, fontFamily: fontMono, fontSize: T.caption }}>Visibility</dt>
+                      <dt style={{ color: color.muted, fontFamily: fontMono, fontSize: T.caption }}>Network</dt>
+                      <dd style={{ margin: 0, color: color.ink }}>Pooled</dd>
+                      <dt style={{ color: color.muted, fontFamily: fontMono, fontSize: T.caption }}>Synced</dt>
                       <dd style={{ margin: 0, color: color.ink }}>
-                        {teamMember.source.visibility === "POOLED" ? "Pooled" : "Private"}
+                        {teamMember.source.syncedContactCount ?? 0} contacts
+                        {teamMember.source.lastSyncAt
+                          ? ` · last sync ${new Date(teamMember.source.lastSyncAt).toLocaleDateString()}`
+                          : ""}
                       </dd>
-                      {teamMember.source.visibility === "POOLED" && (
-                        <>
-                          <dt style={{ color: color.muted, fontFamily: fontMono, fontSize: T.caption }}>Synced</dt>
-                          <dd style={{ margin: 0, color: color.ink }}>
-                            {teamMember.source.syncedContactCount ?? 0} contacts
-                            {teamMember.source.lastSyncAt
-                              ? ` · last sync ${new Date(teamMember.source.lastSyncAt).toLocaleDateString()}`
-                              : ""}
-                          </dd>
-                        </>
-                      )}
                     </>
                   )}
                 </dl>
