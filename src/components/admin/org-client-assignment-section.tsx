@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { CreateClientModal } from "@/components/admin/create-client-modal";
+import {
+  OrgClientIntroMatchesPanel,
+  OrgIntroMatchPriorityPanel,
+} from "@/components/admin/org-client-intro-matches-section";
 import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
@@ -204,6 +208,11 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
                     >
                       {removingUserId === client.userId ? "Removing…" : "Remove"}
                     </ScoutSecondaryBtn>
+                    <OrgClientIntroMatchesPanel
+                      orgId={orgId}
+                      clientUserId={client.userId}
+                      clientLabel={client.name ?? client.email}
+                    />
                   </td>
                 </tr>
               ))}
@@ -211,6 +220,8 @@ export function OrgClientAssignmentSection({ orgId }: { orgId: string }) {
           </table>
         </div>
       )}
+
+      <OrgIntroMatchPriorityPanel orgId={orgId} />
 
       {showCreate && (
         <CreateClientModal

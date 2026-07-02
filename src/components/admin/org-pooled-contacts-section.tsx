@@ -18,6 +18,7 @@ type OrgContactRow = {
   company: string | null;
   title: string | null;
   lastActivityAt: string | null;
+  maxStrengthScore?: number;
   knownBy: KnownByRow[];
 };
 
@@ -153,6 +154,7 @@ export function OrgPooledContactsSection({ orgId }: { orgId: string }) {
                 <th style={{ padding: "10px 8px" }}>Company</th>
                 <th style={{ padding: "10px 8px" }}>Title</th>
                 <th style={{ padding: "10px 8px" }}>Known by</th>
+                <th style={{ padding: "10px 8px" }}>Strength</th>
                 <th style={{ padding: "10px 8px" }}>Last activity</th>
               </tr>
             </thead>
@@ -168,6 +170,9 @@ export function OrgPooledContactsSection({ orgId }: { orgId: string }) {
                   <td style={{ padding: "12px 8px" }}>{contact.company ?? "—"}</td>
                   <td style={{ padding: "12px 8px", color: color.muted }}>{contact.title ?? "—"}</td>
                   <td style={{ padding: "12px 8px" }}>{formatKnownBy(contact.knownBy)}</td>
+                  <td style={{ padding: "12px 8px", color: color.muted }}>
+                    {(contact.maxStrengthScore ?? 0) > 0 ? contact.maxStrengthScore : "—"}
+                  </td>
                   <td style={{ padding: "12px 8px", color: color.muted }}>
                     {contact.lastActivityAt
                       ? new Date(contact.lastActivityAt).toLocaleDateString()

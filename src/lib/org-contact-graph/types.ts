@@ -3,6 +3,8 @@ export type OrgContactStrengthFactors = {
   meetingCount: number;
   inboundCount: number;
   outboundCount: number;
+  oneOnOneMeetingCount: number;
+  groupMeetingCount: number;
   recentSubjects: string[];
   recentMeetings: string[];
   lastEmailAt: string | null;
@@ -14,6 +16,8 @@ export const EMPTY_STRENGTH_FACTORS: OrgContactStrengthFactors = {
   meetingCount: 0,
   inboundCount: 0,
   outboundCount: 0,
+  oneOnOneMeetingCount: 0,
+  groupMeetingCount: 0,
   recentSubjects: [],
   recentMeetings: [],
   lastEmailAt: null,
@@ -28,6 +32,8 @@ export function parseStrengthFactors(value: unknown): OrgContactStrengthFactors 
     meetingCount: typeof row.meetingCount === "number" ? row.meetingCount : 0,
     inboundCount: typeof row.inboundCount === "number" ? row.inboundCount : 0,
     outboundCount: typeof row.outboundCount === "number" ? row.outboundCount : 0,
+    oneOnOneMeetingCount: typeof row.oneOnOneMeetingCount === "number" ? row.oneOnOneMeetingCount : 0,
+    groupMeetingCount: typeof row.groupMeetingCount === "number" ? row.groupMeetingCount : 0,
     recentSubjects: Array.isArray(row.recentSubjects)
       ? row.recentSubjects.filter((s): s is string => typeof s === "string").slice(0, 10)
       : [],
