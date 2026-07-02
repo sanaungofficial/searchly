@@ -1,7 +1,7 @@
 import type { User } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { canAccessAdminClientTools, getActingUser, type ActingUserResult } from "@/lib/acting-user";
+import { canAccessClientReviewScope, getActingUser, type ActingUserResult } from "@/lib/acting-user";
 import { isAdminRosterClientRole } from "@/lib/admin-client-roles";
 
 export function readClientUserIdFromRequest(request?: Request): string | null {
@@ -24,7 +24,7 @@ export async function resolveAdminClientSubject(
     return { subject: acting.dbUser };
   }
 
-  if (!canAccessAdminClientTools(acting)) {
+  if (!canAccessClientReviewScope(acting)) {
     return { subject: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 

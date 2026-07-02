@@ -5,8 +5,11 @@ import Link from "next/link";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
 import { EmployeeIntroDrawer, type EmployeeDrawerClient } from "@/components/org/employee-intro-drawer";
+import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
 import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
 import { OrgSettingsNav } from "@/components/org/org-settings-nav";
+import { useWorkspace } from "@/contexts/workspace-context";
+import { useEmployeeViewAs } from "@/hooks/use-employee-view-as";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { border, color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
 
@@ -87,10 +90,19 @@ function ChecklistStep({
 }
 
 export function OrgDashboardPanel({ orgId }: { orgId: string }) {
+  const { isAdmin } = useWorkspace();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawerClient, setDrawerClient] = useState<EmployeeDrawerClient | null>(null);
+  const reviewReturnPath = `/org/${orgId}/dashboard`;
+  const canReview = Boolean(data?.isOrgAdmin);
+  const { startingUserId, viewAsAdmin, viewAsEmployee } = useEmployeeViewAs({
+    reviewReturnPath,
+    reviewReturnLabel: "Back to org dashboard",
+    canReview,
+    canImpersonate: isAdmin,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -236,6 +248,7 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
                     <th style={{ padding: "10px 8px" }}>Status</th>
                     <th style={{ padding: "10px 8px" }}>Targets</th>
                     <th style={{ padding: "10px 8px" }}>Matches</th>
+                    {data.isOrgAdmin && <th style={{ padding: "10px 8px" }}>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -289,6 +302,19 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
                           compact
                         />
                       </td>
+                      {data.isOrgAdmin && (
+                        <td style={{ padding: "12px 8px" }}>
+                          <EmployeeViewAsActions
+                            userId={client.userId}
+                            startingUserId={startingUserId}
+                            canReview={canReview}
+                            canImpersonate={isAdmin}
+                            onViewAsAdmin={viewAsAdmin}
+                            onViewAsEmployee={viewAsEmployee}
+                            compact
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -341,6 +367,11 @@ export function OrgDashboardPanel({ orgId }: { orgId: string }) {
         apiBase={apiBase}
         readOnly={!data.isOrgAdmin}
         onClose={() => setDrawerClient(null)}
+        canReview={canReview}
+        canImpersonate={isAdmin}
+        startingUserId={startingUserId}
+        onViewAsAdmin={viewAsAdmin}
+        onViewAsEmployee={viewAsEmployee}
       />
     )}
     </>

@@ -8,6 +8,8 @@ import { readClientUserIdFromBrowserSearch } from "@/lib/workspace-urls";
 const ACTING_USER_KEY = "kimchi_acting_user_id";
 const ADMIN_REVIEW_CLIENT_KEY = "kimchi_admin_review_client_id";
 const ADMIN_REVIEW_META_KEY = "kimchi_admin_review_meta";
+const ADMIN_REVIEW_RETURN_KEY = "kimchi_admin_review_return";
+const ADMIN_REVIEW_RETURN_LABEL_KEY = "kimchi_admin_review_return_label";
 
 export type AdminReviewMeta = {
   name?: string | null;
@@ -43,6 +45,24 @@ export function clearAdminReviewClient(): void {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(ADMIN_REVIEW_CLIENT_KEY);
   sessionStorage.removeItem(ADMIN_REVIEW_META_KEY);
+  sessionStorage.removeItem(ADMIN_REVIEW_RETURN_KEY);
+  sessionStorage.removeItem(ADMIN_REVIEW_RETURN_LABEL_KEY);
+}
+
+export function setAdminReviewReturnPath(path: string, label?: string): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(ADMIN_REVIEW_RETURN_KEY, path);
+  if (label) sessionStorage.setItem(ADMIN_REVIEW_RETURN_LABEL_KEY, label);
+}
+
+export function getAdminReviewReturnPath(): string {
+  if (typeof window === "undefined") return "/expert/clients";
+  return sessionStorage.getItem(ADMIN_REVIEW_RETURN_KEY) ?? "/expert/clients";
+}
+
+export function getAdminReviewReturnLabel(): string {
+  if (typeof window === "undefined") return "Back to clients";
+  return sessionStorage.getItem(ADMIN_REVIEW_RETURN_LABEL_KEY) ?? "Back to clients";
 }
 
 const SEMANTIC_QUERY_PREFIX = "kimchi_pipeline_semantic_query";

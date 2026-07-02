@@ -3,6 +3,8 @@ import type { User } from "@prisma/client";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseFromRequest } from "@/lib/extension-api";
 import { prisma } from "@/lib/prisma";
+import { canOrgAdminReviewEmployee } from "@/lib/org-auth";
+import { isAdminRosterClientRole } from "@/lib/admin-client-roles";
 
 export const IMPERSONATE_COOKIE = "kimchi_impersonate";
 /** Admin profile review (View profile) — not impersonation; httpOnly like impersonate. */
@@ -85,16 +87,21 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
 
   const clientUserId =
     readClientUserIdFromRequest(request) ?? (await resolveAdminReviewId(request)) ?? null;
-  if (clientUserId && realDbUser.role === "ADMIN") {
+  if (clientUserId) {
     const client = await prisma.user.findUnique({ where: { id: clientUserId } });
-    if (client && client.role === "USER") {
-      return {
-        authUser: { id: user.id, email: user.email },
-        dbUser: client,
-        realDbUser,
-        isImpersonating: false,
-        isAdminReviewing: true,
-      };
+    if (client && isAdminRosterClientRole(client.role)) {
+      const platformAdmin = realDbUser.role === "ADMIN";
+      const orgAdminReview =
+        !platformAdmin && (await canOrgAdminReviewEmployee(realDbUser.id, clientUserId));
+      if (platformAdmin || orgAdminReview) {
+        return {
+          authUser: { id: user.id, email: user.email },
+          dbUser: client,
+          realDbUser,
+          isImpersonating: false,
+          isAdminReviewing: true,
+        };
+      }
     }
   }
 
@@ -115,4 +122,11 @@ export function quotaUserFor(result: ActingUserResult): User | null {
 /** Admin-only client tooling (intake notes, parse) — not available while impersonating. */
 export function canAccessAdminClientTools(result: ActingUserResult): boolean {
   return result.realDbUser?.role === "ADMIN" && !result.isImpersonating;
+}
+
+/** Profile review scope — platform admin or org admin reviewing an assigned employee. */
+export function canAccessClientReviewScope(result: ActingUserResult): boolean {
+  if (result.isImpersonating) return false;
+  if (result.realDbUser?.role === "ADMIN") return true;
+  return result.isAdminReviewing;
 }
