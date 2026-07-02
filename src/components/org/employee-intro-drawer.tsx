@@ -196,6 +196,7 @@ export function EmployeeIntroDrawer({
                 apiBase={apiBase}
                 readOnly={readOnly}
                 defaultExpanded
+                layout="list"
                 targetCompanyCount={targetCount ?? undefined}
               />
             </ScoutBox>
