@@ -1174,6 +1174,8 @@ model UserEmailGrant {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  orgNetworkSources OrgNetworkSource[]
+
   @@index([nylasGrantId])
 }
 
@@ -1445,9 +1447,45 @@ model OrgMember {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  networkSource OrgNetworkSource?
+
   @@unique([orgId, userId])
   @@index([userId])
   @@index([orgId])
+}
+
+enum NetworkPoolVisibility {
+  PRIVATE
+  POOLED
+}
+
+enum NetworkSourceStatus {
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+/// Org member inbox connection for warm-intro network graph (Enterprise Step 3).
+model OrgNetworkSource {
+  id               String                @id @default(cuid())
+  orgMemberId      String                @unique
+  orgMember        OrgMember             @relation(fields: [orgMemberId], references: [id], onDelete: Cascade)
+  userEmailGrantId String?
+  userEmailGrant   UserEmailGrant?       @relation(fields: [userEmailGrantId], references: [id], onDelete: SetNull)
+  nylasGrantId     String?
+  email            String?
+  provider         String?
+  visibility       NetworkPoolVisibility @default(PRIVATE)
+  poolPolicy       Json?
+  status           NetworkSourceStatus   @default(DISCONNECTED)
+  lastSyncAt       DateTime?
+  connectedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([nylasGrantId])
+  @@index([status])
+  @@index([visibility])
 }
 
 enum AssignmentAssignerType {
