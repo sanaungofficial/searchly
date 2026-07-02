@@ -8,9 +8,40 @@ import { domainFromUrl } from "@/lib/sumble/client";
 import { companyFromEmailDomain } from "@/lib/org-contact-graph/normalize-email";
 
 export type ClientTargetCompany = {
+  id?: string;
   name: string;
   website: string | null;
   key: string;
+};
+
+export type OrgPotentialConnectionOwner = {
+  userId: string;
+  name: string;
+  email: string | null;
+  contactCount: number;
+};
+
+export type OrgPotentialConnectionContact = {
+  id: string;
+  name: string | null;
+  email: string;
+  company: string | null;
+  title: string | null;
+  matchType: "exact" | "domain" | "fuzzy";
+  knownBy: {
+    userId: string;
+    name: string;
+    email: string | null;
+  };
+};
+
+export type OrgTargetPotentialConnections = {
+  targetCompanyId: string;
+  targetCompany: string;
+  targetWebsite: string | null;
+  totalContacts: number;
+  owners: OrgPotentialConnectionOwner[];
+  contacts: OrgPotentialConnectionContact[];
 };
 
 export type OrgIntroMatchRow = {
@@ -85,7 +116,7 @@ export async function loadClientTargetCompanies(clientId: string): Promise<Clien
     const key = normalizeTargetCompanyKey(name, website);
     if (seen.has(key)) continue;
     seen.add(key);
-    targets.push({ name, website, key });
+    targets.push({ id: row.id, name, website, key });
   }
 
   return targets;
@@ -447,6 +478,99 @@ export async function listOrgIntroMatches(orgId: string, clientId: string) {
   });
 
   return { ok: true as const, matches };
+}
+
+export async function listOrgPotentialConnections(orgId: string, clientId: string) {
+  const assigned = await isClientAssignedToOrg(orgId, clientId);
+  if (!assigned) return { ok: false as const, error: "Client is not assigned to this organization." };
+
+  const targets = await loadClientTargetCompanies(clientId);
+  if (targets.length === 0) {
+    return { ok: true as const, targets: [] as OrgTargetPotentialConnections[] };
+  }
+
+  const contacts = await loadPooledContactsForOrg(orgId);
+  const results: OrgTargetPotentialConnections[] = [];
+
+  for (const target of targets) {
+    const contactRows: OrgPotentialConnectionContact[] = [];
+    const ownerCounts = new Map<
+      string,
+      { userId: string; name: string; email: string | null; count: number }
+    >();
+
+    for (const contact of contacts) {
+      const matchType = classifyCompanyMatch(contact, target);
+      if (!matchType) continue;
+
+      const edge = pickBestEdge(contact.knownBy);
+      if (!edge) continue;
+
+      const member = edge.networkSource.orgMember.user;
+      const ownerName = member.name ?? member.email ?? "Member";
+
+      contactRows.push({
+        id: contact.id,
+        name: contact.name,
+        email: contact.email,
+        company: contact.company,
+        title: contact.title,
+        matchType,
+        knownBy: {
+          userId: member.id,
+          name: ownerName,
+          email: member.email,
+        },
+      });
+
+      const existing = ownerCounts.get(member.id);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        ownerCounts.set(member.id, {
+          userId: member.id,
+          name: ownerName,
+          email: member.email,
+          count: 1,
+        });
+      }
+    }
+
+    const owners = Array.from(ownerCounts.values())
+      .map((owner) => ({
+        userId: owner.userId,
+        name: owner.name,
+        email: owner.email,
+        contactCount: owner.count,
+      }))
+      .sort((a, b) => b.contactCount - a.contactCount);
+
+    contactRows.sort((a, b) => a.knownBy.name.localeCompare(b.knownBy.name));
+
+    results.push({
+      targetCompanyId: target.id ?? target.key,
+      targetCompany: target.name,
+      targetWebsite: target.website,
+      totalContacts: contactRows.length,
+      owners,
+      contacts: contactRows,
+    });
+  }
+
+  return { ok: true as const, targets: results };
+}
+
+export function formatPotentialConnectionOwnersSummary(
+  owners: OrgPotentialConnectionOwner[],
+): string | null {
+  if (owners.length === 0) return null;
+  return owners
+    .map((owner) => {
+      const countLabel = `${owner.contactCount} contact${owner.contactCount === 1 ? "" : "s"}`;
+      const firstName = owner.name.split(/\s+/)[0] ?? owner.name;
+      return `${countLabel} via ${firstName}`;
+    })
+    .join(", ");
 }
 
 export async function listTopOrgIntroMatchesAcrossClients(orgId: string, limit = 10) {

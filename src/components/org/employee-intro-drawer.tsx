@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { OrgClientIntroMatchesPanel } from "@/components/admin/org-client-intro-matches-section";
 import { OrgEmployeeTargetEmployersSection } from "@/components/org/org-employee-target-employers-section";
+import { OrgEmployeePotentialConnectionsSection } from "@/components/org/org-employee-potential-connections-section";
 import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
 import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -278,18 +279,29 @@ export function EmployeeIntroDrawer({
                     orgId={orgId}
                     userId={client.userId}
                     readOnly={readOnly}
+                    showHeader={false}
                     onChange={setTargetCount}
                   />
                 </ScoutBox>
 
                 <ScoutBox padding={20}>
                   <ScoutLabel>Potential connections</ScoutLabel>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 12px" }}>
+                    Who in your org has pooled contacts at this employee&apos;s target companies — by email domain and company name.
+                  </p>
+                  <OrgEmployeePotentialConnectionsSection
+                    orgId={orgId}
+                    userId={client.userId}
+                    targetCount={targetCount ?? undefined}
+                  />
+                </ScoutBox>
+
+                <ScoutBox padding={20}>
+                  <ScoutLabel>Intro matches</ScoutLabel>
                   <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
                     {targetCount === 0
-                      ? "Add target employers above to search the org pooled network."
-                      : targetCount != null
-                        ? `Employee is targeting ${targetCount} compan${targetCount === 1 ? "y" : "ies"} — ranked intro paths from pooled contacts.`
-                        : "Ranked intro paths from the org pooled network, by relationship strength."}
+                      ? "Add target employers above before running a ranked intro search."
+                      : "Ranked intro paths from the org pooled network — run when you want Hirebase role context and strength scoring."}
                   </p>
                   {readOnly && (
                     <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0" }}>
@@ -302,7 +314,7 @@ export function EmployeeIntroDrawer({
                     clientLabel={label}
                     apiBase={apiBase}
                     readOnly={readOnly}
-                    defaultExpanded
+                    defaultExpanded={false}
                     layout="list"
                     targetCompanyCount={targetCount ?? undefined}
                   />
