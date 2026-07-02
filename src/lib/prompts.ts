@@ -106,6 +106,13 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Kimchi Assistant",
     variables: ["pipeline", "from", "subject", "snippet"],
   },
+  KIMCHI_INBOX_CONTACT_CONTEXT: {
+    label: "Inbox contact context summary",
+    description:
+      "Short networking notes from email subjects, snippets, and meeting titles when adding contacts from inbox suggestions.",
+    category: "Kimchi Assistant",
+    variables: ["contacts"],
+  },
   KIMCHI_FOR_YOU: {
     label: "Kimchi For You (focus chips)",
     description:
@@ -624,6 +631,25 @@ Pipeline:
 From: {{from}}
 Subject: {{subject}}
 Snippet: {{snippet}}`,
+
+  KIMCHI_INBOX_CONTACT_CONTEXT: `Write a short networking context note for each contact below. Use ONLY the metadata provided (subjects, snippets, meeting titles, dates) — do not invent details.
+
+Return ONLY valid JSON:
+{
+  "summaries": {
+    "email@example.com": "1-2 sentence note in first person plural (You exchanged emails about… / You met for a 1:1 on…)"
+  }
+}
+
+Rules:
+- One entry per contact email (lowercase key).
+- Max 2 sentences per contact; conversational and specific to the activity listed.
+- Mention topics from subjects/snippets when present; mention meeting title and date for calendar items.
+- No bullet points, no markdown, no greetings.
+- Skip marketing/newsletter vibes — focus on human conversation threads.
+
+Contacts:
+{{contacts}}`,
 
   KIMCHI_FOR_YOU: `You are Kimchi. The user just opened chat. Suggest 3–4 short questions they might tap to start — each should sound like something a real person would ask out loud.
 
