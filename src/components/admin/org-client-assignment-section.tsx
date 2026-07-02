@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { CreateClientModal } from "@/components/admin/create-client-modal";
+import { UserEmailAutocompleteInput } from "@/components/admin/user-email-autocomplete-input";
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
 import { EmployeeIntroDrawer, type EmployeeDrawerClient } from "@/components/org/employee-intro-drawer";
 import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
@@ -57,6 +58,9 @@ export function OrgClientAssignmentSection({
   const [createNotice, setCreateNotice] = useState<string | null>(null);
   const [drawerClient, setDrawerClient] = useState<OrgClientRow | null>(null);
   const isAdminOrgApi = apiBase.startsWith("/api/admin/");
+  const userSearchUrl = isAdminOrgApi
+    ? `/api/admin/users/search?orgId=${encodeURIComponent(orgId)}&context=client`
+    : `${apiBase}/users/search?context=client`;
   const resolvedReviewReturnPath =
     reviewReturnPath ?? (isAdminOrgApi ? `/admin/orgs/${orgId}#employees` : `/org/${orgId}/settings/clients`);
   const resolvedReviewReturnLabel =
@@ -195,12 +199,12 @@ export function OrgClientAssignmentSection({
           >
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Employee email</span>
-              <input
-                style={inputStyle}
-                type="email"
+              <UserEmailAutocompleteInput
                 value={clientEmail}
-                onChange={(e) => setClientEmail(e.target.value)}
-                placeholder="employee@company.com"
+                onChange={setClientEmail}
+                searchUrl={userSearchUrl}
+                placeholder="Start typing name or email…"
+                inputStyle={inputStyle}
                 required
               />
             </label>
