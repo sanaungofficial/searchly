@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type FormEvent, t
 import { useRouter } from "next/navigation";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachClientSessionNoteView } from "@/lib/coach-client-session-notes";
 import type { CoachSharedDocumentView } from "@/lib/coach-shared-documents";
@@ -46,7 +46,7 @@ type Props = {
 };
 
 export function ClientBookingDetailDrawer({ bookingId, onClose }: Props) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const router = useRouter();
   const { withClientScope } = useWorkspace();
   const [visible, setVisible] = useState(false);
@@ -131,14 +131,11 @@ export function ClientBookingDetailDrawer({ bookingId, onClose }: Props) {
     <>
       <div
         onClick={close}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
+        style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,

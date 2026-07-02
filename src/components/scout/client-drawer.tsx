@@ -11,6 +11,7 @@ import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-docum
 import { CoachClientSessionNotesPanel } from "@/components/scout/coach-client-session-notes-panel";
 import { SearchMetricsSections } from "@/components/scout/search-metrics-sections";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import type { SearchMetrics } from "@/lib/search-metrics";
 import { withClientUserId } from "@/lib/workspace-urls";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -302,7 +303,7 @@ export function ClientDrawer({
   onClientUpdated,
   showAuthAccountTools,
 }: DrawerProps) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const [visible, setVisible] = useState(false);
   const displayName = client.name ?? client.email.split("@")[0];
 
@@ -326,14 +327,10 @@ export function ClientDrawer({
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div onClick={close} style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,

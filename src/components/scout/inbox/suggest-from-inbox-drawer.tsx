@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useWorkspaceStackTop } from "@/hooks/use-workspace-stack-top";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { color, fontSans, surface, type as T } from "@/lib/typography";
-import { DRAWER_BACKDROP_Z, DRAWER_Z, backdropBelowNav } from "@/lib/z-layers";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = 560;
 
@@ -29,8 +28,7 @@ type Props = {
 };
 
 export function SuggestFromInboxDrawer({ open, onClose, scopePath, mailConnected, onAdded }: Props) {
-  const isMobile = useIsMobile();
-  const stackTop = useWorkspaceStackTop();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
 
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestFromInboxRow[]>([]);
@@ -202,22 +200,14 @@ export function SuggestFromInboxDrawer({ open, onClose, scopePath, mailConnected
       <div
         onClick={onClose}
         style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          top: backdropBelowNav(stackTop),
+          ...backdropStyle,
           background: "rgba(0,0,0,0.18)",
           zIndex: DRAWER_BACKDROP_Z,
         }}
       />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100%" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
           background: surface.inset,

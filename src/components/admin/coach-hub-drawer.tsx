@@ -8,7 +8,7 @@ import { CoachEditAvailabilityView } from "@/components/scout/coach-edit-availab
 import { CoachInboxPanel } from "@/components/admin/coach-inbox-panel";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
 import { CoachProfileTab } from "@/components/scout/coach-profile-tab";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
@@ -40,7 +40,7 @@ type Props = {
 };
 
 function CoachHubDrawerInner({ coachId, coachPreview, onClose, basePath = "/admin/experts", onCoachUpdated }: Props) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
@@ -76,14 +76,10 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose, basePath = "/admi
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div onClick={close} style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,

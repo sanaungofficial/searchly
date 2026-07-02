@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ScoutBox } from "@/components/scout/scout-box";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { formatUsdFromCents } from "@/lib/coach-pricing";
 import { formatPurchaseLeadSource, formatPurchaseStatus, type AdminPurchaseRow } from "@/lib/coach-purchase";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -17,7 +17,7 @@ export function CoachingPurchaseDrawer({
   purchase: AdminPurchaseRow;
   onClose: () => void;
 }) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -43,14 +43,10 @@ export function CoachingPurchaseDrawer({
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div onClick={close} style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,

@@ -21,9 +21,8 @@ import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { JobDrawerNetworkAdminSection, JobDrawerRecruiterSection } from "./job-drawer-recruiter-section";
 import { isGenericNetworkCompanyLabel } from "@/lib/network-employer-labels";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
-import { TOP_NAV_HEIGHT, TOP_NAV_HEIGHT_MOBILE } from "./workspace-top-nav";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { MasterResumeGate } from "./master-resume-gate";
@@ -770,7 +769,7 @@ export function JobDrawer({
 }: JobDrawerProps) {
   const { withClientScope } = useWorkspace();
   const masterResume = useMasterResumeStatus();
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [requestModal, setRequestModal] = useState<NetworkJobRequestModalKind | null>(null);
   const extCard = card as KanbanCard & {
@@ -1058,9 +1057,6 @@ export function JobDrawer({
     isTrackableHirebaseCompany(hirebaseCompany);
   const backdropZ = DRAWER_BACKDROP_Z;
   const drawerZ = DRAWER_Z;
-  const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const drawerInset = isMobile ? 0 : 8;
-  const drawerTop = navHeight + drawerInset;
   const isSavedJob = Boolean(dbId);
   const showQaBank = Boolean(dbId);
 
@@ -1069,11 +1065,7 @@ export function JobDrawer({
       <div
         onClick={onClose}
         style={{
-          position: "fixed",
-          top: navHeight,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          ...backdropStyle,
           background: "rgba(0,0,0,0.18)",
           zIndex: backdropZ,
         }}
@@ -1081,11 +1073,7 @@ export function JobDrawer({
       <div
         className="bruddle"
         style={{
-          position: "fixed",
-          top: drawerTop,
-          right: isMobile ? 0 : drawerInset,
-          bottom: isMobile ? 0 : drawerInset,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.inset,

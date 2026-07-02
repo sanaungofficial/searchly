@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -13,8 +13,7 @@ import { InboxStatusPills } from "./inbox-status-pill";
 import { SenderAvatar } from "./sender-avatar";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import type { ContactCardData, ContactTimelineItem } from "./inbox-types";
-import { useWorkspaceStackTop } from "@/hooks/use-workspace-stack-top";
-import { DRAWER_BACKDROP_Z, DRAWER_Z, backdropBelowNav } from "@/lib/z-layers";
+import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
 
 const DRAWER_WIDTH = "88vw";
 const SIDEBAR_WIDTH = 320;
@@ -209,8 +208,7 @@ export function InboxContactDrawer({
   onNotice,
   mailConnected = true,
 }: Props) {
-  const isMobile = useIsMobile();
-  const stackTop = useWorkspaceStackTop();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout({ inset: 10 });
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [card, setCard] = useState<ContactCardData | null>(null);
@@ -472,15 +470,11 @@ export function InboxContactDrawer({
     <>
       <div
         onClick={close}
-        style={{ ...backdropBelowNav(stackTop), background: "rgba(0,0,0,0.22)", zIndex: DRAWER_BACKDROP_Z }}
+        style={{ ...backdropStyle, background: "rgba(0,0,0,0.22)", zIndex: DRAWER_BACKDROP_Z }}
       />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? stackTop : stackTop + 10,
-          right: isMobile ? 0 : 10,
-          bottom: isMobile ? 0 : 10,
-          left: isMobile ? 0 : undefined,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 20px)",
           background: surface.page,

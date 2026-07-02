@@ -7,8 +7,9 @@ import { CompanyLogo } from "@/components/scout/company-logo";
 import { COACH_CLIENT_SPECIALIZATIONS, COACH_RATE_BUCKETS } from "@/lib/coach-categories";
 import { coachCompanyNameForSlug } from "@/lib/coach-companies";
 import type { CoachListItem } from "@/lib/coach-types";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type OrgSuggestItem = {
   catalogSlug: string;
@@ -305,6 +306,7 @@ type DrawerProps = {
 export function CoachFiltersDrawer({
   open, onClose, allCoaches, filters, activeCount, onChange, onBatchChange, onProfessionalChange, onInternalChange, onClear,
 }: DrawerProps) {
+  const { backdropStyle, panelStyle } = useWorkspaceDrawerLayout({ inset: 0 });
   const [serviceSearch, setServiceSearch] = useState("");
   const kimchiCount = useMemo(() => allCoaches.filter((c) => c.isInternal).length, [allCoaches]);
   const allSpecialties = useMemo(() => Array.from(new Set(allCoaches.flatMap((c) => c.specialties))).sort(), [allCoaches]);
@@ -318,8 +320,8 @@ export function CoachFiltersDrawer({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: DRAWER_BACKDROP_Z }} />
-      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(480px, 100vw)", background: surface.card, borderLeft: "var(--scout-border)", zIndex: DRAWER_Z, display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)" }}>
+      <div onClick={onClose} style={{ ...backdropStyle, background: "rgba(0,0,0,0.35)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div style={{ ...panelStyle, width: "min(480px, 100vw)", background: surface.card, borderLeft: "var(--scout-border)", zIndex: DRAWER_Z, display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.12)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "var(--scout-border)", flexShrink: 0 }}>
           <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 700, color: color.ink, margin: 0 }}>All filters</p>
           <button type="button" onClick={onClose} aria-label="Close filters" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4, color: color.muted, display: "flex" }}>

@@ -6,7 +6,7 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { ScoutBox } from "@/components/scout/scout-box";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaceDrawerLayout } from "@/hooks/use-workspace-drawer-layout";
 import type { GuestHubPayload } from "@/lib/coach-hub";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface } from "@/lib/typography";
 import { DRAWER_BACKDROP_Z, DRAWER_Z } from "@/lib/z-layers";
@@ -26,7 +26,7 @@ type Props = {
 };
 
 export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
-  const isMobile = useIsMobile();
+  const { isMobile, backdropStyle, panelStyle } = useWorkspaceDrawerLayout();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,13 +70,10 @@ export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
+      <div onClick={close} style={{ ...backdropStyle, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }} />
       <div
         style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
+          ...panelStyle,
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,
