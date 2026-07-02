@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { OrgSettingsNav } from "@/components/org/org-settings-nav";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
 
@@ -123,10 +124,11 @@ export function OrgNetworkSettingsPanel({ orgId }: { orgId: string }) {
         <Link href="/dashboard" style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}>
           ← Dashboard
         </Link>
-        <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Org network inbox</h1>
+        <h1 style={{ ...displayTitleStyle(28), margin: "12px 0 8px" }}>Organization settings</h1>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
           Connect your Gmail or Outlook to share relationship context with your organization for warm intros.
         </p>
+        <OrgSettingsNav orgId={orgId} active="network" />
       </div>
 
       {notice && (
