@@ -1,7 +1,11 @@
 import { AssignmentAssignerType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { fetchAdminClientById, provisionClient } from "@/lib/admin-client-provision";
+import {
+  fetchAdminClientById,
+  parseProvisionClientFormData,
+  provisionClient,
+} from "@/lib/admin-client-provision";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_ROSTER_CLIENT_ROLES } from "@/lib/admin-client-roles";
 
@@ -10,37 +14,14 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const formData = await req.formData();
-  const email = String(formData.get("email") ?? "").trim();
-  const nameRaw = formData.get("name");
-  const name = typeof nameRaw === "string" && nameRaw.trim() ? nameRaw.trim() : null;
-  const linkedinRaw = formData.get("linkedinUrl");
-  const linkedinUrl = typeof linkedinRaw === "string" && linkedinRaw.trim() ? linkedinRaw.trim() : null;
-  const resumeFile = formData.get("resume");
-  const file = resumeFile instanceof File && resumeFile.size > 0 ? resumeFile : null;
-  const sendInviteRaw = formData.get("sendInvite");
-  const sendInvite =
-    sendInviteRaw === "true" ||
-    sendInviteRaw === "1" ||
-    sendInviteRaw === "on";
-  const initialPasswordRaw = formData.get("initialPassword");
-  const initialPassword =
-    typeof initialPasswordRaw === "string" && initialPasswordRaw.trim()
-      ? initialPasswordRaw.trim()
-      : null;
+  const input = parseProvisionClientFormData(formData);
 
-  if (!email) {
+  if (!input.email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
   try {
-    const result = await provisionClient({
-      email,
-      name,
-      resumeFile: file,
-      linkedinUrl,
-      sendInvite: initialPassword ? false : sendInvite,
-      initialPassword,
-    });
+    const result = await provisionClient(input);
 
     const client = await fetchAdminClientById(result.user.id);
     if (!client) {
