@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { OrgClientAssignmentSection } from "@/components/admin/org-client-assignment-section";
 import { OrgMemberNetworkSection } from "@/components/admin/org-member-network-section";
+import { OrgPooledContactsSection } from "@/components/admin/org-pooled-contacts-section";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -244,6 +245,8 @@ export function AdminOrgDetailPanel({ orgId }: { orgId: string }) {
       <OrgClientAssignmentSection orgId={orgId} />
 
       <OrgMemberNetworkSection orgId={orgId} />
+
+      <OrgPooledContactsSection orgId={orgId} />
 
       <ScoutBox padding={20}>
         <ScoutLabel>Members</ScoutLabel>

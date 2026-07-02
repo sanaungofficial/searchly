@@ -4,6 +4,7 @@ import {
   countPooledContributors,
   listOrgNetworkSourcesForOrg,
 } from "@/lib/org-network-source";
+import { countContactsByNetworkSourceIds } from "@/lib/org-contact-graph";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
@@ -17,9 +18,22 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ orgId:
   const members = await listOrgNetworkSourcesForOrg(orgId);
   const stats = countPooledContributors(members);
 
+  const sourceIds = members.map((row) => row.source?.id).filter(Boolean) as string[];
+  const contactCounts = await countContactsByNetworkSourceIds(sourceIds);
+
+  const membersWithCounts = members.map((row) => ({
+    ...row,
+    source: row.source
+      ? {
+          ...row.source,
+          syncedContactCount: contactCounts.get(row.source.id) ?? 0,
+        }
+      : null,
+  }));
+
   return NextResponse.json({
     org: { id: org.id, name: org.name },
-    members,
+    members: membersWithCounts,
     stats,
   });
 }

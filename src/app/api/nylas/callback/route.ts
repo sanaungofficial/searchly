@@ -6,6 +6,7 @@ import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { syncInboxActivities } from "@/lib/inbox-crm";
 import { syncNylasContactsForUser } from "@/lib/inbox-crm/sync-contacts";
 import { completeOrgNetworkOAuth } from "@/lib/org-network-source";
+import { syncOrgNetworkSource } from "@/lib/org-contact-graph";
 import {
   clearNylasOAuthCookie,
   exchangeNylasCode,
@@ -149,7 +150,7 @@ export async function GET(req: NextRequest) {
     const { grantId, email } = await exchangeNylasCode(code, appUrl);
 
     if (parsed.kind === "orgNetwork") {
-      await completeOrgNetworkOAuth({
+      const source = await completeOrgNetworkOAuth({
         orgMemberId: parsed.orgMemberId,
         userId: parsed.userId,
         nylasGrantId: grantId,
@@ -157,6 +158,12 @@ export async function GET(req: NextRequest) {
         provider: req.nextUrl.searchParams.get("provider") ?? "google",
         visibility: parsed.visibility,
       });
+
+      if (parsed.visibility === "POOLED") {
+        syncOrgNetworkSource(source.id).catch((err) =>
+          console.error("[nylas/callback] org network backfill", err),
+        );
+      }
 
       return redirectOrgNetwork({ network: "connected" });
     }

@@ -18,6 +18,7 @@ type NetworkSourceRow = {
     provider: string | null;
     connectedAt: string | null;
     lastSyncAt: string | null;
+    syncedContactCount?: number;
   } | null;
 };
 
@@ -175,6 +176,14 @@ export function OrgMemberNetworkSection({ orgId }: { orgId: string }) {
                       {row.source?.email && (
                         <div style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, marginTop: 4 }}>
                           {row.source.email}
+                        </div>
+                      )}
+                      {isConnected && visibility === "POOLED" && (
+                        <div style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, marginTop: 4 }}>
+                          {row.source?.syncedContactCount ?? 0} contacts synced
+                          {row.source?.lastSyncAt
+                            ? ` · last sync ${new Date(row.source.lastSyncAt).toLocaleDateString()}`
+                            : ""}
                         </div>
                       )}
                     </td>
