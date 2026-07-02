@@ -98,6 +98,22 @@ export async function generateRecommendedJobsForUser(
   };
 }
 
+/** AI readback roles — not always copied onto profile.targetRoles yet. */
+export function targetRolesFromReadback(readbackData: unknown): string[] {
+  if (!readbackData || typeof readbackData !== "object") return [];
+  const raw = (readbackData as Record<string, unknown>).targetRoles;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      if (typeof entry === "string") return entry.trim();
+      if (entry && typeof entry === "object" && typeof (entry as { role?: unknown }).role === "string") {
+        return (entry as { role: string }).role.trim();
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
 export function hasProfileSignals(input: {
   targetRoles: string[];
   roleTitlePreferences?: RoleTitlePreferences;
@@ -105,9 +121,11 @@ export function hasProfileSignals(input: {
   profileResumeUrl: string | null | undefined;
   resumeText: string;
   parsedData: ParsedResumeData;
+  readbackData?: unknown;
 }): boolean {
   if (input.roleTitlePreferences && hasRoleTitlePreferenceSignals(input.roleTitlePreferences)) return true;
   if (input.targetRoles.length > 0) return true;
+  if (targetRolesFromReadback(input.readbackData).length > 0) return true;
   if (input.resumeAssetUrl || input.profileResumeUrl) return true;
   if (input.resumeText.trim().length >= 40) return true;
   return (
@@ -133,5 +151,6 @@ export async function userEligibleForRecommendedSnapshot(userId: string): Promis
     profileResumeUrl: profile?.resumeUrl,
     resumeText: profile?.resumeText ?? "",
     parsedData,
+    readbackData: profile?.readbackData,
   });
 }
