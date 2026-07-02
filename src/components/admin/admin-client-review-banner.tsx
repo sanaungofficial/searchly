@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AdminClientProfileBanner } from "@/components/admin/admin-client-profile-banner";
-import { exitAdminClientReview } from "@/lib/admin-client-navigation";
+import { exitAdminClientReview, getAdminReviewReturnLabel } from "@/lib/admin-client-navigation";
 
 type Props = {
   clientId: string;
@@ -19,6 +19,7 @@ export function AdminClientReviewBanner({ clientId, name, email }: Props) {
     <AdminClientProfileBanner
       name={name}
       email={email}
+      backLabel={getAdminReviewReturnLabel()}
       onBack={() => {
         setExiting(true);
         void exitAdminClientReview().finally(() => setExiting(false));

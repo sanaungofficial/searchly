@@ -63,12 +63,17 @@ export default function CompanyScansAdminPage() {
   const [syncResults, setSyncResults] = useState<SyncResult[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedIntelId, setSelectedIntelId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/company-scans");
-      if (res.ok) setData(await res.json());
+      if (res.ok) {
+        setData(await res.json());
+        setCurrentPage(1);
+      }
     } finally {
       setLoading(false);
     }
@@ -118,6 +123,13 @@ export default function CompanyScansAdminPage() {
 
   const { totals } = data;
   const top50Rows = data.companies.filter((c) => c.hirebaseProfileAt || c.hirebaseSlug);
+
+  const totalPages = Math.max(1, Math.ceil(data.companies.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedCompanies = data.companies.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize
+  );
 
   return (
     <div className="space-y-8">
@@ -250,7 +262,7 @@ export default function CompanyScansAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {data.companies.map((row) => (
+              {paginatedCompanies.map((row) => (
                 <tr
                   key={row.id}
                   className="border-b border-[rgba(17,17,17,0.06)] cursor-pointer hover:bg-[var(--scout-inset)]/80 transition-colors"
@@ -285,6 +297,32 @@ export default function CompanyScansAdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="px-6 py-4 border-t border-[rgba(17,17,17,0.08)] flex items-center justify-between gap-4 text-xs">
+          <span className="text-[var(--scout-muted)]">
+            Showing {data.companies.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1} to {Math.min(safeCurrentPage * pageSize, data.companies.length)} of {data.companies.length} companies
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={safeCurrentPage === 1}
+              onClick={() => setCurrentPage((c) => Math.max(c - 1, 1))}
+              className="rounded-[var(--scout-radius)] border border-stone-300 px-3 py-1.5 font-medium text-[#52493F] hover:bg-[var(--scout-inset)]/85 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-[#1A1A1A] font-medium px-1">
+              Page {safeCurrentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={safeCurrentPage === totalPages}
+              onClick={() => setCurrentPage((c) => Math.min(c + 1, totalPages))}
+              className="rounded-[var(--scout-radius)] border border-stone-300 px-3 py-1.5 font-medium text-[#52493F] hover:bg-[var(--scout-inset)]/85 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </ScoutBox>
 

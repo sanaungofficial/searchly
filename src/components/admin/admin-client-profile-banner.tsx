@@ -6,9 +6,10 @@ type Props = {
   name?: string | null;
   email?: string | null;
   onBack: () => void;
+  backLabel?: string;
 };
 
-export function AdminClientProfileBanner({ name, email, onBack }: Props) {
+export function AdminClientProfileBanner({ name, email, onBack, backLabel = "Back to clients" }: Props) {
   const label = name ?? email?.split("@")[0] ?? "client";
 
   return (
@@ -49,7 +50,7 @@ export function AdminClientProfileBanner({ name, email, onBack }: Props) {
           fontFamily: fontSans,
         }}
       >
-        Back to clients
+        {backLabel}
       </button>
     </div>
   );

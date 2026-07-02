@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { CreateClientModal } from "@/components/admin/create-client-modal";
+import { UserEmailAutocompleteInput } from "@/components/admin/user-email-autocomplete-input";
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
 import { EmployeeIntroDrawer, type EmployeeDrawerClient } from "@/components/org/employee-intro-drawer";
+import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
 import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
+import { useWorkspace } from "@/contexts/workspace-context";
+import { useEmployeeViewAs } from "@/hooks/use-employee-view-as";
 import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
@@ -30,12 +34,19 @@ export function OrgClientAssignmentSection({
   apiBase = `/api/admin/orgs/${orgId}`,
   showIntroMatches = true,
   readOnly = false,
+  embedded = false,
+  reviewReturnPath,
+  reviewReturnLabel,
 }: {
   orgId: string;
   apiBase?: string;
   showIntroMatches?: boolean;
   readOnly?: boolean;
+  embedded?: boolean;
+  reviewReturnPath?: string;
+  reviewReturnLabel?: string;
 }) {
+  const { isAdmin } = useWorkspace();
   const [clients, setClients] = useState<OrgClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -46,6 +57,22 @@ export function OrgClientAssignmentSection({
   const [showCreate, setShowCreate] = useState(false);
   const [createNotice, setCreateNotice] = useState<string | null>(null);
   const [drawerClient, setDrawerClient] = useState<OrgClientRow | null>(null);
+  const isAdminOrgApi = apiBase.startsWith("/api/admin/");
+  const userSearchUrl = isAdminOrgApi
+    ? `/api/admin/users/search?orgId=${encodeURIComponent(orgId)}&context=client`
+    : `${apiBase}/users/search?context=client`;
+  const resolvedReviewReturnPath =
+    reviewReturnPath ?? (isAdminOrgApi ? `/admin/orgs/${orgId}#employees` : `/org/${orgId}/settings/clients`);
+  const resolvedReviewReturnLabel =
+    reviewReturnLabel ?? (isAdminOrgApi ? "Back to organization" : "Back to employee settings");
+  const canReview = !readOnly || isAdminOrgApi;
+  const canImpersonate = isAdmin;
+  const { startingUserId, viewAsAdmin, viewAsEmployee } = useEmployeeViewAs({
+    reviewReturnPath: resolvedReviewReturnPath,
+    reviewReturnLabel: resolvedReviewReturnLabel,
+    canReview,
+    canImpersonate,
+  });
 
   async function load() {
     setLoading(true);
@@ -111,15 +138,22 @@ export function OrgClientAssignmentSection({
     }
   }
 
-  return (
+  const content = (
     <>
-      <ScoutBox padding={20}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <ScoutLabel>Assigned employees</ScoutLabel>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-              Create new employee accounts or link existing Kimchi users to this organization. Click a row to view intro paths.
-            </p>
+            {embedded ? (
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                Job seekers assigned to this org for intro matching. Click a row to view target employers and intro paths.
+              </p>
+            ) : (
+              <>
+                <ScoutLabel>Supported employees</ScoutLabel>
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
+                  Create new employee accounts or link existing Kimchi users to this organization. Click a row to view intro paths.
+                </p>
+              </>
+            )}
           </div>
           {!readOnly && (
             <ScoutPrimaryBtn
@@ -165,12 +199,12 @@ export function OrgClientAssignmentSection({
           >
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>Employee email</span>
-              <input
-                style={inputStyle}
-                type="email"
+              <UserEmailAutocompleteInput
                 value={clientEmail}
-                onChange={(e) => setClientEmail(e.target.value)}
-                placeholder="employee@company.com"
+                onChange={setClientEmail}
+                searchUrl={userSearchUrl}
+                placeholder="Start typing name or email…"
+                inputStyle={inputStyle}
                 required
               />
             </label>
@@ -199,6 +233,7 @@ export function OrgClientAssignmentSection({
                   <th style={{ padding: "10px 8px" }}>Assigned</th>
                   <th style={{ padding: "10px 8px" }}>Notes</th>
                   <th style={{ padding: "10px 8px" }}>Matches</th>
+                  {!readOnly && <th style={{ padding: "10px 8px" }}>Actions</th>}
                   <th style={{ padding: "10px 8px" }} />
                 </tr>
               </thead>
@@ -224,6 +259,19 @@ export function OrgClientAssignmentSection({
                         apiBase={apiBase}
                       />
                     </td>
+                    {!readOnly && (
+                      <td style={{ padding: "12px 8px" }}>
+                        <EmployeeViewAsActions
+                          userId={client.userId}
+                          startingUserId={startingUserId}
+                          canReview={canReview}
+                          canImpersonate={canImpersonate}
+                          onViewAsAdmin={viewAsAdmin}
+                          onViewAsEmployee={viewAsEmployee}
+                          compact
+                        />
+                      </td>
+                    )}
                     <td style={{ padding: "12px 8px", textAlign: "right" }}>
                       {!readOnly && (
                         <ScoutSecondaryBtn
@@ -268,15 +316,30 @@ export function OrgClientAssignmentSection({
             }}
           />
         )}
-      </ScoutBox>
+    </>
+  );
+
+  return (
+    <>
+      {embedded ? content : <ScoutBox padding={20}>{content}</ScoutBox>}
 
       {drawerClient && (
         <EmployeeIntroDrawer
           orgId={orgId}
+          person={{
+            userId: drawerClient.userId,
+            email: drawerClient.email,
+            name: drawerClient.name,
+          }}
           client={drawerClient}
           apiBase={apiBase}
           readOnly={readOnly}
           onClose={() => setDrawerClient(null)}
+          canReview={canReview}
+          canImpersonate={canImpersonate}
+          startingUserId={startingUserId}
+          onViewAsAdmin={viewAsAdmin}
+          onViewAsEmployee={viewAsEmployee}
         />
       )}
     </>
