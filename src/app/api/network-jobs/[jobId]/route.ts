@@ -70,6 +70,7 @@ export async function GET(
     profileResumeUrl: profile?.resumeUrl,
     resumeText,
     parsedData,
+    readbackData: profile?.readbackData,
   });
 
   const enriched = needsProfile
