@@ -99,6 +99,10 @@ async function recordEventSignals(params: {
     ? new Date(params.event.when.start_time * 1000)
     : new Date();
   const title = params.event.title?.trim() || "Calendar event";
+  const participantCount = (params.event.participants ?? []).filter((p) =>
+    Boolean(normalizeOrgContactEmail(p.email)),
+  ).length;
+  const isOneOnOne = participantCount > 0 && participantCount <= 2;
   let recorded = 0;
 
   for (const participant of params.event.participants ?? []) {
@@ -119,6 +123,8 @@ async function recordEventSignals(params: {
       seenAt: occurredAt,
       patch: {
         meetingCount: 1,
+        oneOnOneMeetingCount: isOneOnOne ? 1 : 0,
+        groupMeetingCount: isOneOnOne ? 0 : 1,
         meetingTitle: title,
         lastMeetingAt: occurredAt.toISOString(),
       },

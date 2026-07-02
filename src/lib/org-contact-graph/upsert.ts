@@ -88,6 +88,8 @@ export async function touchOrgContactKnownBy(params: {
   patch?: Partial<OrgContactStrengthFactors> & {
     subject?: string | null;
     meetingTitle?: string | null;
+    oneOnOneMeetingCount?: number;
+    groupMeetingCount?: number;
   };
 }) {
   const existing = await prisma.orgContactKnownBy.findUnique({
@@ -106,6 +108,8 @@ export async function touchOrgContactKnownBy(params: {
     meetingCount: prev.meetingCount + (patch.meetingCount ?? 0),
     inboundCount: prev.inboundCount + (patch.inboundCount ?? 0),
     outboundCount: prev.outboundCount + (patch.outboundCount ?? 0),
+    oneOnOneMeetingCount: prev.oneOnOneMeetingCount + (patch.oneOnOneMeetingCount ?? 0),
+    groupMeetingCount: prev.groupMeetingCount + (patch.groupMeetingCount ?? 0),
     recentSubjects: patch.subject
       ? mergeRecentStrings(prev.recentSubjects, patch.subject)
       : prev.recentSubjects,

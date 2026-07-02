@@ -2,6 +2,7 @@ import type { OrgNetworkSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { syncOrgNetworkSourceContacts } from "@/lib/org-contact-graph/sync-contacts";
 import { syncOrgNetworkSourceSignals } from "@/lib/org-contact-graph/sync-signals";
+import { recomputeStrengthScoresForNetworkSource, recomputeAllPooledStrengthScores } from "@/lib/org-contact-strength";
 
 export type OrgNetworkSourceWithOrg = OrgNetworkSource & {
   orgMember: { orgId: string; userId: string };
@@ -45,11 +46,14 @@ export async function syncOrgNetworkSource(sourceId: string) {
     data: { lastSyncAt: new Date() },
   });
 
+  const strengthScoresUpdated = await recomputeStrengthScoresForNetworkSource(source.id);
+
   return {
     ok: true as const,
     orgId: source.orgMember.orgId,
     contacts,
     signals,
+    strengthScoresUpdated,
   };
 }
 
@@ -75,7 +79,9 @@ export async function syncAllPooledOrgNetworkSources() {
     }
   }
 
-  return { sources: sources.length, synced, failed };
+  const strengthScoresUpdated = await recomputeAllPooledStrengthScores();
+
+  return { sources: sources.length, synced, failed, strengthScoresUpdated };
 }
 
 export async function countContactsByNetworkSourceIds(sourceIds: string[]) {

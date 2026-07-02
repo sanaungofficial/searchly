@@ -66,6 +66,13 @@ export function JobSearchEmailDashboard({ section }: Props) {
   }, [searchParams]);
 
   useEffect(() => {
+    const composeTo = searchParams.get("composeTo");
+    if (composeTo?.trim()) {
+      setCompose({ open: true, to: composeTo.trim(), subject: "", body: "" });
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const inbox = searchParams.get("inbox");
     const reason = searchParams.get("reason");
     if (inbox === "connected") {

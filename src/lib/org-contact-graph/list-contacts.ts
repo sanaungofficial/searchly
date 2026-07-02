@@ -6,6 +6,7 @@ export type ListOrgContactsParams = {
   orgId: string;
   company?: string | null;
   search?: string | null;
+  sort?: "activity" | "strength" | null;
   limit?: number;
   offset?: number;
 };
@@ -79,6 +80,7 @@ export function serializeOrgContactRow(
     linkedinUrl: contact.linkedinUrl,
     phone: contact.phone,
     lastActivityAt: contact.lastActivityAt?.toISOString() ?? null,
+    maxStrengthScore: contact.knownBy.reduce((max, edge) => Math.max(max, edge.strengthScore), 0),
     createdAt: contact.createdAt.toISOString(),
     updatedAt: contact.updatedAt.toISOString(),
     knownBy: contact.knownBy.map((edge) => ({
@@ -101,6 +103,25 @@ export async function listOrgContacts(params: ListOrgContactsParams) {
   const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
   const offset = Math.max(params.offset ?? 0, 0);
   const where = buildWhere(params);
+  const sortByStrength = params.sort === "strength";
+
+  if (sortByStrength) {
+    const all = await prisma.orgContact.findMany({
+      where,
+      include: { knownBy: { include: knownByInclude } },
+    });
+    all.sort((a, b) => {
+      const aMax = a.knownBy.reduce((max, edge) => Math.max(max, edge.strengthScore), 0);
+      const bMax = b.knownBy.reduce((max, edge) => Math.max(max, edge.strengthScore), 0);
+      if (bMax !== aMax) return bMax - aMax;
+      const aAct = a.lastActivityAt?.getTime() ?? 0;
+      const bAct = b.lastActivityAt?.getTime() ?? 0;
+      return bAct - aAct;
+    });
+    const total = all.length;
+    const contacts = all.slice(offset, offset + limit);
+    return { total, limit, offset, contacts: contacts.map(serializeOrgContactRow) };
+  }
 
   const [total, contacts] = await Promise.all([
     prisma.orgContact.count({ where }),

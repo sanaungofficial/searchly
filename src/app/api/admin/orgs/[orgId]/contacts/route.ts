@@ -12,10 +12,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgI
   if (!org) return NextResponse.json({ error: "Org not found" }, { status: 404 });
 
   const sp = req.nextUrl.searchParams;
+  const sortParam = sp.get("sort");
   const result = await listOrgContacts({
     orgId,
     company: sp.get("company"),
     search: sp.get("search"),
+    sort: sortParam === "strength" ? "strength" : "activity",
     limit: sp.get("limit") ? Number(sp.get("limit")) : undefined,
     offset: sp.get("offset") ? Number(sp.get("offset")) : undefined,
   });

@@ -70,6 +70,7 @@ model User {
   orgMembersInvited    OrgMember[] @relation("OrgMemberInvites")
   clientAssignments    ClientAssignment[] @relation("ClientAssignments")
   clientAssignmentsMade ClientAssignment[] @relation("ClientAssignmentAdmin")
+  orgMatchResults      OrgMatchResult[]   @relation("OrgMatchResults")
 
   @@index([referredByUserId])
 }
@@ -1427,6 +1428,7 @@ model Org {
   members           OrgMember[]
   clientAssignments ClientAssignment[]
   orgContacts       OrgContact[]
+  matchResults      OrgMatchResult[]
 }
 
 enum OrgMemberRole {
@@ -1508,6 +1510,7 @@ model OrgContact {
   updatedAt       DateTime  @updatedAt
 
   knownBy OrgContactKnownBy[]
+  matchResults OrgMatchResult[]
 
   @@unique([orgId, emailNormalized])
   @@index([orgId, company])
@@ -1530,6 +1533,33 @@ model OrgContactKnownBy {
 
   @@unique([orgContactId, networkSourceId])
   @@index([networkSourceId])
+}
+
+/// Cached admin intro-match rows (Enterprise Step 6 — click-computed, not cron).
+model OrgMatchResult {
+  id                   String     @id @default(cuid())
+  orgId                String
+  org                  Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  clientId             String
+  client               User       @relation("OrgMatchResults", fields: [clientId], references: [id], onDelete: Cascade)
+  targetCompany        String
+  targetCompanyKey     String
+  contactId            String
+  contact              OrgContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  strengthScore        Int
+  matchType            String?
+  knownByUserId        String?
+  knownByUserName      String?
+  knownByNetworkSourceId String?
+  hirebaseJobIds       String[]   @default([])
+  hirebaseJobs         Json?
+  computedAt           DateTime   @default(now())
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  @@unique([orgId, clientId, targetCompanyKey, contactId])
+  @@index([orgId, clientId])
+  @@index([orgId, clientId, strengthScore(sort: Desc)])
 }
 
 enum AssignmentAssignerType {
