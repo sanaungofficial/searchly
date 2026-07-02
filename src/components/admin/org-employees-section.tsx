@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { CreateClientModal } from "@/components/admin/create-client-modal";
+import { UserEmailAutocompleteInput } from "@/components/admin/user-email-autocomplete-input";
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
 import {
   EmployeeIntroDrawer,
@@ -456,12 +457,12 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
             <p style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, margin: 0, textTransform: "uppercase" }}>
               Add team member
             </p>
-            <input
-              style={inputStyle}
-              type="email"
+            <UserEmailAutocompleteInput
               value={memberEmail}
-              onChange={(e) => setMemberEmail(e.target.value)}
-              placeholder="admin@company.com"
+              onChange={setMemberEmail}
+              searchUrl={`/api/admin/users/search?orgId=${encodeURIComponent(orgId)}&context=member`}
+              placeholder="Start typing name or email…"
+              inputStyle={inputStyle}
               required
             />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -495,12 +496,12 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
                 + Create
               </ScoutPrimaryBtn>
             </div>
-            <input
-              style={inputStyle}
-              type="email"
+            <UserEmailAutocompleteInput
               value={clientEmail}
-              onChange={(e) => setClientEmail(e.target.value)}
-              placeholder="employee@company.com"
+              onChange={setClientEmail}
+              searchUrl={`/api/admin/users/search?orgId=${encodeURIComponent(orgId)}&context=client`}
+              placeholder="Start typing name or email…"
+              inputStyle={inputStyle}
               required
             />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
