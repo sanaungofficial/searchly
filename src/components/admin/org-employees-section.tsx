@@ -12,7 +12,7 @@ import {
   type EmployeeDrawerTeamMember,
 } from "@/components/org/employee-intro-drawer";
 import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
-import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
+import { EmployeeConnectionCompanyStack } from "@/components/org/employee-connection-company-stack";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useEmployeeViewAs } from "@/hooks/use-employee-view-as";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
@@ -641,10 +641,9 @@ export function OrgEmployeesSection({ orgId }: { orgId: string }) {
                       </td>
                       <td style={{ padding: "12px 8px" }}>
                         {row.isSupported ? (
-                          <EmployeeIntroMatchPreviewStack
+                          <EmployeeConnectionCompanyStack
                             orgId={orgId}
-                            clientUserId={row.userId}
-                            apiBase={apiBase}
+                            userId={row.userId}
                             compact
                           />
                         ) : (

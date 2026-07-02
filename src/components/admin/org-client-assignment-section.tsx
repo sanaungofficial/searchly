@@ -7,7 +7,7 @@ import { UserEmailAutocompleteInput } from "@/components/admin/user-email-autoco
 import { OrgIntroMatchPriorityPanel } from "@/components/admin/org-client-intro-matches-section";
 import { EmployeeIntroDrawer, type EmployeeDrawerClient } from "@/components/org/employee-intro-drawer";
 import { EmployeeViewAsActions } from "@/components/org/employee-view-as-actions";
-import { EmployeeIntroMatchPreviewStack } from "@/components/org/employee-intro-match-preview-stack";
+import { EmployeeConnectionCompanyStack } from "@/components/org/employee-connection-company-stack";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useEmployeeViewAs } from "@/hooks/use-employee-view-as";
 import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -253,11 +253,7 @@ export function OrgClientAssignmentSection({
                     </td>
                     <td style={{ padding: "12px 8px", color: color.muted }}>{client.notes ?? "—"}</td>
                     <td style={{ padding: "12px 8px" }}>
-                      <EmployeeIntroMatchPreviewStack
-                        orgId={orgId}
-                        clientUserId={client.userId}
-                        apiBase={apiBase}
-                      />
+                      <EmployeeConnectionCompanyStack orgId={orgId} userId={client.userId} />
                     </td>
                     {!readOnly && (
                       <td style={{ padding: "12px 8px" }}>

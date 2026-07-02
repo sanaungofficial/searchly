@@ -4,6 +4,8 @@ import { isClientAssignedToOrg } from "@/lib/client-assignment";
 import { fetchHirebaseCompanyJobs, isHirebaseConfigured } from "@/lib/hirebase";
 import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
 import { parseStrengthFactors, type OrgContactStrengthFactors } from "@/lib/org-contact-graph/types";
+import { normalizeCompanySlug } from "@/lib/company-catalog";
+import { hostnameFromUrl } from "@/lib/company-domain";
 import { domainFromUrl } from "@/lib/sumble/client";
 import { companyFromEmailDomain } from "@/lib/org-contact-graph/normalize-email";
 
@@ -42,6 +44,15 @@ export type OrgTargetPotentialConnections = {
   totalContacts: number;
   owners: OrgPotentialConnectionOwner[];
   contacts: OrgPotentialConnectionContact[];
+};
+
+export type OrgConnectionCompanyPreview = {
+  targetCompanyId: string;
+  companyName: string;
+  domain: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  contactCount: number;
 };
 
 export type OrgIntroMatchRow = {
@@ -558,6 +569,68 @@ export async function listOrgPotentialConnections(orgId: string, clientId: strin
   }
 
   return { ok: true as const, targets: results };
+}
+
+function logoFromIntelEnrichment(enrichment: unknown): string | null {
+  const cache = enrichment as { hirebase?: { logo?: string | null } } | null | undefined;
+  return cache?.hirebase?.logo?.trim() || null;
+}
+
+export async function listOrgConnectionCompaniesPreview(
+  orgId: string,
+  clientId: string,
+  limit = 5,
+): Promise<
+  | {
+      ok: true;
+      companies: OrgConnectionCompanyPreview[];
+      totalCount: number;
+      targetCount: number;
+    }
+  | { ok: false; error: string }
+> {
+  const connectionsResult = await listOrgPotentialConnections(orgId, clientId);
+  if (!connectionsResult.ok) return connectionsResult;
+
+  const withContacts = connectionsResult.targets
+    .filter((target) => target.totalContacts > 0)
+    .sort((a, b) => b.totalContacts - a.totalContacts);
+
+  const previewLimit = Math.max(1, Math.min(limit, 20));
+  const slice = withContacts.slice(0, previewLimit);
+
+  const slugs = [
+    ...new Set(slice.map((target) => normalizeCompanySlug(target.targetCompany)).filter(Boolean)),
+  ];
+  const intelRows =
+    slugs.length > 0
+      ? await prisma.companyIntel.findMany({
+          where: { slug: { in: slugs } },
+          select: { slug: true, website: true, enrichmentCache: true },
+        })
+      : [];
+  const intelBySlug = new Map(intelRows.map((row) => [row.slug.toLowerCase(), row]));
+
+  const companies: OrgConnectionCompanyPreview[] = slice.map((target) => {
+    const slug = normalizeCompanySlug(target.targetCompany);
+    const intel = intelBySlug.get(slug.toLowerCase());
+    const website = target.targetWebsite ?? intel?.website ?? null;
+    return {
+      targetCompanyId: target.targetCompanyId,
+      companyName: target.targetCompany,
+      domain: hostnameFromUrl(website),
+      website,
+      logoUrl: logoFromIntelEnrichment(intel?.enrichmentCache),
+      contactCount: target.totalContacts,
+    };
+  });
+
+  return {
+    ok: true,
+    companies,
+    totalCount: withContacts.length,
+    targetCount: connectionsResult.targets.length,
+  };
 }
 
 export function formatPotentialConnectionOwnersSummary(
