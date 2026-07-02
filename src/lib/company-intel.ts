@@ -11,7 +11,7 @@ export type CompanySuggestItem = {
   careersUrl: string | null;
   logoUrl: string | null;
   type: string | null;
-  source: "catalog" | "intel" | "hirebase";
+  source: "catalog" | "intel" | "hirebase" | "tracked";
 };
 
 export async function backfillIntelWebsitesFromCatalog(): Promise<{ updated: number; skipped: number }> {
@@ -184,6 +184,26 @@ export function catalogToSuggestItem(company: CatalogCompany, intelId?: string):
     logoUrl: null,
     type: company.type ?? null,
     source: "catalog",
+  };
+}
+
+export function trackedToSuggestItem(company: {
+  name: string;
+  website: string | null;
+  careersUrl?: string | null;
+  companyIntel?: { slug: string; website: string | null; careersUrl: string | null } | null;
+}): CompanySuggestItem {
+  const catalog = getCatalogCompany(normalizeCompanySlug(company.name));
+  const slug = company.companyIntel?.slug ?? catalog?.slug ?? normalizeCompanySlug(company.name);
+  return {
+    id: null,
+    catalogSlug: slug,
+    name: company.name.trim(),
+    website: company.website ?? company.companyIntel?.website ?? catalog?.website ?? null,
+    careersUrl: company.careersUrl ?? company.companyIntel?.careersUrl ?? catalog?.careersUrl ?? null,
+    logoUrl: null,
+    type: catalog?.type ?? null,
+    source: "tracked",
   };
 }
 

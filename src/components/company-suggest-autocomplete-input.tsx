@@ -10,6 +10,7 @@ type CompanySuggestAutocompleteInputProps = {
   value: string;
   onChange: (value: string) => void;
   onSelect: (item: CompanySuggestItem | null) => void;
+  onCreateAsNew?: () => void;
   searchUrl?: string;
   placeholder?: string;
   required?: boolean;
@@ -37,6 +38,7 @@ function formatSuggestionMeta(item: CompanySuggestItem): string {
   if (item.type) parts.push(item.type);
   if (item.source === "hirebase") parts.push("Hirebase");
   else if (item.source === "intel") parts.push("Kimchi intel");
+  else if (item.source === "tracked") parts.push("In network");
   else if (item.source === "catalog") parts.push("Catalog");
   if (item.website) parts.push(item.website.replace(/^https?:\/\//, "").replace(/\/$/, ""));
   return parts.join(" · ") || "Company";
@@ -46,6 +48,7 @@ export function CompanySuggestAutocompleteInput({
   value,
   onChange,
   onSelect,
+  onCreateAsNew,
   searchUrl = "/api/companies/suggest",
   placeholder = "Start typing a company name…",
   required = false,
@@ -123,9 +126,10 @@ export function CompanySuggestAutocompleteInput({
   const createAsNew = useCallback(() => {
     setPicked(null);
     onSelect(null);
+    onCreateAsNew?.();
     setOpen(false);
     inputRef.current?.focus();
-  }, [onSelect]);
+  }, [onCreateAsNew, onSelect]);
 
   const trimmed = value.trim();
   const exactMatch = suggestions.some((item) => item.name.toLowerCase() === trimmed.toLowerCase());
@@ -253,7 +257,7 @@ export function CompanySuggestAutocompleteInput({
 
       {loading && trimmed.length >= minQueryLength && (
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0" }}>
-          Searching Hirebase…
+          Searching companies…
         </p>
       )}
     </div>
