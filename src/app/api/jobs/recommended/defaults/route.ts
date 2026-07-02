@@ -8,6 +8,7 @@ import { describeActiveFilters } from "@/lib/recommended-filter-utils";
 import { resolveProfileLocation } from "@/lib/profile-location";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { searchPreferencesFromParsedData } from "@/lib/search-preferences";
+import { unifiedTargetRoles } from "@/lib/target-roles-unified";
 import { prisma } from "@/lib/prisma";
 
 /** Default Hirebase search filters derived from profile — for pre-filling the Filters panel. */
@@ -35,13 +36,18 @@ export async function GET(request: Request) {
       ? (parsedData as { experienceLevel: string }).experienceLevel
       : null;
 
+  const targetRoles = unifiedTargetRoles({
+    targetRoles: profile?.targetRoles,
+    prioritizedRoles: profile?.prioritizedRoles,
+  });
+
   const parsedPrefs = searchPreferencesFromParsedData(parsedData);
   const filters = profileSearchConstraints({
     profileLocation: parsedData.location ?? null,
     targetMarket: profile?.targetMarket ?? null,
     priorities: profile?.priorities ?? [],
     experienceLevel,
-    targetRoles: profile?.targetRoles ?? [],
+    targetRoles,
     prioritizedCategories: profile?.prioritizedCategories ?? [],
     searchPreferences: parsedPrefs,
   });
@@ -57,7 +63,7 @@ export async function GET(request: Request) {
     labels: describeActiveFilters(filters),
     profileLocation,
     priorities: profile?.priorities ?? [],
-    targetRoles: profile?.targetRoles ?? [],
+    targetRoles,
     prioritizedCategories: profile?.prioritizedCategories ?? [],
     searchPreferences,
   });

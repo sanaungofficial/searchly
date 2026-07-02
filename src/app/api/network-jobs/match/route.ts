@@ -136,6 +136,7 @@ export async function GET(request: Request) {
     profileResumeUrl: profile?.resumeUrl,
     resumeText,
     parsedData,
+    readbackData: profile?.readbackData,
   });
 
   const matchedJobs = sortNetworkMatchedJobs(

@@ -204,7 +204,9 @@ function defaultFeedCacheKey(): string {
 }
 
 function readDefaultFeedCache(): RecommendedCacheEntry | null {
-  return readRecommendedCache(defaultFeedCacheKey());
+  const cached = readRecommendedCache(defaultFeedCacheKey());
+  if (cached?.error) return null;
+  return cached;
 }
 
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
@@ -431,12 +433,14 @@ export function PipelineRecommendedSection({
     prioritizedCategories: string[];
     experienceLevel: string | null;
     searchPreferences: SearchPreferences;
+    eligibleForRecommendations: boolean;
   }>({
     userId: null,
     targetRoles: [],
     prioritizedCategories: [],
     experienceLevel: null,
     searchPreferences: {},
+    eligibleForRecommendations: false,
   });
   const [prefConfirmOpen, setPrefConfirmOpen] = useState(false);
   const [profileMetaLoaded, setProfileMetaLoaded] = useState(false);
@@ -452,10 +456,10 @@ export function PipelineRecommendedSection({
 
   const hydrateFromCache = useCallback((filtersKey: string) => {
     const cached = readRecommendedCache(filtersKey);
-    if (!cached) return false;
+    if (!cached || cached.error) return false;
     setJobs(cached.jobs);
     setReserveJobs(cached.reserveJobs ?? []);
-    setError(cached.error ?? null);
+    setError(null);
     setHasLoadedOnce(true);
     setLoading(false);
     return true;
@@ -509,13 +513,16 @@ export function PipelineRecommendedSection({
             setActiveFilterLabels(describeActiveFilters(applied));
           }
           if (!background) setJobs([]);
-          writeRecommendedCache({
-            jobs: [],
-            reserveJobs: [],
-            filtersKey: cacheKey,
-            fetchedAt: Date.now(),
-            error: msg,
-          });
+          const isProfileGate = res.status === 404 && (data.needsProfile || data.needsResume);
+          if (!isProfileGate) {
+            writeRecommendedCache({
+              jobs: [],
+              reserveJobs: [],
+              filtersKey: cacheKey,
+              fetchedAt: Date.now(),
+              error: msg,
+            });
+          }
         } else {
           const nextJobs = data.jobs ?? [];
           const nextReserve = data.reserveJobs ?? [];
@@ -677,6 +684,7 @@ export function PipelineRecommendedSection({
         priorities?: string[];
         targetRoles?: string[];
         prioritizedCategories?: string[];
+        eligibleForRecommendations?: boolean;
       } | null) => {
         if (data) {
           const fields = locationFieldsFromProfileString(
@@ -697,6 +705,7 @@ export function PipelineRecommendedSection({
             prioritizedCategories: data.prioritizedCategories ?? [],
             experienceLevel,
             searchPreferences,
+            eligibleForRecommendations: data.eligibleForRecommendations === true,
           });
         }
       })
@@ -835,6 +844,14 @@ export function PipelineRecommendedSection({
     void fetchRecommended({ preferCache: true });
   }, [fetchRecommended, defaultsLoaded, profileFormReady, isAdminReviewing, hydrateFromCache]);
 
+  // Profile may gain roles/resume after a prior gate error — refetch once eligible.
+  useEffect(() => {
+    if (!profileMetaLoaded || !profileMeta.eligibleForRecommendations || !error) return;
+    if (!/target roles|upload a resume/i.test(error)) return;
+    setError(null);
+    void fetchRecommended({ preferCache: false, background: jobs.length > 0 });
+  }, [profileMetaLoaded, profileMeta.eligibleForRecommendations, error, fetchRecommended, jobs.length]);
+
   // Last-resort: never leave the initial loader spinning if bootstrap or fetch stalls.
   useEffect(() => {
     if (hasLoadedOnce) return;
@@ -929,6 +946,7 @@ export function PipelineRecommendedSection({
   };
 
   const handleRefresh = () => {
+    clearRecommendedCacheForKey(defaultFeedCacheKey());
     clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
     if (viewMode === "search") {
       void fetchSearch(appliedForm, { background: false });

@@ -7,6 +7,8 @@ import { upsertProfileFields } from "@/lib/profile-write";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { invalidateRecommendedSnapshotForUser } from "@/lib/recommended-jobs-snapshot";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
+import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
+import { buildRoleTitlePreferencesFromProfile } from "@/lib/role-title-preferences";
 import { NextResponse } from "next/server";
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
@@ -47,6 +49,22 @@ export async function GET(request: Request) {
       targetRoles: profile?.targetRoles,
       prioritizedRoles: profile?.prioritizedRoles,
     });
+    const roleTitlePreferences = buildRoleTitlePreferencesFromProfile({
+      targetRoles: roleFields.targetRoles,
+      prioritizedRoles: roleFields.prioritizedRoles,
+      prioritizedCategories: profile?.prioritizedCategories,
+      deprioritizedRoles: profile?.deprioritizedRoles,
+      deprioritizedCategories: profile?.deprioritizedCategories,
+    });
+    const eligibleForRecommendations = hasProfileSignals({
+      targetRoles: roleTitlePreferences.targetRoles ?? [],
+      roleTitlePreferences,
+      resumeAssetUrl: primaryResume?.url ?? null,
+      profileResumeUrl: profile?.resumeUrl,
+      resumeText: profile?.resumeText ?? "",
+      parsedData,
+      readbackData: profile?.readbackData,
+    });
 
     return NextResponse.json({
       userId: dbUser.id,
@@ -86,6 +104,7 @@ export async function GET(request: Request) {
       readbackData: profile?.readbackData ?? null,
       readbackUpdatedAt: profile?.readbackUpdatedAt?.toISOString() ?? null,
       primaryResumeUpdatedAt: primaryResume?.updatedAt?.toISOString() ?? null,
+      eligibleForRecommendations,
       linkedInAnalysisScore,
       linkedinImportAvailable: isApifyConfigured(),
       adminReview:
