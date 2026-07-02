@@ -68,6 +68,8 @@ model User {
   importRunsPerformed  ImportRun[] @relation("ImportedByImportRuns")
   orgMemberships       OrgMember[] @relation("OrgMemberships")
   orgMembersInvited    OrgMember[] @relation("OrgMemberInvites")
+  clientAssignments    ClientAssignment[] @relation("ClientAssignments")
+  clientAssignmentsMade ClientAssignment[] @relation("ClientAssignmentAdmin")
 
   @@index([referredByUserId])
 }
@@ -326,6 +328,7 @@ model CoachProfile {
   reviews        CoachReview[]
   followers      CoachFollow[]
   clientAssignments CoachClientAssignment[]
+  polymorphicClientAssignments ClientAssignment[]
   sharedDocuments   CoachSharedDocument[]
   clientSessionNotes CoachClientSessionNote[]
   bookings       CoachBooking[]
@@ -1419,7 +1422,8 @@ model Org {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members OrgMember[]
+  members           OrgMember[]
+  clientAssignments ClientAssignment[]
 }
 
 enum OrgMemberRole {
@@ -1443,6 +1447,35 @@ model OrgMember {
 
   @@unique([orgId, userId])
   @@index([userId])
+  @@index([orgId])
+}
+
+enum AssignmentAssignerType {
+  COACH
+  COMPANY
+}
+
+/// Polymorphic client assignment — coach (internal) or company org.
+model ClientAssignment {
+  id               String                 @id @default(cuid())
+  assignerType     AssignmentAssignerType
+  clientId         String
+  client           User                   @relation("ClientAssignments", fields: [clientId], references: [id], onDelete: Cascade)
+  coachProfileId   String?
+  coachProfile     CoachProfile?          @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  orgId            String?
+  org              Org?                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  assignedByUserId String?
+  assignedBy       User?                  @relation("ClientAssignmentAdmin", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  notes            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, assignerType, coachProfileId])
+  @@unique([clientId, assignerType, orgId])
+  @@index([clientId])
+  @@index([coachProfileId])
   @@index([orgId])
 }
 
